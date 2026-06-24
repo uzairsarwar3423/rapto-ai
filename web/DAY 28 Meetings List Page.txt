@@ -1,0 +1,74 @@
+DAY 28 — Meetings List Page: Filters, Cursor Pagination, Empty State
+Goal
+First "dense data" screen — this sets the pattern for Commitments (Day 33) and Action Items (Day 36). Must nail: filter bar, table-like list, cursor pagination, URL-synced state, empty state.
+Files to Create
+app/(dashboard)/meetings/
+  page.tsx                         ← RSC: reads searchParams, passes to client list
+  loading.tsx
+  error.tsx
+
+features/meetings/components/
+  MeetingFilters.tsx               ← Status/platform/date filter bar (Popover-based)
+  MeetingFiltersPopover.tsx        ← Multi-select status filter inside a Popover
+  MeetingList/
+    MeetingList.tsx                ← Client: TanStack Query + cursor pagination
+    MeetingListSkeleton.tsx
+    MeetingListRow.tsx             ← Dense row (not card) — table-like
+    MeetingListHeader.tsx          ← Column header row (Title / Platform / Status / Date)
+  MeetingStatusBadge.tsx           ← Badge per status enum, consistent color map
+  MeetingPlatformIcon.tsx          ← Small icon per platform (Zoom/Meet/Teams/Webex)
+  MeetingEmptyState.tsx            ← Illustration-free, text + CTA empty state
+  AddMeetingModal.tsx              ← Sheet (not modal) — stub today, wired Day 32
+
+features/meetings/hooks/
+  useMeetings.ts                   ← Cursor-paginated TanStack Query
+  useMeetingFilters.ts             ← Reads/writes URL searchParams (nuqs or manual)
+
+features/meetings/api/
+  meetings.queries.ts
+
+shared/components/data-display/
+  CursorPagination.tsx             ← "Load more" / infinite scroll trigger
+  FilterPill.tsx                   ← Active-filter chip with × to remove
+What Gets Built — Detail
+1. URL-Synced Filters (the Linear pattern)
+
+All filter state lives in the URL (?status=PENDING,MISSED&platform=ZOOM&from=...), read server-side in page.tsx and passed as initial filters to the client list — this means filters are shareable links and survive refresh, and the RSC can do an initial server-rendered fetch (no loading flash on first paint).
+useMeetingFilters is a thin wrapper around useSearchParams/useRouter (or nuqs if added) that exposes typed getters/setters — every filter control reads/writes through this hook, never local component state alone.
+
+2. MeetingFilters bar
+
+A horizontal row directly under PageHeader: a Popover-based multi-select for Status (checkbox list inside the popover — using shadcn Checkbox rows), a single-select DropdownMenu for Platform, a date-range trigger (simple two-input popover for now, full DatePicker polish later), and a free-text search input (debounced via existing useDebounce).
+Active filters render as removable FilterPill chips below/beside the bar — click × removes that filter and updates the URL.
+
+3. Dense List, Not Cards
+
+Deliberate departure from "card grid" — MeetingListHeader + MeetingListRow form a table-like dense list (36px rows), columns: Status dot, Title (truncate + platform icon inline), Platform badge, Scheduled time (RelativeTime), participant count, chevron.
+Every row: cursor-pointer, hover bg, entire row is a <Link> — clicking anywhere navigates to /meetings/:id. This is the canonical "dense info, every item clickable" pattern that Commitments and Action Items will copy on Days 33/36.
+Keyboard: list supports ↑/↓ to move a focus ring between rows and Enter to open (small custom hook, reused later) — this is what makes it feel like Linear instead of a generic web app.
+
+4. Cursor Pagination
+
+useMeetings uses TanStack Query's pattern for cursor pages; UI shows a "Load 20 more" text button at the bottom (CursorPagination) rather than numbered pages — consistent with the backend's cursor-based contract from Day 17/19.
+
+5. Empty State
+
+MeetingEmptyState: no illustration, no AI-vibe copy — just a centered block: icon (outline, monochrome), "No meetings yet" (13px), one-line subtext, a single primary button "Add meeting" (opens the Day-32 stub AddMeetingModal as a Sheet).
+
+6. Status & Platform visuals
+
+MeetingStatusBadge: a single shared color map (SCHEDULED = neutral, BOT_JOINING/RECORDING = amber-ish pulse dot, DONE = neutral-green text, FAILED = red text, CANCELLED = muted strikethrough-style) — all low-saturation, text-forward badges (shadcn Badge variant outline), never solid color blocks.
+
+Components Installed/Used Today
+popover, checkbox, dropdown-menu (reused), badge (reused), plus the dense-list pattern components above.
+End-of-Day Checklist
+
+ Filters persist in URL and survive refresh/back button
+ Status multi-select + platform single-select compose correctly (AND logic)
+ Search input debounced (no request per keystroke)
+ List rows keyboard-navigable (↑/↓/Enter)
+ Cursor "load more" appends without losing scroll position
+ Empty state shown only when filtered result is truly empty (not loading)
+ Row click target covers full row width/height, not just text
+
+

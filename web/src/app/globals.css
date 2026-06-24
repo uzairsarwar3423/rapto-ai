@@ -1,0 +1,334 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   VOCAPLY DESIGN SYSTEM — Light & Dark Mode Tokens
+   ============================================================ */
+:root {
+  --background: 0 0% 100%;
+  --surface: 0 0% 98%;
+  --surface-hover: 0 0% 96%;
+  --border: 0 0% 90%;
+  --border-strong: 0 0% 83%;
+  --foreground: 0 0% 9%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 0 0% 9%;
+  --accent-foreground: 0 0% 100%;
+  --ring: 0 0% 9%;
+  --danger: 4 70% 45%;
+  --warning: 38 70% 45%;
+  --success: 150 40% 35%;
+  --radius: 6px;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-brand: hsl(149 61% 28%);              /* #1A6B3C — brand green */
+  --color-brand-subtle: hsl(149 67% 95%);       /* #E8F5EE — green tint */
+  --color-brand-mid: hsl(149 51% 36%);          /* #2D8A50 — hover green */
+  --color-brand-dark: hsl(149 52% 60%);         /* #6ECC8E — light green for dark bg */
+  --color-error: hsl(var(--danger));
+  --color-error-subtle: hsl(10 93% 96%);        /* #FDECEA — error bg */
+  --color-muted: hsl(var(--muted-foreground));
+  --color-muted-subtle: hsl(45 4% 60%);         /* #9B9A96 — very muted */
+  --color-border: hsl(var(--border));
+  --color-surface: hsl(var(--surface));
+  --color-surface-2: hsl(40 7% 97%);            /* #FAFAF8 — page background */
+
+  /* STATUS TOKENS */
+  --color-pending-bg: hsl(0 0% 94%);
+  --color-pending-text: hsl(45 4% 40%);
+  --color-fulfilled-bg: hsl(149 67% 95%);
+  --color-fulfilled-text: hsl(149 61% 28%);
+  --color-missed-bg: hsl(10 93% 96%);
+  --color-missed-text: hsl(12 63% 48%);
+  --color-deferred-bg: hsl(240 100% 95%);
+  --color-deferred-text: hsl(239 84% 60%);
+
+  /* LAYOUT TOKENS */
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed: 56px;
+  --topbar-height: 48px;
+
+  /* SHADOW TOKENS */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 24px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+  --shadow-brand: 0 4px 24px rgba(26,107,60,0.08);
+
+  /* ANIMATION TOKENS */
+  --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-base: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark {
+  --background: 0 0% 7%;
+  --surface: 0 0% 10%;
+  --surface-hover: 0 0% 13%;
+  --border: 0 0% 16%;
+  --border-strong: 0 0% 22%;
+  --foreground: 0 0% 95%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 0 0% 95%;
+  --accent-foreground: 0 0% 9%;
+  --ring: 0 0% 70%;
+  --danger: 4 65% 58%;
+  --warning: 38 65% 58%;
+  --success: 150 40% 50%;
+
+  /* DARK MODE COLOR TOKENS */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-brand: hsl(149 52% 60%);              /* Light green for dark bg */
+  --color-brand-subtle: hsl(149 61% 12%);       /* Dark green tint */
+  --color-brand-mid: hsl(149 51% 36%);
+  --color-brand-dark: hsl(149 61% 28%);
+  --color-error: hsl(var(--danger));
+  --color-error-subtle: hsl(10 93% 12%);        /* Dark red tint */
+  --color-muted: hsl(var(--muted-foreground));
+  --color-muted-subtle: hsl(45 4% 40%);
+  --color-border: hsl(var(--border));
+  --color-surface: hsl(var(--surface));
+  --color-surface-2: hsl(40 4% 6%);
+
+  /* STATUS TOKENS (Dark Mode Adjusted) */
+  --color-pending-bg: hsl(0 0% 12%);
+  --color-pending-text: hsl(45 4% 60%);
+  --color-fulfilled-bg: hsl(149 61% 12%);
+  --color-fulfilled-text: hsl(149 52% 60%);
+  --color-missed-bg: hsl(10 93% 12%);
+  --color-missed-text: hsl(12 63% 58%);
+  --color-deferred-bg: hsl(240 60% 15%);
+  --color-deferred-text: hsl(239 84% 70%);
+}
+
+/* ============================================================
+   TAILWIND v4 @theme configuration
+   ============================================================ */
+@theme {
+  /* Fonts */
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-jakarta), var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-serif: var(--font-serif), Georgia, serif;
+  --font-plus-jakarta: var(--font-plus-jakarta), system-ui, -apple-system, sans-serif;
+
+  /* Colors mapping so Tailwind v4 registers them */
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-brand: var(--color-brand);
+  --color-brand-subtle: var(--color-brand-subtle);
+  --color-brand-mid: var(--color-brand-mid);
+  --color-brand-dark: var(--color-brand-dark);
+  --color-error: var(--color-error);
+  --color-error-subtle: var(--color-error-subtle);
+  --color-muted: var(--color-muted);
+  --color-muted-subtle: var(--color-muted-subtle);
+  --color-border: var(--color-border);
+  --color-border-strong: hsl(var(--border-strong));
+  --color-surface: var(--color-surface);
+  --color-surface-hover: hsl(var(--surface-hover));
+  --color-surface-2: var(--color-surface-2);
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-ring: hsl(var(--ring));
+
+  --color-pending-bg: var(--color-pending-bg);
+  --color-pending-text: var(--color-pending-text);
+  --color-fulfilled-bg: var(--color-fulfilled-bg);
+  --color-fulfilled-text: var(--color-fulfilled-text);
+  --color-missed-bg: var(--color-missed-bg);
+  --color-missed-text: var(--color-missed-text);
+  --color-deferred-bg: var(--color-deferred-bg);
+  --color-deferred-text: var(--color-deferred-text);
+
+  /* Font Sizes & Line Heights */
+  --font-size-2xs: 11px;
+  --line-height-2xs: 16px;
+
+  --font-size-xs: 12px;
+  --line-height-xs: 16px;
+
+  --font-size-sm: 13px;
+  --line-height-sm: 20px;
+
+  --font-size-base-heading: 15px;
+  --line-height-base-heading: 22px;
+
+  --font-size-lg-heading: 18px;
+  --line-height-lg-heading: 26px;
+
+  --font-size-2xl-heading: 28px;
+  --line-height-2xl-heading: 32px;
+
+  --font-size-display: clamp(48px, 6vw, 78px);
+  --font-size-h2: clamp(32px, 4vw, 52px);
+  --font-size-h3: clamp(18px, 2vw, 28px);
+
+  /* Spacing */
+  --spacing-sidebar: var(--sidebar-width);
+  --spacing-sidebar-collapsed: var(--sidebar-collapsed);
+  --spacing-topbar: var(--topbar-height);
+
+  /* Border Radius */
+  --radius-radius: var(--radius);
+  --radius-radius-md: var(--radius-md);
+  --radius-radius-lg: var(--radius-lg);
+  --radius-radius-xl: var(--radius-xl);
+
+  /* Shadows */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-brand: var(--shadow-brand);
+
+  /* Transitions */
+  --transition-duration-120: 120ms;
+  --transition-duration-160: 160ms;
+  --transition-duration-180: 180ms;
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================
+   GLOBAL RESETS & BASE STYLES
+   ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+}
+
+/* ── Selection ──────────────────────────────────────────── */
+::selection {
+  background-color: var(--color-brand-subtle);
+  color: var(--color-brand);
+}
+
+/* ── Focus Ring ─────────────────────────────────────────── */
+*:focus-visible:not(input):not(textarea):not(select) {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
+/* ── Custom Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-brand) 30%, transparent);
+  border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand);
+}
+
+/* For Firefox thin scrollbar support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-brand) 30%, transparent) var(--color-surface-2);
+}
+
+/* ── Accessibility ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
+}
+
+/* ── Auth & Onboarding Headings Override ────────────────── */
+.auth-heading,
+.onboarding-heading {
+  font-family: var(--font-plus-jakarta), system-ui, sans-serif !important;
+}
+
+/* ── Dashboard Typography Overrides — Not using Instrument Serif, using Inter and Plus Jakarta Sans ── */
+.dashboard-theme {
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
+}
+
+.dashboard-theme h1,
+.dashboard-theme h2,
+.dashboard-theme h3,
+.dashboard-theme h4,
+.dashboard-theme h5,
+.dashboard-theme h6 {
+  font-family: var(--font-plus-jakarta), var(--font-inter), system-ui, -apple-system, sans-serif !important;
+}
+
+
+/* ── Scrolling Marquee Keyframes & Utilities ──────────────── */
+@keyframes marquee-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marquee-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-marquee-left {
+  display: flex;
+  width: max-content;
+  animation: marquee-left 60s linear infinite;
+}
+
+.animate-marquee-right {
+  display: flex;
+  width: max-content;
+  animation: marquee-right 60s linear infinite;
+}
+
+.animate-marquee-left:hover,
+.animate-marquee-right:hover {
+  animation-play-state: paused;
+}

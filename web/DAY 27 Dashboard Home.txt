@@ -1,0 +1,75 @@
+DAY 27 — Dashboard Home: Widgets, Activity Feed, RSC Streaming
+Goal
+The first real screen. Dense, scannable, every block clickable, streams in progressively (Suspense) rather than blocking on one slow query.
+Files to Create
+app/(dashboard)/dashboard/
+  page.tsx                        ← RSC shell, Suspense boundaries per widget
+  loading.tsx                     ← Skeleton matching exact widget grid
+  error.tsx                       ← Error boundary with retry
+
+features/dashboard/                ← NEW small feature module (dashboard-only widgets)
+  components/
+    DashboardGrid.tsx             ← CSS grid layout (responsive 12-col)
+    widgets/
+      MyCommitmentsWidget.tsx     ← Top 5 PENDING/MISSED, clickable rows
+      MyCommitmentsWidgetSkeleton.tsx
+      UpcomingMeetingsWidget.tsx  ← Next 3 scheduled meetings, RSC fetch
+      UpcomingMeetingsWidgetSkeleton.tsx
+      TeamPulseWidget.tsx        ← Mini fulfillment-rate stat + sparkline
+      TeamPulseWidgetSkeleton.tsx
+      RecentActivityFeed.tsx     ← Client component, live-updatable later
+      RecentActivityFeedSkeleton.tsx
+      ActivityFeedItem.tsx       ← Single feed row: icon + text + relative time
+      QuickActionsRow.tsx        ← "Add meeting" / "Invite" pill buttons
+    StatPill.tsx                 ← Reusable small stat chip (number + label)
+  hooks/
+    useDashboardOverview.ts      ← TanStack Query wrapper (client refresh path)
+  api/
+    dashboard.queries.ts
+  index.ts
+
+shared/components/data-display/
+  RelativeTime.tsx                ← "2h ago" formatter (used everywhere going forward)
+  StatusDot.tsx                   ← Colored dot (green/amber/red) for status rows
+What Gets Built — Detail
+1. RSC Streaming Layout
+
+page.tsx is a Server Component rendering DashboardGrid with independent <Suspense> boundaries per widget — each widget is its own async Server Component fetching its own slice of data in parallel (no waterfall). This is the textbook Next.js 14 streaming pattern: page shell paints instantly, each widget pops in as its query resolves.
+loading.tsx is the full-grid skeleton (all widgets in skeleton form) shown only on hard navigation; the per-widget Suspense fallbacks handle in-place streaming.
+
+2. Widget Grid (dense, Linear-style)
+
+12-column CSS grid: MyCommitmentsWidget (span 6), UpcomingMeetingsWidget (span 6) on row 1; TeamPulseWidget (span 4) + RecentActivityFeed (span 8) on row 2.
+Every widget is a Card with a thin border (no shadow, no gradient header) — header row has a small label + a "View all →" link (text-only, no button chrome).
+
+3. MyCommitmentsWidget
+
+Server-fetched top 5 (PENDING first, then MISSED), each row: status StatusDot + truncated text + RelativeTime due date + owner Avatar (self, so just shown for consistency with team views later).
+Entire row is a <Link> to /commitments/:id — no separate "view" button, the whole card row is the click target (cursor-pointer + hover bg), matching the "every item clickable" principle.
+
+4. UpcomingMeetingsWidget
+
+Server-fetched next 3 scheduled meetings: platform icon + title + relative scheduled time + a Badge for status (SCHEDULED/BOT_JOINING/RECORDING).
+Click → /meetings/:id.
+
+5. TeamPulseWidget
+
+Single big number (fulfillment rate %) + a tiny inline sparkline (lightweight SVG, no chart library yet — Recharts arrives Day 34) + trend arrow (↑ improving / ↓ declining text, color via text-foreground + icon, not loud red/green blocks).
+
+6. RecentActivityFeed
+
+Client Component (will later subscribe to Socket.io in Day 39) wrapped in its own Suspense; initial data from server, rendered as a dense vertical list inside a ScrollArea (max-height capped so the dashboard doesn't grow unbounded) — each ActivityFeedItem is one line: icon, actor, action text, RelativeTime.
+
+7. QuickActionsRow
+
+Two small pill buttons under the page header: "Add meeting" (stub click → toast "Coming Day 32"), "Invite teammate" (stub). Establishes the pattern that every page header gets action buttons, even before the modals exist.
+
+Components Installed/Used Today
+card, badge, avatar, scroll-area, skeleton, plus reuse of Kbd/Tooltip from Day 26.
+End-of-Day Checklist
+
+ Each widget streams independently (visible via artificial delay test — slow one widget, others still render instantly)
+ Every widget row navigates on click, hover state visible
+ loading.tsx skeleton pixel-matches real grid (no layout shift on hydrate)
+ Empty states defined for zero meetings/zero commitments (not just blank cards)
+ Page header actions render via shared PageHeader from Day 26

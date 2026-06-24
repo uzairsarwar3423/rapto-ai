@@ -1,0 +1,120 @@
+Design Language Lock-In (applies to all 5 days)
+COLORS (neutral, no gradients):
+  --background:       0 0% 100%        (light) / 0 0% 7%   (dark)
+  --surface:          0 0% 98%         / 0 0% 10%
+  --border:           0 0% 90%         / 0 0% 16%
+  --foreground:       0 0% 9%          / 0 0% 95%
+  --muted-foreground: 0 0% 45%         / 0 0% 60%
+  --accent:           shadcn neutral or single brand hue at low saturation
+  --hover:             background + 4% black/white overlay (no color shift)
+
+TYPOGRAPHY:
+  Headings: Inter/Geist, 13–14px for UI labels (NOT 16px+ marketing sizes)
+  Body/table text: 13px, line-height 20px
+  Monospace: IDs, keyboard shortcuts (JetBrains Mono / Geist Mono)
+
+SPACING:
+  Sidebar width: 240px expanded / 56px collapsed (icons only)
+  Row height (tables/lists): 36px dense, 44px comfortable (toggle)
+  Topbar height: 48px (NOT 64px — keep dense)
+
+MOTION:
+  Only: opacity, transform (translateY 4px), 120–160ms ease-out
+  NEVER: scale bounce, spring physics, color-shifting hovers
+  Sidebar collapse: 180ms width transition
+  Command menu open: 100ms fade + 4px slide
+
+INTERACTION RULES:
+  - Every row: hover bg + cursor-pointer, click anywhere = open
+  - Every list: arrow keys navigate, Enter opens, Esc closes
+  - Cmd+K always available, always fast (<50ms to open)
+  - No modal for anything that can be a Sheet/Drawer (preserve context)
+shadcn components installed across these 5 days: sidebar (collapsible), command, dropdown-menu, tooltip, sheet, popover, separator, scroll-area, avatar, badge, data-table (table + tanstack), checkbox, progress, card, skeleton, collapsible, kbd (custom), toast.
+
+DAY 26 — Dashboard Shell: AppShell, Sidebar, Topbar, Routing
+Goal
+Ship the permanent chrome every screen lives inside. This is the single most important day — every later screen mounts into this shell. Must feel instant, collapsible, keyboard-navigable from minute one.
+Files to Create
+shared/components/layout/
+  AppShell.tsx                    ← RSC: server-fetches user+team, renders shell
+  Sidebar/
+    Sidebar.tsx                   ← Client wrapper, reads collapsed state
+    SidebarProvider.tsx           ← Context: collapsed, setCollapsed, persisted
+    SidebarNav.tsx                ← Nav section list (Workspace / Personal groups)
+    SidebarNavItem.tsx            ← Single nav row: icon + label + badge + active state
+    SidebarNavGroup.tsx           ← Collapsible group header (e.g. "Workspace")
+    SidebarTeamSwitcher.tsx       ← Dropdown: team name + avatar + switch/create
+    SidebarUser.tsx               ← Bottom-pinned: avatar + name + settings dropdown
+    SidebarCollapseButton.tsx     ← Toggle button (also bound to Cmd+\)
+  Topbar/
+    Topbar.tsx                   ← 48px bar: breadcrumb + search trigger + actions
+    Breadcrumb.tsx                ← Path-based breadcrumb (Dashboard / Meetings / ...)
+    SearchTrigger.tsx             ← "Search... ⌘K" pill button, opens CommandMenu
+    NotificationBell.tsx          ← Icon button + unread dot, opens Sheet
+    TopbarActions.tsx             ← Slot for page-specific quick actions
+  CommandMenu/
+    CommandMenu.tsx               ← cmdk-based palette, global Cmd+K listener
+    CommandMenuItem.tsx           ← Row: icon + label + kbd shortcut hint
+    commandMenu.registry.ts       ← Static command registry (nav, actions)
+  PageContainer.tsx               ← Max-width + consistent padding wrapper
+  PageHeader.tsx                  ← Title + subtitle + right-aligned actions slot
+  Kbd.tsx                         ← Styled <kbd> for shortcut hints everywhere
+
+shared/hooks/
+  useKeyboardShortcut.ts          ← Generic key-combo binder (already scaffolded Day 1)
+  useSidebarState.ts              ← Reads/writes collapsed state (localStorage + cookie)
+  useCommandMenu.ts                ← open/close/toggle + registered actions
+
+store/
+  ui.store.ts                     ← EXTEND: sidebarCollapsed, commandMenuOpen
+
+app/(dashboard)/
+  layout.tsx                      ← RSC: fetch user/team → <AppShell>{children}</AppShell>
+What Gets Built — Detail
+1. Sidebar (collapsible, hover-aware)
+
+Default width 240px. Collapse button shrinks to 56px (icon-only), persisted in a cookie (read server-side in layout.tsx to avoid layout flash — same pattern as shadcn's official sidebar block).
+Collapsed state: icons only, full label appears in a Tooltip on hover (delay 300ms, no animation bounce).
+Sections: Workspace group (Dashboard, Meetings, Commitments, Action Items, Team, Analytics) and a divider then Intelligence, then bottom-pinned Settings + SidebarUser.
+Active route highlighted with a subtle left-border accent + bg tint — no bold color blocks.
+SidebarTeamSwitcher at top: avatar + team name + chevron → DropdownMenu with team plan badge, "Create team" (future), "Team settings" link.
+Keyboard: Cmd+\ toggles collapse (registered via useKeyboardShortcut).
+
+2. Topbar (48px, dense)
+
+Left: Breadcrumb (auto-derived from route segments via a small path-to-label map).
+Center-left: SearchTrigger — a pill that says "Search everything…" with a Kbd showing ⌘K. Clicking or pressing the shortcut opens CommandMenu.
+Right: NotificationBell (opens a Sheet sliding from the right — wired with placeholder content today, real data Day 39), then TopbarActions slot (empty today, pages inject buttons later, e.g. "New Meeting").
+No page title duplication in Topbar — title lives in PageHeader inside the content area (Linear pattern: topbar = navigation/global, page header = content-specific).
+
+3. Command Menu (Cmd+K) — the soul of "keyboard-first"
+
+Built on cmdk (shadcn's command.tsx).
+Global listener mounted once in AppShell, toggled via useKeyboardShortcut('cmd+k').
+Groups today: Navigate (Dashboard, Meetings, Commitments, Action Items, Team, Analytics, Settings), Actions (placeholder "New Meeting" — wired Day 32).
+Fuzzy filter built-in via cmdk. Esc closes. Arrow keys + Enter navigate.
+Registry pattern (commandMenu.registry.ts) so future days (Day 28+) just push() new commands instead of touching the component.
+
+4. AppShell (RSC)
+
+app/(dashboard)/layout.tsx is a Server Component: fetches user + team via existing server API client (cookie-forwarded), redirects to /login or /onboarding if missing (reusing Day 10 guards).
+Passes user/team as props into AppShell, which renders <SidebarProvider> (cookie-read default state) → Sidebar + a flex column of Topbar + <main>{children}</main>.
+<main> gets a ScrollArea so independent page scroll never moves the sidebar/topbar.
+
+5. PageContainer / PageHeader
+
+PageContainer: max-w-[1400px] mx-auto px-6 — used by literally every dashboard page going forward.
+PageHeader: <h1> (15px semibold) + optional subtitle (13px muted) + actions slot (right-aligned button row) — every future page (meetings, commitments, etc.) wraps its top in this.
+
+Components Installed Today
+sidebar (or hand-rolled equivalent matching shadcn patterns), command, dropdown-menu, tooltip, sheet, separator, scroll-area, avatar, badge, kbd (custom small component, not in shadcn core).
+End-of-Day Checklist
+
+ Sidebar collapses/expands with no flash on reload (cookie-based default)
+ Cmd+K opens from anywhere, Esc closes, arrow+Enter navigates
+ Cmd+\ toggles sidebar
+ Active nav item highlights correctly per route
+ Topbar breadcrumb updates per nested route
+ Notification bell opens empty Sheet (placeholder)
+ Mobile: sidebar hidden, hamburger → MobileDrawer (stub today, full Day 45)
+ Zero layout shift on first paint (test with slow 3G throttle)

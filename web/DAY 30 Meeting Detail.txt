@@ -1,0 +1,53 @@
+DAY 30 — Meeting Detail: Transcript Tab (Virtualized List, Search)
+Goal
+The heaviest data-rendering screen of the week: transcripts can have 500+ turns. Must virtualize, must support in-transcript search with jump-to-match, must stay buttery on scroll. This is also the day that proves the "dense, fast, no fluff" philosophy under real data volume.
+Files to Create
+app/(dashboard)/meetings/[meetingId]/transcript/
+  page.tsx                         ← Fetches transcript (cached, meeting.mongoTranscriptId gate)
+  loading.tsx
+
+features/meetings/components/TranscriptViewer/
+  TranscriptViewer.tsx             ← @tanstack/react-virtual wrapper, virtualized turn list
+  TranscriptTurn.tsx               ← Single speaker turn row (avatar + name + timestamp + text)
+  TranscriptSearch.tsx             ← Sticky search bar: input + match count + prev/next
+  TranscriptSearchHighlight.tsx    ← Highlights matched substring within a turn
+  TranscriptSpeakerFilter.tsx      ← DropdownMenu: filter to one speaker only
+  TranscriptEmptyState.tsx         ← "Transcript not available yet" (status != DONE)
+  TranscriptJumpToTime.tsx         ← Optional: click timeline (Day 29) jumps here w/ scroll-to
+
+shared/components/data-display/
+  VirtualList.tsx                  ← Generic @tanstack/react-virtual wrapper (reused later for big lists)
+What Gets Built — Detail
+1. Virtualization (the core engineering challenge)
+
+VirtualList.tsx is built as a generic, reusable virtualizer wrapper (estimateSize, renderItem, overscan props) — not transcript-specific — because Day 33+ Commitments/Action Items lists at scale will eventually want the same primitive. This is the platform-wide investment of the day.
+TranscriptViewer consumes VirtualList with estimateSize={() => 72} per turn, overscan={8}. Only visible turns + overscan are mounted in the DOM regardless of transcript length — this is the only way a 3-hour, 1000-turn all-hands transcript stays scrollable at 60fps.
+Container is wrapped in a ScrollArea for consistent scrollbar styling matching the rest of the app (not the raw browser scrollbar).
+
+2. TranscriptTurn (dense row)
+
+Avatar (small, 24px) + speaker name (bold 13px) + relative timestamp (mm:ss from meeting start) + the spoken text below, left-aligned, no chat-bubble background — reads like a transcript document, not a messaging app. Unresolved speakers (confidence < 0.8, per the backend design) render with a muted "External participant" label instead of guessing a name.
+
+3. TranscriptSearch (sticky, in-transcript)
+
+A sticky bar pinned to the top of the transcript panel (below the tab bar): text input + live match count ("3 of 47") + prev/next chevron buttons (keyboard: Enter/Shift+Enter cycle matches) — calls the backend's Atlas Search-backed query (per existing API design) when the query is non-trivial, but does instant client-side substring matching for typed-character feedback before debounce fires, so it never feels laggy.
+On finding a match, the virtualizer scrolls to that index (virtualizer.scrollToIndex) and TranscriptSearchHighlight wraps the matched substring in a subtle highlight span (background tint, no bright yellow marker-style highlight — stays in the neutral palette).
+
+4. TranscriptSpeakerFilter
+
+A DropdownMenu listing all participants; selecting one filters the virtualized list to only that speaker's turns (client-side filter over the already-fetched transcript, since transcripts are fetched whole, not paginated, per the existing data design).
+
+5. Empty/Guard States
+
+If meeting.status !== 'DONE' or mongoTranscriptId is null, render TranscriptEmptyState ("Transcript will appear once processing completes") instead of attempting a fetch — matches the backend's documented TRANSCRIPT_NOT_AVAILABLE error code, handled gracefully rather than as a console error.
+
+Components Installed/Used Today
+scroll-area (reused), dropdown-menu (reused) — no new shadcn primitives needed; this day is about the virtualization engineering, not new chrome.
+End-of-Day Checklist
+
+ Scrolling a 500+ turn transcript stays smooth (DOM node count stays bounded — verify via DevTools)
+ Search finds matches, jumps to them, cycles prev/next correctly
+ Speaker filter narrows the list without breaking virtualization math
+ Unresolved speakers render distinctly, never misattributed
+ Empty/guard state shown for unprocessed meetings, no failed fetch flash
+ VirtualList primitive has zero transcript-specific code (verified reusable)
