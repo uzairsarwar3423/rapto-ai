@@ -22,6 +22,7 @@ import { redis } from '../config/redis'
 import { encrypt } from '../utils/crypto'
 import { addSeconds, subMinutes } from 'date-fns'
 import { googleCalendarProvider, GoogleCalendarEvent } from '../modules/integrations/providers/google-calendar.provider'
+import { invalidatePlanCache } from '../middleware/plan-limits.middleware'
 import * as recallService from './recall.service'
 import type { CalendarSyncResult, ExtractedMeetingUrl } from '../modules/integrations/integrations.types'
 import type { PlatformType } from '@prisma/client'
@@ -292,6 +293,8 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
                 },
             })
 
+            invalidatePlanCache(user.teamId).catch(() => {})
+
             // ── SCHEDULE Recall.ai bot ────────────────────────────────────────
             // The bot joins 2 minutes BEFORE scheduledAt.
             // On failure: meeting row is KEPT with status=FAILED (not silently dropped).
@@ -319,6 +322,8 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
                         processingError: recallError.message,
                     },
                 })
+                
+                invalidatePlanCache(user.teamId).catch(() => {})
                 // Still set Redis key to prevent re-creating the meeting on next sync
                 await redis.setex(dedupKey, calculateDedupTTL(scheduledAt), meeting.id)
                 synced++ // Counted as synced (meeting was detected + row created)

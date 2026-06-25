@@ -4,6 +4,7 @@ import { prisma } from '../../db/client'
 import { mongoService } from '../../services/mongo.service'
 import { notifyQueue } from '../queue.client'
 import { ExtractJobData } from '../jobs/extract.job'
+import { updateMeetingStatus } from '../../modules/meetings/meetings.service'
 import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { teamRoom } from '../../realtime/rooms.manager'
 
@@ -16,23 +17,18 @@ export const extractWorker = new Worker<ExtractJobData>(
     const mockResult = {
       commitments: [],
       actionItems: [],
-      decisions:   [],
-      blockers:    [],
-      summary:     'AI extraction pending — pipeline not yet configured.',
+      decisions: [],
+      blockers: [],
+      summary: 'AI extraction pending — pipeline not yet configured.',
     }
 
-    await prisma.meeting.update({
-      where: { id: meetingId },
-      data:  {
-        status:                 'DONE',
-        summary:                mockResult.summary,
-        processingCompletedAt:  new Date(),
-      },
+    await updateMeetingStatus(meetingId, 'DONE', {
+      summary: mockResult.summary,
     })
 
     await mongoService.updateTranscript(mongoTranscriptId, {
-      ai_extraction:           mockResult,
-      processing_status:       'done',
+      ai_extraction: mockResult,
+      processing_status: 'done',
       processing_completed_at: new Date(),
     })
 
@@ -40,7 +36,7 @@ export const extractWorker = new Worker<ExtractJobData>(
       const { socketEmitter } = await import('../../realtime/socket.emitter')
       socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_PROCESSED, {
         meetingId,
-        summary:         mockResult.summary,
+        summary: mockResult.summary,
         commitmentCount: 0,
         actionItemCount: 0,
       })
@@ -49,7 +45,7 @@ export const extractWorker = new Worker<ExtractJobData>(
     }
 
     await notifyQueue.add('meeting-processed', {
-      type:      'MEETING_PROCESSED',
+      type: 'MEETING_PROCESSED',
       teamId,
       meetingId,
     })

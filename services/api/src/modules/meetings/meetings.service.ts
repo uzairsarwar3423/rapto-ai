@@ -157,6 +157,9 @@ export async function createMeeting(input: CreateMeetingInput) {
     })
   }
 
+  // Invalidate plan cache to reflect the new in-flight meeting
+  invalidatePlanCache(teamId).catch(() => {})
+
   logger.info(
     { teamId, meetingId: meeting.id, botId, platform },
     '✅ Meeting created successfully'
@@ -295,6 +298,9 @@ export async function addBotManually(input: AddBotInput) {
     redis.setex(dedupKey, 4 * 3600, meeting.id).catch(() => {})
   }
 
+  // Invalidate plan cache to reflect the new in-flight meeting
+  invalidatePlanCache(teamId).catch(() => {})
+
   logger.info({ teamId, meetingId: meeting.id, botId }, 'Bot added manually')
   return { meeting, message: 'Bot is joining the meeting. Expect it to appear within 30 seconds.' }
 }
@@ -335,6 +341,9 @@ export async function removeBot(id: string, teamId: string) {
     const dedupKey = buildDedupKey(meeting.platform, meeting.platformMeetingId)
     redis.del(dedupKey).catch(() => {})
   }
+
+  // Invalidate plan cache because in-flight meetings count decreased
+  invalidatePlanCache(teamId).catch(() => {})
 
   logger.info({ meetingId: id, teamId }, 'Bot removed, meeting cancelled')
   return updated
@@ -377,6 +386,9 @@ export async function deleteMeeting(
     const dedupKey = buildDedupKey(meeting.platform, meeting.platformMeetingId)
     redis.del(dedupKey).catch(() => {})
   }
+
+  // Invalidate plan cache in case the deleted meeting was in-flight
+  invalidatePlanCache(teamId).catch(() => {})
 
   logger.info({ meetingId: id, teamId, deleteTranscript }, 'Meeting deleted')
   return { message: 'Meeting deleted successfully' }
@@ -421,6 +433,9 @@ export async function updateMeetingStatus(
     await teamsRepository.incrementMeetingsUsed(meeting.teamId).catch((err) => {
       logger.error({ teamId: meeting.teamId, err }, 'Failed to increment meetingsUsed')
     })
+    invalidatePlanCache(meeting.teamId).catch(() => {})
+  } else if (newStatus === 'FAILED' || newStatus === 'CANCELLED') {
+    // Invalidate plan cache because in-flight meetings count decreased
     invalidatePlanCache(meeting.teamId).catch(() => {})
   }
 

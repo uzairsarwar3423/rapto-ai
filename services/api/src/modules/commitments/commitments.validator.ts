@@ -1,8 +1,28 @@
 import { z } from 'zod'
 
 export const listCommitmentsSchema = z.object({
-  status: z.union([z.string(), z.array(z.string())]).optional(),
-  ownerId: z.string().cuid().optional(),
+  status: z
+    .preprocess(
+      (val) => {
+        if (typeof val === 'string') {
+          return val.includes(',') ? val.split(',') : [val]
+        }
+        return val
+      },
+      z.union([z.string(), z.array(z.string())])
+    )
+    .optional(),
+  ownerId: z
+    .preprocess(
+      (val) => {
+        if (typeof val === 'string') {
+          return val.includes(',') ? val.split(',') : [val]
+        }
+        return val
+      },
+      z.union([z.string(), z.array(z.string())])
+    )
+    .optional(),
   meetingId: z.string().cuid().optional(),
   overdue: z.enum(['true', 'false', '1', '0']).optional().transform(val => val === 'true' || val === '1'),
   from: z.string().datetime().optional(),

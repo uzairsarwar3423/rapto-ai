@@ -9,11 +9,16 @@ interface AppShellClientWrapperProps {
   children: ReactNode;
 }
 
+import { useSocketReconnectToast } from "@/shared/hooks/useSocketReconnectToast";
+
 export function AppShellClientWrapper({
   defaultCollapsed,
   children,
 }: AppShellClientWrapperProps) {
   const { user } = useAuth();
+  
+  // Initialize the socket reconnect toast listener
+  useSocketReconnectToast();
 
   // Extract team metadata from the authenticated user object
   const team = user?.team

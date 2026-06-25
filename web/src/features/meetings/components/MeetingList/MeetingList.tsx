@@ -13,6 +13,7 @@ import { MeetingListSkeleton } from "./MeetingListSkeleton";
 import { MeetingEmptyState } from "../MeetingEmptyState";
 import { CursorPagination } from "@/shared/components/data-display/CursorPagination";
 import { AddMeetingModal } from "../AddMeetingModal";
+import { useRealtimeMeeting } from "../../hooks/useRealtimeMeeting";
 import { Button } from "@/components/ui/button";
 import type { MeetingListItem } from "../../types";
 
@@ -24,6 +25,9 @@ export function MeetingList({ initialData }: MeetingListProps) {
   const router = useRouter();
   const { filters, clearAll } = useMeetingFilters();
   const [addModalOpen, setAddModalOpen] = useState(false);
+
+  // Subscribe to realtime meeting lifecycle updates
+  useRealtimeMeeting();
 
   // Fetch paginated infinite meetings
   const {
@@ -65,7 +69,7 @@ export function MeetingList({ initialData }: MeetingListProps) {
           <Button
             type="button"
             onClick={() => setAddModalOpen(true)}
-            className="text-xs h-9 bg-brand hover:bg-brand/90 text-white flex items-center gap-1.5 font-medium"
+            className="text-xs h-9 bg-brand hover:bg-brand/90 text-white flex items-center gap-1.5 font-medium cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Add Meeting
@@ -115,7 +119,7 @@ export function MeetingList({ initialData }: MeetingListProps) {
         </div>
       )}
 
-      {/* Slide-over sheet for manually scheduling meetings */}
+      {/* Modal for manually scheduling meetings */}
       <AddMeetingModal open={addModalOpen} onOpenChange={setAddModalOpen} />
     </div>
   );

@@ -340,18 +340,26 @@ async function deleteExpiredInvitations(teamId: string): Promise<number> {
  * Get team usage stats: meetingsUsed + active member count.
  */
 async function getUsage(teamId: string) {
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
-    select: {
-      meetingsUsed: true,
-      plan: true,
-      billingCycleEnd: true,
-      _count: { select: { members: { where: { deletedAt: null } } } },
-    },
-  })
+  const [team, inFlightMeetings] = await Promise.all([
+    prisma.team.findUnique({
+      where: { id: teamId },
+      select: {
+        meetingsUsed: true,
+        plan: true,
+        billingCycleEnd: true,
+        _count: { select: { members: { where: { deletedAt: null } } } },
+      },
+    }),
+    prisma.meeting.count({
+      where: {
+        teamId,
+        status: { in: ['SCHEDULED', 'BOT_JOINING', 'RECORDING', 'PROCESSING'] },
+      },
+    }),
+  ])
 
   return {
-    meetingsUsed: team?.meetingsUsed ?? 0,
+    meetingsUsed: (team?.meetingsUsed ?? 0) + inFlightMeetings,
     membersCount: team?._count?.members ?? 0,
     plan: team?.plan ?? 'FREE',
     billingCycleEnd: team?.billingCycleEnd ?? null,

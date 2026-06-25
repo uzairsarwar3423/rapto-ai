@@ -13,25 +13,26 @@ export const metadata: Metadata = {
 };
 
 interface MeetingsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     status?: string;
     platform?: string;
     from?: string;
     to?: string;
     search?: string;
-  };
+  }>;
 }
 
 export default async function MeetingsPage({ searchParams }: MeetingsPageProps) {
-  const statusParam = searchParams.status;
-  const platformParam = searchParams.platform;
+  const resolvedSearchParams = await searchParams;
+  const statusParam = resolvedSearchParams.status;
+  const platformParam = resolvedSearchParams.platform;
 
   const filters = {
     status: statusParam ? (statusParam.split(",") as MeetingStatus[]) : undefined,
     platform: platformParam ? (platformParam as PlatformType) : undefined,
-    from: searchParams.from,
-    to: searchParams.to,
-    search: searchParams.search,
+    from: resolvedSearchParams.from,
+    to: resolvedSearchParams.to,
+    search: resolvedSearchParams.search,
   };
 
   // Pre-seed data on the server for instant rendering

@@ -12,15 +12,19 @@ export const metadata: Metadata = {
  * Dashboard layout — App shell after login.
  * Wrapped in AuthGuard to protect routes.
  */
+import { WebSocketProvider } from "@/shared/providers/WebSocketProvider";
+
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const defaultCollapsed = cookieStore.get("sidebar:collapsed")?.value === "true";
 
   return (
     <AuthGuard>
-      <AppShellClientWrapper defaultCollapsed={defaultCollapsed}>
-        {children}
-      </AppShellClientWrapper>
+      <WebSocketProvider>
+        <AppShellClientWrapper defaultCollapsed={defaultCollapsed}>
+          {children}
+        </AppShellClientWrapper>
+      </WebSocketProvider>
     </AuthGuard>
   );
 }

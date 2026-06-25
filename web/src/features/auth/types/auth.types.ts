@@ -11,6 +11,7 @@ export interface User {
   timezone?: string | null;
   lastLoginAt?: string | null;
   onboardingCompleted?: boolean;
+  commitmentScore?: number;
 }
 
 export interface ApiResponse<T> {

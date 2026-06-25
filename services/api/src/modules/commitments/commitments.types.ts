@@ -1,6 +1,6 @@
 export interface ListCommitmentsQuery {
   status?: string | string[]
-  ownerId?: string
+  ownerId?: string | string[]
   meetingId?: string
   overdue?: boolean
   from?: string

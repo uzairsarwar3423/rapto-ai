@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import axios from "axios";
 import { cache } from "react";
+import { unstable_rethrow } from "next/navigation";
 
 const backendUrl = process.env.API_URL || "http://localhost:5000";
 
@@ -64,3 +65,43 @@ export const serverApiClient = {
     }
   },
 };
+
+/**
+ * Centralized handler for server-side query errors.
+ * Ensures Next.js internal redirect and not-found errors are propagated,
+ * logs unexpected API errors cleanly, and handles expected API errors (404/403) with a fallback.
+ */
+export function handleServerQueryError<T>(error: unknown, context: string, fallbackValue: T): T {
+  // Rethrow Next.js internal control flow errors (redirects, not-found, etc.)
+  unstable_rethrow(error);
+
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    const responseData = error.response?.data;
+
+    if (status === 401) {
+      const { redirect } = require("next/navigation");
+      redirect("/login");
+    }
+
+    if (status === 404 || status === 403) {
+      console.warn(
+        `[Server Query] ${context}: Resource returned ${status} for URL ${error.config?.url || ""}. Returning fallback.`
+      );
+      return fallbackValue;
+    }
+
+    console.error(
+      `[Server Query] ${context} failed with status ${status || "network/unknown"}:`,
+      responseData || error.message
+    );
+  } else if (error instanceof Error) {
+    console.error(`[Server Query] ${context} failed:`, error.message);
+  } else {
+    console.error(`[Server Query] ${context} failed:`, error);
+  }
+
+  return fallbackValue;
+}
+
+

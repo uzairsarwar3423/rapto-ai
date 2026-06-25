@@ -1,4 +1,5 @@
-import { serverApiClient } from "@/lib/api/server-client";
+import { serverApiClient, handleServerQueryError } from "@/lib/api/server-client";
+
 
 export interface CommitmentOwner {
   id: string;
@@ -59,8 +60,7 @@ export async function getMyCommitments(): Promise<CommitmentItem[]> {
     });
     return result.items || [];
   } catch (error) {
-    console.error("Error fetching commitments server-side:", error);
-    return [];
+    return handleServerQueryError(error, "getMyCommitments", []);
   }
 }
 
@@ -81,8 +81,7 @@ export async function getUpcomingMeetings(): Promise<MeetingItem[]> {
     const activeStates = ["SCHEDULED", "BOT_JOINING", "RECORDING"];
     return (result || []).filter((m) => activeStates.includes(m.status));
   } catch (error) {
-    console.error("Error fetching meetings server-side:", error);
-    return [];
+    return handleServerQueryError(error, "getUpcomingMeetings", []);
   }
 }
 
@@ -109,13 +108,12 @@ export async function getTeamPulse(): Promise<TeamPulseData> {
       total: typeof overviewData?.totalCommitments === "number" ? overviewData.totalCommitments : 0,
     };
   } catch (error) {
-    console.error("Error fetching team pulse server-side:", error);
-    return {
+    return handleServerQueryError(error, "getTeamPulse", {
       fulfillmentRate: 0,
       trend: "stable",
       last7DaysPoints: [0, 0, 0, 0, 0, 0, 0],
       total: 0,
-    };
+    });
   }
 }
 
@@ -129,7 +127,6 @@ export async function getRecentActivity(limit = 10): Promise<ActivityItem[]> {
     });
     return result || [];
   } catch (error) {
-    console.error("Error fetching activity server-side:", error);
-    return [];
+    return handleServerQueryError(error, "getRecentActivity", []);
   }
 }

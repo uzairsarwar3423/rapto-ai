@@ -1,8 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import axios from "axios";
-import { serverApiClient } from "@/lib/api/server-client";
+import { serverApiClient, handleServerQueryError } from "@/lib/api/server-client";
 import type { MeetingListItem, MeetingFilters, MeetingDetail } from "../types";
 
 /**
@@ -27,12 +26,9 @@ export async function getMeetings(
     });
     return response || [];
   } catch (error: any) {
-    console.error("Error fetching meetings server-side:", error?.message || error);
-    return [];
+    return handleServerQueryError(error, "getMeetings", []);
   }
 }
-
-import { redirect } from 'next/navigation';
 
 export const getMeetingDetail = cache(async (meetingId: string): Promise<MeetingDetail | null> => {
   try {
@@ -42,15 +38,7 @@ export const getMeetingDetail = cache(async (meetingId: string): Promise<Meeting
     // serverApiClient unwraps response.data.data
     return response as unknown as MeetingDetail;
   } catch (err: any) {
-    if (axios.isAxiosError(err)) {
-      if (err.response?.status === 404 || err.response?.status === 403) {
-        return null;
-      }
-      if (err.response?.status === 401) {
-        redirect('/login');
-      }
-    }
-    throw err;
+    return handleServerQueryError(err, "getMeetingDetail", null);
   }
 });
 
@@ -59,15 +47,8 @@ export const getMeetingTranscript = cache(async (meetingId: string): Promise<any
     const response = await serverApiClient.get<any>(`/meetings/${meetingId}/transcript`);
     return response;
   } catch (err: any) {
-    if (axios.isAxiosError(err)) {
-      if (err.response?.status === 404 || err.response?.status === 403) {
-        return null;
-      }
-      if (err.response?.status === 401) {
-        redirect('/login');
-      }
-    }
-    throw err;
+    return handleServerQueryError(err, "getMeetingTranscript", null);
   }
 });
+
 

@@ -18,6 +18,7 @@
   --accent: 0 0% 9%;
   --accent-foreground: 0 0% 100%;
   --ring: 0 0% 9%;
+  --score-arc: var(--ring);
   --danger: 4 70% 45%;
   --warning: 38 70% 45%;
   --success: 150 40% 35%;
@@ -139,6 +140,7 @@
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-ring: hsl(var(--ring));
+  --color-score-arc: var(--color-ring);
 
   --color-pending-bg: var(--color-pending-bg);
   --color-pending-text: var(--color-pending-text);

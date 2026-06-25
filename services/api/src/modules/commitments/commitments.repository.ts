@@ -24,7 +24,11 @@ async function listCommitments(teamId: string, query: ListCommitmentsQuery) {
 
   // Owner Filter
   if (query.ownerId) {
-    where.ownerId = query.ownerId
+    if (Array.isArray(query.ownerId)) {
+      where.ownerId = { in: query.ownerId }
+    } else {
+      where.ownerId = query.ownerId
+    }
   }
 
   // Meeting Filter
@@ -68,6 +72,22 @@ async function listCommitments(teamId: string, query: ListCommitmentsQuery) {
       { createdAt: 'desc' }
     ]
   }
+  const whereCounts: any = {
+    teamId,
+  }
+  if (query.ownerId) {
+    if (Array.isArray(query.ownerId)) {
+      whereCounts.ownerId = { in: query.ownerId }
+    } else {
+      whereCounts.ownerId = query.ownerId
+    }
+  }
+  if (query.meetingId) {
+    whereCounts.meetingId = query.meetingId
+  }
+  if (query.from || query.to) {
+    whereCounts.createdAt = where.createdAt
+  }
 
   const [items, counts] = await Promise.all([
     prisma.commitment.findMany({
@@ -82,12 +102,7 @@ async function listCommitments(teamId: string, query: ListCommitmentsQuery) {
     }),
     prisma.commitment.groupBy({
       by: ['status'],
-      where: {
-        teamId,
-        ...(query.ownerId && { ownerId: query.ownerId }),
-        ...(query.meetingId && { meetingId: query.meetingId }),
-        ...(query.from || query.to ? { createdAt: where.createdAt } : {})
-      },
+      where: whereCounts,
       _count: {
         status: true
       }
@@ -101,7 +116,8 @@ async function listCommitments(teamId: string, query: ListCommitmentsQuery) {
   }
 
   const statusCounts = counts.reduce((acc, curr) => {
-    acc[curr.status] = curr._count.status
+    const count = (curr as any)._count?.status ?? 0
+    acc[curr.status] = count
     return acc
   }, {} as Record<string, number>)
 

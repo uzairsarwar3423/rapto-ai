@@ -54,14 +54,22 @@ async function writePlanToCache(teamId: string, entry: PlanCacheEntry): Promise<
 }
 
 async function fetchPlanFromDB(teamId: string): Promise<PlanCacheEntry> {
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
-    select: {
-      plan: true,
-      meetingsUsed: true,
-      _count: { select: { members: { where: { deletedAt: null } } } },
-    },
-  })
+  const [team, inFlightMeetings] = await Promise.all([
+    prisma.team.findUnique({
+      where: { id: teamId },
+      select: {
+        plan: true,
+        meetingsUsed: true,
+        _count: { select: { members: { where: { deletedAt: null } } } },
+      },
+    }),
+    prisma.meeting.count({
+      where: {
+        teamId,
+        status: { in: ['SCHEDULED', 'BOT_JOINING', 'RECORDING', 'PROCESSING'] },
+      },
+    }),
+  ])
 
   if (!team) {
     // Team was deleted but JWT still has teamId — treat as 0 usage
@@ -70,7 +78,7 @@ async function fetchPlanFromDB(teamId: string): Promise<PlanCacheEntry> {
 
   return {
     plan: team.plan,
-    meetingsUsed: team.meetingsUsed,
+    meetingsUsed: team.meetingsUsed + inFlightMeetings,
     membersCount: team._count.members,
   }
 }

@@ -110,12 +110,12 @@ function Calendar({
           defaultClassNames.day
         ),
         range_start: cn(
-          "relative isolate z-0 rounded-l-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:right-0 after:w-4 after:bg-muted",
+          "relative isolate z-0 rounded-l-(--cell-radius) bg-brand/10 after:absolute after:inset-y-0 after:right-0 after:w-4 after:bg-brand/10",
           defaultClassNames.range_start
         ),
-        range_middle: cn("rounded-none", defaultClassNames.range_middle),
+        range_middle: cn("rounded-none bg-brand/10", defaultClassNames.range_middle),
         range_end: cn(
-          "relative isolate z-0 rounded-r-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:left-0 after:w-4 after:bg-muted",
+          "relative isolate z-0 rounded-r-(--cell-radius) bg-brand/10 after:absolute after:inset-y-0 after:left-0 after:w-4 after:bg-brand/10",
           defaultClassNames.range_end
         ),
         today: cn(
@@ -210,7 +210,23 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground [&>span]:text-xs [&>span]:opacity-70",
+        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal transition-all duration-100",
+        // Focus state
+        "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-brand/40 group-data-[focused=true]/day:ring-[2px] group-data-[focused=true]/day:ring-brand/20",
+        // Default hover for unselected days
+        !modifiers.selected && "hover:bg-brand/10 hover:text-brand text-foreground",
+        // Range start
+        modifiers.range_start && "bg-brand text-white hover:bg-brand hover:text-white font-semibold rounded-l-(--cell-radius)",
+        // Range end
+        modifiers.range_end && "bg-brand text-white hover:bg-brand hover:text-white font-semibold rounded-r-(--cell-radius)",
+        // Range middle
+        modifiers.range_middle && "bg-brand/8 text-brand hover:bg-brand/15 hover:text-brand rounded-none font-medium",
+        // Selected single
+        (modifiers.selected && !modifiers.range_start && !modifiers.range_end && !modifiers.range_middle) && "bg-brand text-white hover:bg-brand hover:text-white font-semibold",
+        // Today modifier
+        modifiers.today && !modifiers.selected && "bg-muted text-foreground font-semibold",
+        // Outside month days
+        modifiers.outside && "text-muted-foreground/40 opacity-70",
         defaultClassNames.day,
         className
       )}

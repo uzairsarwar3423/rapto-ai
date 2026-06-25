@@ -221,7 +221,15 @@ async function getTeamWithMembers(teamId: string): Promise<TeamDetailResponse> {
   if (cached) return cached
 
   // STEP 2 — DB fetch
-  const team = await teamsRepository.findById(teamId)
+  const [team, inFlightMeetings] = await Promise.all([
+    teamsRepository.findById(teamId),
+    prisma.meeting.count({
+      where: {
+        teamId,
+        status: { in: ['SCHEDULED', 'BOT_JOINING', 'RECORDING', 'PROCESSING'] },
+      },
+    }),
+  ])
   if (!team) throw new NotFoundError('Team', teamId)
 
   // STEP 3 — Sort members by role hierarchy
@@ -231,7 +239,7 @@ async function getTeamWithMembers(teamId: string): Promise<TeamDetailResponse> {
   const plan = team.plan as PlanType
   const limits = PLAN_LIMITS[plan]
   const membersCount = sortedMembers.length
-  const meetingsUsed = team.meetingsUsed
+  const meetingsUsed = team.meetingsUsed + inFlightMeetings
 
   const usage: TeamUsage = {
     meetingsUsed,
