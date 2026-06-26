@@ -55,7 +55,9 @@ export function CommitmentScore({
 
   return (
     <div
-      className="relative inline-flex items-center justify-center font-mono select-none"
+      className={`relative inline-flex items-center justify-center select-none ${
+        size === "sm" ? "font-sans" : "font-heading"
+      }`}
       style={{ width: diameter, height: diameter }}
     >
       {/* Screen reader readable text fallback */}
@@ -97,7 +99,9 @@ export function CommitmentScore({
       {/* Central Numeric Score (always displays final target score immediately) */}
       {isLabelVisible && (
         <span
-          className="absolute font-semibold text-foreground flex items-center justify-center"
+          className={`absolute font-semibold text-foreground flex items-center justify-center ${
+            size === "sm" ? "font-sans" : size === "md" ? "font-heading" : "font-poppins"
+          }`}
           style={{ fontSize }}
         >
           {clampedTargetScore}

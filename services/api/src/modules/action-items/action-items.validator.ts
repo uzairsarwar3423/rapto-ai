@@ -33,3 +33,14 @@ export const updateActionItemSchema = z.object({
 export const syncActionItemSchema = z.object({
   provider: z.enum(['JIRA', 'LINEAR', 'NOTION'])
 })
+
+export const bulkUpdateActionItemSchema = z.object({
+  ids: z.array(z.string().cuid()).min(1),
+  patch: z.object({
+    completed: z.boolean().optional(),
+    assigneeId: z.string().cuid().nullable().optional(),
+    dueDate: z.string().datetime().nullable().optional(),
+    priority: z.nativeEnum(PriorityLevel).optional()
+  })
+})
+

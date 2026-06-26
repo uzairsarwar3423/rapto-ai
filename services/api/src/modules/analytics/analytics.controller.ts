@@ -58,8 +58,9 @@ export const analyticsController = {
     const { from, to } = parseDateRange(req.query as any)
     const metric = (req.query.metric as AnalyticsMetric) || 'fulfillmentRate'
     const granularity = (req.query.granularity as AnalyticsGranularity) || 'week'
+    const userId = req.query.userId as string | undefined
 
-    const trends = await analyticsService.getTrends(teamId, metric, granularity, from, to)
+    const trends = await analyticsService.getTrends(teamId, metric, granularity, from, to, userId)
 
     return res.json({ data: trends })
   }),

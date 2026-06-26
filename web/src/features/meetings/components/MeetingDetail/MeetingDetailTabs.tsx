@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 const TABS = [
-  { href: '',              label: 'Overview' },
-  { href: '/transcript',    label: 'Transcript' },
-  { href: '/action-items',  label: 'Action items' },
-  { href: '/commitments',   label: 'Commitments' },
+  { href: '', label: 'Overview' },
+  { href: '/transcript', label: 'Transcript' },
+  { href: '/action-items', label: 'Action items' },
+  { href: '/commitments', label: 'Commitments' },
 ]
 
 export function MeetingDetailTabs({ meetingId }: { meetingId: string }) {

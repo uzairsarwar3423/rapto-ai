@@ -7,6 +7,7 @@ import {
   listActionItemsSchema,
   updateActionItemSchema,
   syncActionItemSchema,
+  bulkUpdateActionItemSchema,
 } from './action-items.validator'
 
 const router = Router()
@@ -28,10 +29,24 @@ router.get('/', validate({ query: listActionItemsSchema }), actionItemsControlle
 router.get('/my', validate({ query: listActionItemsSchema }), actionItemsController.getMyActionItems)
 
 /**
+ * GET /api/v1/action-items/:actionItemId
+ * Get single action item details.
+ */
+router.get('/:actionItemId', actionItemsController.getActionItem)
+
+
+/**
+ * PATCH /api/v1/action-items
+ * Bulk update action items.
+ */
+router.patch('/', validate({ body: bulkUpdateActionItemSchema }), actionItemsController.bulkUpdateActionItems)
+
+/**
  * PATCH /api/v1/action-items/:actionItemId
  * Update an action item completion, assignee, text, or priority.
  */
 router.patch('/:actionItemId', validate({ body: updateActionItemSchema }), actionItemsController.updateActionItem)
+
 
 /**
  * POST /api/v1/action-items/:actionItemId/sync

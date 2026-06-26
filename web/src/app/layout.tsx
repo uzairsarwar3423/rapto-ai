@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, DM_Sans, Plus_Jakarta_Sans } from "next/font/google";
-import { inter, jakarta, geistMono } from "./fonts";
+import { inter, jakarta, geistMono, poppins } from "./fonts";
 import "./globals.css";
 import { Providers } from "@/components/shared/providers/Providers";
 import { cn } from "@/lib/utils";
@@ -107,6 +107,7 @@ export default function RootLayout({
         inter.variable,
         jakarta.variable,
         geistMono.variable,
+        poppins.variable,
         "font-sans"
       )}
       suppressHydrationWarning

@@ -45,6 +45,17 @@ export const actionItemsController = {
   }),
 
   /**
+   * GET /api/v1/action-items/:actionItemId
+   * Get single action item details.
+   */
+  getActionItem: asyncHandler(async (req, res) => {
+    const actionItemId = req.params.actionItemId as string
+    const result = await actionItemsService.getActionItem(actionItemId, req.teamId!)
+    res.status(200).json(success(result))
+  }),
+
+
+  /**
    * PATCH /api/v1/action-items/:actionItemId
    * Update an action item.
    */
@@ -86,6 +97,23 @@ export const actionItemsController = {
     )
 
     res.status(202).json(success(result))
+  }),
+
+  /**
+   * PATCH /api/v1/action-items
+   * Bulk update action items.
+   */
+  bulkUpdateActionItems: asyncHandler(async (req, res) => {
+    const { ids, patch } = req.body
+    const result = await actionItemsService.bulkUpdateActionItems(
+      req.teamId!,
+      req.user!.id,
+      req.user!.role,
+      ids,
+      patch
+    )
+    res.status(200).json(success(result))
   })
 
 }
+

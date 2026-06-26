@@ -28,7 +28,7 @@ export function useMeetingFilters() {
   const setFilters = useCallback(
     (patch: Partial<MeetingFilters>) => {
       const next = new URLSearchParams(searchParams.toString());
-      
+
       // If setting a new search term or changing filters, reset the cursor
       next.delete("cursor");
 

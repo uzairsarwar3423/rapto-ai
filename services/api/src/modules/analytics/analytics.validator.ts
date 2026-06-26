@@ -27,6 +27,7 @@ export const trendsQuerySchema = z
     to: z.string().datetime({ offset: true }).optional(),
     metric: z.enum(['fulfillmentRate', 'meetingsCount']),
     granularity: z.enum(['week', 'month']).default('week'),
+    userId: z.string().uuid().optional(),
   })
   .refine(
     (data) => {

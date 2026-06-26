@@ -5,6 +5,7 @@ import { Breadcrumb } from "./Breadcrumb";
 import { SearchTrigger } from "./SearchTrigger";
 import { TopbarActions } from "./TopbarActions";
 import { NotificationBell } from "./NotificationBell";
+import { PresenceAvatars } from "./PresenceAvatars";
 
 export function Topbar() {
   return (
@@ -18,9 +19,12 @@ export function Topbar() {
         <SearchTrigger />
       </div>
 
-      <div className="flex items-center gap-2">
-        <TopbarActions />
-        <NotificationBell />
+      <div className="flex items-center gap-4">
+        <PresenceAvatars />
+        <div className="flex items-center gap-2">
+          <TopbarActions />
+          <NotificationBell />
+        </div>
       </div>
     </header>
   );

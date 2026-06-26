@@ -6,7 +6,11 @@ export const queryKeys = {
     transcript: (meetingId: string) => ["meetings", meetingId, "transcript"] as const,
   },
   actionItems: {
-    all: () => ["actionItems"] as const,
+    all: (teamId: string) => ["teams", teamId, "action-items"] as const,
+    list: (teamId: string, filters: any) =>
+      [...queryKeys.actionItems.all(teamId), "list", filters] as const,
+    detail: (teamId: string, id: string) =>
+      [...queryKeys.actionItems.all(teamId), id] as const,
     byMeeting: (meetingId: string) => ["actionItems", "byMeeting", meetingId] as const,
   },
   commitments: {
@@ -16,5 +20,13 @@ export const queryKeys = {
     list: (teamId: string, filters: any) => ["commitments", "list", teamId, filters] as const,
     detail: (id: string) => ["commitments", "detail", id] as const,
     stats: (teamId: string, filters: any) => ["commitments", "stats", teamId, filters] as const,
+  },
+  team: {
+    all: (teamId: string) => ["teams", teamId] as const,
+    detail: (teamId: string) => ["teams", teamId, "detail"] as const,
+    members: (teamId: string) => ["teams", teamId, "members"] as const,
+    health: (teamId: string) => ["teams", teamId, "health"] as const,
+    member: (teamId: string, memberId: string) => ["teams", teamId, "members", memberId] as const,
+    memberTrend: (teamId: string, memberId: string) => ["teams", teamId, "members", memberId, "trend"] as const,
   },
 } as const;

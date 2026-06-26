@@ -140,6 +140,11 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
     socket.on(CLIENT_EVENTS.JOIN_MEETING, (payload) => handleJoinMeeting(socket as any, payload))
     socket.on(CLIENT_EVENTS.LEAVE_MEETING, (payload) => handleLeaveMeeting(socket, payload))
 
+    // Broadcast user's presence to other team members
+    socket.on(CLIENT_EVENTS.PRESENCE_PING, () => {
+      socket.to(teamRoom(teamId)).emit(CLIENT_EVENTS.PRESENCE_PING, { userId })
+    })
+
     socket.on('disconnect', (reason) => {
       logger.debug({ userId, teamId, reason }, 'socket.server: client disconnected')
     })

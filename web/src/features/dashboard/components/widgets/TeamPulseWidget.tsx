@@ -35,7 +35,7 @@ function MiniSparkline({ points, className }: { points: number[]; className?: st
 
 export async function TeamPulseWidget() {
   const pulse = await getTeamPulse();
-  
+
   const hasData = pulse.total > 0;
   const rateLabel = hasData ? `${pulse.fulfillmentRate}%` : "—";
 

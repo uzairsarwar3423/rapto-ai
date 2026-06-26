@@ -49,29 +49,27 @@ export const analyticsRepository = {
           )                                                                AS fulfillment_rate,
           ROUND(
             AVG(
-              EXTRACT(EPOCH FROM (resolved_at - due_date)) / 86400.0
-            ) FILTER (WHERE status = 'MISSED' AND resolved_at IS NOT NULL AND due_date IS NOT NULL),
+              EXTRACT(EPOCH FROM ("resolvedAt" - "dueDate")) / 86400.0
+            ) FILTER (WHERE status = 'MISSED' AND "resolvedAt" IS NOT NULL AND "dueDate" IS NOT NULL),
             2
           )                                                                AS avg_days_overdue
         FROM commitments
-        WHERE team_id = ${teamId}::uuid
-          AND created_at >= ${from}
-          AND created_at <= ${to}
-          AND deleted_at IS NULL
+        WHERE "teamId" = ${teamId}
+          AND "createdAt" >= ${from}
+          AND "createdAt" <= ${to}
       ),
       meeting_stats AS (
         SELECT
           COUNT(*)                                                          AS meetings_this_period,
           ROUND(
-            AVG(EXTRACT(EPOCH FROM (ended_at - started_at)) / 60.0)
-            FILTER (WHERE started_at IS NOT NULL AND ended_at IS NOT NULL),
+            AVG(EXTRACT(EPOCH FROM ("endedAt" - "startedAt")) / 60.0)
+            FILTER (WHERE "startedAt" IS NOT NULL AND "endedAt" IS NOT NULL),
             2
           )                                                                 AS avg_meeting_duration
         FROM meetings
-        WHERE team_id = ${teamId}::uuid
-          AND created_at >= ${from}
-          AND created_at <= ${to}
-          AND deleted_at IS NULL
+        WHERE "teamId" = ${teamId}
+          AND "createdAt" >= ${from}
+          AND "createdAt" <= ${to}
       )
       SELECT
         c.total,
@@ -102,9 +100,9 @@ export const analyticsRepository = {
       SELECT
         u.id                                                                AS user_id,
         u.name,
-        u.avatar_url,
+        u."avatarUrl"                                                       AS avatar_url,
         u.role,
-        COALESCE(u.commitment_score, 0)                                     AS commitment_score,
+        COALESCE(u."commitmentScore", 0)                                    AS commitment_score,
         COUNT(c.id)                                                         AS total,
         COUNT(c.id) FILTER (WHERE c.status = 'FULFILLED')                  AS fulfilled,
         COUNT(c.id) FILTER (WHERE c.status = 'MISSED')                     AS missed,
@@ -116,20 +114,27 @@ export const analyticsRepository = {
             0
           ),
           2
-        )                                                                   AS fulfillment_rate
+        )                                                                   AS fulfillment_rate,
+        ROUND(
+          100.0 * COUNT(c.id) FILTER (WHERE c.status = 'FULFILLED' AND c."resolvedAt" <= c."dueDate") /
+          NULLIF(
+            COUNT(c.id) FILTER (WHERE c.status = 'FULFILLED'),
+            0
+          ),
+          2
+        )                                                                   AS on_time_rate
       FROM users u
       LEFT JOIN commitments c
-        ON c.owner_id = u.id
-        AND c.created_at >= ${from}
-        AND c.created_at <= ${to}
-        AND c.deleted_at IS NULL
-      WHERE u.team_id = ${teamId}::uuid
-        AND u.deleted_at IS NULL
-      GROUP BY u.id, u.name, u.avatar_url, u.role, u.commitment_score
+        ON c."ownerId" = u.id
+        AND c."createdAt" >= ${from}
+        AND c."createdAt" <= ${to}
+      WHERE u."teamId" = ${teamId}
+        AND u."deletedAt" IS NULL
+      GROUP BY u.id, u.name, u."avatarUrl", u.role, u."commitmentScore"
       ORDER BY commitment_score DESC
     `
 
-    return rows
+    return rows;
   },
 
   /**
@@ -142,14 +147,43 @@ export const analyticsRepository = {
     metric: AnalyticsMetric,
     granularity: AnalyticsGranularity,
     from: Date,
-    to: Date
+    to: Date,
+    userId?: string
   ): Promise<RawTrendRow[]> {
     const truncUnit = granularity === 'week' ? 'week' : 'month'
+
+    if (userId) {
+      if (metric === 'fulfillmentRate') {
+        return prisma.$queryRaw<RawTrendRow[]>`
+          SELECT
+            DATE_TRUNC(${truncUnit}, "createdAt")                               AS bucket,
+            ROUND(
+              100.0 * COUNT(*) FILTER (WHERE status = 'FULFILLED') /
+              NULLIF(
+                COUNT(*) FILTER (WHERE status IN ('FULFILLED', 'MISSED')),
+                0
+              ),
+              2
+            )                                                                  AS value,
+            COUNT(*)                                                           AS count
+          FROM commitments
+          WHERE "teamId" = ${teamId}
+            AND "ownerId" = ${userId}
+            AND "createdAt" >= ${from}
+            AND "createdAt" <= ${to}
+          GROUP BY DATE_TRUNC(${truncUnit}, "createdAt")
+          ORDER BY bucket ASC
+        `
+      }
+      
+      // For a single user, meetings count isn't typical, but return empty list or fallback
+      return [];
+    }
 
     if (metric === 'fulfillmentRate') {
       return prisma.$queryRaw<RawTrendRow[]>`
         SELECT
-          DATE_TRUNC(${truncUnit}, created_at)                               AS bucket,
+          DATE_TRUNC(${truncUnit}, "createdAt")                               AS bucket,
           ROUND(
             100.0 * COUNT(*) FILTER (WHERE status = 'FULFILLED') /
             NULLIF(
@@ -160,11 +194,10 @@ export const analyticsRepository = {
           )                                                                  AS value,
           COUNT(*)                                                           AS count
         FROM commitments
-        WHERE team_id = ${teamId}::uuid
-          AND created_at >= ${from}
-          AND created_at <= ${to}
-          AND deleted_at IS NULL
-        GROUP BY DATE_TRUNC(${truncUnit}, created_at)
+        WHERE "teamId" = ${teamId}
+          AND "createdAt" >= ${from}
+          AND "createdAt" <= ${to}
+        GROUP BY DATE_TRUNC(${truncUnit}, "createdAt")
         ORDER BY bucket ASC
       `
     }
@@ -172,15 +205,14 @@ export const analyticsRepository = {
     // metric === 'meetingsCount'
     return prisma.$queryRaw<RawTrendRow[]>`
       SELECT
-        DATE_TRUNC(${truncUnit}, created_at)   AS bucket,
+        DATE_TRUNC(${truncUnit}, "createdAt")   AS bucket,
         COUNT(*)::numeric                      AS value,
         COUNT(*)                               AS count
       FROM meetings
-      WHERE team_id = ${teamId}::uuid
-        AND created_at >= ${from}
-        AND created_at <= ${to}
-        AND deleted_at IS NULL
-      GROUP BY DATE_TRUNC(${truncUnit}, created_at)
+      WHERE "teamId" = ${teamId}
+        AND "createdAt" >= ${from}
+        AND "createdAt" <= ${to}
+      GROUP BY DATE_TRUNC(${truncUnit}, "createdAt")
       ORDER BY bucket ASC
     `
   },

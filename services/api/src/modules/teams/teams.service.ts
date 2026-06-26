@@ -78,6 +78,17 @@ async function cacheDel(...keys: string[]): Promise<void> {
   }
 }
 
+async function cacheDelPrefix(prefix: string): Promise<void> {
+  try {
+    const keys = await redis.keys(`${prefix}*`)
+    if (keys.length > 0) {
+      await redis.del(...keys)
+    }
+  } catch (err) {
+    logger.error({ err, prefix }, 'Failed to delete prefix cache keys')
+  }
+}
+
 // ── Slug Utilities ────────────────────────────────────────────────────────────
 
 function slugify(text: string): string {
@@ -498,7 +509,7 @@ async function acceptInvitation(token: string, userId: string) {
   }
 
   // STEP 5 — Atomic transaction: join team + mark invite accepted + create notif prefs
-  await prisma.$transaction([
+  const [updatedUser] = await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },
       data: {
@@ -523,9 +534,23 @@ async function acceptInvitation(token: string, userId: string) {
 
   // STEP 6 — Cache invalidation
   await cacheDel(CK.teamDetail(invitation.teamId), CK.user(userId))
+  await cacheDelPrefix(CK.teamMembers(invitation.teamId))
 
-  // STEP 7 — Socket.io event (scaffolded — will be wired when socket server is added)
-  // io.to(`team:${invitation.teamId}`).emit('member:joined', { userId })
+  // STEP 7 — Socket.io event
+  const userSummary = {
+    id: updatedUser.id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    avatarUrl: updatedUser.avatarUrl,
+    role: updatedUser.role,
+    commitmentScore: updatedUser.commitmentScore,
+    joinedAt: updatedUser.createdAt,
+    lastActiveAt: updatedUser.lastActiveAt,
+    lastLoginAt: updatedUser.lastLoginAt,
+  };
+  import('../../realtime/socket.emitter').then(({ socketEmitter }) => {
+    socketEmitter.to(`team:${invitation.teamId}`).emit('member:joined', { user: userSummary })
+  }).catch((err) => logger.error({ err }, 'Failed to emit member:joined event'))
 
   logger.info(
     { userId, teamId: invitation.teamId, role: invitation.invitedRole },
@@ -628,11 +653,14 @@ async function changeMemberRole(
   // STEP 4 — Update
   const updated = await teamsRepository.updateMemberRole(targetUserId, newRole)
 
-  // STEP 5 — Cache invalidation (3 keys)
-  await cacheDel(CK.user(targetUserId), CK.teamMembers(teamId), CK.teamDetail(teamId))
+  // STEP 5 — Cache invalidation
+  await cacheDel(CK.user(targetUserId), CK.teamDetail(teamId))
+  await cacheDelPrefix(CK.teamMembers(teamId))
 
-  // STEP 6 — Socket.io event (scaffolded)
-  // io.to(`user:${targetUserId}`).emit('my:role_updated', { newRole, teamId })
+  // STEP 6 — Socket.io event
+  import('../../realtime/socket.emitter').then(({ socketEmitter }) => {
+    socketEmitter.to(`user:${targetUserId}`).emit('my:role_updated', { newRole })
+  }).catch((err) => logger.error({ err }, 'Failed to emit my:role_updated event'))
 
   logger.info({ teamId, requesterId, targetUserId, newRole }, 'Member role changed')
 
@@ -687,11 +715,14 @@ async function removeMember(
   await teamsRepository.removeMember(targetUserId)
 
   // STEP 5 — Cache invalidation
-  await cacheDel(CK.user(targetUserId), CK.teamDetail(teamId), CK.teamMembers(teamId))
+  await cacheDel(CK.user(targetUserId), CK.teamDetail(teamId))
+  await cacheDelPrefix(CK.teamMembers(teamId))
 
-  // STEP 6 — Socket.io events (scaffolded)
-  // io.to(`user:${targetUserId}`).emit('system:removed_from_team', { teamId })
-  // io.to(`team:${teamId}`).emit('member:removed', { userId: targetUserId })
+  // STEP 6 — Socket.io events
+  import('../../realtime/socket.emitter').then(({ socketEmitter }) => {
+    socketEmitter.to(`user:${targetUserId}`).emit('system:removed_from_team', { teamId })
+    socketEmitter.to(`team:${teamId}`).emit('member:removed', { userId: targetUserId })
+  }).catch((err) => logger.error({ err }, 'Failed to emit member removal events'))
 
   // STEP 7 — Audit log (fire and forget)
   prisma.usageEvent.create({

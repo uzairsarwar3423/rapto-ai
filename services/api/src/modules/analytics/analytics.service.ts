@@ -157,6 +157,7 @@ export const analyticsService = {
         missed: toNumber(r.missed),
         pending: toNumber(r.pending),
         fulfillmentRate: round(r.fulfillment_rate),
+        onTimeRate: round(r.on_time_rate),
       }))
 
       await setCache(cacheKey, fullBreakdown)
@@ -184,14 +185,16 @@ export const analyticsService = {
     metric: AnalyticsMetric,
     granularity: AnalyticsGranularity,
     from: Date,
-    to: Date
+    to: Date,
+    userId?: string
   ): Promise<TrendsResponse> {
-    const cacheKey = `cache:analytics:trends:${teamId}:${metric}:${granularity}:${buildPeriodHash(teamId, from, to)}`
+    const userSuffix = userId ? `:${userId}` : ''
+    const cacheKey = `cache:analytics:trends:${teamId}:${metric}:${granularity}:${buildPeriodHash(teamId, from, to)}${userSuffix}`
 
     const cached = await getFromCache<TrendsResponse>(cacheKey)
     if (cached) return cached
 
-    const rawPoints = await analyticsRepository.getTrendPoints(teamId, metric, granularity, from, to)
+    const rawPoints = await analyticsRepository.getTrendPoints(teamId, metric, granularity, from, to, userId)
 
     const points = rawPoints.map((r) => {
       const bucket = new Date(r.bucket)

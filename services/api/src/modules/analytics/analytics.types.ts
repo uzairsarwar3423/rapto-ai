@@ -37,6 +37,7 @@ export interface MemberAnalyticsRow {
   missed: number
   pending: number
   fulfillmentRate: number
+  onTimeRate: number
 }
 
 /**
@@ -94,6 +95,7 @@ export interface RawMemberRow {
   missed: bigint
   pending: bigint
   fulfillment_rate: string | null
+  on_time_rate: string | null
 }
 
 export interface RawTrendRow {

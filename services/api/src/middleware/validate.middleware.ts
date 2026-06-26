@@ -59,7 +59,12 @@ export function validate(schema: RequestSchema) {
                     )
                 }
 
-                Object.assign(req.query, result.data)
+                Object.defineProperty(req, 'query', {
+                    value: result.data,
+                    writable: true,
+                    configurable: true,
+                    enumerable: true,
+                })
             }
 
             /* ----------------------------- Params --------------------------- */
@@ -73,7 +78,12 @@ export function validate(schema: RequestSchema) {
                     )
                 }
 
-                Object.assign(req.params, result.data)
+                Object.defineProperty(req, 'params', {
+                    value: result.data,
+                    writable: true,
+                    configurable: true,
+                    enumerable: true,
+                })
             }
 
             next()

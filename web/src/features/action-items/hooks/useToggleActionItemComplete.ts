@@ -2,12 +2,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { toggleActionItemComplete } from "../api/action-items.mutations";
 import { queryKeys } from "@/shared/lib/cache/query-keys";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import type { ActionItem } from "../types";
 
 export function useToggleActionItemComplete(meetingId: string) {
   const queryClient = useQueryClient();
+  const teamId = useAuthStore((state) => state.user?.teamId) || "";
   const byMeetingKey = queryKeys.actionItems.byMeeting(meetingId);
-  const allItemsKey = queryKeys.actionItems.all();
+  const allItemsKey = queryKeys.actionItems.all(teamId);
 
   return useMutation({
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) =>

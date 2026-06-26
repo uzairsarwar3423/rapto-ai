@@ -6,6 +6,7 @@ import { redis } from '../../config/redis'
 import { resolveProvider } from '../../modules/integrations/integrations.service'
 import { ProviderType } from '../../modules/integrations/integrations.types'
 import { socketEmitter } from '../../realtime/socket.emitter'
+import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { notifyQueue } from '../queue.client'
 
 export const integrateWorker = new Worker<IntegrateJobData>(
@@ -80,6 +81,7 @@ export const integrateWorker = new Worker<IntegrateJobData>(
         data: { consecutiveErrors: 0, lastError: null, lastSyncedAt: new Date() }
       })
       socketEmitter.to(`team:${teamId}`).emit('action_item:sync_complete', { actionItemId, provider, success: true })
+      socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.ACTION_ITEM_SYNCED, { actionItemId, provider, success: true })
 
     } catch (error: any) {
       // 7. On Failure
@@ -113,6 +115,7 @@ export const integrateWorker = new Worker<IntegrateJobData>(
       }
 
       socketEmitter.to(`team:${teamId}`).emit('action_item:sync_complete', { actionItemId, provider, success: false })
+      socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.ACTION_ITEM_SYNCED, { actionItemId, provider, success: false })
 
       // Remove lock if it's going to be retried by BullMQ so next attempt can run
       if (idempotencyKey && job.attemptsMade < (job.opts.attempts || 3) - 1) {

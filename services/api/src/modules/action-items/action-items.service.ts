@@ -217,8 +217,33 @@ async function syncActionItem(
   }
 }
 
+async function bulkUpdateActionItems(
+  teamId: string,
+  userId: string,
+  userRole: string,
+  ids: string[],
+  patch: any
+) {
+  const results = await Promise.all(
+    ids.map(id => updateActionItem(id, teamId, userId, userRole, patch))
+  )
+  return results
+}
+
+async function getActionItem(actionItemId: string, teamId: string) {
+  const actionItem = await actionItemsRepository.findById(actionItemId, teamId)
+  if (!actionItem) {
+    throw new NotFoundError('ActionItem', actionItemId)
+  }
+  return actionItem
+}
+
 export const actionItemsService = {
   listActionItems,
   updateActionItem,
-  syncActionItem
+  syncActionItem,
+  bulkUpdateActionItems,
+  getActionItem
 }
+
+

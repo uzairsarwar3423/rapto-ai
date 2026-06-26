@@ -13,6 +13,7 @@ const badgeVariants = cva(
         missed: "bg-missed-bg text-missed-text",
         deferred: "bg-deferred-bg text-deferred-text",
         recording: "bg-error text-white animate-pulse",
+        outline: "border border-border text-foreground bg-transparent",
       },
     },
     defaultVariants: {

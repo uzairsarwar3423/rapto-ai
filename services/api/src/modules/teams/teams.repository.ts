@@ -163,8 +163,8 @@ async function update(
  * Uses OFFSET pagination (not cursor) — total count needed for admin UI.
  */
 async function findMembers(teamId: string, query: ListMembersQuery) {
-  const page = query.page ?? 1
-  const limit = query.limit ?? 20
+  const page = Number(query.page ?? 1)
+  const limit = Number(query.limit ?? 20)
   const skip = (page - 1) * limit
 
   const where = {

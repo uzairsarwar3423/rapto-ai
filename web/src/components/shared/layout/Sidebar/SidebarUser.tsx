@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 import { User } from "@/features/auth/types/auth.types";
+import { ConnectionStatusDot } from "@/components/shared/feedback/ConnectionStatusDot";
 
 interface SidebarUserProps {
   user: User | null;
@@ -43,7 +44,7 @@ export function SidebarUser({ user, collapsed }: SidebarUserProps) {
           <button
             className={cn(
               "flex items-center gap-2 rounded-md hover:bg-surface-hover transition-colors duration-120 cursor-pointer text-left w-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              collapsed ? "h-9 w-9 justify-center" : "h-11 px-2"
+              collapsed ? "h-9 w-9 justify-center" : "h-auto py-1 px-2"
             )}
             aria-label="User settings menu"
           >
@@ -59,9 +60,10 @@ export function SidebarUser({ user, collapsed }: SidebarUserProps) {
                 <span className="truncate text-xs font-medium text-foreground leading-none mb-0.5">
                   {name}
                 </span>
-                <span className="truncate text-[10px] text-muted-subtle leading-none">
+                <span className="truncate text-[10px] text-muted-subtle leading-none mb-1">
                   {email}
                 </span>
+                <ConnectionStatusDot />
               </div>
             )}
           </button>
