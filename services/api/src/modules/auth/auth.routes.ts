@@ -9,6 +9,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   updateMeSchema,
+  changePasswordSchema,
 } from './auth.validator'
 
 const router = Router()
@@ -102,6 +103,17 @@ router.patch(
   validate({ body: updateMeSchema }),
   authController.updateMe
 )
+
+/**
+ * Route: POST /api/v1/auth/change-password
+ */
+router.post(
+  '/change-password',
+  requireAuth,
+  validate({ body: changePasswordSchema }),
+  authController.changePassword
+)
+
 
 /**
  * Route: GET /api/v1/auth/sessions

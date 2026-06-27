@@ -160,6 +160,292 @@ export class IntegrationsService {
 
         return { healthy: result.healthy, workspaceName: result.workspaceName, lastChecked: new Date() }
     }
+
+    async ensureValidTeamToken(integration: any): Promise<string> {
+        const { decrypt, encrypt } = await import('../../utils/crypto')
+        const { prisma } = await import('../../db/client')
+        const now = new Date()
+        
+        if (integration.tokenExpiresAt && integration.tokenExpiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
+            if (!integration.refreshTokenEnc) return decrypt(integration.accessTokenEnc)
+            const providerClient = resolveProvider(integration.provider)
+            try {
+                const refreshResult = await providerClient.refreshAccessToken(integration.refreshTokenEnc)
+                const encryptedAccess = encrypt(refreshResult.accessToken)
+                const tokenExpiresAt = refreshResult.expiresIn ? addSeconds(new Date(), refreshResult.expiresIn) : null
+                
+                await prisma.teamIntegration.update({
+                    where: { id: integration.id },
+                    data: {
+                        accessTokenEnc: encryptedAccess,
+                        tokenExpiresAt
+                    }
+                })
+                return refreshResult.accessToken
+            } catch (err) {
+                logger.error({ error: err, integrationId: integration.id }, 'Failed to proactively refresh team integration token')
+                return decrypt(integration.accessTokenEnc)
+            }
+        }
+        return decrypt(integration.accessTokenEnc)
+    }
+
+    async updateConfig(teamId: string, provider: ProviderType, config: Record<string, any>) {
+        const { prisma } = await import('../../db/client')
+        const integration = await integrationsRepository.findByTeamAndProvider(teamId, provider)
+        if (!integration) {
+            throw new AppError('INTEGRATION_NOT_FOUND', 404, 'Integration not found')
+        }
+
+        const currentMetadata = (integration.metadata as Record<string, any>) || {}
+        const updatedMetadata = { ...currentMetadata, ...config }
+
+        await prisma.teamIntegration.update({
+            where: { id: integration.id },
+            data: { metadata: updatedMetadata }
+        })
+
+        await redis.del(`cache:team:integrations:${teamId}`)
+
+        return { success: true, metadata: updatedMetadata }
+    }
+
+    async getProviderOptions(teamId: string, provider: ProviderType) {
+        const axios = (await import('axios')).default
+        const integration = await integrationsRepository.findByTeamAndProvider(teamId, provider)
+        if (!integration || !integration.isActive) {
+            throw new AppError('INTEGRATION_NOT_CONNECTED', 422, 'Integration not connected')
+        }
+
+        const accessToken = await this.ensureValidTeamToken(integration)
+
+        try {
+            switch (provider) {
+                case 'JIRA': {
+                    const response = await axios.get(`https://api.atlassian.com/ex/jira/${integration.workspaceId}/rest/api/3/project`, {
+                        headers: { Authorization: `Bearer ${accessToken}` },
+                        timeout: 10000
+                    })
+                    return {
+                        options: response.data.map((p: any) => ({
+                            id: p.key,
+                            name: `${p.name} (${p.key})`
+                        }))
+                    }
+                }
+                case 'SLACK': {
+                    const response = await axios.get('https://slack.com/api/conversations.list', {
+                        headers: { Authorization: `Bearer ${accessToken}` },
+                        params: { types: 'public_channel,private_channel', limit: 1000 },
+                        timeout: 10000
+                    })
+                    if (!response.data.ok) throw new Error(response.data.error || 'Slack API error')
+                    return {
+                        options: response.data.channels.map((c: any) => ({
+                            id: c.id,
+                            name: `#${c.name}`
+                        }))
+                    }
+                }
+                case 'LINEAR': {
+                    const response = await axios.post('https://api.linear.app/graphql', {
+                        query: `query { teams { nodes { id name key } } }`
+                    }, {
+                        headers: { Authorization: accessToken },
+                        timeout: 10000
+                    })
+                    if (response.data.errors) throw new Error(response.data.errors[0]?.message || 'Linear API error')
+                    return {
+                        options: response.data.data.teams.nodes.map((t: any) => ({
+                            id: t.id,
+                            name: `${t.name} (${t.key})`
+                        }))
+                    }
+                }
+                case 'NOTION': {
+                    const response = await axios.post('https://api.notion.com/v1/search', {
+                        filter: { property: 'object', value: 'database' },
+                        page_size: 100
+                    }, {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            'Notion-Version': '2022-06-28'
+                        },
+                        timeout: 10000
+                    })
+                    return {
+                        options: response.data.results.map((db: any) => ({
+                            id: db.id,
+                            name: db.title?.[0]?.plain_text || 'Untitled Database'
+                        }))
+                    }
+                }
+                default:
+                    throw new AppError('UNSUPPORTED_PROVIDER', 400, 'Unsupported provider')
+            }
+        } catch (e: any) {
+            logger.error({ error: e.message, provider, teamId }, 'Failed to fetch options from provider API')
+            throw new AppError('PROVIDER_API_ERROR', 502, `Failed to retrieve options: ${e.message}`)
+        }
+    }
+
+    async testCalendarConnection(userId: string, provider: 'GOOGLE_CALENDAR' | 'OUTLOOK_CALENDAR') {
+        const { prisma } = await import('../../db/client')
+        const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
+        const integration = await prisma.userIntegration.findUnique({
+            where: { userId_provider: { userId, provider } }
+        })
+        if (!integration) throw new AppError('INTEGRATION_NOT_CONNECTED', 422, 'Calendar not connected')
+
+        let plainAccessToken: string
+        try {
+            const { decrypt, encrypt } = await import('../../utils/crypto')
+            const now = new Date()
+            if (integration.tokenExpiresAt && integration.tokenExpiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
+                if (!integration.refreshTokenEnc) throw new Error('No refresh token')
+                const refreshResult = await googleCalendarProvider.refreshAccessToken(integration.refreshTokenEnc)
+                const newAccessTokenEnc = encrypt(refreshResult.accessToken)
+                const newExpiresAt = addSeconds(new Date(), refreshResult.expiresIn)
+                await prisma.userIntegration.update({
+                    where: { id: integration.id },
+                    data: { accessTokenEnc: newAccessTokenEnc, tokenExpiresAt: newExpiresAt }
+                })
+                plainAccessToken = refreshResult.accessToken
+            } else {
+                plainAccessToken = decrypt(integration.accessTokenEnc)
+            }
+        } catch (refreshErr: any) {
+            await prisma.userIntegration.update({
+                where: { id: integration.id },
+                data: { consecutiveErrors: { increment: 1 }, lastError: refreshErr.message }
+            })
+            return { healthy: false, lastChecked: new Date(), error: refreshErr.message }
+        }
+
+        const { encrypt } = await import('../../utils/crypto')
+        const testResult = await googleCalendarProvider.testConnection(encrypt(plainAccessToken))
+        if (testResult.healthy) {
+            await prisma.userIntegration.update({
+                where: { id: integration.id },
+                data: { consecutiveErrors: 0, lastError: null }
+            })
+        } else {
+            await prisma.userIntegration.update({
+                where: { id: integration.id },
+                data: { consecutiveErrors: { increment: 1 }, lastError: 'API call failed' }
+            })
+        }
+        return { healthy: testResult.healthy, lastChecked: new Date() }
+    }
+
+    async disconnectCalendar(userId: string, provider: 'GOOGLE_CALENDAR' | 'OUTLOOK_CALENDAR') {
+        const { prisma } = await import('../../db/client')
+        const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
+        
+        const integration = await prisma.userIntegration.findUnique({
+            where: { userId_provider: { userId, provider } }
+        })
+        if (!integration) throw new AppError('NOT_FOUND', 404, 'Integration not found')
+
+        await googleCalendarProvider.revokeToken(integration.accessTokenEnc)
+
+        await prisma.userIntegration.delete({
+            where: { id: integration.id }
+        })
+
+        return { message: 'Disconnected', provider }
+    }
+
+    async updateCalendarConfig(userId: string, provider: 'GOOGLE_CALENDAR' | 'OUTLOOK_CALENDAR', config: Record<string, any>) {
+        const { prisma } = await import('../../db/client')
+        const integration = await prisma.userIntegration.findUnique({
+            where: { userId_provider: { userId, provider } }
+        })
+        if (!integration) {
+            throw new AppError('INTEGRATION_NOT_FOUND', 404, 'Integration not found')
+        }
+
+        const updated = await prisma.userIntegration.update({
+            where: { id: integration.id },
+            data: config
+        })
+
+        return { success: true, integration: updated }
+    }
+
+    async getCalendarPreview(userId: string) {
+        const { prisma } = await import('../../db/client')
+        const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
+        const { platformDetect } = await import('../../utils/platform-detect')
+        
+        const integration = await prisma.userIntegration.findUnique({
+            where: { userId_provider: { userId, provider: 'GOOGLE_CALENDAR' } }
+        })
+        if (!integration || !integration.syncEnabled) {
+            return { events: [] }
+        }
+
+        let plainAccessToken: string
+        try {
+            const { decrypt, encrypt } = await import('../../utils/crypto')
+            const now = new Date()
+            if (integration.tokenExpiresAt && integration.tokenExpiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
+                if (!integration.refreshTokenEnc) throw new Error('No refresh token')
+                const refreshResult = await googleCalendarProvider.refreshAccessToken(integration.refreshTokenEnc)
+                const newAccessTokenEnc = encrypt(refreshResult.accessToken)
+                const newExpiresAt = addSeconds(new Date(), refreshResult.expiresIn)
+                await prisma.userIntegration.update({
+                    where: { id: integration.id },
+                    data: { accessTokenEnc: newAccessTokenEnc, tokenExpiresAt: newExpiresAt }
+                })
+                plainAccessToken = refreshResult.accessToken
+            } else {
+                plainAccessToken = decrypt(integration.accessTokenEnc)
+            }
+        } catch (err: any) {
+            return { events: [], error: `Failed to authenticate: ${err.message}` }
+        }
+
+        try {
+            const now = new Date()
+            const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+            const { encrypt } = await import('../../utils/crypto')
+            const eventsResult = await googleCalendarProvider.listEvents({
+                accessTokenEnc: encrypt(plainAccessToken),
+                calendarId: integration.calendarId || 'primary',
+                timeMin: now.toISOString(),
+                timeMax: timeMax.toISOString(),
+            })
+
+            const { extractMeetingUrl, shouldProcessEvent } = await import('../../services/calendar-sync.service')
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { email: true }
+            })
+
+            const processedEvents = eventsResult.items.map(event => {
+                const hasMeeting = shouldProcessEvent(event, user?.email || '')
+                const extracted = extractMeetingUrl(event)
+                
+                return {
+                    id: event.id || '',
+                    summary: event.summary || 'Untitled Meeting',
+                    start: event.start?.dateTime || event.start?.date || '',
+                    end: event.end?.dateTime || event.end?.date || '',
+                    location: event.location || null,
+                    meetingUrl: extracted?.url || null,
+                    platform: extracted ? platformDetect(extracted.url).platform : null,
+                    isValid: hasMeeting
+                }
+            })
+
+            return { events: processedEvents }
+        } catch (e: any) {
+            logger.error({ userId, error: e.message }, 'Failed to fetch calendar preview')
+            return { events: [], error: e.message }
+        }
+    }
 }
 
 export const integrationsService = new IntegrationsService()
+

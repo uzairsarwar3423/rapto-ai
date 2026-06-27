@@ -21,6 +21,12 @@ interface SegmentedTabsProps<T extends string> {
   className?: string;
 }
 
+// Sliding indicator transition — all three properties at once
+// Spring-like easing gives a premium overshoot feel on fast tabs
+// Using inline style avoids the Tailwind multiple-transition-class conflict
+const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+const SLIDE_TRANSITION = `transform 220ms ${SPRING}, width 220ms ${SPRING}, height 220ms ${SPRING}`;
+
 export function SegmentedTabs<T extends string>({
   value,
   onValueChange,
@@ -31,10 +37,12 @@ export function SegmentedTabs<T extends string>({
   const thumbRef = useRef<HTMLSpanElement>(null);
   const itemRefs = useRef<Map<T, HTMLButtonElement | null>>(new Map());
 
-  // Local state to force trigger layout recalculation
+  // Track whether we've done the initial paint — first render snaps, then slides
+  const hasMounted = useRef(false);
+
+  // Force recalculate on resize
   const [layoutTrigger, setLayoutTrigger] = useState(0);
 
-  // Synchronously update indicator position on mount, value change, or layout trigger
   useLayoutEffect(() => {
     const container = containerRef.current;
     const activeItem = itemRefs.current.get(value);
@@ -50,22 +58,37 @@ export function SegmentedTabs<T extends string>({
     const height = activeRect.height;
     const top = activeRect.top - containerRect.top;
 
-    thumb.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-    thumb.style.width = `${width}px`;
-    thumb.style.height = `${height}px`;
+    if (!hasMounted.current) {
+      // First paint: disable transition so the thumb snaps to position instantly
+      thumb.style.transition = "none";
+      thumb.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+      thumb.style.width = `${width}px`;
+      thumb.style.height = `${height}px`;
+
+      // Re-enable transition on next frame so future changes slide
+      requestAnimationFrame(() => {
+        if (thumbRef.current) {
+          thumbRef.current.style.transition = SLIDE_TRANSITION;
+        }
+        hasMounted.current = true;
+      });
+    } else {
+      // Subsequent changes: animate the slide
+      thumb.style.transition = SLIDE_TRANSITION;
+      thumb.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+      thumb.style.width = `${width}px`;
+      thumb.style.height = `${height}px`;
+    }
   }, [value, items, layoutTrigger]);
 
-  // Recalculate indicator position on window resize
+  // Recalculate on window resize
   useEffect(() => {
-    const handleResize = () => {
-      setLayoutTrigger((prev) => prev + 1);
-    };
-
+    const handleResize = () => setLayoutTrigger((prev) => prev + 1);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Keyboard navigation handler (ARIA tablist standard)
+  // Keyboard navigation — ARIA tablist standard
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const activeIndex = items.findIndex((item) => item.value === value);
     if (activeIndex === -1) return;
@@ -98,10 +121,9 @@ export function SegmentedTabs<T extends string>({
     const nextItem = items[nextIndex];
     onValueChange(nextItem.value);
 
-    // Focus the next active button
+    // Move DOM focus to the newly active tab
     setTimeout(() => {
-      const nextButton = itemRefs.current.get(nextItem.value);
-      nextButton?.focus();
+      itemRefs.current.get(nextItem.value)?.focus();
     }, 0);
   };
 
@@ -116,15 +138,22 @@ export function SegmentedTabs<T extends string>({
         className
       )}
     >
-      {/* Sliding Active Indicator (Thumb) */}
+      {/* ── Sliding thumb indicator ─────────────────────────────────────
+          Positioned absolutely at (0,0) on mount; useLayoutEffect immediately
+          moves it to the active tab. Transition is applied AFTER first paint
+          so there's no flash from (0,0). Width / height animate in sync with
+          transform — all via a single inline `transition` string to avoid the
+          Tailwind multiple-transition-class conflict.
+      ───────────────────────────────────────────────────────────────── */}
       <span
         ref={thumbRef}
-        className={cn(
-          "absolute left-0 top-0 rounded-md bg-background border border-border/60 pointer-events-none transition-transform transition-[width] transition-[height] duration-160 ease-out-soft motion-reduce:transition-none"
-        )}
+        aria-hidden="true"
+        className="absolute left-0 top-0 rounded-[6px] bg-[#111111] pointer-events-none will-change-transform shadow-sm"
+        // transition is managed entirely via inline style in useLayoutEffect
+        style={{ transition: "none" }}
       />
 
-      {/* Tab Buttons */}
+      {/* ── Tab buttons ─────────────────────────────────────────────── */}
       {items.map((item) => {
         const isActive = item.value === value;
         return (
@@ -139,15 +168,20 @@ export function SegmentedTabs<T extends string>({
             tabIndex={isActive ? 0 : -1}
             onClick={() => onValueChange(item.value)}
             className={cn(
-              "relative z-10 flex h-full items-center justify-center gap-1.5 px-3 rounded-md text-xs font-sans transition-colors duration-120 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 select-none",
+              // Base — always present
+              "relative z-10 flex h-full items-center justify-center gap-1.5 px-3 rounded-md text-xs font-sans cursor-pointer select-none",
+              // Focus ring
+              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              // Text color cross-fades smoothly as the pill slides
+              "transition-colors duration-200",
               isActive
-                ? "font-medium text-foreground"
-                : "font-normal text-muted-foreground hover:bg-surface-hover/50 hover:text-foreground"
+                ? "font-semibold text-white"
+                : "font-normal text-muted-foreground hover:text-foreground"
             )}
           >
             <span>{item.label}</span>
             {item.count !== undefined && (
-              <span className="font-mono text-2xs tabular-nums opacity-80">
+              <span className="font-mono text-2xs tabular-nums opacity-70">
                 ({item.count})
               </span>
             )}

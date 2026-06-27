@@ -17,6 +17,7 @@ export interface CommandItem {
   group: "Navigate" | "Actions";
   icon: LucideIcon;
   shortcut?: string[];
+  synonyms?: string[];
   perform: (router: { push: (href: string) => void }) => void;
 }
 

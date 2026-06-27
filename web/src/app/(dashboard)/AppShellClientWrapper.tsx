@@ -32,7 +32,7 @@ export function AppShellClientWrapper({
 
   // Extract team metadata from the authenticated user object
   const team = user?.team
-    ? { id: user.teamId || "", name: user.team.name, plan: "Growth" }
+    ? { id: user.teamId || "", name: user.team.name, plan: user.team.plan || "Free" }
     : null;
 
   return (

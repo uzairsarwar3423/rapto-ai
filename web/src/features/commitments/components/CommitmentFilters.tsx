@@ -8,33 +8,38 @@ import { DateRangeFilterPopover } from "./CommitmentFilters/DateRangeFilterPopov
 import { ConfidenceFilterSelect } from "./CommitmentFilters/ConfidenceFilterSelect";
 import { FilterPill } from "@/shared/components/data-display/FilterPill";
 
-export function CommitmentFilters() {
-  const { filters, setFilters, clearAll, activeFilterCount } = useCommitmentFilters();
+interface CommitmentFiltersProps {
+  /** Called when user clicks "Clear all" — parent also needs to reset local status */
+  onClearAll?: () => void;
+}
+
+export function CommitmentFilters({ onClearAll }: CommitmentFiltersProps) {
+  const { urlFilters, setUrlFilters, clearUrlFilters, activeFilterCount } =
+    useCommitmentFilters();
   const { data: members = [] } = useTeamMembers();
 
-  // Find owner names for active pills
   const getOwnerName = (id: string) => {
     const member = members.find((m) => m.id === id);
     return member ? member.name : id;
   };
 
   const handleOwnerRemove = (ownerId: string) => {
-    setFilters({
-      ownerIds: filters.ownerIds.filter((id) => id !== ownerId),
+    setUrlFilters({
+      ownerIds: urlFilters.ownerIds.filter((id) => id !== ownerId),
     });
   };
 
   const handleDateRangeChange = (range: { from?: string; to?: string }) => {
-    setFilters({
-      from: range.from,
-      to: range.to,
-    });
+    setUrlFilters({ from: range.from, to: range.to });
   };
 
   const handleConfidenceChange = (val?: number) => {
-    setFilters({
-      confidenceMin: val,
-    });
+    setUrlFilters({ confidenceMin: val });
+  };
+
+  const handleClearAll = () => {
+    clearUrlFilters();
+    onClearAll?.();
   };
 
   const hasActiveFilters = activeFilterCount > 0;
@@ -44,20 +49,20 @@ export function CommitmentFilters() {
       <div className="flex flex-wrap items-center gap-2">
         {/* Owner Multi-select filter */}
         <OwnerFilterPopover
-          selectedOwnerIds={filters.ownerIds}
-          onSelectedOwnerIdsChange={(ids) => setFilters({ ownerIds: ids })}
+          selectedOwnerIds={urlFilters.ownerIds}
+          onSelectedOwnerIdsChange={(ids) => setUrlFilters({ ownerIds: ids })}
         />
 
         {/* Date Range filter */}
         <DateRangeFilterPopover
-          from={filters.from}
-          to={filters.to}
+          from={urlFilters.from}
+          to={urlFilters.to}
           onRangeChange={handleDateRangeChange}
         />
 
         {/* Confidence Filter */}
         <ConfidenceFilterSelect
-          value={filters.confidenceMin}
+          value={urlFilters.confidenceMin}
           onValueChange={handleConfidenceChange}
         />
       </div>
@@ -68,7 +73,7 @@ export function CommitmentFilters() {
           <span className="text-2xs text-muted-foreground mr-1">Active filters:</span>
 
           {/* Owner Pills */}
-          {filters.ownerIds.map((id) => (
+          {urlFilters.ownerIds.map((id) => (
             <FilterPill
               key={id}
               label={`Owner: ${getOwnerName(id)}`}
@@ -77,7 +82,7 @@ export function CommitmentFilters() {
           ))}
 
           {/* Date Range Pill */}
-          {(filters.from || filters.to) && (
+          {(urlFilters.from || urlFilters.to) && (
             <FilterPill
               label={(() => {
                 const formatDate = (dStr: string) => {
@@ -86,15 +91,11 @@ export function CommitmentFilters() {
                     ? ""
                     : dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
                 };
-                if (filters.from && filters.to) {
-                  return `Due: ${formatDate(filters.from)} – ${formatDate(filters.to)}`;
+                if (urlFilters.from && urlFilters.to) {
+                  return `Due: ${formatDate(urlFilters.from)} – ${formatDate(urlFilters.to)}`;
                 }
-                if (filters.from) {
-                  return `Due after: ${formatDate(filters.from)}`;
-                }
-                if (filters.to) {
-                  return `Due before: ${formatDate(filters.to)}`;
-                }
+                if (urlFilters.from) return `Due after: ${formatDate(urlFilters.from)}`;
+                if (urlFilters.to) return `Due before: ${formatDate(urlFilters.to)}`;
                 return "";
               })()}
               onRemove={() => handleDateRangeChange({ from: undefined, to: undefined })}
@@ -102,17 +103,17 @@ export function CommitmentFilters() {
           )}
 
           {/* Confidence Pill */}
-          {filters.confidenceMin !== undefined && (
+          {urlFilters.confidenceMin !== undefined && (
             <FilterPill
-              label={`Confidence ≥ ${(filters.confidenceMin * 100).toFixed(0)}%`}
+              label={`Confidence ≥ ${(urlFilters.confidenceMin * 100).toFixed(0)}%`}
               onRemove={() => handleConfidenceChange(undefined)}
             />
           )}
 
-          {/* Clear all action */}
+          {/* Clear all */}
           <button
             type="button"
-            onClick={clearAll}
+            onClick={handleClearAll}
             className="inline-flex items-center gap-1 text-2xs font-medium text-brand hover:text-brand/90 transition-colors duration-120 cursor-pointer ml-1 select-none"
           >
             Clear all

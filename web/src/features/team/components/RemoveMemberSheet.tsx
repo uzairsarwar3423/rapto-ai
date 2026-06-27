@@ -74,7 +74,7 @@ export function RemoveMemberSheet({ member, open, onOpenChange }: RemoveMemberSh
               <Button
                 variant="default"
                 size="sm"
-                className="bg-[--danger] hover:bg-[--danger]/90 text-white"
+                className="bg-error hover:bg-error/90 text-white"
                 onClick={() => setConfirmOpen(true)}
               >
                 Remove from team

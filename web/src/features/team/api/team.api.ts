@@ -112,4 +112,12 @@ export const teamApi = {
     });
     return response.data.data;
   },
+
+  /**
+   * Update team settings (name, settings JSON)
+   */
+  async updateTeam(data: { name?: string; settings?: Record<string, any> }): Promise<any> {
+    const response = await api.patch<{ data: any }>("/teams/me", data);
+    return response.data.data;
+  },
 };

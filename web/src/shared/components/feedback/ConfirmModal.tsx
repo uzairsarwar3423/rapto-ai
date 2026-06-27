@@ -65,7 +65,7 @@ export function ConfirmModal({
             onClick={handleConfirm}
             disabled={isPending}
             className={cn(
-              variant === 'destructive' && 'bg-[--danger] hover:bg-[--danger]/90 text-white'
+              variant === 'destructive' && 'bg-error hover:bg-error/90 text-white'
             )}
           >
             {isPending ? 'Deleting…' : confirmLabel}

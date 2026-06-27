@@ -8,6 +8,14 @@ export const providerParamSchema = {
     })
 }
 
+export const calendarProviderParamSchema = {
+    params: z.object({
+        provider: z.enum(['GOOGLE_CALENDAR', 'OUTLOOK_CALENDAR'], {
+            message: 'INVALID_PROVIDER'
+        })
+    })
+}
+
 export const callbackQuerySchema = {
     query: z.object({
         code: z.string().min(1, 'Code is required').optional(),
@@ -20,3 +28,4 @@ export const callbackQuerySchema = {
         })
     })
 }
+

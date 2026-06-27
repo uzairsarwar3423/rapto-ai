@@ -34,7 +34,7 @@ export function SidebarTeamSwitcher({ team, collapsed }: SidebarTeamSwitcherProp
     .join("")
     .toUpperCase();
 
-  const currentPlan = team?.plan || "Growth";
+  const currentPlan = team?.plan || "Free";
 
   return (
     <div className={cn("p-2 flex items-center justify-center select-none")}>

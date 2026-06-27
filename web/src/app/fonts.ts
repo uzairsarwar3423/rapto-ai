@@ -22,7 +22,7 @@ export const geistMono = Geist_Mono({
 
 export const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["600"], // strictly 600
+  weight: ["500", "600"],
   variable: "--font-poppins",
   display: "swap",
 });

@@ -29,4 +29,9 @@ export const queryKeys = {
     member: (teamId: string, memberId: string) => ["teams", teamId, "members", memberId] as const,
     memberTrend: (teamId: string, memberId: string) => ["teams", teamId, "members", memberId, "trend"] as const,
   },
+  integrations: {
+    all: (teamId: string) => ["teams", teamId, "integrations"] as const,
+    calendarPreview: (userId: string) => ["users", userId, "calendar-preview"] as const,
+    config: (provider: string) => ["integrations", provider, "options"] as const,
+  },
 } as const;

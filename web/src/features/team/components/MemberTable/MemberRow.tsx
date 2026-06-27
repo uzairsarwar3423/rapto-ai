@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmModal } from "@/shared/components/feedback/ConfirmModal";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { cn } from "@/lib/utils";
@@ -246,17 +246,18 @@ export function MemberRow({ member, requester: propRequester }: MemberRowProps) 
           </DialogHeader>
           <div className="py-4 flex flex-col gap-2">
             <label className="text-xs font-semibold text-muted-foreground uppercase">Role</label>
-            <NativeSelect
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as UserRole)}
-              className="w-full"
-            >
-              {selectableRoles.map((role) => (
-                <NativeSelectOption key={role} value={role}>
-                  {role.charAt(0) + role.slice(1).toLowerCase()}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+            <Select value={selectedRole} onValueChange={(val) => setSelectedRole(val as UserRole)}>
+              <SelectTrigger className="w-full h-[42px] px-4 rounded-xl border-border focus:ring-2 focus:border-brand focus:ring-brand">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectableRoles.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    {role.charAt(0) + role.slice(1).toLowerCase()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter className="flex sm:justify-end gap-2 pt-2 bg-white border-t-0">
             <Button

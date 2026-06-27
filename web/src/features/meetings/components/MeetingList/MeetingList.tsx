@@ -15,6 +15,7 @@ import { CursorPagination } from "@/shared/components/data-display/CursorPaginat
 import { AddMeetingModal } from "../AddMeetingModal";
 import { useRealtimeMeeting } from "../../hooks/useRealtimeMeeting";
 import { Button } from "@/components/ui/button";
+import { AddMeetingTooltip } from "../AddMeetingTooltip";
 import type { MeetingListItem } from "../../types";
 
 interface MeetingListProps {
@@ -66,14 +67,16 @@ export function MeetingList({ initialData }: MeetingListProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            onClick={() => setAddModalOpen(true)}
-            className="text-xs h-9 bg-brand hover:bg-brand/90 text-white flex items-center gap-1.5 font-medium cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            Add Meeting
-          </Button>
+          <AddMeetingTooltip>
+            <Button
+              type="button"
+              onClick={() => setAddModalOpen(true)}
+              className="text-xs h-9 bg-brand hover:bg-brand/90 text-white flex items-center gap-1.5 font-medium cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              Add Meeting
+            </Button>
+          </AddMeetingTooltip>
         </div>
       </div>
 

@@ -31,7 +31,7 @@ app.use(
     })
 )
 app.use(helmet())
-app.use(express.json({ 
+app.use(express.json({
     limit: '10mb',
     verify: (req: any, res, buf) => {
         req.rawBody = buf
@@ -54,9 +54,9 @@ app.use((_req, res, next) => {
 })
 
 // ----------------------
-// Health Check Route
+// Health & Root Status Route
 // ----------------------
-app.get('/health', (req, res) => {
+app.get(['/', '/health'], (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Vocaply API is running 🚀',

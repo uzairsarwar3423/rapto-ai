@@ -80,5 +80,21 @@ export const authApi = {
   revokeSession: async (sessionId: string): Promise<{ message: string }> => {
     const response = await api.delete<ApiResponse<{ message: string }>>(`/auth/sessions/${sessionId}`);
     return response.data.data;
+  },
+
+  /**
+   * Update current user profile details
+   */
+  updateMe: async (data: { name?: string; timezone?: string; avatarUrl?: string | null; onboardingCompleted?: boolean }): Promise<{ user: User }> => {
+    const response = await api.patch<ApiResponse<{ user: User }>>('/auth/me', data);
+    return response.data.data;
+  },
+
+  /**
+   * Change current user's password
+   */
+  changePassword: async (data: any): Promise<{ message: string }> => {
+    const response = await api.post<ApiResponse<{ message: string }>>('/auth/change-password', data);
+    return response.data.data;
   }
 };

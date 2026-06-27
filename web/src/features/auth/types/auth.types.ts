@@ -6,7 +6,7 @@ export interface User {
   email: string;
   role: UserRole;
   teamId: string | null;
-  team: { id: string; name: string } | null;
+  team: { id: string; name: string; plan?: string } | null;
   avatarUrl?: string | null;
   timezone?: string | null;
   lastLoginAt?: string | null;

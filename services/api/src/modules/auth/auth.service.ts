@@ -832,11 +832,83 @@ export const authService = {
         },
       })
 
-      res.redirect(`${frontendUrl}/onboarding/connect-calendar?connected=true`)
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { onboardingCompleted: true }
+      })
+      const redirectUrl = user?.onboardingCompleted
+        ? `${frontendUrl}/settings/integrations?connected=GOOGLE_CALENDAR`
+        : `${frontendUrl}/onboarding/connect-calendar?connected=true`
+
+      res.redirect(redirectUrl)
     } catch (error) {
       logger.error({ error }, 'Google Calendar OAuth callback handling failed')
-      res.redirect(`${frontendUrl}/onboarding/connect-calendar?error=oauth_failed`)
+      let user = null
+      if (userId) {
+        try {
+          user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { onboardingCompleted: true }
+          })
+        } catch (_) {}
+      }
+      const errorRedirect = user?.onboardingCompleted
+        ? `${frontendUrl}/settings/integrations?error=oauth_failed`
+        : `${frontendUrl}/onboarding/connect-calendar?error=oauth_failed`
+      res.redirect(errorRedirect)
     }
+  },
+
+  /**
+   * Change authenticated user's password.
+   */
+  async changePassword(
+    userId: string,
+    data: { currentPassword: string; newPassword: string },
+    currentToken: string
+  ) {
+    const user = await authRepository.findById(userId)
+    if (!user) {
+      throw new AppError('USER_NOT_FOUND', 404, 'User not found')
+    }
+
+    if (!user.passwordHash) {
+      throw new AppError(
+        'USE_OAUTH_ACCOUNT',
+        400,
+        'This account was created using Google login. You cannot set a password directly.'
+      )
+    }
+
+    const matches = await bcrypt.compare(data.currentPassword, user.passwordHash)
+    if (!matches) {
+      throw new AppError('INVALID_CURRENT_PASSWORD', 400, 'Invalid current password')
+    }
+
+    const isSame = await bcrypt.compare(data.newPassword, user.passwordHash)
+    if (isSame) {
+      throw new AppError('PASSWORD_MUST_BE_DIFFERENT', 400, 'New password must be different from current password')
+    }
+
+    const newHash = await bcrypt.hash(data.newPassword, 12)
+    const currentHash = hashToken(currentToken)
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash: newHash },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: {
+          userId,
+          NOT: {
+            tokenHash: currentHash,
+          },
+        },
+      }),
+    ])
+
+    return { message: 'Password updated successfully' }
   },
 
   /**

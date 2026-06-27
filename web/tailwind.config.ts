@@ -55,6 +55,7 @@ const config: Config = {
         sans: ["var(--font-sans)", "DM Sans", ...defaultTheme.fontFamily.sans],
         serif: ["var(--font-serif)", "Instrument Serif", ...defaultTheme.fontFamily.serif],
         heading: ["var(--font-jakarta)", "Plus Jakarta Sans", ...defaultTheme.fontFamily.sans],
+        poppins: ["var(--font-poppins)", "Poppins", ...defaultTheme.fontFamily.sans],
       },
       fontSize: {
         display: "var(--font-size-display)",
