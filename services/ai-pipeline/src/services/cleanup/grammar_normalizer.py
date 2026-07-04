@@ -1,7 +1,7 @@
 """
 services/cleanup/grammar_normalizer.py
 ───────────────────────────────────────
-Stage 2: Batch grammar normalization via Gemini-on-OpenRouter.
+Stage 2: Batch grammar normalization via OpenAI.
 
 DESIGN DECISIONS (from plan §2 and §5.6):
 
@@ -56,7 +56,7 @@ from src.config.cleanup_config import (
 from src.config.logging import get_logger
 from src.models.cleanup_models import CleanedTranscriptTurn, CleanupBatchResult
 from src.models.common import CostRecord, ModelTier, TaskType
-from src.services.gemini_client import GeminiClient
+from src.services.openai_client import OpenAIClient
 
 log: structlog.BoundLogger = get_logger(__name__)
 
@@ -253,11 +253,11 @@ def _apply_guardrail(
 async def _process_batch(
     batch: list[CleanedTranscriptTurn],
     batch_id: str,
-    gemini_client: GeminiClient,
+    ai_client: OpenAIClient,
     system_prompt: str,
     semaphore: asyncio.Semaphore,
 ) -> CleanupBatchResult:
-    """Process one batch: call Gemini, apply guardrail, return CleanupBatchResult.
+    """Process one batch: call OpenAI, apply guardrail, return CleanupBatchResult.
 
     Per-batch failure isolation: exceptions from generate_structured (after
     Day 46's internal retries are exhausted) are caught HERE and returned as
@@ -269,7 +269,7 @@ async def _process_batch(
     async with semaphore:
         try:
             user_prompt = _build_user_prompt(batch)
-            call_result = await gemini_client.generate_structured(
+            call_result = await ai_client.generate_structured(
                 task_type=TaskType.TRANSCRIPT_CLEANUP,
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
@@ -351,21 +351,21 @@ async def _process_batch(
 
 async def normalize_batches(
     turns: list[CleanedTranscriptTurn],
-    gemini_client: GeminiClient,
+    ai_client: OpenAIClient,
 ) -> list[CleanupBatchResult]:
-    """Stage 2: Batch-normalize grammar/punctuation via Gemini-on-OpenRouter.
+    """Stage 2: Batch-normalize grammar/punctuation via OpenAI.
 
     Steps:
       1. Load system prompt (once, cached after first call).
       2. Build batches respecting GRAMMAR_BATCH_MAX_TURNS + MAX_TOKENS.
       3. Dispatch all batches concurrently, bounded by CLEANUP_BATCH_CONCURRENCY
-         (nested inside Day 46's global GeminiClient semaphore as the outer ceiling).
+         (nested inside Day 46's global OpenAIClient semaphore as the outer ceiling).
       4. Each batch is individually failure-isolated — one failed batch does not
          abort the rest (Decision 5).
 
     Args:
         turns: Post-Stage-1.5 (filler-stripped) CleanedTranscriptTurn list.
-        gemini_client: The process-singleton GeminiClient from app.state.
+        ai_client: The process-singleton OpenAIClient from app.state.
 
     Returns:
         List of CleanupBatchResult, one per batch. Some may have succeeded=False.
@@ -378,7 +378,7 @@ async def normalize_batches(
     system_prompt, _prompt_version = _load_prompt()
     batches = _build_batches(turns)
 
-    # Cleanup-stage local semaphore — nested inside the GeminiClient's own semaphore
+    # Cleanup-stage local semaphore — nested inside the OpenAIClient's own semaphore
     semaphore = asyncio.Semaphore(CLEANUP_BATCH_CONCURRENCY)
 
     # Coroutines for each batch — NOTE: return_exceptions=False is deliberate.
@@ -389,7 +389,7 @@ async def normalize_batches(
         _process_batch(
             batch=batch,
             batch_id=str(uuid.uuid4()),
-            gemini_client=gemini_client,
+            ai_client=ai_client,
             system_prompt=system_prompt,
             semaphore=semaphore,
         )

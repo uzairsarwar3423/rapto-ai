@@ -25,7 +25,7 @@ from src.config.settings import Settings, get_settings
 from src.db.mongo_client import MongoClientWrapper
 from src.db.redis_client import RedisClientWrapper
 from src.models.exceptions import InternalAuthError
-from src.services.gemini_client import GeminiClient
+from src.services.openai_client import OpenAIClient
 
 
 # ─── Settings Provider ────────────────────────────────────────────────────────
@@ -46,9 +46,9 @@ SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
 # ─── Client Providers ─────────────────────────────────────────────────────────
 
 
-def get_gemini_client(request: Request) -> GeminiClient:
-    """Returns the process-singleton GeminiClient from app.state."""
-    return request.app.state.gemini_client  # type: ignore[no-any-return]
+def get_ai_client(request: Request) -> OpenAIClient:
+    """Returns the process-singleton OpenAIClient from app.state."""
+    return request.app.state.ai_client  # type: ignore[no-any-return]
 
 
 def get_mongo_client(request: Request) -> MongoClientWrapper:
@@ -61,7 +61,7 @@ def get_redis_client(request: Request) -> RedisClientWrapper:
     return request.app.state.redis_client  # type: ignore[no-any-return]
 
 
-GeminiDep = Annotated[GeminiClient, Depends(get_gemini_client)]
+AIDep = Annotated[OpenAIClient, Depends(get_ai_client)]
 MongoDep = Annotated[MongoClientWrapper, Depends(get_mongo_client)]
 RedisDep = Annotated[RedisClientWrapper, Depends(get_redis_client)]
 

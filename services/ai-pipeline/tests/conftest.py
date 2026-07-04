@@ -4,7 +4,7 @@ tests/conftest.py
 Shared pytest fixtures for all test modules.
 
 FIXTURE PHILOSOPHY:
-- All external dependencies are mocked — tests never touch real Gemini/Mongo/Redis.
+- All external dependencies are mocked — tests never touch real OpenAI/Mongo/Redis.
 - The app fixture uses dependency_overrides to inject test-safe singletons.
 - httpx.AsyncClient is the recommended FastAPI test transport (ASGI, no real HTTP).
 - Fixtures are designed to be composable — lower-level fixtures can be used
@@ -23,7 +23,7 @@ from httpx import ASGITransport, AsyncClient
 
 # ─── Test Settings ────────────────────────────────────────────────────────────
 
-TEST_GEMINI_API_KEY = "test-gemini-api-key-000000000000000"
+TEST_OPENAI_API_KEY = "test-openai-api-key-000000000000000"
 TEST_API_SHARED_SECRET = "test-shared-secret-for-internal-auth-32chars"
 TEST_MONGODB_URL = "mongodb://localhost:27017"
 TEST_REDIS_URL = "redis://localhost:6379"
@@ -32,7 +32,7 @@ TEST_REDIS_URL = "redis://localhost:6379"
 @pytest.fixture(scope="session")
 def test_env_vars(monkeypatch_session: pytest.MonkeyPatch) -> None:
     """Session-scoped env vars for all tests."""
-    monkeypatch_session.setenv("GEMINI_API_KEY", TEST_GEMINI_API_KEY)
+    monkeypatch_session.setenv("OPENAI_API_KEY", TEST_OPENAI_API_KEY)
     monkeypatch_session.setenv("API_SHARED_SECRET", TEST_API_SHARED_SECRET)
     monkeypatch_session.setenv("MONGODB_URL", TEST_MONGODB_URL)
     monkeypatch_session.setenv("REDIS_URL", TEST_REDIS_URL)
@@ -49,17 +49,17 @@ def test_settings():
     get_settings.cache_clear()
 
     return Settings(
-        gemini_api_key=TEST_GEMINI_API_KEY,
+        openai_api_key=TEST_OPENAI_API_KEY,
         api_shared_secret=TEST_API_SHARED_SECRET,
         mongodb_url=TEST_MONGODB_URL,
         redis_url=TEST_REDIS_URL,
         environment="development",
-        gemini_flash_model_name="gemini-2.0-flash",
-        gemini_flash_lite_model_name="gemini-2.0-flash-lite",
-        gemini_embedding_model_name="text-embedding-004",
-        max_gemini_retries=2,
-        gemini_timeout_seconds=5.0,
-        gemini_max_concurrent_calls=5,
+        openai_gpt41_mini_model_name="gpt-4.1-mini",
+        openai_gpt41_model_name="gpt-4.1",
+        openai_embedding_model_name="text-embedding-3-small",
+        openai_max_retries=2,
+        openai_timeout_seconds=5.0,
+        openai_max_concurrent_calls=5,
     )
 
 
@@ -86,12 +86,12 @@ def mock_redis_client():
     return mock
 
 
-# ─── Mock Gemini Client ───────────────────────────────────────────────────────
+# ─── Mock OpenAI Client ───────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def mock_gemini_client():
-    """Mock GeminiClient — all methods return success by default."""
+def mock_openai_client():
+    """Mock OpenAIClient — all methods return success by default."""
     mock = MagicMock()
     mock.generate_structured = AsyncMock()
     mock.generate_text = AsyncMock()
@@ -107,12 +107,12 @@ async def app(
     test_settings,
     mock_mongo_client,
     mock_redis_client,
-    mock_gemini_client,
+    mock_openai_client,
 ):
     """FastAPI test app with mocked singletons on app.state.
 
     Lifespan is bypassed by setting up state directly — this prevents
-    real network calls to Mongo/Redis/Gemini in tests.
+    real network calls to Mongo/Redis/OpenAI in tests.
     """
     from src.api.main import create_app
     from src.api.deps import get_settings_dep
@@ -120,11 +120,11 @@ async def app(
     # Patch lifespan to avoid real connections
     with patch("src.api.main.MongoClientWrapper") as mock_mongo_cls, \
          patch("src.api.main.RedisClientWrapper") as mock_redis_cls, \
-         patch("src.api.main.GeminiClient") as mock_gemini_cls:
+         patch("src.api.main.OpenAIClient") as mock_openai_cls:
 
         mock_mongo_cls.return_value = mock_mongo_client
         mock_redis_cls.return_value = mock_redis_client
-        mock_gemini_cls.return_value = mock_gemini_client
+        mock_openai_cls.return_value = mock_openai_client
 
         application = create_app(settings_override=test_settings)
 
@@ -134,7 +134,7 @@ async def app(
         # Manually set app.state (lifespan is mocked)
         application.state.mongo_client = mock_mongo_client
         application.state.redis_client = mock_redis_client
-        application.state.gemini_client = mock_gemini_client
+        application.state.ai_client = mock_openai_client
 
         yield application
 

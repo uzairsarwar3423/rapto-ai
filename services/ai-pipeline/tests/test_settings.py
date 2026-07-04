@@ -26,7 +26,7 @@ _CLEAR_VARS = [
 class TestSettingsValidation:
     """Settings validation — fail-fast contract."""
 
-    def test_missing_gemini_api_key_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_missing_openai_api_key_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Missing required GEMINI_API_KEY must raise at instantiation."""
         from pydantic import ValidationError
         from src.config.settings import Settings
@@ -36,14 +36,14 @@ class TestSettingsValidation:
 
         with pytest.raises(ValidationError) as exc_info:
             Settings(
-                # Missing gemini_api_key
+                # Missing openai_api_key
                 _env_file=None,  # Don't read .env file
                 api_shared_secret="test-shared-secret-for-internal-auth-32ch",
                 mongodb_url="mongodb://localhost:27017",
                 redis_url="redis://localhost:6379",
             )
 
-        assert "gemini_api_key" in str(exc_info.value).lower()
+        assert "openai_api_key" in str(exc_info.value).lower()
 
     def test_missing_api_shared_secret_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Missing required API_SHARED_SECRET must raise at instantiation."""
@@ -56,7 +56,7 @@ class TestSettingsValidation:
         with pytest.raises(ValidationError) as exc_info:
             Settings(
                 _env_file=None,
-                gemini_api_key="test-key",
+                openai_api_key="test-key",
                 # Missing api_shared_secret
                 mongodb_url="mongodb://localhost:27017",
                 redis_url="redis://localhost:6379",
@@ -64,12 +64,12 @@ class TestSettingsValidation:
 
         assert "api_shared_secret" in str(exc_info.value).lower()
 
-    def test_gemini_api_key_not_in_repr(self) -> None:
+    def test_openai_api_key_not_in_repr(self) -> None:
         """SecretStr: GEMINI_API_KEY must never appear in repr() or str()."""
         from src.config.settings import Settings
 
         settings = Settings(
-            gemini_api_key="my-super-secret-key-never-log-this",
+            openai_api_key="my-super-secret-key-never-log-this",
             api_shared_secret="test-shared-secret-for-internal-auth-32ch",
             mongodb_url="mongodb://localhost:27017",
             redis_url="redis://localhost:6379",
@@ -89,7 +89,7 @@ class TestSettingsValidation:
 
         secret_value = "super-secret-internal-key-do-not-log"
         settings = Settings(
-            gemini_api_key="test-api-key",
+            openai_api_key="test-api-key",
             api_shared_secret=secret_value,
             mongodb_url="mongodb://localhost:27017",
             redis_url="redis://localhost:6379",
@@ -105,15 +105,15 @@ class TestSettingsValidation:
 
         with pytest.raises(ValidationError) as exc_info:
             Settings(
-                gemini_api_key="test-key",
+                openai_api_key="test-key",
                 api_shared_secret="test-shared-secret-for-internal-auth-32ch",
                 mongodb_url="mongodb://localhost:27017",
                 redis_url="redis://localhost:6379",
-                gemini_flash_model_name="gemini-2.0-flash",  # Same!
-                gemini_flash_lite_model_name="gemini-2.0-flash",  # Same!
+                openai_gpt41_model_name="same-name",  # Same!
+                openai_gpt41_mini_model_name="same-name",  # Same!
             )
 
-        assert "flash" in str(exc_info.value).lower() or "distinct" in str(exc_info.value).lower()
+        assert "different model names" in str(exc_info.value).lower() or "distinct" in str(exc_info.value).lower()
 
     def test_invalid_pool_sizes_raise(self) -> None:
         """Pool min > pool max must raise."""
@@ -122,7 +122,7 @@ class TestSettingsValidation:
 
         with pytest.raises(ValidationError):
             Settings(
-                gemini_api_key="test-key",
+                openai_api_key="test-key",
                 api_shared_secret="test-shared-secret-for-internal-auth-32ch",
                 mongodb_url="mongodb://localhost:27017",
                 redis_url="redis://localhost:6379",
@@ -137,7 +137,7 @@ class TestSettingsValidation:
 
         with pytest.raises(ValidationError) as exc_info:
             Settings(
-                gemini_api_key="real-api-key-not-placeholder",
+                openai_api_key="real-api-key-not-placeholder",
                 api_shared_secret="changeme",  # Known-bad placeholder
                 mongodb_url="mongodb://localhost:27017",
                 redis_url="redis://localhost:6379",
@@ -153,7 +153,7 @@ class TestSettingsValidation:
 
         with pytest.raises(ValidationError):
             Settings(
-                gemini_api_key="real-api-key-not-placeholder",
+                openai_api_key="real-api-key-not-placeholder",
                 api_shared_secret="tooshort",  # < 32 chars
                 mongodb_url="mongodb://localhost:27017",
                 redis_url="redis://localhost:6379",
@@ -166,7 +166,7 @@ class TestSettingsValidation:
 
         # Should not raise in development
         settings = Settings(
-            gemini_api_key="test-key",
+            openai_api_key="test-key",
             api_shared_secret="short",
             mongodb_url="mongodb://localhost:27017",
             redis_url="redis://localhost:6379",

@@ -1,7 +1,7 @@
 # prompt_version: cleanup-v1.0
 # ─────────────────────────────────────────────────────────────────────────────
 # Vocaply Transcript Cleanup System Prompt
-# Stage 2: Grammar Normalization via Gemini-on-OpenRouter
+# Stage 2: Grammar Normalization via OpenAI
 #
 # MACHINE-READABLE HEADER (first line above): parsed by grammar_normalizer.py
 # and stored in CleanupMetadata.prompt_version. Do NOT remove or reformat it.

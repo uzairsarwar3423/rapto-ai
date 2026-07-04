@@ -17,9 +17,9 @@ from httpx import ASGITransport, AsyncClient
 
 from src.models.exceptions import (
     AIPipelineError,
-    GeminiNonRetryableError,
-    GeminiRateLimitExhaustedError,
-    GeminiTimeoutError,
+    AINonRetryableError,
+    AIRateLimitExhaustedError,
+    AITimeoutError,
     InternalAuthError,
 )
 
@@ -130,7 +130,7 @@ class TestErrorHandler:
 
         @mini_app.get("/rate-limited")
         async def rate_limited_route():
-            raise GeminiRateLimitExhaustedError(
+            raise AIRateLimitExhaustedError(
                 "Rate limit hit",
                 task_type=None,
                 model_tier=None,
@@ -143,6 +143,6 @@ class TestErrorHandler:
         ) as mini_client:
             response = await mini_client.get("/rate-limited")
 
-        assert response.status_code == 429  # GeminiRateLimitExhaustedError.http_status
+        assert response.status_code == 429  # AIRateLimitExhaustedError.http_status
         body = response.json()
-        assert body["error_code"] == "GEMINI_RATE_LIMIT_EXHAUSTED"
+        assert body["error_code"] == "AI_RATE_LIMIT_EXHAUSTED"

@@ -1,0 +1,32 @@
+[
+  {
+    "expression": "ASAP",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "AMBIGUOUS"
+  },
+  {
+    "expression": "soon",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "AMBIGUOUS"
+  },
+  {
+    "expression": "end of sprint",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "SPRINT_RELATIVE"
+  },
+  {
+    "expression": "the login page",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "UNRESOLVABLE"
+  },
+  {
+    "expression": "sometime next month",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "UNRESOLVABLE" 
+  }
+]

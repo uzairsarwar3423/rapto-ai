@@ -26,3 +26,15 @@ httpx>=0.28.0,<1.0.0
 
 # ─── NLP / Tokenization ───────────────────────────────────────────────────────
 tiktoken>=0.8.0
+
+# ─── Date Parsing ─────────────────────────────────────────────────────────────
+python-dateutil>=2.9.0,<3.0.0
+pytz>=2024.1
+
+# ─── ML / Similarity Engine (Day 52) ──────────────────────────────────────────
+# scikit-learn: TfidfVectorizer + cosine_similarity for the pairwise similarity engine.
+# TfidfVectorizer API has been stable since 0.x; pinned to <2.0.0 for safety.
+scikit-learn>=1.4.0,<2.0.0
+# numpy: required by scikit-learn for all numerical operations.
+# Also used directly for IEEE-754 float precision guarantees.
+numpy>=1.24.0,<3.0.0

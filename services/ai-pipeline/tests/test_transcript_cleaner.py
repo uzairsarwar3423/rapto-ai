@@ -3,7 +3,7 @@ tests/test_transcript_cleaner.py
 ──────────────────────────────────
 Integration tests for the orchestrator: transcript_cleaner.clean_transcript().
 
-Stage 2 (Gemini) is mocked — this tests the orchestration logic:
+Stage 2 (OpenAI) is mocked — this tests the orchestration logic:
   - Correct Stage 1 → 1.5 → 2 sequencing
   - Full turn coverage when batches fail (fallback to filler-stripped)
   - CleanupMetadata field correctness
@@ -25,7 +25,7 @@ from src.models.cleanup_models import (
     ParticipantInfo,
     RawTranscriptTurn,
 )
-from src.models.common import CostRecord, GeminiCallResult, ModelTier, TaskType
+from src.models.common import CostRecord, AICallResult, ModelTier, TaskType
 from src.services.cleanup.speaker_formatter import UnsortedTranscriptError
 from src.services.cleanup.transcript_cleaner import clean_transcript
 
@@ -109,7 +109,7 @@ async def test_clean_transcript_full_flow_returns_cleanup_result() -> None:
             participant_map=participant_map,
             team_id="team-001",
             meeting_id="meeting-001",
-            gemini_client=client,
+            ai_client=client,
         )
 
     assert result.meeting_id == "meeting-001"
@@ -143,7 +143,7 @@ async def test_clean_transcript_stage1_reduces_turn_count() -> None:
             participant_map=participant_map,
             team_id="t",
             meeting_id="m",
-            gemini_client=MagicMock(),
+            ai_client=MagicMock(),
         )
 
     assert result.metadata.turns_after_merge < result.metadata.turns_before_merge
@@ -175,7 +175,7 @@ async def test_full_turn_coverage_when_batch_fails() -> None:
             participant_map=participant_map,
             team_id="t",
             meeting_id="m",
-            gemini_client=MagicMock(),
+            ai_client=MagicMock(),
         )
 
     # All turns must be present despite the batch failure
@@ -203,7 +203,7 @@ async def test_unsorted_transcript_error_propagates() -> None:
             participant_map={},
             team_id="t",
             meeting_id="m",
-            gemini_client=MagicMock(),
+            ai_client=MagicMock(),
         )
 
 
@@ -223,7 +223,7 @@ async def test_empty_transcript_returns_empty_result() -> None:
             participant_map={},
             team_id="t",
             meeting_id="m",
-            gemini_client=MagicMock(),
+            ai_client=MagicMock(),
         )
 
     assert result.cleaned_transcript == []
@@ -270,7 +270,7 @@ async def test_metadata_batches_failed_count_correct() -> None:
             participant_map=participant_map,
             team_id="t",
             meeting_id="m",
-            gemini_client=MagicMock(),
+            ai_client=MagicMock(),
         )
 
     assert result.metadata.batches_total == 2

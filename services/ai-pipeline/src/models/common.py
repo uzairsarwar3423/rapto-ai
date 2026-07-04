@@ -8,7 +8,7 @@ PRINCIPAL DESIGN NOTE — Two key choices made here:
 1. TaskType covers ALL Phase-4 task categories up front (not just today's)
    so model_routing.py never needs structural changes as new features land.
 
-2. GeminiCallResult is Generic[T] — callers get full static type safety
+2. AICallResult is Generic[T] — callers get full static type safety
    (mypy will catch field-access errors at lint time, not runtime).
 """
 
@@ -37,26 +37,27 @@ class TaskType(str, Enum):
     CHAT_ANSWER = "chat_answer"
     EMBEDDING = "embedding"
     RERANK = "rerank"
+    DATE_PARSE = "date_parse"
 
 
 class ModelTier(str, Enum):
     """Logical model tiers — callers reason about tiers, not model names.
 
-    EMBEDDING is its own tier because embedding calls use a fundamentally
+    EMBED is its own tier because embedding calls use a fundamentally
     different SDK code path (not a text-generation call) and are never
-    interchangeable with FLASH/FLASH_LITE tiers.
+    interchangeable with FULL/MINI tiers.
     """
 
-    FLASH_LITE = "flash_lite"
-    FLASH = "flash"
-    EMBEDDING = "embedding"
+    MINI = "mini"
+    FULL = "full"
+    EMBED = "embed"
 
 
 # ─── Cost / Usage ─────────────────────────────────────────────────────────────
 
 
 class CostRecord(BaseModel):
-    """Token usage and estimated cost for one Gemini call.
+    """Token usage and estimated cost for one AI call.
 
     estimated_cost_usd is stored per-call in structured logs. Day 60's
     cost-eval script aggregates these fields — nothing else needs to be
@@ -67,7 +68,7 @@ class CostRecord(BaseModel):
     output_tokens: int = Field(..., ge=0)
     model_tier: ModelTier
     model_name: str = Field(..., min_length=1)
-    estimated_cost_usd: float = Field(..., ge=0.0)
+    estimated_cost_usd: float = Field(..., ge=0.0, description="Estimated from pricing table; no longer a real billed figure from provider response")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -86,11 +87,11 @@ class CostRecord(BaseModel):
 T = TypeVar("T")
 
 
-class GeminiCallResult(BaseModel, Generic[T]):
-    """Typed result envelope for every Gemini call — success or decorated failure.
+class AICallResult(BaseModel, Generic[T]):
+    """Typed result envelope for every AI call — success or decorated failure.
 
-    Generic over T: gemini_client.generate_structured(..., response_schema=MyModel)
-    returns GeminiCallResult[MyModel], giving full mypy type-safety to callers.
+    Generic over T: openai_client.generate_structured(..., response_schema=MyModel)
+    returns AICallResult[MyModel], giving full mypy type-safety to callers.
 
     Every field here is a first-class citizen, not a TODO — cost and latency
     are captured on call #1 because retroactively reconstructing per-call

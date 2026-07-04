@@ -59,34 +59,25 @@ class Settings(BaseSettings):
     # ── Logging ───────────────────────────────────────────────────────────────
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
-    # ── OpenRouter API ────────────────────────────────────────────────────────
-    # OpenRouter provides an OpenAI-compatible endpoint that proxies Gemini,
-    # Claude, GPT, etc. through a single API key.
+    # ── OpenAI API ────────────────────────────────────────────────────────
+    # OpenAI API key and optional Organization ID
     # SecretStr: never appears in repr(), logs, or debug output
-    openrouter_api_key: SecretStr
-    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openai_api_key: SecretStr
+    openai_org_id: str | None = None
 
-    # Site info sent to OpenRouter — shown in their dashboard for attribution
-    # and helps with their rate-limit priority queue.
-    openrouter_site_url: str = "https://vocaply.com"
-    openrouter_site_name: str = "Vocaply"
-
-    # Model names — OpenRouter format: "provider/model-name"
+    # Model names
     # A model swap is an env var change, not a code deploy.
-    gemini_flash_model_name: str = "google/gemini-2.0-flash"
-    gemini_flash_lite_model_name: str = "google/gemini-2.0-flash-lite"
-    gemini_embedding_model_name: str = "google/text-embedding-004"
+    openai_gpt41_mini_model_name: str = "gpt-4.1-mini"
+    openai_gpt41_model_name: str = "gpt-4.1"
+    openai_embedding_model_name: str = "text-embedding-3-small"
 
     # Resilience knobs
-    max_gemini_retries: int = Field(default=3, ge=1, le=10)
-    gemini_timeout_seconds: float = Field(default=30.0, gt=0)
+    openai_max_retries: int = Field(default=3, ge=1, le=10)
+    openai_timeout_seconds: float = Field(default=30.0, gt=0)
 
     # Concurrency: process-local semaphore bound.
-    # NOTE: global concurrency = gemini_max_concurrent_calls × replica_count.
-    # At high replica counts, consider replacing with a Redis-backed token bucket.
-    # This seam (the semaphore abstraction) is placed here so a distributed
-    # limiter can slot in without touching gemini_client.py.
-    gemini_max_concurrent_calls: int = Field(default=10, ge=1)
+    # NOTE: global concurrency = openai_max_concurrent_calls × replica_count.
+    openai_max_concurrent_calls: int = Field(default=10, ge=1)
 
     # ── MongoDB ───────────────────────────────────────────────────────────────
     mongodb_url: str
@@ -110,10 +101,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _validate_model_names_are_distinct(self) -> "Settings":
-        """Catch copy-pasted env vars: flash and flash-lite must differ."""
-        if self.gemini_flash_model_name == self.gemini_flash_lite_model_name:
+        """Catch copy-pasted env vars: mini and full models must differ."""
+        if self.openai_gpt41_model_name == self.openai_gpt41_mini_model_name:
             raise ValueError(
-                "GEMINI_FLASH_MODEL_NAME and GEMINI_FLASH_LITE_MODEL_NAME "
+                "OPENAI_GPT41_MODEL_NAME and OPENAI_GPT41_MINI_MODEL_NAME "
                 "must be different model names. Check for copy-paste error in .env"
             )
         return self
@@ -140,10 +131,10 @@ class Settings(BaseSettings):
                     "(minimum 32 characters, not a known placeholder)"
                 )
 
-            or_key_val = self.openrouter_api_key.get_secret_value().lower()
-            if or_key_val in known_bad or or_key_val.startswith("your-") or or_key_val.startswith("sk-or-your"):
+            or_key_val = self.openai_api_key.get_secret_value().lower()
+            if or_key_val in known_bad or or_key_val.startswith("your-") or or_key_val.startswith("sk-proj"):
                 raise ValueError(
-                    "OPENROUTER_API_KEY in production must be a real API key, not a placeholder"
+                    "OPENAI_API_KEY in production must be a real API key, not a placeholder"
                 )
         return self
 

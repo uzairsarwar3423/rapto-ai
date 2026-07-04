@@ -48,7 +48,7 @@ def app(mock_settings: Settings):
     # in unit tests, so we patch the lifespan.
     app = create_app(settings_override=mock_settings)
     app.router.lifespan_context = MagicMock()
-    app.state.gemini_client = MagicMock()
+    app.state.ai_client = MagicMock()
     app.dependency_overrides[get_settings_dep] = lambda: mock_settings
     return app
 
@@ -80,7 +80,7 @@ def auth_headers(mock_settings: Settings) -> dict[str, str]:
 
 def test_cleanup_endpoint_success(client: TestClient, valid_payload: dict, auth_headers: dict[str, str]) -> None:
     """Valid request → 200 OK, matches CleanupResult shape."""
-    # Mock the orchestrator completely to avoid Gemini/Mongo/Redis logic
+    # Mock the orchestrator completely to avoid OpenAI/Mongo/Redis logic
     mock_result = {
         "meeting_id": "meeting-001",
         "team_id": "team-001",
@@ -94,10 +94,10 @@ def test_cleanup_endpoint_success(client: TestClient, valid_payload: dict, auth_
             "batches_total": 1,
             "batches_failed": 0,
             "processing_time_ms": 100.5,
-            "gemini_cost": {
+            "ai_cost": {
                 "input_tokens": 100,
                 "output_tokens": 50,
-                "model_tier": "flash_lite",
+                "model_tier": "mini",
                 "model_name": "test",
                 "estimated_cost_usd": 0.001
             }
@@ -168,9 +168,9 @@ def test_malformed_payload_returns_422(client: TestClient, auth_headers: dict[st
     assert response.status_code == 422
     data = response.json()
     # FastAPI default 422 format
-    assert "detail" in data
+    assert "error_code" in data
     # Must specify the field that failed validation
-    assert any(err["loc"] == ["body", "raw_transcript"] for err in data["detail"])
+    assert any(err["loc"] == ["body", "raw_transcript"] for err in data["details"]["errors"])
 
 
 def test_request_id_consistency(client: TestClient, valid_payload: dict, auth_headers: dict[str, str]) -> None:
@@ -183,8 +183,8 @@ def test_request_id_consistency(client: TestClient, valid_payload: dict, auth_he
             "metadata": {
                 "model_version": "test", "prompt_version": "v1", "total_fillers_removed": 0,
                 "turns_before_merge": 0, "turns_after_merge": 0, "batches_total": 0, "batches_failed": 0,
-                "processing_time_ms": 0.0, "gemini_cost": {
-                    "input_tokens": 0, "output_tokens": 0, "model_tier": "flash_lite",
+                "processing_time_ms": 0.0, "ai_cost": {
+                    "input_tokens": 0, "output_tokens": 0, "model_tier": "mini",
                     "model_name": "test", "estimated_cost_usd": 0.0
                 }
             }

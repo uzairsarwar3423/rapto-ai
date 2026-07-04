@@ -6,7 +6,7 @@ structlog configuration for the AI pipeline service.
 PRINCIPAL DESIGN DECISIONS:
 
 1. request_id ContextVar: any log call anywhere in the call stack —
-   deep inside gemini_client.py, with zero explicit parameter-passing —
+   deep inside openai_client.py, with zero explicit parameter-passing —
    automatically includes the current request's ID. This is what makes
    a single meeting's full processing journey traceable end-to-end,
    the same observability bar already set by the Node.js side.

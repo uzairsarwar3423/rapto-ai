@@ -6,7 +6,7 @@ Task-type → model-tier routing table and pricing constants.
 PRINCIPAL DESIGN DECISIONS:
 
 1. Task-type-routed, not thin-wrapper: callers say "I'm doing EXTRACTION",
-   never "use gemini-2.0-flash-lite". This is a Strategy/routing-table pattern
+   never "use gpt-4.1-mini". This is a Strategy/routing-table pattern
    that decouples *what the caller wants* from *which model does it best/cheapest*.
    Swapping to a new model = one-line edit here, not a nine-file grep.
 
@@ -42,13 +42,18 @@ from src.models.common import ModelTier, TaskType
 #   RERANK:             Flash-Lite — lightweight pairwise comparison
 
 TASK_MODEL_MAP: dict[TaskType, ModelTier] = {
-    TaskType.TRANSCRIPT_CLEANUP: ModelTier.FLASH_LITE,
-    TaskType.EXTRACTION: ModelTier.FLASH_LITE,
-    TaskType.RESOLUTION_CHECK: ModelTier.FLASH_LITE,
-    TaskType.SUMMARY: ModelTier.FLASH,
-    TaskType.CHAT_ANSWER: ModelTier.FLASH,
-    TaskType.EMBEDDING: ModelTier.EMBEDDING,
-    TaskType.RERANK: ModelTier.FLASH_LITE,
+    TaskType.TRANSCRIPT_CLEANUP: ModelTier.MINI,
+    TaskType.EXTRACTION: ModelTier.MINI,
+    TaskType.RESOLUTION_CHECK: ModelTier.MINI,
+    TaskType.SUMMARY: ModelTier.FULL,
+    TaskType.CHAT_ANSWER: ModelTier.FULL,
+    TaskType.EMBEDDING: ModelTier.EMBED,
+    TaskType.RERANK: ModelTier.MINI,
+    TaskType.DATE_PARSE: ModelTier.MINI,
+}
+
+MODEL_TASK_TEMPERATURE_OVERRIDES: dict[TaskType, float] = {
+    TaskType.DATE_PARSE: 0.0,
 }
 
 
@@ -66,20 +71,20 @@ class PricingRates:
 
 
 PRICING_TABLE: dict[ModelTier, PricingRates] = {
-    # gemini-2.0-flash-lite: cheapest text generation tier
-    ModelTier.FLASH_LITE: PricingRates(
-        input_per_million_usd=0.075,
-        output_per_million_usd=0.30,
+    # gpt-4.1-mini: cheapest text generation tier
+    ModelTier.MINI: PricingRates(
+        input_per_million_usd=0.40,
+        output_per_million_usd=1.60,
     ),
-    # gemini-2.0-flash: standard quality text generation
-    ModelTier.FLASH: PricingRates(
-        input_per_million_usd=0.075,
-        output_per_million_usd=0.30,
+    # gpt-4.1: standard quality text generation
+    ModelTier.FULL: PricingRates(
+        input_per_million_usd=2.50,
+        output_per_million_usd=10.00,
     ),
-    # text-embedding-004: embedding generation
+    # text-embedding-3-small: embedding generation
     # NOTE: Embedding API pricing differs significantly — confirm at implementation
-    ModelTier.EMBEDDING: PricingRates(
-        input_per_million_usd=0.001,
+    ModelTier.EMBED: PricingRates(
+        input_per_million_usd=0.02,
         output_per_million_usd=0.0,  # Embeddings have no "output tokens" cost
     ),
 }
@@ -103,7 +108,7 @@ def resolve_model(
         settings: Settings instance; defaults to the process singleton.
 
     Returns:
-        (model_name, model_tier) — model_name is the actual Gemini model
+        (model_name, model_tier) — model_name is the actual OpenAI model
         identifier string to pass to the SDK.
     """
     if settings is None:
@@ -114,9 +119,9 @@ def resolve_model(
     # Resolved from settings at call time — not at import time —
     # so a test can override settings without needing a module reload.
     tier_to_name: dict[ModelTier, str] = {
-        ModelTier.FLASH_LITE: settings.gemini_flash_lite_model_name,
-        ModelTier.FLASH: settings.gemini_flash_model_name,
-        ModelTier.EMBEDDING: settings.gemini_embedding_model_name,
+        ModelTier.MINI: settings.openai_gpt41_mini_model_name,
+        ModelTier.FULL: settings.openai_gpt41_model_name,
+        ModelTier.EMBED: settings.openai_embedding_model_name,
     }
 
     model_name = tier_to_name[tier]
@@ -128,7 +133,7 @@ def compute_cost(
     output_tokens: int,
     model_tier: ModelTier,
 ) -> float:
-    """Compute estimated USD cost for a single Gemini call.
+    """Compute estimated USD cost for a single AI call.
 
     Pure function — no I/O, easily unit-testable with hand-calculated
     expected values (per §7 test criteria).

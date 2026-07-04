@@ -1,7 +1,9 @@
 import re
 from typing import Tuple, Optional
+from datetime import datetime
 from pydantic import BaseModel
 from src.models.extraction_models import ExtractedCommitment
+from src.models.date_models import DateParseResult
 
 class ConfidenceCalibrationFlag(BaseModel):
     is_suspicious: bool
@@ -13,6 +15,8 @@ class ParsedCommitment(ExtractedCommitment):
     normalized_text: str
     dedup_key: str
     calibration_flag: ConfidenceCalibrationFlag
+    due_date_utc: Optional[datetime] = None
+    due_date_resolution: Optional['DateParseResult'] = None
 
 STOPWORDS = {
     "i", "will", "have", "the", "a", "an", "by", "to", "it", "my", "is", "am",

@@ -1,0 +1,206 @@
+{
+  "_schema_version": "1.0",
+  "_authored": "Day 52 — Similarity Engine validation fixture",
+  "_purpose": "Ground-truth dataset for validating the similarity engine AND the Day 53 resolver. Contains pre-computed normalized texts so the fixture can be used independently of the normalization pipeline.",
+
+  "fixture_id": "resolver_01",
+  "description": "Ahmed Hassan — 5 open historical commitments, 3 new statements from current standup. Mix of clear matches, clear non-matches, and one boundary case.",
+  "team_id": "team_clx02xyz",
+  "meeting_id": "mtg_current_20240715",
+  "meeting_date": "2024-07-15T10:00:00Z",
+
+  "_owner_context": "Ahmed Hassan has been in 4 previous standups. He has 5 open commitments tracked. Today's standup produced 3 new commitment statements that need to be resolved against the historical ones.",
+
+  "new_commitments": [
+    {
+      "id": "new_01",
+      "text": "I'll finish the login feature today",
+      "normalized_text": "finish login featur",
+      "_normalization_note": "'feature' stems to 'featur' (len>4, ends 's'? No. len>3, ends 's'? No. len>4, ends 'ed'? No. len>5, ends 'ing'? No. stays 'feature'. Actually 'feature' -> f-e-a-t-u-r-e, 7 chars, ends in 'e', no suffix rule matches so stays 'feature'). Let's be accurate: normalize_text('I'll finish the login feature today') → lowercase → remove punct → 'ill finish the login feature today' → remove stopwords (ill, the) → ['finish','login','feature','today'] → stemming: finish(6>5,ends ing? no), login(5, ends ed? no, ends s? no), feature(7, ends ing? no, ends ed? no, ends s? no), today(5, ends ing? no, ends ed? no, ends s? no) → ['finish','login','feature','today'] → first 5 → 'finish login feature today'",
+      "normalized_text_corrected": "finish login feature today",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01"
+    },
+    {
+      "id": "new_02",
+      "text": "I need to review the PR for the payment service",
+      "normalized_text": "review pr payment servic",
+      "_normalization_note": "normalize_text → lowercase → 'i need to review the pr for the payment service' → remove punct → same → tokenize → ['i','need','to','review','the','pr','for','the','payment','service'] → remove stopwords (i, to, the, for, the) → ['need','review','pr','payment','service'] → stemming: need→need, review→review, pr→pr, payment→payment, service→service(ends 'e' not in rules) → first 5 → 'need review pr payment service'",
+      "normalized_text_corrected": "need review pr payment service",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01"
+    },
+    {
+      "id": "new_03",
+      "text": "I'll set up the CI/CD pipeline for staging",
+      "normalized_text": "set cicd pipeline staging",
+      "_normalization_note": "→ 'ill set up the cicd pipeline for staging' → remove stopwords (ill, up, the, for) → ['set','cicd','pipeline','staging'] → no stemming → first 5 → 'set cicd pipeline staging'",
+      "normalized_text_corrected": "set cicd pipeline staging",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01"
+    }
+  ],
+
+  "historical_commitments": [
+    {
+      "id": "hist_01",
+      "text": "I'll finish the login feature by Thursday",
+      "normalized_text": "finish login feature thursday",
+      "_normalization_note": "→ 'ill finish the login feature by thursday' → remove stopwords (ill, the, by) → ['finish','login','feature','thursday'] → no stemming applies → first 5 → 'finish login feature thursday'",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01",
+      "status": "PENDING",
+      "meeting_id": "mtg_prev_20240708",
+      "meeting_date": "2024-07-08T10:00:00Z"
+    },
+    {
+      "id": "hist_02",
+      "text": "I'll review the PR for the payment service by end of sprint",
+      "normalized_text": "review pr payment service sprint",
+      "_normalization_note": "→ 'ill review the pr for the payment service by end of sprint' → remove stopwords (ill, the, for, the, by, of) → ['review','pr','payment','service','end','sprint'] → no stemming → first 5 → 'review pr payment service end'",
+      "normalized_text_corrected": "review pr payment service end",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01",
+      "status": "PENDING",
+      "meeting_id": "mtg_prev_20240708",
+      "meeting_date": "2024-07-08T10:00:00Z"
+    },
+    {
+      "id": "hist_03",
+      "text": "Write unit tests for the authentication module",
+      "normalized_text": "write unit test authentication modul",
+      "_normalization_note": "→ 'write unit tests for the authentication module' → remove stopwords (for, the) → ['write','unit','tests','authentication','module'] → stemming: tests(ends s, len>3, not ss) → test, module(ends 'e' not in rules → 'module') → first 5 → 'write unit test authentication module'",
+      "normalized_text_corrected": "write unit test authentication module",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01",
+      "status": "PENDING",
+      "meeting_id": "mtg_prev_20240701",
+      "meeting_date": "2024-07-01T10:00:00Z"
+    },
+    {
+      "id": "hist_04",
+      "text": "Schedule a demo call with the client",
+      "normalized_text": "schedul demo call client",
+      "_normalization_note": "→ 'schedule a demo call with the client' → remove stopwords (a, with, the) → ['schedule','demo','call','client'] → no stemming rules apply → first 5 → 'schedule demo call client'",
+      "normalized_text_corrected": "schedule demo call client",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01",
+      "status": "PENDING",
+      "meeting_id": "mtg_prev_20240701",
+      "meeting_date": "2024-07-01T10:00:00Z"
+    },
+    {
+      "id": "hist_05",
+      "text": "Set up the CI/CD pipeline for the staging environment",
+      "normalized_text": "set cicd pipeline staging environment",
+      "_normalization_note": "→ 'set up the cicd pipeline for the staging environment' → remove stopwords (up, the, for, the) → ['set','cicd','pipeline','staging','environment'] → no stemming → first 5 → 'set cicd pipeline staging environment'",
+      "normalized_text_corrected": "set cicd pipeline staging environment",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01",
+      "status": "PENDING",
+      "meeting_id": "mtg_prev_20240624",
+      "meeting_date": "2024-06-24T10:00:00Z"
+    }
+  ],
+
+  "expected_matches": [
+    {
+      "new_id": "new_01",
+      "historical_id": "hist_01",
+      "_reason": "Both normalize to 'finish login feature [today/thursday]' — 3/4 token overlap. High Jaccard and cosine. Core tokens (finish, login, feature) are identical.",
+      "expected_similarity_min": 0.70,
+      "should_match": true
+    },
+    {
+      "new_id": "new_02",
+      "historical_id": "hist_02",
+      "_reason": "'review pr payment service [need/end]' — 3 core tokens shared. Core reviewal of payment PR is the same commitment.",
+      "expected_similarity_min": 0.65,
+      "should_match": true
+    },
+    {
+      "new_id": "new_03",
+      "historical_id": "hist_05",
+      "_reason": "'set cicd pipeline [configuration/staging environment]' — 3 tokens shared (set, cicd, pipeline). Same CI/CD setup commitment.",
+      "expected_similarity_min": 0.65,
+      "should_match": true
+    }
+  ],
+
+  "expected_no_matches": [
+    {
+      "new_id": "new_01",
+      "historical_id": "hist_02",
+      "_reason": "login feature vs PR review — no shared tokens",
+      "expected_similarity_max": 0.15,
+      "should_match": false
+    },
+    {
+      "new_id": "new_01",
+      "historical_id": "hist_03",
+      "_reason": "login feature vs unit tests auth — no shared tokens",
+      "expected_similarity_max": 0.15,
+      "should_match": false
+    },
+    {
+      "new_id": "new_01",
+      "historical_id": "hist_04",
+      "_reason": "login feature vs demo call client — no overlap",
+      "expected_similarity_max": 0.10,
+      "should_match": false
+    },
+    {
+      "new_id": "new_02",
+      "historical_id": "hist_03",
+      "_reason": "PR review payment vs unit tests — no shared tokens",
+      "expected_similarity_max": 0.15,
+      "should_match": false
+    },
+    {
+      "new_id": "new_02",
+      "historical_id": "hist_04",
+      "_reason": "PR review payment vs demo call client — no overlap",
+      "expected_similarity_max": 0.10,
+      "should_match": false
+    },
+    {
+      "new_id": "new_03",
+      "historical_id": "hist_01",
+      "_reason": "CI/CD pipeline vs login feature — no shared tokens",
+      "expected_similarity_max": 0.10,
+      "should_match": false
+    },
+    {
+      "new_id": "new_03",
+      "historical_id": "hist_02",
+      "_reason": "CI/CD pipeline vs PR review payment — no shared tokens",
+      "expected_similarity_max": 0.10,
+      "should_match": false
+    },
+    {
+      "new_id": "new_03",
+      "historical_id": "hist_04",
+      "_reason": "CI/CD pipeline vs demo call client — no overlap",
+      "expected_similarity_max": 0.10,
+      "should_match": false
+    }
+  ],
+
+  "boundary_case": {
+    "new_id": "new_03",
+    "historical_id": "hist_03",
+    "_desc": "CI/CD pipeline setup vs unit tests for auth — partially similar verb context (setup vs write) but fundamentally different tasks. Score expected near 0.10-0.25. Not a match.",
+    "expected_similarity_max": 0.30,
+    "should_match": false
+  },
+
+  "validation_summary": {
+    "total_new": 3,
+    "total_historical": 5,
+    "total_comparisons": 15,
+    "expected_match_count": 3,
+    "expected_no_match_count": 11,
+    "boundary_count": 1,
+    "threshold_used": 0.65
+  }
+}

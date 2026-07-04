@@ -1,0 +1,111 @@
+[
+  {
+    "expression": "ASAP",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "AMBIGUOUS"
+  },
+  {
+    "expression": "end of sprint",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "SPRINT_RELATIVE"
+  },
+  {
+    "expression": "next Thursday",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-18T18:00:00Z"
+  },
+  {
+    "expression": "this Thursday",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-11T18:00:00Z"
+  },
+  {
+    "expression": "this Thursday",
+    "meeting_date": "2026-06-11T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-11T18:00:00Z"
+  },
+  {
+    "expression": "this Thursday",
+    "meeting_date": "2026-06-11T16:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-18T18:00:00Z"
+  },
+  {
+    "expression": "end of week",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-12T18:00:00Z"
+  },
+  {
+    "expression": "end of month",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-30T18:00:00Z"
+  },
+  {
+    "expression": "by June 15th",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-15T18:00:00Z"
+  },
+  {
+    "expression": "by June 5th",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2027-06-05T18:00:00Z"
+  },
+  {
+    "expression": "by February 30th",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "UNRESOLVABLE"
+  },
+  {
+    "expression": "tomorrow",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-09T18:00:00Z"
+  },
+  {
+    "expression": "in 3 days",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "UTC",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-11T18:00:00Z"
+  },
+  {
+    "expression": "EOD",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "Asia/Karachi",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-08T13:00:00Z"
+  },
+  {
+    "expression": "EOD",
+    "meeting_date": "2026-06-08T12:00:00Z",
+    "timezone": "America/New_York",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-08T22:00:00Z"
+  },
+  {
+    "expression": "EOD",
+    "meeting_date": "2026-06-08T09:00:00Z",
+    "timezone": "Europe/London",
+    "expected_status": "RESOLVED",
+    "expected_utc": "2026-06-08T17:00:00Z"
+  }
+]

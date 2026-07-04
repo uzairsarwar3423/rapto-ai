@@ -50,7 +50,7 @@ from src.services.cleanup.confidence_flagger import TimestampIntegrityError
 from src.middleware.request_id import RequestIdMiddleware
 from src.middleware.request_logger import RequestLoggerMiddleware
 from src.models.exceptions import AIPipelineError
-from src.services.gemini_client import GeminiClient
+from src.services.openai_client import OpenAIClient
 from src.api.routes import health, cleanup
 
 log = get_logger(__name__)
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     2. Settings — validated at import, but explicitly logged here
     3. MongoDB — fail-fast if unreachable
     4. Redis   — fail-fast if unreachable
-    5. GeminiClient — constructed (no network call at construction time)
+    5. OpenAIClient — constructed (no network call at construction time)
     6. Log "service ready"
 
     SHUTDOWN ORDER (reverse of startup):
@@ -94,9 +94,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await redis_client.connect()
     app.state.redis_client = redis_client
 
-    # Gemini (no network call at construction — connectivity checked by /ready)
-    gemini_client = GeminiClient(settings)
-    app.state.gemini_client = gemini_client
+    # AI Client (no network call at construction — connectivity checked by /ready)
+    ai_client = OpenAIClient(settings)
+    app.state.ai_client = ai_client
 
     log.info("service_ready", service=settings.service_name, port=settings.port)
 

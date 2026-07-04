@@ -1,7 +1,10 @@
 from enum import Enum
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Literal, Union
 from pydantic import BaseModel, Field, model_validator, field_validator
+from datetime import datetime
 import logging
+from src.models.cleanup_models import CleanedTranscriptTurn, ParticipantInfo
+from src.models.common import CostRecord
 
 logger = logging.getLogger(__name__)
 
@@ -96,3 +99,67 @@ class ExtractionResponse(BaseModel):
     @classmethod
     def filter_low_confidence_commitments(cls, v: List[ExtractedCommitment]) -> List[ExtractedCommitment]:
         return [c for c in v if c.confidence >= 0.3]
+
+from src.services.extraction.commitment_parser import ParsedCommitment
+from src.services.extraction.action_item_parser import ParsedActionItem
+from src.services.extraction.decision_parser import ParsedDecision
+from src.services.extraction.blocker_parser import ParsedBlocker
+
+class ExtractRequest(BaseModel):
+    meeting_id: str = Field(..., min_length=1)
+    team_id: str = Field(..., min_length=1)
+    meeting_date: datetime
+    meeting_title: str = Field(..., max_length=500)
+    cleaned_transcript: List[CleanedTranscriptTurn] = Field(..., min_length=1)
+    participants: List[ParticipantInfo]
+    meeting_duration_seconds: float
+    team_timezone: str = Field(..., min_length=1)
+
+class ChunkExtractionResult(BaseModel):
+    chunk_id: str
+    chunk_index: int
+    succeeded: bool
+    parsed_commitments: Optional[List[ParsedCommitment]] = None
+    parsed_action_items: Optional[List[ParsedActionItem]] = None
+    parsed_decisions: Optional[List[ParsedDecision]] = None
+    parsed_blockers: Optional[List[ParsedBlocker]] = None
+    summary: Optional[str] = None
+    cost: Optional[CostRecord] = None
+    error: Optional[str] = None
+    is_first_chunk: bool
+
+class SummaryScopeType(str, Enum):
+    FULL = "FULL"
+    PARTIAL_FIRST_CHUNK = "PARTIAL_FIRST_CHUNK"
+
+class ExtractionResultWithMeta(BaseModel):
+    meeting_id: str
+    team_id: str
+    commitments: List[ParsedCommitment]
+    action_items: List[ParsedActionItem]
+    decisions: List[ParsedDecision]
+    blockers: List[ParsedBlocker]
+    summary: str
+    summary_scope: SummaryScopeType
+    extraction_model: str
+    prompt_version: str
+    chunks_total: int
+    chunks_succeeded: int
+    total_cost: CostRecord
+    per_chunk_costs: List[Optional[CostRecord]]
+    processing_time_ms: float
+
+class PartialExtractionFailure(BaseModel):
+    meeting_id: str
+    team_id: str
+    succeeded_chunks: int
+    failed_chunks: int
+    total_chunks: int
+    partial_result: Optional[ExtractionResultWithMeta] = None
+    failed_chunk_indices: List[int]
+    error_summary: str
+
+class ExtractResponse(BaseModel):
+    success: bool
+    request_id: str
+    result: Union[ExtractionResultWithMeta, PartialExtractionFailure]

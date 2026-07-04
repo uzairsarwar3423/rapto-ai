@@ -11,7 +11,7 @@ Field parity notes:
   - CleanedTranscriptTurn.turn_id is a stable UUID assigned at Stage 1
     merge time — this is the ID-based zip key that survives batching/
     re-ordering in Stage 2. Never rely on array index alone.
-  - CleanupMetadata.gemini_cost is a CostRecord from common.py —
+  - CleanupMetadata.ai_cost is a CostRecord from common.py —
     aggregated across all successful Stage 2 batches, feeding Day 60's
     cost-eval report with zero additional plumbing.
 
@@ -23,6 +23,7 @@ Decision: speaker_email/speaker_name on RawTranscriptTurn are optional
 from __future__ import annotations
 
 from typing import Optional, Literal
+import uuid
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
@@ -228,7 +229,7 @@ class CleanupMetadata(BaseModel):
     prompt_version: Parsed from cleanup_system.txt's first-line version marker,
       so every historical CleanupResult is attributable to the exact prompt
       that produced it — essential for regression debugging and A/B comparison.
-    gemini_cost: Aggregated CostRecord across all successful Stage 2 batches,
+    ai_cost: Aggregated CostRecord across all successful Stage 2 batches,
       the primary feed for Day 60's cost-eval script.
     """
 
@@ -240,7 +241,7 @@ class CleanupMetadata(BaseModel):
     batches_total: int = Field(..., ge=0)
     batches_failed: int = Field(..., ge=0)
     processing_time_ms: float = Field(..., ge=0.0)
-    gemini_cost: CostRecord
+    ai_cost: CostRecord
 
 
 # ─── Public API Response ──────────────────────────────────────────────────────

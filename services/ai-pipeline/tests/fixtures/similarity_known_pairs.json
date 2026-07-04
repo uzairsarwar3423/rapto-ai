@@ -1,0 +1,363 @@
+[
+  {
+    "_comment": "===== CATEGORY: same_commitment (8 pairs) =====",
+    "_desc": "Same deliverable, different raw phrasing. Expected: score >= 0.85, above threshold.",
+    "id": "pair_001",
+    "description": "Same commitment: 'finish login feature' vs 'finish login feature by Thursday'",
+    "text_a": "I'll finish the login feature",
+    "text_b": "finish the login feature by Thursday",
+    "expected_score_min": 0.75,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "same_commitment"
+  },
+  {
+    "id": "pair_002",
+    "description": "Same commitment: word-order variation on same tokens",
+    "text_a": "finish login feature",
+    "text_b": "login finish feature",
+    "expected_score_min": 0.80,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "same_commitment"
+  },
+  {
+    "id": "pair_003",
+    "description": "Same commitment: both already normalized to identical string",
+    "text_a": "fix payment bug",
+    "text_b": "fix payment bug",
+    "expected_score_min": 0.99,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "same_commitment"
+  },
+  {
+    "id": "pair_004",
+    "description": "Same commitment: filler words removed by normalization leave same core",
+    "text_a": "I will make sure to fix the payment bug",
+    "text_b": "fix payment bug by end of sprint",
+    "expected_score_min": 0.60,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": false,
+    "category": "same_commitment"
+  },
+  {
+    "id": "pair_005",
+    "description": "Same commitment: present tense vs future tense, same action",
+    "text_a": "I'll send the report to the client",
+    "text_b": "send report client",
+    "expected_score_min": 0.75,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "same_commitment"
+  },
+  {
+    "id": "pair_006",
+    "description": "Same commitment: stemming makes 'reviewing' and 'review' identical tokens",
+    "text_a": "I will review the pull request",
+    "text_b": "reviewing pull request",
+    "expected_score_min": 0.75,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "same_commitment"
+  },
+  {
+    "id": "pair_007",
+    "description": "Same commitment: 'deploying' vs 'deploy' after stemming — same verb",
+    "text_a": "deploying the staging environment",
+    "text_b": "deploy staging environment",
+    "expected_score_min": 0.75,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "same_commitment"
+  },
+  {
+    "id": "pair_008",
+    "description": "Same commitment: extra stopwords stripped, same normalized tokens remain",
+    "text_a": "I am going to update the documentation",
+    "text_b": "update documentation",
+    "expected_score_min": 0.65,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "same_commitment"
+  },
+
+  {
+    "_comment": "===== CATEGORY: different_commitment_same_owner (8 pairs) =====",
+    "_desc": "Different deliverables from same person. Expected: score <= 0.30, below threshold.",
+    "id": "pair_009",
+    "description": "Different: payment bug fix vs API documentation review — no token overlap",
+    "text_a": "I'll fix the payment bug",
+    "text_b": "I'll review the API documentation",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.30,
+    "expected_above_threshold": false,
+    "category": "different_commitment_same_owner"
+  },
+  {
+    "id": "pair_010",
+    "description": "Different: deploy pipeline vs update database schema — no overlap",
+    "text_a": "fix deploy pipeline",
+    "text_b": "update database schema",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.30,
+    "expected_above_threshold": false,
+    "category": "different_commitment_same_owner"
+  },
+  {
+    "id": "pair_011",
+    "description": "Different: completely unrelated technical tasks",
+    "text_a": "setup docker container",
+    "text_b": "write unit tests",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.30,
+    "expected_above_threshold": false,
+    "category": "different_commitment_same_owner"
+  },
+  {
+    "id": "pair_012",
+    "description": "Different: frontend vs backend tasks — zero normalized token overlap",
+    "text_a": "design landing page mockup",
+    "text_b": "optimize database query",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.30,
+    "expected_above_threshold": false,
+    "category": "different_commitment_same_owner"
+  },
+  {
+    "id": "pair_013",
+    "description": "Different: security audit vs feature development",
+    "text_a": "run security audit authentication",
+    "text_b": "implement search feature",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.30,
+    "expected_above_threshold": false,
+    "category": "different_commitment_same_owner"
+  },
+  {
+    "id": "pair_014",
+    "description": "Different: code review vs infra task",
+    "text_a": "review pull request frontend",
+    "text_b": "provision kubernetes cluster",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.30,
+    "expected_above_threshold": false,
+    "category": "different_commitment_same_owner"
+  },
+  {
+    "id": "pair_015",
+    "description": "Different: client meeting vs bug fix — entirely different domains",
+    "text_a": "schedule client demo call",
+    "text_b": "patch memory leak service",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.30,
+    "expected_above_threshold": false,
+    "category": "different_commitment_same_owner"
+  },
+  {
+    "id": "pair_016",
+    "description": "Different: sends vs deploys — same verb class, completely different objects",
+    "text_a": "send weekly report stakeholders",
+    "text_b": "deploy hotfix production",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.30,
+    "expected_above_threshold": false,
+    "category": "different_commitment_same_owner"
+  },
+
+  {
+    "_comment": "===== CATEGORY: similar_but_different (6 pairs) =====",
+    "_desc": "Superficially similar but actually different commitments. score in [0.30, 0.64], below threshold.",
+    "id": "pair_017",
+    "description": "Similar-but-different: same verb+object, different qualifier",
+    "text_a": "fix login bug",
+    "text_b": "fix signup bug",
+    "expected_score_min": 0.30,
+    "expected_score_max": 0.64,
+    "expected_above_threshold": false,
+    "category": "similar_but_different"
+  },
+  {
+    "id": "pair_018",
+    "description": "Similar-but-different: review PR for different components",
+    "text_a": "review pull request backend",
+    "text_b": "review pull request frontend",
+    "expected_score_min": 0.30,
+    "expected_score_max": 0.64,
+    "expected_above_threshold": false,
+    "category": "similar_but_different"
+  },
+  {
+    "id": "pair_019",
+    "description": "Similar-but-different: update different config files",
+    "text_a": "update nginx configuration",
+    "text_b": "update database configuration",
+    "expected_score_min": 0.30,
+    "expected_score_max": 0.70,
+    "expected_above_threshold": false,
+    "category": "similar_but_different"
+  },
+  {
+    "id": "pair_020",
+    "description": "Similar-but-different: write tests for different modules",
+    "text_a": "write tests authentication module",
+    "text_b": "write tests payment module",
+    "expected_score_min": 0.30,
+    "expected_score_max": 0.70,
+    "expected_above_threshold": false,
+    "category": "similar_but_different"
+  },
+  {
+    "id": "pair_021",
+    "description": "Similar-but-different: same action, different targets",
+    "text_a": "deploy staging api service",
+    "text_b": "deploy production api service",
+    "expected_score_min": 0.40,
+    "expected_score_max": 0.70,
+    "expected_above_threshold": false,
+    "category": "similar_but_different"
+  },
+  {
+    "id": "pair_022",
+    "description": "Similar-but-different: schedule meeting vs attend meeting",
+    "text_a": "schedule sprint planning meeting",
+    "text_b": "attend sprint planning meeting",
+    "expected_score_min": 0.30,
+    "expected_score_max": 0.70,
+    "expected_above_threshold": false,
+    "category": "similar_but_different"
+  },
+
+  {
+    "_comment": "===== CATEGORY: boundary_cases (4 pairs) =====",
+    "_desc": "Scores near 0.65 threshold. Documented as observability cases, not hard pass/fail.",
+    "id": "pair_023",
+    "description": "Boundary: 3 of 4 tokens shared — outcome near threshold",
+    "text_a": "fix login feature bug",
+    "text_b": "fix login page bug",
+    "expected_score_min": 0.55,
+    "expected_score_max": 0.80,
+    "expected_above_threshold": null,
+    "_boundary_note": "This pair straddles the threshold. Expected outcome is implementation-dependent. Day 60 eval will calibrate.",
+    "category": "boundary_cases"
+  },
+  {
+    "id": "pair_024",
+    "description": "Boundary: same 2 tokens out of 3 each",
+    "text_a": "update api documentation",
+    "text_b": "update database documentation",
+    "expected_score_min": 0.45,
+    "expected_score_max": 0.80,
+    "expected_above_threshold": null,
+    "_boundary_note": "2/4 token overlap. Near the threshold zone.",
+    "category": "boundary_cases"
+  },
+  {
+    "id": "pair_025",
+    "description": "Boundary: one token different in a 3-token normalized text",
+    "text_a": "finish feature implementation",
+    "text_b": "finish bug implementation",
+    "expected_score_min": 0.45,
+    "expected_score_max": 0.80,
+    "expected_above_threshold": null,
+    "_boundary_note": "2/3 overlap — could go either way at threshold 0.65.",
+    "category": "boundary_cases"
+  },
+  {
+    "id": "pair_026",
+    "description": "Boundary: same action verb and one shared object word",
+    "text_a": "review code quality",
+    "text_b": "review test quality",
+    "expected_score_min": 0.40,
+    "expected_score_max": 0.75,
+    "expected_above_threshold": null,
+    "_boundary_note": "review+quality shared; code vs test differs. Threshold outcome is uncertain.",
+    "category": "boundary_cases"
+  },
+
+  {
+    "_comment": "===== CATEGORY: edge_cases (8 pairs) =====",
+    "_desc": "Edge cases: empty strings, single tokens, identical, fully disjoint, stopword-only.",
+    "id": "pair_027",
+    "description": "Edge: identical normalized texts → score should be ~1.0",
+    "text_a": "finish login feature",
+    "text_b": "finish login feature",
+    "expected_score_min": 0.99,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "edge_cases"
+  },
+  {
+    "id": "pair_028",
+    "description": "Edge: both empty strings → 0.0, no exception",
+    "text_a": "",
+    "text_b": "",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.0,
+    "expected_above_threshold": false,
+    "category": "edge_cases"
+  },
+  {
+    "id": "pair_029",
+    "description": "Edge: single token each (fallback to Jaccard), tokens differ → 0.0",
+    "text_a": "deploy",
+    "text_b": "review",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.0,
+    "expected_above_threshold": false,
+    "category": "edge_cases"
+  },
+  {
+    "id": "pair_030",
+    "description": "Edge: single token each (fallback to Jaccard), tokens identical → 1.0",
+    "text_a": "deploy",
+    "text_b": "deploy",
+    "expected_score_min": 0.99,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "category": "edge_cases"
+  },
+  {
+    "id": "pair_031",
+    "description": "Edge: one empty, one non-empty → 0.0",
+    "text_a": "",
+    "text_b": "finish login feature",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.0,
+    "expected_above_threshold": false,
+    "category": "edge_cases"
+  },
+  {
+    "id": "pair_032",
+    "description": "Edge: all-stopword raw text → after normalization becomes empty → 0.0",
+    "text_a": "I will have been to the a",
+    "text_b": "fix login bug",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.10,
+    "expected_above_threshold": false,
+    "_normalization_note": "After stopword removal: 'i will have been to the a' → '' (all stopwords). Empty normalized text → 0.0",
+    "category": "edge_cases"
+  },
+  {
+    "id": "pair_033",
+    "description": "Edge: repeated words in one text → set-Jaccard treats as single occurrence",
+    "text_a": "fix fix fix bug",
+    "text_b": "fix bug",
+    "expected_score_min": 0.80,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "_normalization_note": "After normalize_text: 'fix fix fix bug' → tokens ['fix','fix','fix','bug'] (stemmed). Set-Jaccard: {fix,bug} vs {fix,bug} = 1.0",
+    "category": "edge_cases"
+  },
+  {
+    "id": "pair_034",
+    "description": "Edge: long raw text normalized to 5 tokens (cap enforced)",
+    "text_a": "I will work on fixing the authentication service login module issue",
+    "text_b": "fix authentication service login",
+    "expected_score_min": 0.60,
+    "expected_score_max": 1.0,
+    "expected_above_threshold": true,
+    "_normalization_note": "Long text is capped at 5 tokens after normalization. Should produce significant overlap.",
+    "category": "edge_cases"
+  }
+]

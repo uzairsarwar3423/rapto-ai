@@ -5,7 +5,7 @@ POST /api/v1/transcripts/cleanup — internal endpoint, authenticated.
 
 DESIGN PRINCIPLE (from plan §5.8):
   This file contains ZERO business logic.
-  The handler is a thin wire: inject gemini_client → call orchestrator →
+  The handler is a thin wire: inject ai_client → call orchestrator →
   return result. All validation is Pydantic. All errors flow through the
   global error handler middleware from Day 46.
 
@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
 
-from src.api.deps import GeminiDep, InternalAuthDep
+from src.api.deps import AIDep, InternalAuthDep
 from src.models.cleanup_models import CleanupRequest, CleanupResult
 from src.services.cleanup.transcript_cleaner import clean_transcript
 
@@ -48,7 +48,7 @@ router = APIRouter(tags=["cleanup"])
 async def cleanup_transcript(
     request: CleanupRequest,
     _auth: InternalAuthDep,
-    gemini_client: GeminiDep,
+    ai_client: AIDep,
 ) -> CleanupResult:
     """POST /api/v1/transcripts/cleanup
 
@@ -60,5 +60,5 @@ async def cleanup_transcript(
         participant_map=request.participants,
         team_id=request.team_id,
         meeting_id=request.meeting_id,
-        gemini_client=gemini_client,
+        ai_client=ai_client,
     )

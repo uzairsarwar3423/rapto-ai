@@ -47,7 +47,7 @@ from src.models.cleanup_models import (
 from src.models.common import CostRecord, ModelTier, TaskType
 from src.config.cleanup_config import CONFIDENCE_THRESHOLD
 from src.services.cleanup import confidence_flagger, filler_word_remover, grammar_normalizer, speaker_formatter
-from src.services.gemini_client import GeminiClient
+from src.services.openai_client import OpenAIClient
 
 log: structlog.BoundLogger = get_logger(__name__)
 
@@ -96,14 +96,14 @@ async def clean_transcript(
     participant_map: ParticipantMap,
     team_id: str,
     meeting_id: str,
-    gemini_client: GeminiClient,
+    ai_client: OpenAIClient,
 ) -> CleanupResult:
     """Orchestrate Stage 1 → Stage 1.5 → Stage 2 and assemble CleanupResult.
 
     Steps:
       1. Stage 1:   merge_turns (synchronous, deterministic, no I/O)
       2. Stage 1.5: strip_fillers (synchronous, deterministic, no I/O)
-      3. Stage 2:   normalize_batches (async, batched Gemini calls)
+      3. Stage 2:   normalize_batches (async, batched OpenAI calls)
       4. Reassemble: for each batch — use cleaned_turns if succeeded,
                      else fall back to filler-stripped turns for that batch.
       5. Build CleanupMetadata and return CleanupResult.
@@ -113,7 +113,7 @@ async def clean_transcript(
         participant_map: Pre-resolved Node.js participant map (no re-resolution).
         team_id: Scoping ID for logging and result attribution.
         meeting_id: Meeting being processed — included in the result.
-        gemini_client: Process-singleton GeminiClient from app.state.
+        ai_client: Process-singleton OpenAIClient from app.state.
 
     Returns:
         CleanupResult with cleaned_transcript and metadata.
@@ -146,7 +146,7 @@ async def clean_transcript(
     }
 
     # ── Stage 2: Batched grammar normalization (async) ───────────────────────
-    batch_results = await grammar_normalizer.normalize_batches(filler_stripped, gemini_client)
+    batch_results = await grammar_normalizer.normalize_batches(filler_stripped, ai_client)
 
     # ── Reassemble: partial failure → filler-stripped fallback ────────────────
     # Final order follows the original filler_stripped order (i.e., merge order),
@@ -214,7 +214,7 @@ async def clean_transcript(
         batches_total=len(batch_results),
         batches_failed=batches_failed,
         processing_time_ms=round(processing_time_ms, 2),
-        gemini_cost=aggregated_cost,
+        ai_cost=aggregated_cost,
     )
 
     log.info(

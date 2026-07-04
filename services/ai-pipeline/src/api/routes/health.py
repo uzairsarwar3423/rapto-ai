@@ -30,7 +30,7 @@ from fastapi.responses import JSONResponse
 from src.api.deps import MongoDep, RedisDep, verify_internal_service_key
 from src.config.logging import get_logger
 from src.config.settings import get_settings
-from src.services.gemini_client import GeminiClient
+import openai
 
 log = get_logger(__name__)
 
@@ -61,7 +61,7 @@ async def health() -> dict:
     "/ready",
     summary="Readiness probe",
     description=(
-        "Returns 200 if all dependencies (MongoDB, Redis, Gemini) are reachable. "
+        "Returns 200 if all dependencies (MongoDB, Redis, AI API) are reachable. "
         "Returns 503 with per-dependency breakdown if any fail. "
         "Protected by X-Internal-Service-Key."
     ),
@@ -74,17 +74,17 @@ async def ready(mongo: MongoDep, redis: RedisDep) -> JSONResponse:
     # Run dependency pings concurrently
     import asyncio
 
-    mongo_ok, redis_ok, gemini_ok = await asyncio.gather(
+    mongo_ok, redis_ok, ai_ok = await asyncio.gather(
         mongo.ping(),
         redis.ping(),
-        _check_gemini_reachability(settings.openrouter_api_key.get_secret_value()),
+        _check_openai_reachability(settings.openai_api_key.get_secret_value(), settings.openai_gpt41_mini_model_name, settings.openai_org_id),
         return_exceptions=False,
     )
 
     checks = {
         "mongodb": bool(mongo_ok),
         "redis": bool(redis_ok),
-        "gemini": bool(gemini_ok),
+        "ai": bool(ai_ok),
     }
 
     all_healthy = all(checks.values())
@@ -103,22 +103,23 @@ async def ready(mongo: MongoDep, redis: RedisDep) -> JSONResponse:
         )
 
 
-async def _check_gemini_reachability(api_key: str) -> bool:
-    """Verify OpenRouter API key validity via cheapest possible call.
+async def _check_openai_reachability(api_key: str, model_name: str, org_id: str | None) -> bool:
+    """Verify OpenAI API key validity via cheapest possible call.
 
-    Hits OpenRouter's /models endpoint — validates key + network reachability
-    with zero generation cost (no tokens billed).
+    Hits OpenAI's models.retrieve endpoint — validates key + network reachability.
     """
-    import httpx
-
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(
-                "https://openrouter.ai/api/v1/models",
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-        return response.status_code == 200
+        kwargs = {
+            "api_key": api_key,
+            "timeout": 5.0,
+        }
+        if org_id:
+            kwargs["organization"] = org_id
+
+        client = openai.AsyncOpenAI(**kwargs)
+        await client.models.retrieve(model_name)
+        return True
     except Exception:
-        log.warning("openrouter_reachability_check_failed")
+        log.warning("openai_reachability_check_failed")
         return False
 

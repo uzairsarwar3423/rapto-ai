@@ -1,15 +1,15 @@
 """
-tests/test_gemini_client.py
+tests/test_ai_client.py
 ────────────────────────────
-Unit tests for services/gemini_client.py.
+Unit tests for services/ai_client.py.
 
-ALL TESTS use a mocked SDK boundary — no real Gemini calls.
+ALL TESTS use a mocked SDK boundary — no real OpenAI calls.
 
 TESTS:
   - Structured output success path returns correctly typed result
-  - Schema mismatch → one corrective retry → second failure raises GeminiSchemaValidationError
-  - Simulated 429 → retries up to max → raises GeminiRateLimitExhaustedError
-  - Simulated 401 → raised immediately as GeminiNonRetryableError (zero retries)
+  - Schema mismatch → one corrective retry → second failure raises AISchemaValidationError
+  - Simulated 429 → retries up to max → raises AIRateLimitExhaustedError
+  - Simulated 401 → raised immediately as AINonRetryableError (zero retries)
   - Cost calculation: given known mocked token counts, assert expected value
   - Concurrency semaphore: N+1 concurrent calls with semaphore(N) → (N+1)th waits
 """
@@ -24,14 +24,14 @@ import pytest
 from pydantic import BaseModel
 
 from src.config.settings import Settings
-from src.models.common import GeminiCallResult, TaskType
+from src.models.common import AICallResult, TaskType
 from src.models.exceptions import (
-    GeminiNonRetryableError,
-    GeminiRateLimitExhaustedError,
-    GeminiSchemaValidationError,
-    GeminiTimeoutError,
+    AINonRetryableError,
+    AIRateLimitExhaustedError,
+    AISchemaValidationError,
+    AITimeoutError,
 )
-from src.services.gemini_client import GeminiClient
+from src.services.openai_client import OpenAIClient
 
 
 # ─── Test Schema ──────────────────────────────────────────────────────────────
@@ -63,10 +63,10 @@ def make_sdk_response(text: str, input_tokens: int = 100, output_tokens: int = 5
     return mock_response
 
 
-def make_client(settings: Settings) -> GeminiClient:
-    """Create a GeminiClient with a mocked underlying SDK client."""
-    with patch("src.services.gemini_client.genai.Client"):
-        client = GeminiClient(settings)
+def make_client(settings: Settings) -> OpenAIClient:
+    """Create a OpenAIClient with a mocked underlying SDK client."""
+    with patch("src.services.openai_client.AsyncOpenAI"):
+        client = OpenAIClient(settings)
     return client
 
 
@@ -75,15 +75,16 @@ def make_client(settings: Settings) -> GeminiClient:
 
 class TestGenerateStructuredSuccess:
     async def test_returns_correctly_typed_result(self, settings: Settings) -> None:
-        """Success path returns GeminiCallResult with correct data type."""
+        """Success path returns AICallResult with correct data type."""
         client = make_client(settings)
         valid_json = '{"message": "hello", "value": 42}'
         mock_response = make_sdk_response(valid_json, input_tokens=100, output_tokens=50)
 
-        with patch.object(client, "_call_sdk_text", new_callable=AsyncMock) as mock_call:
+        with patch.object(client, "_call_openai_parsed", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = (
-                valid_json,
+                EchoSchema(message="hello", value=42),
                 {"input_token_count": 100, "output_token_count": 50},
+                valid_json,
             )
 
             result = await client.generate_structured(
@@ -93,7 +94,7 @@ class TestGenerateStructuredSuccess:
                 response_schema=EchoSchema,
             )
 
-        assert isinstance(result, GeminiCallResult)
+        assert isinstance(result, AICallResult)
         assert isinstance(result.data, EchoSchema)
         assert result.data.message == "hello"
         assert result.data.value == 42
@@ -110,10 +111,11 @@ class TestGenerateStructuredSuccess:
         input_tokens = 1_000_000  # 1M input tokens
         output_tokens = 500_000   # 500K output tokens
 
-        with patch.object(client, "_call_sdk_text", new_callable=AsyncMock) as mock_call:
+        with patch.object(client, "_call_openai_parsed", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = (
-                '{"message": "test", "value": 1}',
+                EchoSchema(message="test", value=1),
                 {"input_token_count": input_tokens, "output_token_count": output_tokens},
+                '{"message": "test", "value": 1}',
             )
 
             result = await client.generate_structured(
@@ -123,7 +125,7 @@ class TestGenerateStructuredSuccess:
                 response_schema=EchoSchema,
             )
 
-        rates = PRICING_TABLE[ModelTier.FLASH_LITE]
+        rates = PRICING_TABLE[ModelTier.MINI]
         expected_cost = (
             (input_tokens / 1_000_000) * rates.input_per_million_usd
             + (output_tokens / 1_000_000) * rates.output_per_million_usd
@@ -135,10 +137,11 @@ class TestGenerateStructuredSuccess:
         """latency_ms must be > 0 on a successful call."""
         client = make_client(settings)
 
-        with patch.object(client, "_call_sdk_text", new_callable=AsyncMock) as mock_call:
+        with patch.object(client, "_call_openai_parsed", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = (
-                '{"message": "latency test", "value": 0}',
+                EchoSchema(message="latency test", value=0),
                 {"input_token_count": 10, "output_token_count": 5},
+                '{"message": "latency test", "value": 0}',
             )
 
             result = await client.generate_structured(
@@ -162,14 +165,15 @@ class TestSchemaValidationRetry:
         # First call returns bad JSON, second returns valid JSON
         call_count = 0
 
-        async def side_effect(*args: Any, **kwargs: Any) -> tuple[str, dict]:
+        async def side_effect(*args: Any, **kwargs: Any) -> tuple[Any, dict, str]:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ('{"wrong_field": "bad"}', {"input_token_count": 10, "output_token_count": 5})
-            return ('{"message": "corrected", "value": 99}', {"input_token_count": 15, "output_token_count": 8})
+                from pydantic import ValidationError
+                raise ValidationError.from_exception_data("Parsing Failed", [])
+            return (EchoSchema(message="corrected", value=99), {"input_token_count": 15, "output_token_count": 8}, '{"message": "corrected", "value": 99}')
 
-        with patch.object(client, "_call_sdk_text", side_effect=side_effect):
+        with patch.object(client, "_call_openai_parsed", side_effect=side_effect):
             result = await client.generate_structured(
                 task_type=TaskType.EXTRACTION,
                 system_prompt="extract",
@@ -183,14 +187,15 @@ class TestSchemaValidationRetry:
         assert result.retry_count == 1
 
     async def test_schema_mismatch_on_both_attempts_raises(self, settings: Settings) -> None:
-        """Schema mismatch on both initial and corrective attempt raises GeminiSchemaValidationError."""
+        """Schema mismatch on both initial and corrective attempt raises AISchemaValidationError."""
         client = make_client(settings)
         bad_json = '{"wrong_field": "still bad"}'
 
-        with patch.object(client, "_call_sdk_text", new_callable=AsyncMock) as mock_call:
-            mock_call.return_value = (bad_json, {"input_token_count": 10, "output_token_count": 5})
+        with patch.object(client, "_call_openai_parsed", new_callable=AsyncMock) as mock_call:
+            from pydantic import ValidationError
+            mock_call.side_effect = ValidationError.from_exception_data("Parsing Failed", [])
 
-            with pytest.raises(GeminiSchemaValidationError) as exc_info:
+            with pytest.raises(AISchemaValidationError) as exc_info:
                 await client.generate_structured(
                     task_type=TaskType.EXTRACTION,
                     system_prompt="extract",
@@ -198,7 +203,7 @@ class TestSchemaValidationRetry:
                     response_schema=EchoSchema,
                 )
 
-        assert exc_info.value.error_code == "GEMINI_SCHEMA_VALIDATION_ERROR"
+        assert exc_info.value.error_code == "AI_SCHEMA_VALIDATION_ERROR"
         assert exc_info.value.task_type == TaskType.EXTRACTION
 
 
@@ -207,17 +212,17 @@ class TestSchemaValidationRetry:
 
 class TestRateLimitHandling:
     async def test_rate_limit_exhaustion_raises(self, settings: Settings) -> None:
-        """Simulated 429 exhausts retries → raises GeminiRateLimitExhaustedError."""
+        """Simulated 429 exhausts retries → raises AIRateLimitExhaustedError."""
         # Update settings to use minimal retries for test speed
-        settings.max_gemini_retries = 2  # type: ignore[misc]
+        settings.openai_max_retries = 2  # type: ignore[misc]
 
         client = make_client(settings)
         rate_limit_exc = Exception("429 RESOURCE_EXHAUSTED: Quota exceeded")
 
-        with patch.object(client, "_call_sdk_text", new_callable=AsyncMock) as mock_call:
+        with patch.object(client, "_call_openai_parsed", new_callable=AsyncMock) as mock_call:
             mock_call.side_effect = rate_limit_exc
 
-            with pytest.raises((GeminiRateLimitExhaustedError, GeminiTimeoutError)):
+            with pytest.raises((AIRateLimitExhaustedError, AITimeoutError)):
                 await client.generate_structured(
                     task_type=TaskType.EXTRACTION,
                     system_prompt="test",
@@ -231,18 +236,18 @@ class TestRateLimitHandling:
 
 class TestNonRetryableError:
     async def test_401_raises_immediately_with_zero_retries(self, settings: Settings) -> None:
-        """Simulated 401 → raised immediately as GeminiNonRetryableError, 0 retries."""
+        """Simulated 401 → raised immediately as AINonRetryableError, 0 retries."""
         client = make_client(settings)
         auth_exc = Exception("401 UNAUTHENTICATED: Invalid API key")
         call_count = 0
 
-        async def side_effect(*args: Any, **kwargs: Any) -> tuple[str, dict]:
+        async def side_effect(*args: Any, **kwargs: Any) -> tuple[Any, dict, str]:
             nonlocal call_count
             call_count += 1
             raise auth_exc
 
-        with patch.object(client, "_call_sdk_text", side_effect=side_effect):
-            with pytest.raises(GeminiNonRetryableError) as exc_info:
+        with patch.object(client, "_call_openai_parsed", side_effect=side_effect):
+            with pytest.raises(AINonRetryableError) as exc_info:
                 await client.generate_structured(
                     task_type=TaskType.EXTRACTION,
                     system_prompt="test",
@@ -250,7 +255,7 @@ class TestNonRetryableError:
                     response_schema=EchoSchema,
                 )
 
-        assert exc_info.value.error_code == "GEMINI_NON_RETRYABLE_ERROR"
+        assert exc_info.value.error_code == "AI_NON_RETRYABLE_ERROR"
         assert call_count == 1  # Zero retries — raised immediately
 
 
@@ -263,19 +268,19 @@ class TestConcurrencySemaphore:
         import time
 
         # Set semaphore to 2 — only 2 simultaneous calls allowed
-        settings.gemini_max_concurrent_calls = 2  # type: ignore[misc]
+        settings.openai_max_concurrent_calls = 2  # type: ignore[misc]
         client = make_client(settings)
 
         # Each call takes 0.1s — if semaphore works, 3 calls take >= 0.2s total
         call_duration = 0.1
         started_times: list[float] = []
 
-        async def slow_call(*args: Any, **kwargs: Any) -> tuple[str, dict]:
+        async def slow_call(*args: Any, **kwargs: Any) -> tuple[Any, dict, str]:
             started_times.append(time.monotonic())
             await asyncio.sleep(call_duration)
-            return ('{"message": "ok", "value": 0}', {"input_token_count": 10, "output_token_count": 5})
+            return (EchoSchema(message="ok", value=0), {"input_token_count": 10, "output_token_count": 5}, '{"message": "ok", "value": 0}')
 
-        with patch.object(client, "_call_sdk_text", side_effect=slow_call):
+        with patch.object(client, "_call_openai_parsed", side_effect=slow_call):
             start = time.monotonic()
             tasks = [
                 client.generate_structured(

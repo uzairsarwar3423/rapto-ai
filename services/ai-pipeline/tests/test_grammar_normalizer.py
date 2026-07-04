@@ -3,7 +3,7 @@ tests/test_grammar_normalizer.py
 ─────────────────────────────────
 Unit tests for Stage 2: grammar_normalizer.normalize_batches().
 
-All Gemini calls are MOCKED — no live network calls, no API key needed.
+All OpenAI calls are MOCKED — no live network calls, no API key needed.
 Uses pytest-asyncio for async test support.
 
 Coverage per the Day 47 DoD checklist:
@@ -14,7 +14,7 @@ Coverage per the Day 47 DoD checklist:
   [x] Guardrail: suspicious ratio (10% of original) → was_modified_suspiciously=True,
       cleaned_text reverted, model output NEVER in returned object
   [x] Guardrail: acceptable ratio → passes through, was_modified_suspiciously=False
-  [x] Batch-level failure (Gemini exception) → CleanupBatchResult(succeeded=False)
+  [x] Batch-level failure (OpenAI exception) → CleanupBatchResult(succeeded=False)
       without propagating, sibling batches unaffected
 """
 
@@ -32,8 +32,8 @@ from src.config.cleanup_config import (
     LENGTH_RATIO_MIN,
 )
 from src.models.cleanup_models import CleanedTranscriptTurn
-from src.models.common import CostRecord, GeminiCallResult, ModelTier, TaskType
-from src.models.exceptions import GeminiRateLimitExhaustedError
+from src.models.common import CostRecord, AICallResult, ModelTier, TaskType
+from src.models.exceptions import AIRateLimitExhaustedError
 from src.services.cleanup.grammar_normalizer import (
     CleanupBatchResponse,
     TurnCleanupItem,
@@ -69,25 +69,25 @@ def _make_cost_record() -> CostRecord:
     return CostRecord(
         input_tokens=100,
         output_tokens=80,
-        model_tier=ModelTier.FLASH_LITE,
-        model_name="google/gemini-2.5-flash-lite",
+        model_tier=ModelTier.MINI,
+        model_name="google/openai-2.5-flash-lite",
         estimated_cost_usd=0.001,
     )
 
 
-def _make_call_result(batch_response: CleanupBatchResponse) -> GeminiCallResult:
-    return GeminiCallResult(
+def _make_call_result(batch_response: CleanupBatchResponse) -> AICallResult:
+    return AICallResult(
         data=batch_response,
         cost=_make_cost_record(),
         latency_ms=350.0,
         retry_count=0,
         task_type=TaskType.TRANSCRIPT_CLEANUP,
-        model_name="google/gemini-2.5-flash-lite",
+        model_name="google/openai-2.5-flash-lite",
     )
 
 
-def _mock_gemini_client(batch_response: CleanupBatchResponse) -> MagicMock:
-    """Create a mocked GeminiClient that returns the given response."""
+def _mock_ai_client(batch_response: CleanupBatchResponse) -> MagicMock:
+    """Create a mocked OpenAIClient that returns the given response."""
     client = MagicMock()
     client.generate_structured = AsyncMock(return_value=_make_call_result(batch_response))
     return client
@@ -162,7 +162,7 @@ async def test_response_mapped_by_turn_id_regardless_of_order() -> None:
         "src.services.cleanup.grammar_normalizer._load_prompt",
         return_value=("mock system prompt", "cleanup-v1.0"),
     ):
-        client = _mock_gemini_client(batch_response)
+        client = _mock_ai_client(batch_response)
         results = await normalize_batches(turns, client)
 
     assert len(results) == 1
@@ -194,7 +194,7 @@ async def test_missing_turn_id_in_response_falls_back_gracefully() -> None:
         "src.services.cleanup.grammar_normalizer._load_prompt",
         return_value=("mock system prompt", "cleanup-v1.0"),
     ):
-        client = _mock_gemini_client(batch_response)
+        client = _mock_ai_client(batch_response)
         results = await normalize_batches(turns, client)
 
     assert results[0].succeeded
@@ -242,7 +242,7 @@ async def test_guardrail_trips_on_over_condensed_output() -> None:
         "src.services.cleanup.grammar_normalizer._load_prompt",
         return_value=("mock system prompt", "cleanup-v1.0"),
     ):
-        client = _mock_gemini_client(batch_response)
+        client = _mock_ai_client(batch_response)
         results = await normalize_batches(turns, client)
 
     assert results[0].succeeded
@@ -288,7 +288,7 @@ async def test_guardrail_does_not_trip_on_acceptable_ratio() -> None:
         "src.services.cleanup.grammar_normalizer._load_prompt",
         return_value=("mock system prompt", "cleanup-v1.0"),
     ):
-        client = _mock_gemini_client(batch_response)
+        client = _mock_ai_client(batch_response)
         results = await normalize_batches(turns, client)
 
     assert results[0].succeeded
@@ -301,8 +301,8 @@ async def test_guardrail_does_not_trip_on_acceptable_ratio() -> None:
 
 
 @pytest.mark.asyncio
-async def test_batch_gemini_exception_returns_failed_result_not_raises() -> None:
-    """Gemini raises GeminiRateLimitExhaustedError → CleanupBatchResult(succeeded=False).
+async def test_batch_openai_exception_returns_failed_result_not_raises() -> None:
+    """OpenAI raises AIRateLimitExhaustedError → CleanupBatchResult(succeeded=False).
 
     Must NOT propagate the exception — partial failure isolation (Decision 5).
     """
@@ -310,10 +310,10 @@ async def test_batch_gemini_exception_returns_failed_result_not_raises() -> None
 
     failing_client = MagicMock()
     failing_client.generate_structured = AsyncMock(
-        side_effect=GeminiRateLimitExhaustedError(
+        side_effect=AIRateLimitExhaustedError(
             "Rate limit exhausted",
             task_type=TaskType.TRANSCRIPT_CLEANUP,
-            model_tier=ModelTier.FLASH_LITE,
+            model_tier=ModelTier.MINI,
             attempt_count=3,
         )
     )
@@ -345,10 +345,10 @@ async def test_one_batch_failure_does_not_abort_sibling_batches() -> None:
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            raise GeminiRateLimitExhaustedError(
+            raise AIRateLimitExhaustedError(
                 "first batch fails",
                 task_type=TaskType.TRANSCRIPT_CLEANUP,
-                model_tier=ModelTier.FLASH_LITE,
+                model_tier=ModelTier.MINI,
             )
         # Second call succeeds
         batch_response = CleanupBatchResponse(results=[

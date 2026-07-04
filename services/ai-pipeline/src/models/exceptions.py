@@ -11,11 +11,11 @@ string-matched exceptions are a maintenance liability as error messages evolve.
 
 Hierarchy:
     AIPipelineError                     ← base; catches the whole tree
-    ├── GeminiError                     ← any Gemini call failure
-    │   ├── GeminiSchemaValidationError ← structured-output Pydantic mismatch
-    │   ├── GeminiTimeoutError          ← per-attempt timeout exhausted
-    │   ├── GeminiNonRetryableError     ← 400/401/403-class upstream error
-    │   └── GeminiRateLimitExhaustedError ← 429s consumed full retry budget
+    ├── AIClientError                   ← any AI client call failure
+    │   ├── AISchemaValidationError     ← structured-output Pydantic mismatch
+    │   ├── AITimeoutError              ← per-attempt timeout exhausted
+    │   ├── AINonRetryableError         ← 400/401/403-class upstream error
+    │   └── AIRateLimitExhaustedError   ← 429s consumed full retry budget
     ├── DependencyUnavailableError      ← Mongo/Redis unreachable at startup
     └── InternalAuthError               ← missing/invalid X-Internal-Service-Key
 """
@@ -44,13 +44,13 @@ class AIPipelineError(Exception):
         self.context = context  # Arbitrary structured context for logging
 
 
-# ─── Gemini Errors ────────────────────────────────────────────────────────────
+# ─── AI Client Errors ─────────────────────────────────────────────────────────
 
 
-class GeminiError(AIPipelineError):
-    """Base for all Gemini-call-related failures."""
+class AIClientError(AIPipelineError):
+    """Base for all AI-call-related failures."""
 
-    error_code = "GEMINI_ERROR"
+    error_code = "AI_ERROR"
 
     def __init__(
         self,
@@ -67,14 +67,14 @@ class GeminiError(AIPipelineError):
         self.attempt_count = attempt_count
 
 
-class GeminiSchemaValidationError(GeminiError):
+class AISchemaValidationError(AIClientError):
     """Raised when structured output fails Pydantic validation after all retries.
 
     Carries the raw offending text for offline debugging/eval — never
     returned to callers as data, only logged by the error handler.
     """
 
-    error_code = "GEMINI_SCHEMA_VALIDATION_ERROR"
+    error_code = "AI_SCHEMA_VALIDATION_ERROR"
     http_status = 502  # Bad Gateway — upstream returned unusable payload
 
     def __init__(
@@ -99,15 +99,15 @@ class GeminiSchemaValidationError(GeminiError):
         self.validation_error = validation_error
 
 
-class GeminiTimeoutError(GeminiError):
-    """Raised when a Gemini call exceeds gemini_timeout_seconds per-attempt,
+class AITimeoutError(AIClientError):
+    """Raised when a AI call exceeds timeout per-attempt,
     and the full tenacity retry budget is exhausted.
 
     PRINCIPAL NOTE: timeout is per-attempt (inside tenacity loop), NOT a
     single outer wrapper. One slow attempt doesn't eat the whole retry budget.
     """
 
-    error_code = "GEMINI_TIMEOUT_ERROR"
+    error_code = "AI_TIMEOUT_ERROR"
     http_status = 504  # Gateway Timeout
 
     def __init__(
@@ -129,7 +129,7 @@ class GeminiTimeoutError(GeminiError):
         self.timeout_seconds = timeout_seconds
 
 
-class GeminiNonRetryableError(GeminiError):
+class AINonRetryableError(AIClientError):
     """Raised for 400/401/403-class errors — never retried.
 
     WHY DISTINCT: A 401 means "wrong API key" — retrying is pointless and
@@ -137,7 +137,7 @@ class GeminiNonRetryableError(GeminiError):
     on the first attempt, with zero retries.
     """
 
-    error_code = "GEMINI_NON_RETRYABLE_ERROR"
+    error_code = "AI_NON_RETRYABLE_ERROR"
     http_status = 502
 
     def __init__(
@@ -161,16 +161,16 @@ class GeminiNonRetryableError(GeminiError):
         self.upstream_message = upstream_message
 
 
-class GeminiRateLimitExhaustedError(GeminiError):
+class AIRateLimitExhaustedError(AIClientError):
     """Raised when the full tenacity retry budget is consumed on 429 responses.
 
-    WHY DISTINCT FROM TIMEOUT: "Google throttled us" (429s) vs "Google was
+    WHY DISTINCT FROM TIMEOUT: "Provider throttled us" (429s) vs "Provider was
     slow/down" (timeouts/5xx) have different operational responses:
     - 429 exhaustion may warrant backing off NEW call issuance platform-wide
     - Timeout exhaustion is more likely transient infrastructure issues
     """
 
-    error_code = "GEMINI_RATE_LIMIT_EXHAUSTED"
+    error_code = "AI_RATE_LIMIT_EXHAUSTED"
     http_status = 429
 
     def __init__(

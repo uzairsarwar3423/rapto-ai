@@ -5,9 +5,9 @@ Stage 1.5: Rule-based filler word removal — deterministic, model-free.
 
 DESIGN DECISIONS (from plan §2 DECISION 3 and §5.5):
 
-  Runs BEFORE the Gemini call — not after.
+  Runs BEFORE the AI call — not after.
   This is a deliberate cost-architecture decision: every filler word stripped
-  by this free regex pass is a filler word the paid Gemini-via-OpenRouter call
+  by this free regex pass is a filler word the paid AI call
   never has to see, reason about, or spend output tokens reproducing.
   At Vocaply's meeting volume, this ordering is a real, measurable cost lever.
 

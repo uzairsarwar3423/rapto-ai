@@ -69,7 +69,7 @@ class TestReadyEndpoint:
         mock_redis_client.ping.return_value = True
 
         with patch(
-            "src.api.routes.health._check_gemini_reachability",
+            "src.api.routes.health._check_openai_reachability",
             new_callable=AsyncMock,
             return_value=True,
         ):
@@ -80,7 +80,7 @@ class TestReadyEndpoint:
         assert body["status"] == "ready"
         assert body["checks"]["mongodb"] is True
         assert body["checks"]["redis"] is True
-        assert body["checks"]["gemini"] is True
+        assert body["checks"]["ai"] is True
 
     async def test_ready_returns_503_when_mongo_down(
         self,
@@ -94,7 +94,7 @@ class TestReadyEndpoint:
         mock_redis_client.ping.return_value = True
 
         with patch(
-            "src.api.routes.health._check_gemini_reachability",
+            "src.api.routes.health._check_openai_reachability",
             new_callable=AsyncMock,
             return_value=True,
         ):
@@ -105,7 +105,7 @@ class TestReadyEndpoint:
         assert body["status"] == "not_ready"
         assert body["checks"]["mongodb"] is False
         assert body["checks"]["redis"] is True
-        assert body["checks"]["gemini"] is True
+        assert body["checks"]["ai"] is True
 
     async def test_ready_returns_503_when_redis_down(
         self,
@@ -119,7 +119,7 @@ class TestReadyEndpoint:
         mock_redis_client.ping.return_value = False
 
         with patch(
-            "src.api.routes.health._check_gemini_reachability",
+            "src.api.routes.health._check_openai_reachability",
             new_callable=AsyncMock,
             return_value=True,
         ):
@@ -130,27 +130,27 @@ class TestReadyEndpoint:
         assert body["checks"]["redis"] is False
         assert body["checks"]["mongodb"] is True
 
-    async def test_ready_returns_503_when_gemini_down(
+    async def test_ready_returns_503_when_openai_down(
         self,
         client: AsyncClient,
         auth_headers: dict,
         mock_mongo_client: AsyncMock,
         mock_redis_client: AsyncMock,
     ) -> None:
-        """Gemini unreachable → 503, checks.gemini == False."""
+        """OpenAI unreachable → 503, checks.openai == False."""
         mock_mongo_client.ping.return_value = True
         mock_redis_client.ping.return_value = True
 
         with patch(
-            "src.api.routes.health._check_gemini_reachability",
+            "src.api.routes.health._check_openai_reachability",
             new_callable=AsyncMock,
-            return_value=False,  # Gemini down
+            return_value=False,  # OpenAI down
         ):
             response = await client.get("/ready", headers=auth_headers)
 
         assert response.status_code == 503
         body = response.json()
-        assert body["checks"]["gemini"] is False
+        assert body["checks"]["ai"] is False
         assert body["checks"]["mongodb"] is True
         assert body["checks"]["redis"] is True
 
