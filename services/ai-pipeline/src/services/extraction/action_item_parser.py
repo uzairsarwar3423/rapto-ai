@@ -1,12 +1,7 @@
 import logging
 from typing import List, Dict
 from pydantic import BaseModel
-from src.models.extraction_models import ExtractedActionItem
-
-logger = logging.getLogger(__name__)
-
-class ParsedActionItem(ExtractedActionItem):
-    dedup_key: str
+from src.models.extraction_models import ExtractedActionItem, ParsedActionItem
 
 def parse_action_item(raw: ExtractedActionItem) -> ParsedActionItem:
     assignee_name = raw.assignee_name.strip()

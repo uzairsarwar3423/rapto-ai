@@ -1,10 +1,5 @@
 from typing import List, Dict
-from src.models.extraction_models import ExtractedBlocker
-from pydantic import BaseModel
-
-class ParsedBlocker(ExtractedBlocker):
-    text_normalized: str
-    dedup_key: str
+from src.models.extraction_models import ExtractedBlocker, ParsedBlocker
 
 def parse_blocker(raw: ExtractedBlocker) -> ParsedBlocker:
     text_normalized = raw.text.lower().strip()

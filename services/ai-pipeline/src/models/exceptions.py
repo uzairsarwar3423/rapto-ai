@@ -222,3 +222,14 @@ class InternalAuthError(AIPipelineError):
 
     def __init__(self, message: str = "Invalid or missing internal service key") -> None:
         super().__init__(message)
+
+
+class ResolverInvariantError(AIPipelineError):
+    """Raised when the resolver algorithm produces an inconsistent result count.
+
+    This represents a logic bug in the resolver algorithm, not a data issue.
+    """
+
+    error_code = "RESOLVER_INVARIANT_ERROR"
+    http_status = 500
+

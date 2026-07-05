@@ -1,10 +1,11 @@
 from enum import Enum
-from typing import List, Optional, Any, Literal, Union
+from typing import List, Optional, Any, Literal, Union, Tuple
 from pydantic import BaseModel, Field, model_validator, field_validator
 from datetime import datetime
 import logging
 from src.models.cleanup_models import CleanedTranscriptTurn, ParticipantInfo
 from src.models.common import CostRecord
+from src.models.date_models import DateParseResult
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +101,33 @@ class ExtractionResponse(BaseModel):
     def filter_low_confidence_commitments(cls, v: List[ExtractedCommitment]) -> List[ExtractedCommitment]:
         return [c for c in v if c.confidence >= 0.3]
 
-from src.services.extraction.commitment_parser import ParsedCommitment
-from src.services.extraction.action_item_parser import ParsedActionItem
-from src.services.extraction.decision_parser import ParsedDecision
-from src.services.extraction.blocker_parser import ParsedBlocker
+class ConfidenceCalibrationFlag(BaseModel):
+    is_suspicious: bool
+    reason: Optional[str] = None
+    model_stated: float
+    heuristic_estimate_range: Tuple[float, float]
+
+class ParsedCommitment(ExtractedCommitment):
+    id: Optional[str] = None
+    normalized_text: str
+    dedup_key: str
+    calibration_flag: ConfidenceCalibrationFlag
+    due_date_utc: Optional[datetime] = None
+    due_date_resolution: Optional[DateParseResult] = None
+    speaker_user_id: Optional[str] = None
+    speaker_name: Optional[str] = None
+    owner_user_id: Optional[str] = None
+
+class ParsedActionItem(ExtractedActionItem):
+    dedup_key: str
+
+class ParsedDecision(ExtractedDecision):
+    text_normalized: str
+
+class ParsedBlocker(ExtractedBlocker):
+    text_normalized: str
+    dedup_key: str
+
 
 class ExtractRequest(BaseModel):
     meeting_id: str = Field(..., min_length=1)

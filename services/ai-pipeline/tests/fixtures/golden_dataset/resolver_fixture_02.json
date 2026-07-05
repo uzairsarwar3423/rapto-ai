@@ -1,0 +1,57 @@
+{
+  "_schema_version": "1.0",
+  "fixture_id": "resolver_02",
+  "description": "Multi-owner scenario: Ahmed and Ali with separate commitments.",
+  "team_id": "team_clx02xyz",
+  "meeting_id": "mtg_current_20240715",
+  "meeting_date": "2024-07-15T10:00:00Z",
+  "new_commitments": [
+    {
+      "id": "new_01",
+      "text": "I'll finish the login feature today",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01"
+    },
+    {
+      "id": "new_02",
+      "text": "I will deploy the staging database tomorrow",
+      "owner_name": "Ali Raza",
+      "owner_user_id": "usr_ali_02"
+    }
+  ],
+  "historical_commitments": [
+    {
+      "id": "hist_01",
+      "text": "I'll finish the login feature by Thursday",
+      "owner_name": "Ahmed Hassan",
+      "owner_user_id": "usr_ahmed_01",
+      "status": "PENDING",
+      "meeting_id": "mtg_prev_20240708",
+      "meeting_date": "2024-07-08T10:00:00Z"
+    },
+    {
+      "id": "hist_02",
+      "text": "I will deploy the staging database soon",
+      "owner_name": "Ali Raza",
+      "owner_user_id": "usr_ali_02",
+      "status": "PENDING",
+      "meeting_id": "mtg_prev_20240708",
+      "meeting_date": "2024-07-08T10:00:00Z"
+    }
+  ],
+  "expected_matches": [
+    {
+      "new_id": "new_01",
+      "historical_id": "hist_01",
+      "should_match": true
+    },
+    {
+      "new_id": "new_02",
+      "historical_id": "hist_02",
+      "should_match": true
+    }
+  ],
+  "validation_summary": {
+    "expected_match_count": 2
+  }
+}

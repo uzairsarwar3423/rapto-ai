@@ -1,8 +1,4 @@
-from src.models.extraction_models import ExtractedDecision
-from pydantic import BaseModel
-
-class ParsedDecision(ExtractedDecision):
-    text_normalized: str
+from src.models.extraction_models import ExtractedDecision, ParsedDecision
 
 def parse_decision(raw: ExtractedDecision) -> ParsedDecision:
     text_normalized = raw.text.lower().strip()

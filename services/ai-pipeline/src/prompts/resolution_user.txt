@@ -1,0 +1,7 @@
+ORIGINAL COMMITMENT:
+"{historical_commitment_text}"
+
+NEW STATEMENT:
+"{new_statement_text}"
+
+Has the new statement confirmed that the original commitment was completed?
