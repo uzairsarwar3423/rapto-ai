@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LogoIcon } from "@/components/ui/LogoIcon";
 import { motion } from "framer-motion";
 import { useNavScroll } from "@/hooks/marketing/useNavScroll";
 import { useMobileMenu } from "@/hooks/marketing/useMobileMenu";
@@ -58,33 +59,10 @@ export function MarketingNav() {
           {/* ── Logo ──────────────────────────────────────────── */}
           <Link
             href="/"
-            style={{ textDecoration: "none", flexShrink: 0, display: "inline-flex", alignItems: "baseline" }}
-            aria-label="Vocaply home"
+            style={{ textDecoration: "none", flexShrink: 0, display: "inline-flex", alignItems: "center" }}
+            aria-label="Rapto home"
           >
-            <span
-              style={{
-                fontFamily: "var(--font-serif)",
-                fontSize: "clamp(24px, 2.5vw, 30px)",
-                fontWeight: 400,
-                color: "#0A0A0A",
-                letterSpacing: "-0.5px",
-                lineHeight: 1,
-              }}
-            >
-              voca
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-serif)",
-                fontSize: "clamp(24px, 2.5vw, 30px)",
-                fontWeight: 400,
-                color: "#1A6B3C",
-                letterSpacing: "-0.5px",
-                lineHeight: 1,
-              }}
-            >
-              ply
-            </span>
+            <LogoIcon size={70} priority />
           </Link>
 
           {/* ── Desktop nav links ──────────────────────────────── */}

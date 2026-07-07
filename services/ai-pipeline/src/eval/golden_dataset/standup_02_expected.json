@@ -1,0 +1,53 @@
+{
+  "meeting_id": "standup_02",
+  "description": "Wednesday engineering standup — 6-person team. Tests extraction generalization with 5 genuine commitments at varied confidence levels, 2 action items, 1 decision, 2 deliberate anti-patterns.",
+  "expected_commitments": [
+    {
+      "owner_name_contains": "Ahmed",
+      "text_contains": "submit the PR for the search feature",
+      "confidence_min": 0.8
+    },
+    {
+      "owner_name_contains": "Sara",
+      "text_contains": "finish the DB migration",
+      "confidence_min": 0.8
+    },
+    {
+      "owner_name_contains": "Ali",
+      "text_contains": "review Sara",
+      "confidence_min": 0.45
+    },
+    {
+      "owner_name_contains": "Zara",
+      "text_contains": "mobile bug",
+      "confidence_min": 0.3
+    },
+    {
+      "owner_name_contains": "Omar",
+      "text_contains": "customer escalation",
+      "confidence_min": 0.75
+    }
+  ],
+  "expected_action_items": [
+    {
+      "assignee_name_contains": "Sara",
+      "text_contains": "review my authentication module PR"
+    },
+    {
+      "assignee_name_contains": "Ahmed",
+      "text_contains": "check the monitoring alerts"
+    }
+  ],
+  "expected_decisions": [
+    {
+      "text_contains": "pushing the release to next Monday"
+    }
+  ],
+  "expected_blockers": [],
+  "expected_commitment_count": 5,
+  "expected_zero_commitments": false,
+  "anti_pattern_notes": [
+    "We should probably look at improving the test coverage — vague collective 'we should', not a first-person named commitment",
+    "Someone needs to follow up with the client — anonymous 'someone', not a named first-person promise"
+  ]
+}

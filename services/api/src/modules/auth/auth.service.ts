@@ -199,7 +199,7 @@ export const authService = {
     })
 
     // 11. Set secure HTTP-only cookie
-    res.cookie('vocaply_refresh', refreshToken, COOKIE_OPTIONS)
+    res.cookie('rapto_refresh', refreshToken, COOKIE_OPTIONS)
 
     // 12. Return payload (omitting sensitive fields)
     return {
@@ -220,7 +220,7 @@ export const authService = {
    * Log out a user by clearing their cookie and deleting the session from the DB.
    */
   async logout(req: Request, res: Response) {
-    const refreshToken = req.cookies.vocaply_refresh
+    const refreshToken = req.cookies.rapto_refresh
 
     if (refreshToken) {
       const tokenHash = hashToken(refreshToken)
@@ -231,12 +231,12 @@ export const authService = {
       }
     }
 
-    // Clear client-side cookie
-    res.clearCookie('vocaply_refresh', {
+    // Clear client-side cookie — path MUST match the path used when setting it
+    res.clearCookie('rapto_refresh', {
       httpOnly: COOKIE_OPTIONS.httpOnly,
-      secure: COOKIE_OPTIONS.secure,
+      secure:   COOKIE_OPTIONS.secure,
       sameSite: COOKIE_OPTIONS.sameSite,
-      path: COOKIE_OPTIONS.path,
+      path:     COOKIE_OPTIONS.path,
     })
 
     return { message: 'Logged out successfully' }
@@ -246,7 +246,7 @@ export const authService = {
    * Refresh the user's access token, rotating the refresh token.
    */
   async refresh(req: Request, res: Response) {
-    const refreshToken = req.cookies.vocaply_refresh
+    const refreshToken = req.cookies.rapto_refresh
     if (!refreshToken) {
       throw new UnauthorizedError('NO_REFRESH_TOKEN', 'No refresh token provided')
     }
@@ -282,7 +282,7 @@ export const authService = {
       userAgent: req.headers['user-agent'] || null,
     })
 
-    res.cookie('vocaply_refresh', newRefreshToken, COOKIE_OPTIONS)
+    res.cookie('rapto_refresh', newRefreshToken, COOKIE_OPTIONS)
 
     return { accessToken: newAccessToken }
   },
@@ -350,7 +350,7 @@ export const authService = {
       userAgent: req.headers['user-agent'] || null,
     })
 
-    res.cookie('vocaply_refresh', refreshToken, COOKIE_OPTIONS)
+    res.cookie('rapto_refresh', refreshToken, COOKIE_OPTIONS)
 
     return {
       accessToken,
@@ -473,7 +473,7 @@ export const authService = {
       userAgent: req.headers['user-agent'] || null,
     })
 
-    res.cookie('vocaply_refresh', refreshToken, COOKIE_OPTIONS)
+    res.cookie('rapto_refresh', refreshToken, COOKIE_OPTIONS)
 
     return {
       accessToken,
@@ -643,15 +643,22 @@ export const authService = {
         userAgent: req.headers['user-agent'] || null,
       })
 
-      res.cookie('vocaply_refresh', refreshToken, COOKIE_OPTIONS)
+      res.cookie('rapto_refresh', refreshToken, COOKIE_OPTIONS)
 
-      // Redirect to dashboard or onboarding
-      const redirectUrl =
-        user!.onboardingCompleted || user!.teamId
-          ? `${frontendUrl}/dashboard`
-          : `${frontendUrl}/onboarding`
+      // Pass the accessToken as a URL parameter to the OAuth callback page.
+      // The frontend /auth/callback page reads this param, stores it in the
+      // Zustand memory store (accessToken), then immediately replaces the URL
+      // to strip the token from history (standard OAuth BFF pattern).
+      //
+      // WHY NOT just redirect to /dashboard?
+      //   A bare redirect sets the refresh cookie but leaves accessToken=null
+      //   in the Zustand store. All API calls on page load fire before the
+      //   app can do a /auth/refresh, so they all 401.
+      const destination = user!.onboardingCompleted || user!.teamId
+        ? `${frontendUrl}/auth/callback?token=${accessToken}&next=/dashboard`
+        : `${frontendUrl}/auth/callback?token=${accessToken}&next=/onboarding`
 
-      res.redirect(redirectUrl)
+      res.redirect(destination)
     } catch (error) {
       logger.error({ error }, 'Google OAuth callback handling failed')
       res.redirect(`${frontendUrl}/login?error=oauth_failed`)

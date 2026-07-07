@@ -117,7 +117,7 @@ export function AICapabilities() {
               marginLeft: 0,
             }}
           >
-            Not keyword matching. Not templated summaries. Vocaply uses Claude
+            Not keyword matching. Not templated summaries. Rapto uses Claude
             AI to understand context, intent, and meaning — so it catches the
             commitments others miss.
           </p>
@@ -149,7 +149,7 @@ export function AICapabilities() {
               lineHeight: 1,
             }}
           >
-            Try it — watch how Vocaply parses this:
+            Try it — watch how Rapto parses this:
           </p>
 
           {/* Sentence Display Area */}

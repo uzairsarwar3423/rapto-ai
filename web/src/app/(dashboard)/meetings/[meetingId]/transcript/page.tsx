@@ -15,9 +15,22 @@ export default async function TranscriptPage({ params }: TranscriptPageProps) {
     notFound()
   }
 
-  // 2. Fetch transcript only if the meeting has successfully finished processing
+  // 2. Fetch transcript only if the meeting has successfully finished transcription
+  const transcriptReadyStates = [
+    "DONE", 
+    "RESOLVED", 
+    "RESOLUTION_FAILED", 
+    "EXTRACTION_FAILED", 
+    "EXTRACTED", 
+    "EXTRACTED_PARTIAL",
+    "TRANSCRIPT_CLEANED",
+    "TRANSCRIPT_CLEANUP_FAILED",
+    "TRANSCRIPT_CLEANUP_DEGRADED",
+    "TRANSCRIBED"
+  ]
+  
   let transcript = null
-  if (meeting.status === "DONE" && meeting.mongoTranscriptId) {
+  if (transcriptReadyStates.includes(meeting.status) && meeting.mongoTranscriptId) {
     transcript = await getMeetingTranscript(meetingId)
   }
 

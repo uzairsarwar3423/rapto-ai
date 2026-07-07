@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { IntegrationsClientPage } from "./IntegrationsClientPage";
 
 export const metadata: Metadata = {
-  title: "Integrations — Vocaply connects with Jira, Slack, Zoom & more",
+  title: "Integrations — Rapto connects with Jira, Slack, Zoom & more",
   description:
-    "Vocaply integrates with 14+ tools your team already uses: Jira, Slack, Linear, Notion, Google Calendar, Zoom, Google Meet, and Microsoft Teams. One-click OAuth setup.",
+    "Rapto integrates with 14+ tools your team already uses: Jira, Slack, Linear, Notion, Google Calendar, Zoom, Google Meet, and Microsoft Teams. One-click OAuth setup.",
   keywords: [
     "jira standup integration",
     "slack meeting accountability",
@@ -14,10 +14,10 @@ export const metadata: Metadata = {
     "meeting bot google calendar",
   ],
   openGraph: {
-    title: "Vocaply Integrations — Works with your entire stack",
+    title: "Rapto Integrations — Works with your entire stack",
     description:
-      "Vocaply integrates with 14+ tools your team already uses: Jira, Slack, Linear, Notion, Google Calendar, Zoom, Google Meet, and Microsoft Teams.",
-    url: "https://vocaply.com/integrations",
+      "Rapto integrates with 14+ tools your team already uses: Jira, Slack, Linear, Notion, Google Calendar, Zoom, Google Meet, and Microsoft Teams.",
+    url: "https://rapto.ai/integrations",
     type: "website",
   },
 };

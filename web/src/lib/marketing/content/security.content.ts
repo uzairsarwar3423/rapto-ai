@@ -22,7 +22,7 @@ export const securityClaims: SecurityClaim[] = [
     iconName: "ShieldOff",
     title: "No AI training on your data",
     description:
-      "Vocaply never uses your meeting transcripts to train AI models. Your conversations stay private and are processed only for extraction.",
+      "Rapto never uses your meeting transcripts to train AI models. Your conversations stay private and are processed only for extraction.",
   },
   {
     iconName: "FileCheck",

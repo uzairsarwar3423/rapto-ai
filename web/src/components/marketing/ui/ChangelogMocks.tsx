@@ -59,14 +59,14 @@ export function MockLinearIntegration() {
             </p>
           </div>
 
-          {/* Vocaply Linked Activity */}
+          {/* Rapto Linked Activity */}
           <div className="bg-[var(--color-brand-subtle)] border border-[color-mix(in_srgb,var(--color-brand)_15%,transparent)] rounded-lg p-3 flex gap-2.5 items-start">
             <div className="h-6 w-6 rounded-full bg-[var(--color-brand)] flex items-center justify-center text-white flex-shrink-0 shadow-sm mt-0.5">
               <Sparkles className="w-3 h-3" />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[11px] font-semibold text-[var(--color-brand)]">Vocaply Sync</span>
+                <span className="text-[11px] font-semibold text-[var(--color-brand)]">Rapto Sync</span>
                 <span className="text-[9px] text-[var(--color-muted-subtle)] font-mono">Auto-linked</span>
               </div>
               <p className="text-[11px] text-[var(--color-muted)] font-light leading-snug">
@@ -75,7 +75,7 @@ export function MockLinearIntegration() {
               {issueStatus === "done" && (
                 <div className="flex items-center gap-1.5 mt-2 text-[10px] font-semibold text-[var(--color-brand)] animate-in fade-in slide-in-from-top-1 duration-200">
                   <Check className="w-3 h-3" />
-                  <span>Vocaply Commitment Auto-Fulfilled</span>
+                  <span>Rapto Commitment Auto-Fulfilled</span>
                 </div>
               )}
             </div>
@@ -126,7 +126,7 @@ export function MockLinearIntegration() {
             </span>
             <div className="flex items-center gap-1 text-[var(--color-brand)] font-semibold text-xs">
               <Brain className="w-3.5 h-3.5" />
-              <span>Vocaply (AI)</span>
+              <span>Rapto (AI)</span>
             </div>
           </div>
         </div>

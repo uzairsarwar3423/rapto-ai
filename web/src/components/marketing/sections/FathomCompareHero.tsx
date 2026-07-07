@@ -20,7 +20,7 @@ export function FathomCompareHero() {
         >
           <Sparkles className="w-4 h-4 text-brand" />
           <span className="text-sm font-medium text-foreground">
-            Vocaply vs Fathom Video
+            Rapto vs Fathom Video
           </span>
         </motion.div>
 
@@ -41,7 +41,7 @@ export function FathomCompareHero() {
           transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
           className="text-lg md:text-xl text-muted leading-relaxed font-sans max-w-2xl mx-auto mb-10"
         >
-          Fathom is excellent for saving clips from sales calls. Vocaply is explicitly engineered 
+          Fathom is excellent for saving clips from sales calls. Rapto is explicitly engineered 
           to parse complex standups, create high-fidelity Jira tickets, and follow up with developers autonomously.
         </motion.p>
 
@@ -52,7 +52,7 @@ export function FathomCompareHero() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <MarketingButton variant="primary" size="lg" href="#waitlist">
-            Try Vocaply for Free
+            Try Rapto for Free
             <ArrowRight className="w-4 h-4 ml-2" />
           </MarketingButton>
           <MarketingButton variant="outline" size="lg" href="#comparison">

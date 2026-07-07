@@ -44,6 +44,17 @@ enum MeetingStatus {
   BOT_JOINING
   RECORDING
   PROCESSING
+  TRANSCRIBED
+  TRANSCRIPT_CLEANED
+  // Cleanup failed — raw transcript passed to extractor (degraded mode)
+  TRANSCRIPT_CLEANUP_FAILED
+  // Cleanup was skipped / raw used — same as TRANSCRIPT_CLEANUP_FAILED but explicit
+  TRANSCRIPT_CLEANUP_DEGRADED
+  EXTRACTED
+  EXTRACTED_PARTIAL
+  EXTRACTION_FAILED
+  RESOLVED
+  RESOLUTION_FAILED
   DONE
   FAILED
   CANCELLED
@@ -283,6 +294,7 @@ model Team {
   plan                  PlanType  @default(FREE)
   stripeCustomerId      String?   @unique
   stripeSubId           String?   @unique
+  paddleCustomerId      String?   @unique
   meetingsUsed          Int       @default(0)
   billingCycleStart     DateTime?
   billingCycleEnd       DateTime?
@@ -366,6 +378,14 @@ model Meeting {
   processingCompletedAt   DateTime?
   processingAttempts      Int             @default(0)
   processingError         String?
+  // AI extraction metadata — populated by extract.worker after /extract call
+  extractionModel         String?         // e.g. 'gpt-4.1-mini'
+  extractionPromptVersion String?         // e.g. 'v2.3.1'
+  extractionCostUsd       Float?          // total_cost.estimated_cost_usd
+  // AI resolution state — populated by resolve.worker
+  resolutionFailed        Boolean         @default(false)
+  resolutionComplete      Boolean         @default(false)
+  resolutionPartial       Boolean         @default(false)
   reprocessedAt           DateTime?
   reprocessedById         String?
   createdAt               DateTime        @default(now())
@@ -423,6 +443,7 @@ model Commitment {
   ownerId               String
   text                  String
   normalizedText        String?
+  dedupKey              String?
   dueDate               DateTime?
   dueDateRaw            String?
   status                CommitmentStatus  @default(PENDING)
@@ -430,6 +451,13 @@ model Commitment {
   extractionModel       String?
   resolvedAt            DateTime?
   resolvedInMeetingId   String?
+  fulfilledAt           DateTime?
+  fulfilledByStatement  String?
+  detectionConfidence   Float?
+  similarityScore       Float?
+  resolutionPromptVersion String?
+  lastReferencedAt      DateTime?
+  referenceCount        Int               @default(0)
   originalDueDate       DateTime?
   deferredCount         Int               @default(0)
   deferredNote          String?
@@ -595,12 +623,11 @@ model UserIntegration {
 model Subscription {
   id                      String              @id @default(cuid())
   teamId                  String              @unique
-  stripeSubscriptionId    String              @unique
-  stripeCustomerId        String
-  stripePriceId           String?
-  stripeProductId         String?
+  paddleSubscriptionId    String              @unique
+  paddleCustomerId        String
+  paddlePriceId           String?
   plan                    PlanType
-  billingInterval         String?
+  billingInterval         String?             // 'month' | 'year'
   status                  SubscriptionStatus
   currentPeriodStart      DateTime?
   currentPeriodEnd        DateTime?
@@ -620,24 +647,24 @@ model Subscription {
 }
 
 model Invoice {
-  id                String    @id @default(cuid())
-  teamId            String
-  stripeInvoiceId   String    @unique
-  stripeCustomerId  String
-  number            String?
-  amountDue         Int
-  amountPaid        Int       @default(0)
-  currency          String    @default("usd")
-  status            String
-  periodStart       DateTime?
-  periodEnd         DateTime?
-  description       String?
-  hostedInvoiceUrl  String?
-  invoicePdfUrl     String?
-  paidAt            DateTime?
-  createdAt         DateTime  @default(now())
+  id                    String    @id @default(cuid())
+  teamId                String
+  paddleTransactionId   String    @unique
+  paddleCustomerId      String
+  number                String?
+  amountDue             Int
+  amountPaid            Int       @default(0)
+  currency              String    @default("usd")
+  status                String    // 'paid' | 'past_due' | 'draft' | 'voided'
+  periodStart           DateTime?
+  periodEnd             DateTime?
+  description           String?
+  hostedInvoiceUrl      String?   // Paddle receipt URL — same column name as Stripe build for frontend compat
+  invoicePdfUrl         String?
+  paidAt                DateTime?
+  createdAt             DateTime  @default(now())
 
-  team              Team      @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  team                  Team      @relation(fields: [teamId], references: [id], onDelete: Restrict)
 
   @@index([teamId, createdAt(sort: Desc)])
   @@map("invoices")

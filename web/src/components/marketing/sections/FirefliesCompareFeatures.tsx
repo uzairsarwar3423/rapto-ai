@@ -7,19 +7,19 @@ import { cn } from "@/lib/utils";
 const features = [
   {
     title: "Action Items vs Active Tickets",
-    description: "Fireflies might give you a bulleted list of generic 'Next Steps'. Vocaply uses intelligent parsing to extract who is doing what and by when, automatically generating fully-fleshed Jira or Linear tickets.",
+    description: "Fireflies might give you a bulleted list of generic 'Next Steps'. Rapto uses intelligent parsing to extract who is doing what and by when, automatically generating fully-fleshed Jira or Linear tickets.",
     icon: Link2,
     align: "left",
   },
   {
     title: "Tuned for Standups",
-    description: "Generic AI note-takers struggle with the fast, context-heavy nature of engineering standups. Vocaply's models are specifically tuned to understand software development terminology and agile workflows.",
+    description: "Generic AI note-takers struggle with the fast, context-heavy nature of engineering standups. Rapto's models are specifically tuned to understand software development terminology and agile workflows.",
     icon: BrainCircuit,
     align: "right",
   },
   {
     title: "Closing the Loop",
-    description: "A note-taker's job ends when the transcript is emailed. Vocaply actively tracks the lifecycle of the commitments made, proactively pinging engineers via Slack before a deadline slips.",
+    description: "A note-taker's job ends when the transcript is emailed. Rapto actively tracks the lifecycle of the commitments made, proactively pinging engineers via Slack before a deadline slips.",
     icon: Activity,
     align: "left",
   },
@@ -38,7 +38,7 @@ export function FirefliesCompareFeatures() {
             className="text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight"
             style={{ fontFamily: 'var(--font-plus-jakarta), system-ui, sans-serif' }}
           >
-            Why Engineering Teams Choose Vocaply
+            Why Engineering Teams Choose Rapto
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}

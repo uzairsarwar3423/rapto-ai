@@ -72,7 +72,7 @@ export function UseCases() {
             }}
           >
             Whether it&apos;s a 10-person standup or a 200-person all-hands,
-            Vocaply extracts and tracks what was promised.
+            Rapto extracts and tracks what was promised.
           </motion.p>
         </motion.div>
 

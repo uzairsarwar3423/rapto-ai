@@ -44,7 +44,7 @@ const pricingFaqs = [
   },
   {
     question: "Do you require a credit card for the free trial?",
-    answer: "No. All paid plans come with a 14-day free trial, and no credit card is required to sign up. You can experience the full power of Vocaply risk-free.",
+    answer: "No. All paid plans come with a 14-day free trial, and no credit card is required to sign up. You can experience the full power of Rapto risk-free.",
   },
   {
     question: "Can we cancel or change plans at any time?",
@@ -222,7 +222,7 @@ export function PricingClientPage() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-base sm:text-lg md:text-xl text-[#6B6A67] max-w-xl mx-auto mb-10 leading-relaxed font-light"
           >
-            No per-seat anxiety. Invite your entire cross-functional team freely. Vocaply&apos;s cost is driven by meetings, not people.
+            No per-seat anxiety. Invite your entire cross-functional team freely. Rapto&apos;s cost is driven by meetings, not people.
           </motion.p>
 
           {/* Billing Switcher */}
@@ -818,7 +818,7 @@ export function PricingClientPage() {
                         </motion.div>
                       )}
 
-                      {/* Bar 2: Vocaply */}
+                      {/* Bar 2: Rapto */}
                       <div className="flex flex-col items-center gap-2 w-1/3">
                         <span className="text-[10px] font-bold text-[#6ECC8E]">
                           ${calculatorResults.basePrice}/mo
@@ -833,7 +833,7 @@ export function PricingClientPage() {
                           </span>
                         </motion.div>
                         <span className="text-[9px] uppercase text-[#6ECC8E] tracking-wider font-bold">
-                          Vocaply
+                          Rapto
                         </span>
                       </div>
                     </div>
@@ -878,7 +878,7 @@ export function PricingClientPage() {
                             animate={{ width: `${transparencyWeights.margin}%` }}
                             transition={springTransition}
                             className="h-full bg-[#1A6B3C]"
-                            title={`Vocaply Margin: $${(calculatorResults.basePrice - calculatorResults.totalInfraCost).toFixed(2)}`}
+                            title={`Rapto Margin: $${(calculatorResults.basePrice - calculatorResults.totalInfraCost).toFixed(2)}`}
                           />
                         )}
                       </div>
@@ -1314,7 +1314,7 @@ export function PricingClientPage() {
 
           <div className="relative z-10 max-w-2xl mx-auto">
             <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl mb-6 font-normal tracking-tight">
-              Get started with Vocaply today.
+              Get started with Rapto today.
             </h2>
             <p className="text-sm sm:text-base text-white/70 max-w-lg mx-auto mb-10 leading-relaxed font-light">
               Boost meeting accountability, track commitments automatically, and integrate seamlessly with Jira, Slack, and Linear. No credit card required for trial.

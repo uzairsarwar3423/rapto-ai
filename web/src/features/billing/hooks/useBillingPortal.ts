@@ -28,8 +28,7 @@ export function useBillingPortal(): UseBillingPortalReturn {
 
   const mutation = useMutation({
     mutationFn: () => {
-      const idempotencyKey = `portal-${teamId}-${Date.now()}`;
-      return createBillingPortalSession(teamId, idempotencyKey);
+      return createBillingPortalSession();
     },
     onMutate: () => {
       setButtonState("redirecting");

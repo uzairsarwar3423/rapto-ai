@@ -1,4 +1,5 @@
 import * as Lucide from "lucide-react";
+import { LogoIcon } from "@/components/ui/LogoIcon";
 
 const NAV_ITEMS = [
   { iconName: "LayoutDashboard", label: "Dashboard", active: false },
@@ -25,19 +26,15 @@ export function MockAppSidebar() {
           gap: "2px",
         }}
       >
-        {/* Vocaply wordmark */}
+        {/* Rapto icon */}
         <div
           style={{
             padding: "4px 8px 16px",
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "15px",
-            letterSpacing: "-0.3px",
             borderBottom: "1px solid #E4E3DF",
             marginBottom: "12px",
           }}
         >
-          <span style={{ color: "#0A0A0A" }}>voca</span>
-          <span style={{ color: "#1A6B3C" }}>ply</span>
+          <LogoIcon size={34} />
         </div>
 
         {NAV_ITEMS.map((item) => {

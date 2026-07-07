@@ -7,19 +7,19 @@ import { cn } from "@/lib/utils";
 const features = [
   {
     title: "Accountability vs Playback",
-    description: "Fathom is amazing for re-watching a great sales pitch or sharing a product demo clip. But in engineering, no one wants to re-watch a standup. They just want to know what tasks were committed to. Vocaply skips the video and jumps straight to the tickets.",
+    description: "Fathom is amazing for re-watching a great sales pitch or sharing a product demo clip. But in engineering, no one wants to re-watch a standup. They just want to know what tasks were committed to. Rapto skips the video and jumps straight to the tickets.",
     icon: ListChecks,
     align: "left",
   },
   {
     title: "Closing the Loop",
-    description: "Fathom sends you a summary after the call. Vocaply actively manages the commitments made during the call, following up with engineers on Slack days later if a task isn't marked complete in Jira.",
+    description: "Fathom sends you a summary after the call. Rapto actively manages the commitments made during the call, following up with engineers on Slack days later if a task isn't marked complete in Jira.",
     icon: Repeat,
     align: "right",
   },
   {
     title: "Built for Engineering Stacks",
-    description: "While Fathom integrates with HubSpot and Salesforce, Vocaply integrates deeply with Jira, Linear, and GitHub. It speaks your engineering team's language.",
+    description: "While Fathom integrates with HubSpot and Salesforce, Rapto integrates deeply with Jira, Linear, and GitHub. It speaks your engineering team's language.",
     icon: Database,
     align: "left",
   },
@@ -38,7 +38,7 @@ export function FathomCompareFeatures() {
             className="text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight"
             style={{ fontFamily: 'var(--font-plus-jakarta), system-ui, sans-serif' }}
           >
-            Why Engineering Teams Choose Vocaply
+            Why Engineering Teams Choose Rapto
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}

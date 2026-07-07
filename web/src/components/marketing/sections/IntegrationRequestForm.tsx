@@ -45,7 +45,7 @@ export function IntegrationRequestForm() {
               Request Submitted Successfully!
             </h4>
             <p className="font-sans text-[11px] text-[var(--color-muted)]">
-              Thank you for helping us shape the Vocaply roadmap. We will reach out when development begins.
+              Thank you for helping us shape the Rapto roadmap. We will reach out when development begins.
             </p>
             <button
               onClick={() => setStatus("idle")}

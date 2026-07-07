@@ -5,7 +5,7 @@ export function MockCalendarEvent() {
     { name: "Ali Raza", initials: "AR", color: "bg-[#039BE5]" },
     { name: "Ahmed Hassan", initials: "AH", color: "bg-[#E2B33C]" },
     { name: "Sara Khan", initials: "SK", color: "bg-[#33B679]" },
-    { name: "Vocaply Bot", initials: "VB", color: "bg-[#1A6B3C]", active: true },
+    { name: "Rapto Bot", initials: "VB", color: "bg-[#1A6B3C]", active: true },
   ];
 
   return (
@@ -65,14 +65,14 @@ export function MockCalendarEvent() {
             </div>
           </div>
 
-          {/* Vocaply Banner notification */}
+          {/* Rapto Banner notification */}
           <div className="mt-2 bg-[var(--color-brand-subtle)] border border-[color-mix(in_srgb,var(--color-brand)_15%,transparent)] rounded-lg px-3 py-2 flex items-center gap-2">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand)] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-brand)]"></span>
             </span>
             <span className="text-xs text-[var(--color-brand)] font-semibold">
-              Vocaply will join and track commitments automatically.
+              Rapto will join and track commitments automatically.
             </span>
           </div>
         </div>
@@ -82,7 +82,7 @@ export function MockCalendarEvent() {
       <div className="mt-4 max-w-[500px] mx-auto w-full bg-[#FAFAF8] border border-[color-mix(in_srgb,var(--color-brand)_15%,transparent)] rounded-lg p-3 flex gap-2.5 items-start">
         <Lock className="w-4 h-4 text-[var(--color-brand)] mt-0.5 flex-shrink-0" />
         <div className="text-[11px] text-[var(--color-muted)] leading-relaxed">
-          <span className="font-semibold text-[var(--color-foreground)]">Privacy Guarantee:</span> Vocaply only reads calendar event titles and meeting URLs. It never accesses event details, attendee email bodies, or calendar data beyond what&apos;s required to schedule the recorder.
+          <span className="font-semibold text-[var(--color-foreground)]">Privacy Guarantee:</span> Rapto only reads calendar event titles and meeting URLs. It never accesses event details, attendee email bodies, or calendar data beyond what&apos;s required to schedule the recorder.
         </div>
       </div>
     </div>

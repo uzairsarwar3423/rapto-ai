@@ -46,9 +46,9 @@ export const changelogEntries: ChangelogEntry[] = [
     date: "2026-05-14",
     title: "Linear integration is now live",
     category: "new-feature",
-    body: "Commitment action items from meetings now automatically create Linear issues. Assignees are matched by email, priority is mapped from AI extraction, and when an issue is closed in Linear, the commitment is auto-fulfilled in Vocaply. Complete your standup lifecycle without switching tabs.",
+    body: "Commitment action items from meetings now automatically create Linear issues. Assignees are matched by email, priority is mapped from AI extraction, and when an issue is closed in Linear, the commitment is auto-fulfilled in Rapto. Complete your standup lifecycle without switching tabs.",
     imageUrl: "/images/changelog/linear-integration-launch.png",
-    imageAlt: "Linear issue showing Vocaply integration integration details",
+    imageAlt: "Linear issue showing Rapto integration integration details",
     links: [
       { label: "Set up Linear", href: "/settings/integrations#linear" }
     ],
@@ -58,14 +58,14 @@ export const changelogEntries: ChangelogEntry[] = [
     date: "2026-05-10",
     title: "Jira tickets now include meeting context in the description",
     category: "improvement",
-    body: "Previously, Jira issues created by Vocaply had a minimal description. Now every ticket includes the meeting name, date, and a short quote from the transcript where the action item was mentioned, giving engineers instant context on why a ticket was generated.",
+    body: "Previously, Jira issues created by Rapto had a minimal description. Now every ticket includes the meeting name, date, and a short quote from the transcript where the action item was mentioned, giving engineers instant context on why a ticket was generated.",
     isHighlight: true,
   },
   {
     date: "2026-05-07",
     title: "Fixed: Google Calendar sync missing meetings created outside working hours",
     category: "bug-fix",
-    body: "A bug caused Vocaply to miss calendar events scheduled before 8 AM or after 6 PM UTC. This is now fixed. The sync window has been extended to cover 24 hours, ensuring late-night syncs or global team meetings are captured.",
+    body: "A bug caused Rapto to miss calendar events scheduled before 8 AM or after 6 PM UTC. This is now fixed. The sync window has been extended to cover 24 hours, ensuring late-night syncs or global team meetings are captured.",
   },
   {
     date: "2026-05-02",
@@ -102,7 +102,7 @@ export const changelogEntries: ChangelogEntry[] = [
     date: "2026-04-15",
     title: "Cross-meeting memory: Commitments now carry forward automatically",
     category: "new-feature",
-    body: "This is our biggest feature update. When Ahmed says 'I finished the login feature' in this week's standup, Vocaply automatically links it to last week's promise and marks it fulfilled — without any manual intervention. We match context across meetings, linking follow-ups to original commitments.",
+    body: "This is our biggest feature update. When Ahmed says 'I finished the login feature' in this week's standup, Rapto automatically links it to last week's promise and marks it fulfilled — without any manual intervention. We match context across meetings, linking follow-ups to original commitments.",
     imageUrl: "/images/changelog/cross-meeting-memory.png",
     imageAlt: "Commitment timeline view showing cross-meeting resolution",
     links: [

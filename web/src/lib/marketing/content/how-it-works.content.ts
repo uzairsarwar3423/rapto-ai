@@ -7,7 +7,7 @@
 export const howItWorksHeaderLabel = "How it works";
 export const howItWorksHeadline = "Three steps. Zero manual work.";
 export const howItWorksSubheadline =
-  "Vocaply runs in the background so your team focuses on the meeting, not on taking notes.";
+  "Rapto runs in the background so your team focuses on the meeting, not on taking notes.";
 
 export interface StepItem {
   number: string;
@@ -22,7 +22,7 @@ export const steps: StepItem[] = [
     iconName: "CalendarRange",
     title: "Bot joins automatically",
     description:
-      "Connect your Google Calendar. Vocaply detects every Zoom, Meet, and Teams meeting and sends a bot to join 2 minutes before it starts. No setup per meeting. Ever.",
+      "Connect your Google Calendar. Rapto detects every Zoom, Meet, and Teams meeting and sends a bot to join 2 minutes before it starts. No setup per meeting. Ever.",
   },
   {
     number: "02",

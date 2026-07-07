@@ -26,7 +26,7 @@ const EXTRACTED_ITEMS = [
     labelColor: "#6B6A67",
     labelBg: "#F2F1EE",
     text: "Team decided to use PostgreSQL for the new service",
-    meta: "Agreed by: All · Recorded by Vocaply AI",
+    meta: "Agreed by: All · Recorded by Rapto AI",
   },
 ];
 
@@ -212,7 +212,7 @@ export function MockMeetingView() {
             lineHeight: 1.4,
           }}
         >
-          Extracted by Vocaply AI · 94% confidence · Full transcript available
+          Extracted by Rapto AI · 94% confidence · Full transcript available
         </p>
       </div>
       <style>{`

@@ -10,13 +10,13 @@ import { FathomCompareFeatures } from "@/components/marketing/sections/FathomCom
 import { FinalCTA } from "@/components/marketing/sections/FinalCTA";
 
 export const metadata: Metadata = {
-  title: "Vocaply vs Fathom Video — Engineered for Accountability",
+  title: "Rapto vs Fathom Video — Engineered for Accountability",
   description:
-    "Discover why engineering teams are switching from Fathom to Vocaply. Move beyond video snippets to automated Jira syncs and proactive follow-ups.",
+    "Discover why engineering teams are switching from Fathom to Rapto. Move beyond video snippets to automated Jira syncs and proactive follow-ups.",
   openGraph: {
-    title: "Vocaply vs Fathom Video",
-    description: "Discover why engineering teams are switching from Fathom Video to Vocaply for accountability.",
-    url: "https://vocaply.com/compare/fathom",
+    title: "Rapto vs Fathom Video",
+    description: "Discover why engineering teams are switching from Fathom Video to Rapto for accountability.",
+    url: "https://rapto.ai/compare/fathom",
     type: "article",
   },
 };

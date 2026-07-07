@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LogoIcon } from "@/components/ui/LogoIcon";
 
 export const metadata: Metadata = {
   title: "Page Not Found",
@@ -7,7 +8,7 @@ export const metadata: Metadata = {
 
 /**
  * 404 Not Found page — Server Component (no event handlers)
- * Uses Vocaply brand styling.
+ * Uses Rapto brand styling.
  */
 export default function NotFound() {
   return (
@@ -58,14 +59,9 @@ export default function NotFound() {
           404
         </p>
 
-        {/* Logo wordmark */}
+        {/* Logo icon */}
         <div style={{ marginBottom: "32px" }}>
-          <span style={{ fontFamily: "var(--font-serif), Georgia, serif", fontSize: "24px", color: "#0A0A0A" }}>
-            voca
-          </span>
-          <span style={{ fontFamily: "var(--font-serif), Georgia, serif", fontSize: "24px", color: "#1A6B3C" }}>
-            ply
-          </span>
+          <LogoIcon size={56} style={{ margin: "0 auto" }} />
         </div>
 
         <h1

@@ -20,7 +20,7 @@ export function FirefliesCompareHero() {
         >
           <Sparkles className="w-4 h-4 text-brand" />
           <span className="text-sm font-medium text-foreground">
-            Vocaply vs Fireflies.ai
+            Rapto vs Fireflies.ai
           </span>
         </motion.div>
 
@@ -42,7 +42,7 @@ export function FirefliesCompareHero() {
           className="text-lg md:text-xl text-muted leading-relaxed font-sans max-w-2xl mx-auto mb-10"
         >
           Fireflies is a great general-purpose AI note-taker. But engineering teams need more 
-          than just a summary. Vocaply actively manages commitments, syncs directly to Jira, 
+          than just a summary. Rapto actively manages commitments, syncs directly to Jira, 
           and handles follow-ups autonomously.
         </motion.p>
 
@@ -53,7 +53,7 @@ export function FirefliesCompareHero() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <MarketingButton variant="primary" size="lg" href="#waitlist">
-            Try Vocaply for Free
+            Try Rapto for Free
             <ArrowRight className="w-4 h-4 ml-2" />
           </MarketingButton>
           <MarketingButton variant="outline" size="lg" href="#comparison">

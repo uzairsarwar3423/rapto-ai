@@ -81,7 +81,7 @@ const CONTACT_FAQS = [
     answer: "We offer native cloud-based integrations with Slack, Teams, Notion, and Jira. For enterprise customers with strict compliance constraints, we can discuss private tenant deployments on AWS, GCP, or custom webhook architectures. We do not support pure local on-premises installations as the transcription engine runs on distributed model clusters.",
   },
   {
-    question: "How secure is our data? Is Vocaply SOC 2 compliant?",
+    question: "How secure is our data? Is Rapto SOC 2 compliant?",
     answer: "Security is built into our architecture. All meeting data is encrypted in transit via TLS 1.3 and at rest via AES-256. We do not use customer data or transcripts to train public AI models. We are currently SOC 2 Type I compliant, and our Type II audit period is active. We can share our latest SOC 2 report and security package with enterprise buyers under NDA.",
   },
   {
@@ -376,7 +376,7 @@ export function ContactClientPage() {
 
                 <div className="space-y-4">
                   <a
-                    href="mailto:support@vocaply.com"
+                    href="mailto:support@rapto.ai"
                     className="flex items-center justify-between p-3 bg-[#FAF9F5] border border-black/5 hover:border-[#1A6B3C]/30 hover:bg-[#E8F5EE]/30 rounded-xl transition-all group"
                   >
                     <div className="flex items-center gap-3">
@@ -388,7 +388,7 @@ export function ContactClientPage() {
                           Technical Support
                         </span>
                         <span className="text-xs sm:text-sm font-semibold text-[#0A0A0A]">
-                          support@vocaply.com
+                          support@rapto.ai
                         </span>
                       </div>
                     </div>
@@ -396,7 +396,7 @@ export function ContactClientPage() {
                   </a>
 
                   <a
-                    href="mailto:sales@vocaply.com"
+                    href="mailto:sales@rapto.ai"
                     className="flex items-center justify-between p-3 bg-[#FAF9F5] border border-black/5 hover:border-[#1A6B3C]/30 hover:bg-[#E8F5EE]/30 rounded-xl transition-all group"
                   >
                     <div className="flex items-center gap-3">
@@ -408,7 +408,7 @@ export function ContactClientPage() {
                           Sales & Demos
                         </span>
                         <span className="text-xs sm:text-sm font-semibold text-[#0A0A0A]">
-                          sales@vocaply.com
+                          sales@rapto.ai
                         </span>
                       </div>
                     </div>
@@ -937,7 +937,7 @@ export function ContactClientPage() {
                         className="mt-1 accent-[#1A6B3C] cursor-pointer"
                       />
                       <label htmlFor="consent-checkbox" className="text-[11px] text-[#6B6A67] leading-relaxed cursor-pointer select-none">
-                        Receive product updates, compliance tips, and feature announcements from Vocaply. Unsubscribe at any time.
+                        Receive product updates, compliance tips, and feature announcements from Rapto. Unsubscribe at any time.
                       </label>
                     </div>
 

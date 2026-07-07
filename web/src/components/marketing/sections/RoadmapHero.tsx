@@ -42,7 +42,7 @@ export function RoadmapHero() {
           transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
           className="text-lg md:text-xl text-muted max-w-2xl mx-auto mb-10 font-sans"
         >
-          We're constantly evolving Vocaply to make your remote team more productive. 
+          We're constantly evolving Rapto to make your remote team more productive. 
           Check out our latest releases, what's currently in progress, and what we have planned.
         </motion.p>
 

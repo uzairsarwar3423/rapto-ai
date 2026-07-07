@@ -44,6 +44,6 @@ export const features: FeatureItem[] = [
     iconName: "Plug",
     title: "Works where you work",
     description:
-      "Slack, Jira, Linear, Notion, Google Calendar. Vocaply plugs into your existing tools. You don't change your workflow — Vocaply fits around it.",
+      "Slack, Jira, Linear, Notion, Google Calendar. Rapto plugs into your existing tools. You don't change your workflow — Rapto fits around it.",
   },
 ];

@@ -9,13 +9,13 @@ import { CaseStudyContent } from "@/components/marketing/sections/CaseStudyConte
 import { CaseStudyCTA } from "@/components/marketing/sections/CaseStudyCTA";
 
 export const metadata: Metadata = {
-  title: "TechCorp Case Study — Vocaply",
+  title: "TechCorp Case Study — Rapto",
   description:
-    "Discover how TechCorp used Vocaply to reduce dropped commitments by 85% and save 40 hours a week in management overhead.",
+    "Discover how TechCorp used Rapto to reduce dropped commitments by 85% and save 40 hours a week in management overhead.",
   openGraph: {
-    title: "Vocaply Case Study: TechCorp",
+    title: "Rapto Case Study: TechCorp",
     description: "Discover how TechCorp reduced dropped commitments by 85%.",
-    url: "https://vocaply.com/case-study",
+    url: "https://rapto.ai/case-study",
     type: "article",
   },
 };

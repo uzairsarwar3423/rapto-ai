@@ -4,7 +4,7 @@ import axios from 'axios';
 
 export async function POST() {
   const cookieStore = await cookies();
-  const refreshToken = cookieStore.get('vocaply_refresh')?.value;
+  const refreshToken = cookieStore.get('rapto_refresh')?.value;
 
   if (!refreshToken) {
     return NextResponse.json(
@@ -22,7 +22,7 @@ export async function POST() {
       {},
       {
         headers: {
-          Cookie: `vocaply_refresh=${refreshToken}`,
+          Cookie: `rapto_refresh=${refreshToken}`,
         },
         validateStatus: () => true,
       }
@@ -30,7 +30,7 @@ export async function POST() {
 
     if (refreshResponse.status !== 200) {
       // Clear cookie locally if refresh failed
-      cookieStore.delete('vocaply_refresh');
+      cookieStore.delete('rapto_refresh');
       return NextResponse.json(
         refreshResponse.data,
         { status: refreshResponse.status }
@@ -52,7 +52,7 @@ export async function POST() {
 
     if (meResponse.status !== 200) {
       // If fetching user profile fails, treat refresh as failed
-      cookieStore.delete('vocaply_refresh');
+      cookieStore.delete('rapto_refresh');
       return NextResponse.json(
         { success: false, error: { code: 'USER_FETCH_FAILED', message: 'Failed to fetch user profile' } },
         { status: 401 }
@@ -66,7 +66,7 @@ export async function POST() {
     let newRefreshToken = '';
     
     if (setCookieHeaders && setCookieHeaders.length > 0) {
-      const match = setCookieHeaders[0].match(/vocaply_refresh=([^;]+)/);
+      const match = setCookieHeaders[0].match(/rapto_refresh=([^;]+)/);
       if (match) {
         newRefreshToken = match[1];
       }
@@ -74,7 +74,7 @@ export async function POST() {
 
     if (newRefreshToken) {
       // Set the HTTP-only cookie locally scoped to the BFF path
-      cookieStore.set('vocaply_refresh', newRefreshToken, {
+      cookieStore.set('rapto_refresh', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',

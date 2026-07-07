@@ -1,5 +1,5 @@
 /**
- * Vocaply Utilities Export Entrypoint
+ * Rapto Utilities Export Entrypoint
  * Re-exports all utilities from the utils folder sub-files to resolve bundler path ambiguity.
  */
 export * from "./utils/cn"

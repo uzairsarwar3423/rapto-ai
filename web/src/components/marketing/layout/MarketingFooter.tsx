@@ -87,9 +87,9 @@ const navColumns = [
 ];
 
 const socialLinks = [
-  { label: "Follow on X / Twitter", href: "https://twitter.com/vocaply", Icon: XIcon },
-  { label: "Connect on LinkedIn", href: "https://linkedin.com/company/vocaply", Icon: LinkedInIcon },
-  { label: "View on GitHub", href: "https://github.com/vocaply", Icon: GitHubIcon },
+  { label: "Follow on X / Twitter", href: "https://twitter.com/rapto", Icon: XIcon },
+  { label: "Connect on LinkedIn", href: "https://linkedin.com/company/rapto", Icon: LinkedInIcon },
+  { label: "View on GitHub", href: "https://github.com/rapto", Icon: GitHubIcon },
 ];
 
 const legalLinks = [
@@ -272,7 +272,7 @@ export function MarketingFooter() {
             {/* Logo */}
             <a
               href="/"
-              aria-label="Vocaply home"
+              aria-label="Rapto home"
               style={{
                 fontFamily: "var(--font-serif, Georgia, serif)",
                 fontSize: "24px",
@@ -284,7 +284,7 @@ export function MarketingFooter() {
                 lineHeight: 1,
               }}
             >
-              vocaply
+              rapto
             </a>
 
             {/* Tagline */}
@@ -395,7 +395,7 @@ export function MarketingFooter() {
               whiteSpace: "nowrap",
             }}
           >
-            © 2026 Vocaply, Inc. All rights reserved.
+            © 2026 Rapto, Inc. All rights reserved.
           </p>
 
           {/* Legal links */}

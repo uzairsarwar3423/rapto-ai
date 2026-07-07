@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { LogoIcon } from "@/components/ui/LogoIcon";
 
 interface AuthCardProps {
   children: React.ReactNode;
@@ -26,11 +27,9 @@ export function AuthCard({ children, title, subtitle }: AuthCardProps) {
         {/* Brand Logo Header */}
         <div className="flex flex-col items-center mb-8">
           <Link href="/" className="group flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-white font-sans font-bold text-xl shadow-brand transition-transform group-hover:scale-105">
-              v
-            </span>
+            <LogoIcon size={52} className="transition-transform group-hover:scale-105" />
             <span className="font-sans font-bold text-2xl tracking-tight text-foreground">
-              vocaply
+              rapto
             </span>
           </Link>
         </div>

@@ -56,12 +56,12 @@ export function CaseStudyContent() {
             The Solution: Invisible Accountability
           </h2>
           <p className="text-muted leading-relaxed mb-6">
-            TechCorp integrated Vocaply into their Google Workspace. Instantly, the Vocaply AI bot 
+            TechCorp integrated Rapto into their Google Workspace. Instantly, the Rapto AI bot 
             began joining their daily standups. There was no new software for the engineers to learn, 
             and no new processes to follow. 
           </p>
           <ul className="space-y-4 mb-8 text-muted list-disc pl-6 font-sans">
-            <li><strong>Automated Extraction:</strong> Vocaply passively listened and extracted action items in real-time.</li>
+            <li><strong>Automated Extraction:</strong> Rapto passively listened and extracted action items in real-time.</li>
             <li><strong>Jira Sync:</strong> Commitments were automatically synced to their respective Jira epic boards.</li>
             <li><strong>Smart Nudges:</strong> Engineers received automated Slack pings only when a commitment was nearing its deadline.</li>
           </ul>

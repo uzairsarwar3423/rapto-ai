@@ -11,7 +11,7 @@ export function TeamSlugField({ slug }: TeamSlugFieldProps) {
         Team URL
       </span>
       <div className="flex items-center h-10 px-4 rounded-xl border border-border bg-muted/40 text-sm font-sans text-muted-foreground cursor-not-allowed select-none">
-        <span className="text-muted-foreground/60">vocaply.com/teams/</span>
+        <span className="text-muted-foreground/60">rapto.ai/teams/</span>
         <span className="font-medium text-foreground/80">{slug}</span>
       </div>
       <p className="text-[11px] text-muted-foreground leading-normal">

@@ -27,7 +27,7 @@ const roadmapItems: RoadmapItem[] = [
   {
     id: "2",
     title: "Custom Meeting Templates",
-    description: "Define your own meeting structures and let Vocaply's AI adapt its commitment extraction to your specific needs.",
+    description: "Define your own meeting structures and let Rapto's AI adapt its commitment extraction to your specific needs.",
     status: "shipped",
     date: "Q2 2026",
     tag: "Core",
@@ -42,7 +42,7 @@ const roadmapItems: RoadmapItem[] = [
   {
     id: "4",
     title: "Slack Bot Enhancements",
-    description: "Interact with Vocaply directly from Slack to query status, update commitments, and get real-time digests.",
+    description: "Interact with Rapto directly from Slack to query status, update commitments, and get real-time digests.",
     status: "in-progress",
     tag: "Integrations",
   },
@@ -56,7 +56,7 @@ const roadmapItems: RoadmapItem[] = [
   {
     id: "6",
     title: "Zapier Integration",
-    description: "Connect Vocaply with over 5,000 apps to automate your post-meeting workflows exactly how you want.",
+    description: "Connect Rapto with over 5,000 apps to automate your post-meeting workflows exactly how you want.",
     status: "planned",
     tag: "Integrations",
   },

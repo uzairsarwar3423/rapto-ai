@@ -8,7 +8,7 @@ export function IntegrationsAPISection() {
   const [activeTab, setActiveTab] = useState<"curl" | "json">("curl");
   const [copied, setCopied] = useState(false);
 
-  const curlCode = `curl https://api.vocaply.com/api/v1/commitments \\
+  const curlCode = `curl https://api.rapto.ai/api/v1/commitments \\
   -H "Authorization: Bearer vply_live_..." \\
   -H "Content-Type: application/json"`;
 
@@ -21,7 +21,7 @@ export function IntegrationsAPISection() {
       "status": "PENDING",
       "owner": {
         "name": "Ahmed Hassan",
-        "email": "ahmed@vocaply.com"
+        "email": "ahmed@rapto.ai"
       },
       "dueDate": "2026-05-15T23:59:59Z"
     }
@@ -53,11 +53,11 @@ export function IntegrationsAPISection() {
           </span>
           
           <h2 className="font-serif text-[clamp(28px,3.5vw,38px)] font-normal leading-tight tracking-tight mb-4">
-            Build your own on top of Vocaply.
+            Build your own on top of Rapto.
           </h2>
           
           <p className="font-sans text-[13px] text-white/60 leading-relaxed mb-8 max-w-[500px]">
-            Use the Vocaply API to pull commitment data into your own tools, dashboard portals, or internal databases. We offer a full REST API with Webhook subscriptions.
+            Use the Rapto API to pull commitment data into your own tools, dashboard portals, or internal databases. We offer a full REST API with Webhook subscriptions.
           </p>
 
           <h4 className="text-xs font-bold text-white/80 uppercase tracking-wider mb-3.5">

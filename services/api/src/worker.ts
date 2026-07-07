@@ -6,6 +6,7 @@ import { connectMongoDB } from './db/mongo.client'
 // Import all workers so they get instantiated and start listening
 import './queues/workers/transcribe.worker'
 import './queues/workers/extract.worker'
+import './queues/workers/resolve.worker'
 import './queues/workers/notify.worker'
 import './queues/workers/integrate.worker'
 import './queues/workers/deadline.worker'

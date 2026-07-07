@@ -83,7 +83,7 @@ const team = [
   {
     name: "Marcus Johnson",
     role: "Lead Engineer",
-    bio: "AI and machine learning specialist. Building the engine that powers Vocaply's commitment extraction.",
+    bio: "AI and machine learning specialist. Building the engine that powers Rapto's commitment extraction.",
     image: "https://i.pravatar.cc/300?img=12",
     socials: {
       github: "#",
@@ -93,7 +93,7 @@ const team = [
   {
     name: "Elena Rodriguez",
     role: "Customer Success",
-    bio: "Dedicated to ensuring every Vocaply user gets the most out of their team's meetings.",
+    bio: "Dedicated to ensuring every Rapto user gets the most out of their team's meetings.",
     image: "https://i.pravatar.cc/300?img=9",
     socials: {
       twitter: "#",

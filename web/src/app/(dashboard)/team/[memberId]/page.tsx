@@ -9,7 +9,7 @@ export interface MemberDetailPageProps {
 }
 
 export const metadata: Metadata = {
-  title: "Member Profile | Vocaply",
+  title: "Member Profile | Rapto",
   description: "View teammate performance, trend lines, and commitment history.",
 };
 

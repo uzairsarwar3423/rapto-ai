@@ -8,7 +8,7 @@ export function MockSlackMessage() {
       <div className="hidden md:flex flex-col w-48 bg-[#19171D] border-r border-[#2C2B30] text-[#BCABB6] p-3 gap-4 flex-shrink-0">
         <div>
           <div className="flex items-center justify-between text-white font-bold text-sm mb-4 px-2">
-            <span>Vocaply Workspace</span>
+            <span>Rapto Workspace</span>
           </div>
           <div className="flex flex-col gap-1.5 font-normal">
             <div className="flex items-center gap-2 px-2 py-1 rounded bg-[#1164A3] text-white font-semibold">
@@ -40,7 +40,7 @@ export function MockSlackMessage() {
             </span>
             <span className="px-2 py-1 hover:bg-[#350D36]/20 rounded cursor-pointer flex items-center gap-1.5 font-semibold text-white">
               <span className="w-1.5 h-1.5 rounded-full bg-[#2BAC76]"></span>
-              Vocaply Bot
+              Rapto Bot
             </span>
           </div>
         </div>
@@ -62,14 +62,14 @@ export function MockSlackMessage() {
 
         {/* Message feed */}
         <div className="flex-1 p-4 flex flex-col gap-5 overflow-y-auto">
-          {/* Vocaply Bot Summary Message */}
+          {/* Rapto Bot Summary Message */}
           <div className="flex gap-2.5 items-start">
             <div className="h-8 w-8 rounded bg-[#1A6B3C] text-white flex items-center justify-center font-serif font-bold text-base flex-shrink-0 shadow-sm">
               V
             </div>
             <div className="flex-1">
               <div className="flex items-baseline gap-2">
-                <span className="font-bold text-white">Vocaply</span>
+                <span className="font-bold text-white">Rapto</span>
                 <span className="text-[10px] text-[#ABABAD] bg-[#222529] px-1 rounded-sm font-bold uppercase tracking-wider">APP</span>
                 <span className="text-[10px] text-[#ABABAD]">9:30 AM</span>
               </div>
@@ -118,7 +118,7 @@ export function MockSlackMessage() {
       {/* DM Mock (Right Side - DM from bot) */}
       <div className="w-full lg:w-72 bg-[#1A1D21] flex flex-col h-full border-t lg:border-t-0 border-[#2C2B30]">
         <div className="px-4 py-2 border-b border-[#2C2B30] font-bold text-white text-sm bg-[#1A1D21] flex-shrink-0">
-          Vocaply Bot (Direct Message)
+          Rapto Bot (Direct Message)
         </div>
         <div className="p-4 flex flex-col gap-4 overflow-y-auto">
           <div className="flex gap-2 items-start">
@@ -127,7 +127,7 @@ export function MockSlackMessage() {
             </div>
             <div>
               <div className="flex items-baseline gap-1.5 mb-1.5">
-                <span className="font-bold text-white text-xs">Vocaply Bot</span>
+                <span className="font-bold text-white text-xs">Rapto Bot</span>
                 <span className="text-[9px] text-[#ABABAD]">Yesterday</span>
               </div>
               <p className="text-xs text-[#D1D2D3] leading-relaxed mb-3">

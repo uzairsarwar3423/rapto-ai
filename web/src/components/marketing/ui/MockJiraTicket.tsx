@@ -29,10 +29,10 @@ export function MockJiraTicket() {
           </p>
         </div>
 
-        {/* Vocaply AI Activity Comment */}
+        {/* Rapto AI Activity Comment */}
         <div>
           <h4 className="text-xs font-bold text-[#5E6C84] uppercase tracking-wider mb-3">
-            Activity (Vocaply AI)
+            Activity (Rapto AI)
           </h4>
           <div className="flex gap-3 items-start bg-[var(--color-brand-subtle)] p-3.5 rounded-lg border border-[color-mix(in_srgb,var(--color-brand)_12%,transparent)]">
             <div className="h-7 w-7 rounded-full bg-[var(--color-brand)] flex items-center justify-center text-white font-serif font-bold text-xs flex-shrink-0 shadow-sm">
@@ -40,7 +40,7 @@ export function MockJiraTicket() {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold text-xs text-[var(--color-brand)]">Vocaply Integration</span>
+                <span className="font-semibold text-xs text-[var(--color-brand)]">Rapto Integration</span>
                 <span className="text-[10px] text-[#5E6C84]">May 12, 9:28 AM</span>
               </div>
               <p className="text-xs text-[#253858] leading-relaxed">
@@ -86,7 +86,7 @@ export function MockJiraTicket() {
             <div className="h-6 w-6 rounded-full bg-[var(--color-brand-subtle)] border border-[var(--color-brand)] flex items-center justify-center shadow-xs">
               <ShieldCheck className="w-3.5 h-3.5 text-[var(--color-brand)]" />
             </div>
-            <span className="text-sm font-semibold">Vocaply (AI)</span>
+            <span className="text-sm font-semibold">Rapto (AI)</span>
           </div>
         </div>
 
@@ -120,7 +120,7 @@ export function MockJiraTicket() {
           <div className="flex flex-wrap gap-1">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F4F5F7] border border-[#DFE1E6] text-[10px] text-[#42526E] font-medium">
               <Tag className="w-2.5 h-2.5" />
-              vocaply
+              rapto
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F4F5F7] border border-[#DFE1E6] text-[10px] text-[#42526E] font-medium">
               <Tag className="w-2.5 h-2.5" />

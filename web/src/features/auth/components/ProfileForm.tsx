@@ -59,7 +59,7 @@ export function ProfileForm() {
   // Read language locale from local storage or default to 'en'
   const [language, setLanguage] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('vocaply_locale') || 'en';
+      return localStorage.getItem('rapto_locale') || 'en';
     }
     return 'en';
   });
@@ -82,7 +82,7 @@ export function ProfileForm() {
     run(async () => {
       // Save language locale to localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('vocaply_locale', language);
+        localStorage.setItem('rapto_locale', language);
       }
       
       await updateProfileMutation.mutateAsync({

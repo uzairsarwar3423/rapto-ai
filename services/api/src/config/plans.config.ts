@@ -1,13 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// plans.config.ts — Single Source of Truth for All Plan Limits
+// plans.config.ts — Paddle Price Map (replaces Stripe price map)
 //
-// CRITICAL: This file is the ONLY place where plan limits are defined.
-// Referenced by: middleware, service layer, billing API, frontend pricing page.
+// PADDLE_PRICE_MAP: planId + interval → Paddle Price ID (set in Paddle dashboard)
+// PADDLE_PRICE_REVERSE_MAP: built ONCE at module load for O(1) webhook lookups
 //
-// -1 = unlimited (sentinel value used throughout the codebase)
-// PlanType is imported from Prisma to guarantee enum sync.
-//
-// Frontend pricing page values (pricing.content.ts) are the authoritative source.
+// PLAN_LIMITS itself is UNCHANGED — provider-agnostic business limits.
+// The only thing that changed from a Stripe design is STRIPE_PRICE_MAP → PADDLE_PRICE_MAP.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { PlanType } from '@prisma/client'
@@ -29,7 +27,7 @@ export interface PlanLimits {
   apiAccess: boolean
   /** Whether SSO (SAML/SCIM) is enabled. */
   ssoEnabled: boolean
-  /** Monthly price in USD cents (for reference only — billing handled by Stripe). */
+  /** Monthly price in USD cents. -1 = custom/contact sales. */
   monthlyPriceCents: number
 }
 
@@ -100,16 +98,59 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     storageGB: -1,
     apiAccess: true,
     ssoEnabled: true,
-    monthlyPriceCents: -1, // Custom pricing via sales
+    monthlyPriceCents: -1,
   },
 } as const
 
+// ── Paddle Price Map — the ONLY provider-specific section ─────────────────────
+//
+// Price IDs are created in the Paddle dashboard → Catalog → Prices.
+// One price per plan per billing interval.
+// Set via environment variables so they can differ between sandbox and production.
+
+export const PADDLE_PRICE_MAP: Record<
+  Exclude<PlanType, 'FREE' | 'ENTERPRISE'>,
+  { month: string; year: string }
+> = {
+  STARTER: {
+    month: process.env.PADDLE_PRICE_STARTER_M ?? '',
+    year:  process.env.PADDLE_PRICE_STARTER_Y ?? '',
+  },
+  GROWTH: {
+    month: process.env.PADDLE_PRICE_GROWTH_M ?? '',
+    year:  process.env.PADDLE_PRICE_GROWTH_Y ?? '',
+  },
+  BUSINESS: {
+    month: process.env.PADDLE_PRICE_BUSINESS_M ?? '',
+    year:  process.env.PADDLE_PRICE_BUSINESS_Y ?? '',
+  },
+}
+
+// ── Reverse lookup map: priceId → { planId, interval } ───────────────────────
+//
+// Built ONCE at module load — O(1) lookup in every webhook handler.
+// Never rebuilt per request. Never scanned linearly.
+
+export type PriceReverseEntry = {
+  planId: PlanType
+  interval: 'month' | 'year'
+}
+
+function buildReversePriceMap(): Map<string, PriceReverseEntry> {
+  const map = new Map<string, PriceReverseEntry>()
+  const plans = ['STARTER', 'GROWTH', 'BUSINESS'] as const
+  for (const planId of plans) {
+    const { month, year } = PADDLE_PRICE_MAP[planId]
+    if (month) map.set(month, { planId: planId as PlanType, interval: 'month' })
+    if (year)  map.set(year,  { planId: planId as PlanType, interval: 'year' })
+  }
+  return map
+}
+
+export const PADDLE_PRICE_REVERSE_MAP = buildReversePriceMap()
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Get a specific limit for a plan.
- * Returns the raw value (-1 means unlimited).
- */
 export function getPlanLimit<K extends keyof PlanLimits>(
   plan: PlanType,
   resource: K
@@ -117,38 +158,24 @@ export function getPlanLimit<K extends keyof PlanLimits>(
   return PLAN_LIMITS[plan][resource]
 }
 
-/**
- * Check if a plan has unlimited access to a numeric resource.
- * Only works for numeric fields.
- */
 export function isUnlimited(plan: PlanType, resource: keyof PlanLimits): boolean {
   return (PLAN_LIMITS[plan][resource] as number) === -1
 }
 
-/**
- * Check whether a given usage count would exceed the plan limit.
- * Returns true if the operation should be BLOCKED.
- */
 export function isLimitExceeded(
   plan: PlanType,
   resource: keyof PlanLimits,
   currentUsage: number
 ): boolean {
   const limit = PLAN_LIMITS[plan][resource] as number
-  if (limit === -1) return false // unlimited
+  if (limit === -1) return false
   return currentUsage >= limit
 }
 
-/**
- * Compute the upgrade URL for a given plan.
- * Returned in PlanLimitError details so clients can deep-link to billing.
- */
 export function getUpgradeUrl(currentPlan: PlanType): string {
   const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000'
   return `${frontendUrl}/settings/billing?current=${currentPlan}`
 }
-
-// ── Ordered plan tiers (ascending) ───────────────────────────────────────────
 
 export const PLAN_ORDER: PlanType[] = [
   PlanType.FREE,
@@ -158,49 +185,17 @@ export const PLAN_ORDER: PlanType[] = [
   PlanType.ENTERPRISE,
 ]
 
-/**
- * Returns true if `planA` is strictly higher tier than `planB`.
- */
 export function isPlanHigherThan(planA: PlanType, planB: PlanType): boolean {
   return PLAN_ORDER.indexOf(planA) > PLAN_ORDER.indexOf(planB)
 }
 
-// ── Reserved slugs (blocked from team creation) ───────────────────────────────
-
 export const RESERVED_SLUGS = new Set([
-  'api',
-  'admin',
-  'app',
-  'www',
-  'mail',
-  'dev',
-  'staging',
-  'dashboard',
-  'login',
-  'register',
-  'vocaply',
-  'support',
-  'help',
-  'blog',
-  'pricing',
-  'about',
-  'contact',
-  'terms',
-  'privacy',
-  'docs',
-  'status',
-  'health',
-  'metrics',
-  'internal',
-  'onboarding',
-  'invite',
-  'settings',
-  'billing',
-  'analytics',
-  'reports',
+  'api', 'admin', 'app', 'www', 'mail', 'dev', 'staging', 'dashboard',
+  'login', 'register', 'vocaply', 'support', 'help', 'blog', 'pricing',
+  'about', 'contact', 'terms', 'privacy', 'docs', 'status', 'health',
+  'metrics', 'internal', 'onboarding', 'invite', 'settings', 'billing',
+  'analytics', 'reports',
 ])
-
-// ── Role hierarchy (used across multiple modules) ─────────────────────────────
 
 export const ROLE_LEVELS: Record<string, number> = {
   OWNER: 4,
@@ -208,8 +203,6 @@ export const ROLE_LEVELS: Record<string, number> = {
   MANAGER: 2,
   MEMBER: 1,
 } as const
-
-// ── Default notification preferences (applied on team join) ──────────────────
 
 export const DEFAULT_NOTIFICATION_PREFERENCES = {
   emailOnCommitmentMissed: true,

@@ -2,7 +2,7 @@
  * slugify() — Converts a string into a URL-friendly slug.
  *
  * Example:
- *   slugify("Hello World! This is Vocaply.") -> "hello-world-this-is-vocaply"
+ *   slugify("Hello World! This is Rapto.") -> "hello-world-this-is-rapto"
  */
 export function slugify(text: string): string {
   return text

@@ -8,26 +8,26 @@ const features = [
   {
     category: "Meeting Data",
     items: [
-      { name: "Full Meeting Transcription", vocaply: true, otter: true },
-      { name: "Speaker Identification", vocaply: true, otter: true },
-      { name: "Audio Playback", vocaply: true, otter: true },
+      { name: "Full Meeting Transcription", rapto: true, otter: true },
+      { name: "Speaker Identification", rapto: true, otter: true },
+      { name: "Audio Playback", rapto: true, otter: true },
     ]
   },
   {
     category: "Actionability & Engineering",
     items: [
-      { name: "Automated Commitment Extraction", vocaply: true, otter: "partial" },
-      { name: "Native Jira Two-Way Sync", vocaply: true, otter: false },
-      { name: "Slack Deadline Nudges", vocaply: true, otter: false },
-      { name: "Standup Specific AI Tuning", vocaply: true, otter: false },
+      { name: "Automated Commitment Extraction", rapto: true, otter: "partial" },
+      { name: "Native Jira Two-Way Sync", rapto: true, otter: false },
+      { name: "Slack Deadline Nudges", rapto: true, otter: false },
+      { name: "Standup Specific AI Tuning", rapto: true, otter: false },
     ]
   },
   {
     category: "Workflow & Automation",
     items: [
-      { name: "Automated Follow-ups", vocaply: true, otter: false },
-      { name: "Commitment Status Tracking", vocaply: true, otter: false },
-      { name: "Team Accountability Dashboard", vocaply: true, otter: false },
+      { name: "Automated Follow-ups", rapto: true, otter: false },
+      { name: "Commitment Status Tracking", rapto: true, otter: false },
+      { name: "Team Accountability Dashboard", rapto: true, otter: false },
     ]
   }
 ];
@@ -64,7 +64,7 @@ export function CompareTable() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-lg text-muted font-sans max-w-2xl mx-auto"
           >
-            See exactly how Vocaply's engineering-focused accountability stacks up against Otter's general transcription.
+            See exactly how Rapto's engineering-focused accountability stacks up against Otter's general transcription.
           </motion.p>
         </div>
 
@@ -81,7 +81,7 @@ export function CompareTable() {
               <div className="col-span-1"></div>
               <div className="col-span-1 text-center">
                 <div className="inline-block px-4 py-1.5 bg-brand text-white rounded-full text-sm font-bold font-sans tracking-wide">
-                  Vocaply
+                  Rapto
                 </div>
               </div>
               <div className="col-span-1 text-center">
@@ -114,7 +114,7 @@ export function CompareTable() {
                         </span>
                       </div>
                       <div className="col-span-1 flex items-center justify-center">
-                        {renderIcon(item.vocaply)}
+                        {renderIcon(item.rapto)}
                       </div>
                       <div className="col-span-1 flex items-center justify-center">
                         {renderIcon(item.otter)}

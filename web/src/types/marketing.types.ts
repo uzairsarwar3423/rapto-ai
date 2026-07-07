@@ -1,5 +1,5 @@
 // ============================================================
-// Vocaply Marketing — Shared TypeScript Types
+// Rapto Marketing — Shared TypeScript Types
 // Used by: content files, UI components, section components
 // ============================================================
 

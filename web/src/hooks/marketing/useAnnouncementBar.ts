@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const STORAGE_KEY = "vocaply_announcement_dismissed";
+const STORAGE_KEY = "rapto_announcement_dismissed";
 
 interface UseAnnouncementBarReturn {
   isVisible: boolean;

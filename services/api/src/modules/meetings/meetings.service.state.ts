@@ -15,34 +15,62 @@ import { AppError } from '../../utils/errors'
 
 // ── Valid Transition Matrix ───────────────────────────────────────────────────
 //
-//  State machine for the 7-state Vocaply meeting lifecycle:
+//  State machine for the Vocaply meeting AI pipeline lifecycle:
 //
-//  SCHEDULED   → BOT_JOINING (webhook: bot.joining_call)
-//  SCHEDULED   → CANCELLED   (user: DELETE /meetings/:id/bot)
-//  BOT_JOINING → RECORDING   (webhook: bot.recording_started)
-//  BOT_JOINING → FAILED      (webhook: bot.failed — could not enter)
-//  BOT_JOINING → CANCELLED   (webhook: meeting ended before bot entered)
-//  RECORDING   → PROCESSING  (webhook: bot.done)
-//  RECORDING   → FAILED      (webhook: bot.failed — kicked/crashed)
-//  PROCESSING  → DONE        (worker: extraction completed successfully)
-//  PROCESSING  → FAILED      (worker: extraction failed after max retries)
-//  DONE        → (none)      TERMINAL
-//  FAILED      → (none)      TERMINAL — admin creates new meeting to retry
-//  CANCELLED   → (none)      TERMINAL
+//  SCHEDULED                  → BOT_JOINING (webhook: bot.joining_call)
+//  SCHEDULED                  → CANCELLED   (user: DELETE /meetings/:id/bot)
+//  BOT_JOINING                → RECORDING   (webhook: bot.recording_started)
+//  BOT_JOINING                → FAILED      (webhook: bot.failed)
+//  BOT_JOINING                → CANCELLED
+//  RECORDING                  → PROCESSING  (webhook: bot.done)
+//  RECORDING                  → FAILED
+//  PROCESSING                 → TRANSCRIBED | TRANSCRIPT_CLEANED | TRANSCRIPT_CLEANUP_FAILED
+//  TRANSCRIBED                → TRANSCRIPT_CLEANED | TRANSCRIPT_CLEANUP_FAILED
+//  TRANSCRIPT_CLEANED         → EXTRACTED | EXTRACTED_PARTIAL | EXTRACTION_FAILED
+//  TRANSCRIPT_CLEANUP_FAILED  → EXTRACTED | EXTRACTED_PARTIAL | EXTRACTION_FAILED   (degraded mode)
+//  TRANSCRIPT_CLEANUP_DEGRADED→ EXTRACTED | EXTRACTED_PARTIAL | EXTRACTION_FAILED   (raw transcript used)
+//  EXTRACTED                  → RESOLVED | RESOLUTION_FAILED
+//  EXTRACTED_PARTIAL          → RESOLVED | RESOLUTION_FAILED
+//  EXTRACTION_FAILED          → FAILED     TERMINAL
+//  RESOLVED                   → DONE       TERMINAL
+//  RESOLUTION_FAILED          → FAILED     TERMINAL (or re-queued by admin)
+//  DONE                       → (none)     TERMINAL
+//  FAILED                     → (none)     TERMINAL
+//  CANCELLED                  → (none)     TERMINAL
 
 const VALID_TRANSITIONS: Readonly<Record<MeetingStatus, MeetingStatus[]>> = {
-  SCHEDULED:   ['BOT_JOINING', 'RECORDING', 'PROCESSING', 'FAILED', 'CANCELLED'],
+  SCHEDULED: ['BOT_JOINING', 'RECORDING', 'PROCESSING', 'FAILED', 'CANCELLED'],
   BOT_JOINING: ['RECORDING', 'PROCESSING', 'FAILED', 'CANCELLED'],
-  RECORDING:   ['PROCESSING', 'FAILED'],
-  PROCESSING:  ['DONE', 'FAILED'],
-  DONE:        [],
-  FAILED:      [],
-  CANCELLED:   [],
+  RECORDING: ['PROCESSING', 'FAILED'],
+  PROCESSING: ['TRANSCRIBED', 'TRANSCRIPT_CLEANED', 'TRANSCRIPT_CLEANUP_FAILED', 'TRANSCRIPT_CLEANUP_DEGRADED', 'DONE', 'FAILED'],
+  TRANSCRIBED: ['TRANSCRIPT_CLEANED', 'TRANSCRIPT_CLEANUP_FAILED', 'TRANSCRIPT_CLEANUP_DEGRADED', 'FAILED'],
+  // Cleanup succeeded — AI transcript available
+  TRANSCRIPT_CLEANED: ['EXTRACTED', 'EXTRACTED_PARTIAL', 'EXTRACTION_FAILED', 'FAILED'],
+  // Cleanup failed — falling back to raw transcript for extraction
+  TRANSCRIPT_CLEANUP_FAILED: ['EXTRACTED', 'EXTRACTED_PARTIAL', 'EXTRACTION_FAILED', 'FAILED'],
+  // Explicit degraded mode — transcribe.worker chose raw transcript after cleanup failure
+  TRANSCRIPT_CLEANUP_DEGRADED: ['EXTRACTED', 'EXTRACTED_PARTIAL', 'EXTRACTION_FAILED', 'FAILED'],
+  EXTRACTED: ['RESOLVED', 'RESOLUTION_FAILED', 'FAILED'],
+  EXTRACTED_PARTIAL: ['RESOLVED', 'RESOLUTION_FAILED', 'FAILED'],
+  EXTRACTION_FAILED: ['FAILED'],
+  RESOLVED: ['DONE'],
+  // Resolution failed after all retries — meeting data is present, just resolution state unknown
+  RESOLUTION_FAILED: ['FAILED'],
+  DONE: [],
+  FAILED: [],
+  CANCELLED: [],
 } as const
 
 // ── Terminal States ───────────────────────────────────────────────────────────
 
-export const TERMINAL_STATES = new Set<MeetingStatus>(['DONE', 'FAILED', 'CANCELLED'])
+export const TERMINAL_STATES = new Set<MeetingStatus>([
+  'DONE',
+  'FAILED',
+  'CANCELLED',
+  'EXTRACTION_FAILED',
+  'RESOLVED',
+  'RESOLUTION_FAILED',  // Resolution exhausted all retries — manual admin action required
+])
 
 // ── State Machine Validator ───────────────────────────────────────────────────
 

@@ -49,7 +49,7 @@ export function MeetingEmptyState({
       </div>
       <h3 className="mt-4 text-sm font-semibold text-foreground">Connect your first meeting</h3>
       <p className="mt-2 text-xs text-muted-foreground max-w-md">
-        Vocaply extracts action items, commitments, and decisions automatically. To get started, sync your calendar or add a meeting manually.
+        Rapto extracts action items, commitments, and decisions automatically. To get started, sync your calendar or add a meeting manually.
       </p>
       <div className="mt-8 flex items-center justify-center gap-3">
         {onConnectCalendar && (

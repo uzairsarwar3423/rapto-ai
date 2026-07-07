@@ -8,26 +8,28 @@ const connection = {
   password: process.env.REDIS_PASSWORD,
 }
 
-// transcribe: Store Recall.ai transcript in MongoDB
+// transcribe: Recall.ai webhook → /transcripts/cleanup → extract queue
+// removeOnFail: false — failed jobs MUST be retained for debugging and manual replay
 export const transcribeQueue = new Queue('transcribe', {
   connection,
   defaultJobOptions: {
-    attempts:    3,
-    backoff:     { type: 'exponential', delay: 10_000 },
+    attempts:         3,
+    backoff:          { type: 'exponential', delay: 5_000 },
     removeOnComplete: { count: 100 },
-    removeOnFail:     { count: 50 },
+    removeOnFail:     false,  // Never auto-remove failed jobs — they must be inspectable
   },
 })
 
-// extract: Call AI pipeline → save commitments/actions to PostgreSQL
+// extract: cleaned transcript → /extract → commitments/actions in PostgreSQL
+// 10s base backoff — OpenAI rate limits need more recovery time
 export const extractQueue = new Queue('extract', {
   connection,
   defaultJobOptions: {
-    attempts:    3,
-    backoff:     { type: 'exponential', delay: 15_000 },
-    priority:    2,
+    attempts:         3,
+    backoff:          { type: 'exponential', delay: 10_000 },
+    priority:         2,
     removeOnComplete: { count: 100 },
-    removeOnFail:     { count: 50 },
+    removeOnFail:     false,  // Never auto-remove failed jobs
   },
 })
 
@@ -76,7 +78,19 @@ export const calendarSyncQueue = new Queue('calendar-sync', {
   },
 })
 
-const queues = [transcribeQueue, extractQueue, notifyQueue, integrateQueue, deadlineQueue, calendarSyncQueue]
+// resolve: new commitments + historical → /resolve → FULFILLED status updates
+// 5s base backoff — resolve calls are faster than extract
+export const resolveQueue = new Queue('resolve', {
+  connection,
+  defaultJobOptions: {
+    attempts:         3,
+    backoff:          { type: 'exponential', delay: 5_000 },
+    removeOnComplete: { count: 200 },
+    removeOnFail:     false,  // Never auto-remove failed jobs
+  },
+})
+
+const queues = [transcribeQueue, extractQueue, resolveQueue, notifyQueue, integrateQueue, deadlineQueue, calendarSyncQueue]
 
 queues.forEach((q) => {
   const events = new QueueEvents(q.name, { connection })

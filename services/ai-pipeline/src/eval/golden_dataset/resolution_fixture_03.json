@@ -1,0 +1,234 @@
+{
+  "fixture_id": "resolution_fixture_03",
+  "description": "Full pipeline fixture: Tuesday standup, 5 days after Monday's standup. Tests the complete resolution pipeline end-to-end including tricky future-tense case.",
+  "meeting_id": "meeting_tue_20260616",
+  "team_id": "team_engineering_01",
+  "meeting_date": "2026-06-17T09:00:00Z",
+  "team_timezone": "America/New_York",
+
+  "historical_commitments": [
+    {
+      "id": "hist_01",
+      "owner_id": "user_ahmed_001",
+      "owner_name": "Ahmed",
+      "text": "finish the login feature",
+      "normalized_text": "finish login feature",
+      "status": "PENDING",
+      "due_date_utc": null,
+      "created_at": "2026-06-12T09:00:00Z",
+      "meeting_id": "meeting_mon_20260612",
+      "source_meeting_date": "2026-06-12T09:00:00Z"
+    },
+    {
+      "id": "hist_02",
+      "owner_id": "user_ahmed_001",
+      "owner_name": "Ahmed",
+      "text": "fix the payment gateway timeout",
+      "normalized_text": "fix payment gateway timeout",
+      "status": "PENDING",
+      "due_date_utc": null,
+      "created_at": "2026-06-12T09:05:00Z",
+      "meeting_id": "meeting_mon_20260612",
+      "source_meeting_date": "2026-06-12T09:00:00Z"
+    },
+    {
+      "id": "hist_03",
+      "owner_id": "user_sara_002",
+      "owner_name": "Sara",
+      "text": "send updated wireframes to engineering",
+      "normalized_text": "send updated wireframes engineering",
+      "status": "PENDING",
+      "due_date_utc": null,
+      "created_at": "2026-06-12T09:10:00Z",
+      "meeting_id": "meeting_mon_20260612",
+      "source_meeting_date": "2026-06-12T09:00:00Z"
+    },
+    {
+      "id": "hist_04",
+      "owner_id": "user_sara_002",
+      "owner_name": "Sara",
+      "text": "review Ali's PR",
+      "normalized_text": "review ali pr",
+      "status": "PENDING",
+      "due_date_utc": null,
+      "created_at": "2026-06-12T09:15:00Z",
+      "meeting_id": "meeting_mon_20260612",
+      "source_meeting_date": "2026-06-12T09:00:00Z"
+    },
+    {
+      "id": "hist_05",
+      "owner_id": "user_ali_003",
+      "owner_name": "Ali",
+      "text": "set up Redis caching for the API",
+      "normalized_text": "set up redis caching api",
+      "status": "PENDING",
+      "due_date_utc": null,
+      "created_at": "2026-06-12T09:20:00Z",
+      "meeting_id": "meeting_mon_20260612",
+      "source_meeting_date": "2026-06-12T09:00:00Z"
+    }
+  ],
+
+  "new_commitments": [
+    {
+      "id": "new_01",
+      "dedup_key": "new_01_dedup",
+      "text": "I finished the login feature and it's been merged",
+      "normalized_text": "finished login feature merged",
+      "confidence": 0.92,
+      "owner_name": "Ahmed",
+      "owner_user_id": "user_ahmed_001",
+      "speaker_name": "Ahmed",
+      "speaker_user_id": "user_ahmed_001",
+      "due_date_utc": null,
+      "due_date_raw": null
+    },
+    {
+      "id": "new_02",
+      "dedup_key": "new_02_dedup",
+      "text": "I'm still working on the payment timeout, should have it done by Thursday",
+      "normalized_text": "still working payment timeout done thursday",
+      "confidence": 0.78,
+      "owner_name": "Ahmed",
+      "owner_user_id": "user_ahmed_001",
+      "speaker_name": "Ahmed",
+      "speaker_user_id": "user_ahmed_001",
+      "due_date_utc": "2026-06-19T23:59:59Z",
+      "due_date_raw": "Thursday"
+    },
+    {
+      "id": "new_03",
+      "dedup_key": "new_03_dedup",
+      "text": "I sent the wireframes to the engineering team yesterday",
+      "normalized_text": "sent wireframes engineering team yesterday",
+      "confidence": 0.88,
+      "owner_name": "Sara",
+      "owner_user_id": "user_sara_002",
+      "speaker_name": "Sara",
+      "speaker_user_id": "user_sara_002",
+      "due_date_utc": null,
+      "due_date_raw": null
+    },
+    {
+      "id": "new_04",
+      "dedup_key": "new_04_dedup",
+      "text": "I'll review Ali's PR today",
+      "normalized_text": "review ali pr today",
+      "confidence": 0.72,
+      "owner_name": "Sara",
+      "owner_user_id": "user_sara_002",
+      "speaker_name": "Sara",
+      "speaker_user_id": "user_sara_002",
+      "due_date_utc": "2026-06-17T23:59:59Z",
+      "due_date_raw": "today"
+    },
+    {
+      "id": "new_05",
+      "dedup_key": "new_05_dedup",
+      "text": "I'll configure the Redis caching this week",
+      "normalized_text": "configure redis caching week",
+      "confidence": 0.71,
+      "owner_name": "Ali",
+      "owner_user_id": "user_ali_003",
+      "speaker_name": "Ali",
+      "speaker_user_id": "user_ali_003",
+      "due_date_utc": null,
+      "due_date_raw": "this week"
+    },
+    {
+      "id": "new_06",
+      "dedup_key": "new_06_dedup",
+      "text": "I'll write the unit tests for the login feature",
+      "normalized_text": "write unit tests login feature",
+      "confidence": 0.83,
+      "owner_name": "Ahmed",
+      "owner_user_id": "user_ahmed_001",
+      "speaker_name": "Ahmed",
+      "speaker_user_id": "user_ahmed_001",
+      "due_date_utc": null,
+      "due_date_raw": null
+    }
+  ],
+
+  "expected_pipeline_result": {
+    "resolved_updates": [
+      {
+        "historical_commitment_id": "hist_01",
+        "resolved_by_new_commitment_id": "new_01",
+        "reason": "Ahmed confirmed login feature is finished and merged — clear completion."
+      },
+      {
+        "historical_commitment_id": "hist_03",
+        "resolved_by_new_commitment_id": "new_03",
+        "reason": "Sara confirmed wireframes were sent yesterday — past-tense delivery confirmed."
+      }
+    ],
+    "not_resolved_references": [
+      {
+        "historical_commitment_id": "hist_02",
+        "referenced_by_new_commitment_id": "new_02",
+        "reason": "Ahmed said 'still working on' — explicit non-completion phrase. Stage 1 should block or Stage 2 should return NOT_RESOLVED."
+      },
+      {
+        "historical_commitment_id": "hist_04",
+        "referenced_by_new_commitment_id": "new_04",
+        "reason": "TRICKY CASE: Sara said 'I'll review Ali's PR today' — future intent, not past completion. Stage 2 must correctly identify future tense as NOT_RESOLVED."
+      },
+      {
+        "historical_commitment_id": "hist_05",
+        "referenced_by_new_commitment_id": "new_05",
+        "reason": "Ali said 'I'll configure' — future intent with no completion keyword. Stage 1 should block (no completion keyword in 'configure')."
+      }
+    ],
+    "new_commitments": [
+      {
+        "commitment_id": "new_06",
+        "reason": "No historical match — writing unit tests for login was not a prior commitment."
+      }
+    ],
+    "unchanged_commitments": []
+  },
+
+  "labeled_detection_pairs": [
+    {
+      "new_commitment_id": "new_01",
+      "historical_commitment_id": "hist_01",
+      "expected_resolved": true,
+      "reasoning": "Clear completion: 'finished' (completion keyword) + 'it's been merged' (delivery evidence). No non-completion phrases."
+    },
+    {
+      "new_commitment_id": "new_03",
+      "historical_commitment_id": "hist_03",
+      "expected_resolved": true,
+      "reasoning": "Clear completion: 'sent' (past-tense delivery verb) + 'yesterday' (temporal evidence of past action)."
+    },
+    {
+      "new_commitment_id": "new_02",
+      "historical_commitment_id": "hist_02",
+      "expected_resolved": false,
+      "reasoning": "Non-completion: 'still working on' is an explicit NCP phrase. Stage 1 should block this pair before Stage 2 is invoked."
+    },
+    {
+      "new_commitment_id": "new_04",
+      "historical_commitment_id": "hist_04",
+      "expected_resolved": false,
+      "reasoning": "TRICKY CASE: 'I'll review' — future intent re-commitment. 'review' is a completion keyword but the 'I'll' prefix indicates future, not past. Stage 2 must return NOT_RESOLVED. This case validates the resolution prompt's ability to handle future-tense re-commitments."
+    },
+    {
+      "new_commitment_id": "new_05",
+      "historical_commitment_id": "hist_05",
+      "expected_resolved": false,
+      "reasoning": "Stage 1 blocks: 'configure' is not a completion keyword. No Stage 2 call needed. Stats should show stage1_blocks >= 1."
+    }
+  ],
+
+  "expected_eval_metrics": {
+    "resolved_updates_count": 2,
+    "not_resolved_references_count": 3,
+    "new_commitments_count": 1,
+    "unchanged_commitments_count": 0,
+    "stage1_blocks_min": 1,
+    "detection_calls_made_min": 2,
+    "false_positive_rate_max": 0.05
+  }
+}

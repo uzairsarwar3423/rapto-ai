@@ -68,7 +68,7 @@ export function CalendarEventsPreviewSheet({
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/10 text-blue-600/80 mb-2 select-none">
                   <Info className="w-4 h-4 shrink-0 mt-0.5" />
                   <span className="text-[10px] font-sans leading-normal">
-                    Vocaply automatically parses calendar summaries, locations, and descriptions to detect meeting links from supported platforms.
+                    Rapto automatically parses calendar summaries, locations, and descriptions to detect meeting links from supported platforms.
                   </span>
                 </div>
 

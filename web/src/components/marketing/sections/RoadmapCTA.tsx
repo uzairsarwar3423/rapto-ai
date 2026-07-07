@@ -28,7 +28,7 @@ export function RoadmapCTA() {
           </h2>
           
           <p className="text-lg text-muted mb-8 max-w-xl mx-auto font-sans">
-            We build Vocaply based on the feedback of our users. If there's something 
+            We build Rapto based on the feedback of our users. If there's something 
             you'd love to see, let our product team know.
           </p>
           

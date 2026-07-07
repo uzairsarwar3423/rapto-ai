@@ -9,13 +9,13 @@ import { AboutValues } from "@/components/marketing/sections/AboutValues";
 import { AboutTeam } from "@/components/marketing/sections/AboutTeam";
 
 export const metadata: Metadata = {
-  title: "About Us — Vocaply",
+  title: "About Us — Rapto",
   description:
-    "Learn about our mission to make remote work actually work, our core values, and the team building Vocaply.",
+    "Learn about our mission to make remote work actually work, our core values, and the team building Rapto.",
   openGraph: {
-    title: "About Vocaply",
-    description: "Learn about our mission to make remote work actually work, our core values, and the team building Vocaply.",
-    url: "https://vocaply.com/about",
+    title: "About Rapto",
+    description: "Learn about our mission to make remote work actually work, our core values, and the team building Rapto.",
+    url: "https://rapto.ai/about",
     type: "website",
   },
 };

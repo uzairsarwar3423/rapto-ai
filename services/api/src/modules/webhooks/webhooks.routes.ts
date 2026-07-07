@@ -4,6 +4,7 @@ import { handleRecallWebhook } from './recall.webhook'
 import { handleStripeWebhook } from './stripe.webhook'
 import { handleJiraWebhook } from './jira.webhook'
 import { handleSlackWebhook } from './slack.webhook'
+import { handlePaddleWebhook } from './paddle.webhook'
 
 const router = Router()
 
@@ -26,6 +27,7 @@ const rawUrlencodedMiddleware = express.urlencoded({
 
 router.post('/recall',  rawBodyMiddleware,        handleRecallWebhook)
 router.post('/stripe',  rawBodyMiddleware,        handleStripeWebhook)
+router.post('/paddle',  rawBodyMiddleware,        handlePaddleWebhook)
 router.post('/jira',    rawBodyMiddleware,        handleJiraWebhook)
 // Slack interactive webhooks use x-www-form-urlencoded (see slack.webhook.ts comment)
 router.post('/slack',   rawUrlencodedMiddleware,  handleSlackWebhook)

@@ -8,25 +8,25 @@ const features = [
   {
     category: "Meeting Records",
     items: [
-      { name: "Meeting Transcripts & Search", vocaply: true, fathom: true },
-      { name: "Video Highlights & Snippets", vocaply: false, fathom: true },
-      { name: "General Summaries", vocaply: true, fathom: true },
+      { name: "Meeting Transcripts & Search", rapto: true, fathom: true },
+      { name: "Video Highlights & Snippets", rapto: false, fathom: true },
+      { name: "General Summaries", rapto: true, fathom: true },
     ]
   },
   {
     category: "Engineering Specific Workflows",
     items: [
-      { name: "Jira / Linear Two-Way Sync", vocaply: true, fathom: false },
-      { name: "Standup Specific Context Tuning", vocaply: true, fathom: false },
-      { name: "Commitment Extraction vs Bullet Points", vocaply: true, fathom: "partial" },
+      { name: "Jira / Linear Two-Way Sync", rapto: true, fathom: false },
+      { name: "Standup Specific Context Tuning", rapto: true, fathom: false },
+      { name: "Commitment Extraction vs Bullet Points", rapto: true, fathom: "partial" },
     ]
   },
   {
     category: "Active Accountability",
     items: [
-      { name: "Automated Slack Check-ins", vocaply: true, fathom: false },
-      { name: "Overdue Task Escalation", vocaply: true, fathom: false },
-      { name: "Team Velocity Analytics", vocaply: true, fathom: false },
+      { name: "Automated Slack Check-ins", rapto: true, fathom: false },
+      { name: "Overdue Task Escalation", rapto: true, fathom: false },
+      { name: "Team Velocity Analytics", rapto: true, fathom: false },
     ]
   }
 ];
@@ -63,7 +63,7 @@ export function FathomCompareTable() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-lg text-muted font-sans max-w-2xl mx-auto"
           >
-            While Fathom excels at capturing moments for sales and customer success, Vocaply delivers workflow tracking for software teams.
+            While Fathom excels at capturing moments for sales and customer success, Rapto delivers workflow tracking for software teams.
           </motion.p>
         </div>
 
@@ -80,7 +80,7 @@ export function FathomCompareTable() {
               <div className="col-span-1"></div>
               <div className="col-span-1 text-center">
                 <div className="inline-block px-4 py-1.5 bg-brand text-white rounded-full text-sm font-bold font-sans tracking-wide">
-                  Vocaply
+                  Rapto
                 </div>
               </div>
               <div className="col-span-1 text-center">
@@ -113,7 +113,7 @@ export function FathomCompareTable() {
                         </span>
                       </div>
                       <div className="col-span-1 flex items-center justify-center">
-                        {renderIcon(item.vocaply)}
+                        {renderIcon(item.rapto)}
                       </div>
                       <div className="col-span-1 flex items-center justify-center">
                         {renderIcon(item.fathom)}

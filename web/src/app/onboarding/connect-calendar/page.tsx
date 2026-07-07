@@ -41,7 +41,7 @@ function ConnectCalendarContent() {
   return (
     <OnboardingStepShell
       title="Sync your calendar"
-      description="Connect your Google Calendar to automatically invite Vocaply to meetings and sync action items with deadlines."
+      description="Connect your Google Calendar to automatically invite Rapto to meetings and sync action items with deadlines."
       isExiting={isExiting}
     >
       <div className="space-y-6">
@@ -54,7 +54,7 @@ function ConnectCalendarContent() {
               <div className="space-y-1">
                 <h3 className="text-xs font-semibold text-foreground">Google Calendar Connected</h3>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Vocaply will now track and sync your calendar events automatically.
+                  Rapto will now track and sync your calendar events automatically.
                 </p>
               </div>
             </div>

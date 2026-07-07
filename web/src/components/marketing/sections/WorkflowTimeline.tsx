@@ -2,7 +2,7 @@
 
 /**
  * WorkflowTimeline.tsx
- * Day 6 — Tells a week-in-the-life story showing Vocaply's accountability loop.
+ * Day 6 — Tells a week-in-the-life story showing Rapto's accountability loop.
  *
  * Desktop: alternating left/right timeline nodes around a center vertical line.
  * Mobile:  line on left, all content to the right.
@@ -93,7 +93,7 @@ function SlackBubble() {
           marginBottom: "4px",
         }}
       >
-        Vocaply
+        Rapto
       </p>
       <p
         style={{

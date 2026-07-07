@@ -45,7 +45,7 @@ export function ChangelogHero() {
 
         {/* H1 */}
         <h1 className="font-plus-jakarta text-4xl md:text-5xl lg:text-6xl font-extrabold text-[var(--color-foreground)] leading-tight tracking-tight mb-4 max-w-[750px]">
-          What&apos;s new in Vocaply
+          What&apos;s new in Rapto
         </h1>
 
         {/* Description */}

@@ -5,8 +5,8 @@ import { RegisterForm } from '@/features/auth/components/RegisterForm';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Sign Up — Vocaply',
-  description: 'Create an account on Vocaply to begin your vocabulary journey.',
+  title: 'Sign Up — Rapto',
+  description: 'Create your Rapto account and start tracking meeting commitments with AI accountability.',
 };
 
 export default function RegisterPage() {

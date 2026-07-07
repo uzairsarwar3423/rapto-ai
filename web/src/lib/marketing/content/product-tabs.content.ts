@@ -15,17 +15,17 @@ export const productTabs: ProductTab[] = [
   {
     id: "commitments",
     label: "Commitments",
-    urlBarText: "app.vocaply.com/commitments",
+    urlBarText: "app.rapto.ai/commitments",
   },
   {
     id: "meeting-detail",
     label: "Meeting Detail",
-    urlBarText: "app.vocaply.com/meetings/1234",
+    urlBarText: "app.rapto.ai/meetings/1234",
   },
   {
     id: "team-health",
     label: "Team Health",
-    urlBarText: "app.vocaply.com/analytics/team",
+    urlBarText: "app.rapto.ai/analytics/team",
   },
 ];
 

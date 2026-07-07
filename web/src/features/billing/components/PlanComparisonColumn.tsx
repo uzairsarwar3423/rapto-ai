@@ -119,7 +119,7 @@ export function PlanComparisonColumn({
           </div>
         ) : planId === "enterprise" ? (
           <a
-            href="mailto:enterprise@vocaply.com"
+            href="mailto:enterprise@rapto.ai"
             className="text-[13px] font-sans font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Contact sales →
@@ -130,11 +130,9 @@ export function PlanComparisonColumn({
               size="sm"
               variant={isCurrentPlan ? "outline" : "default"}
               onClick={() => {
-                if (pricing?.stripePriceId) {
-                  startCheckout(pricing.stripePriceId);
-                }
+                  startCheckout(planId.toUpperCase(), "month");
               }}
-              disabled={isRedirecting || !pricing?.stripePriceId}
+              disabled={isRedirecting}
               className="w-full text-[13px] font-sans h-8 transition-all duration-[120ms]"
             >
               {isRedirecting ? "Redirecting…" : "Select"}

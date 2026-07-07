@@ -36,7 +36,7 @@ export const getCommitmentsListServer = cache(async (
 ): Promise<PaginatedCommitmentsServerResponse> => {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("vocaply_access")?.value;
+    const accessToken = cookieStore.get("rapto_access")?.value;
 
     const response = await axios.get(`${backendUrl}/api/v1/commitments`, {
       params: {
@@ -72,7 +72,7 @@ export const getCommitmentsListServer = cache(async (
 export const getCommitmentCountsServer = cache(async (): Promise<Record<string, number>> => {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("vocaply_access")?.value;
+    const accessToken = cookieStore.get("rapto_access")?.value;
 
     const response = await axios.get(`${backendUrl}/api/v1/commitments`, {
       params: {
@@ -92,7 +92,7 @@ export const getCommitmentCountsServer = cache(async (): Promise<Record<string, 
 export const getCommitmentDetailServer = cache(async (id: string): Promise<Commitment | null> => {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("vocaply_access")?.value;
+    const accessToken = cookieStore.get("rapto_access")?.value;
 
     const response = await axios.get(`${backendUrl}/api/v1/commitments/${id}`, {
       headers: {
@@ -111,7 +111,7 @@ export const getCommitmentStatsServer = cache(async (filters?: {
 }): Promise<TeamStatsResponse | null> => {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("vocaply_access")?.value;
+    const accessToken = cookieStore.get("rapto_access")?.value;
 
     const response = await axios.get(`${backendUrl}/api/v1/commitments/stats`, {
       params: filters,

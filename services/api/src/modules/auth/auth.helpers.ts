@@ -41,11 +41,25 @@ export function hashToken(token: string): string {
 
 /**
  * Secure HTTP-only cookie configuration for the refresh token.
+ *
+ * path: '/'  — Must be '/' so the browser sends this cookie on ANY request
+ *              to the API domain. '/api/v1/auth/refresh' was wrong — it
+ *              prevented the cookie from being readable by the refresh endpoint
+ *              when called via the BFF proxy at /api/v1/auth/refresh, and also
+ *              blocked the cookie from being sent after cross-origin redirects.
+ *
+ * sameSite: 'lax' — Required for OAuth flows. 'strict' blocks the cookie on
+ *              the very first GET request after Google redirects back to the app
+ *              (cross-site navigation triggers the 'strict' block). 'lax' allows
+ *              the cookie on top-level cross-site GET navigations (safe — refresh
+ *              tokens are only used on POST /auth/refresh, not GETs).
+ *
+ * secure: true in production — cookie only sent over HTTPS.
  */
 export const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
-  path: '/api/v1/auth/refresh', // Restrict to the refresh route to optimize bandwidth
+  sameSite: 'lax' as const,
+  path: '/',
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
 }

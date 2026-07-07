@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Vocaply — features/billing/types.ts
+// Rapto — features/billing/types.ts
 // All billing-domain TypeScript types for Day 42 and beyond.
 // ─────────────────────────────────────────────────────────────────────────────
 

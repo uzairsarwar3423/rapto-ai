@@ -61,3 +61,11 @@ ehthumbs.db
 
 # ─── Pre-commit ───────────────────────────────────────────────────────────────
 .pre-commit-config.yaml.bak
+
+# ─── Eval results ─────────────────────────────────────────────────────────────
+# Timestamped eval output files — contain cost data and meeting-summary-level
+# content from golden fixtures. The directory is kept in git via .gitkeep;
+# the actual result files are local measurement artifacts (Day 55 Decision 7).
+src/eval/results/*.json
+eval/results/*.json
+

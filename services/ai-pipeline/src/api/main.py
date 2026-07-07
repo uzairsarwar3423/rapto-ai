@@ -189,8 +189,15 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     # Day 47: Transcript cleanup pipeline (Stage 1 + Stage 2)
     app.include_router(cleanup.router)
 
-    # ── ADDING FUTURE ROUTERS (Day 48+ pattern) ───────────────────────────────
+    # ── Phase 4 Complete: Three production endpoints ──────────────────────────
+    # POST /transcripts/cleanup — Day 47-48 (transcript cleanup pipeline)
+    # POST /api/v1/extract      — Day 50 (commitment/action-item extraction)
+    # POST /api/v1/resolve      — Day 55 (commitment resolution pipeline)
+    # All three are authenticated via X-Internal-Service-Key.
     from src.api.routes import extract
     app.include_router(extract.router, prefix="/api/v1", tags=["extraction"])
+
+    from src.api.routes import resolve
+    app.include_router(resolve.router, prefix="/api/v1", tags=["resolution"])
 
     return app

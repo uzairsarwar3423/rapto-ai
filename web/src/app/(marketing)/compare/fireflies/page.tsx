@@ -10,13 +10,13 @@ import { FirefliesCompareFeatures } from "@/components/marketing/sections/Firefl
 import { FinalCTA } from "@/components/marketing/sections/FinalCTA";
 
 export const metadata: Metadata = {
-  title: "Vocaply vs Fireflies.ai — Built for Engineering Teams",
+  title: "Rapto vs Fireflies.ai — Built for Engineering Teams",
   description:
-    "Discover why engineering teams are switching from Fireflies to Vocaply. Move beyond generic meeting notes to active, automated Jira syncs and accountability.",
+    "Discover why engineering teams are switching from Fireflies to Rapto. Move beyond generic meeting notes to active, automated Jira syncs and accountability.",
   openGraph: {
-    title: "Vocaply vs Fireflies.ai",
-    description: "Discover why engineering teams are switching from Fireflies to Vocaply for accountability.",
-    url: "https://vocaply.com/compare/fireflies",
+    title: "Rapto vs Fireflies.ai",
+    description: "Discover why engineering teams are switching from Fireflies to Rapto for accountability.",
+    url: "https://rapto.ai/compare/fireflies",
     type: "article",
   },
 };

@@ -15,7 +15,7 @@ export function IntegrationsHowItWorks() {
     {
       icon: <CheckCircle className="w-7 h-7 text-[var(--color-brand)]" />,
       title: "Active in Under a Minute",
-      description: "You're redirected back to Vocaply. The integration is active. No complex configuration required.",
+      description: "You're redirected back to Rapto. The integration is active. No complex configuration required.",
     },
   ];
 
@@ -29,7 +29,7 @@ export function IntegrationsHowItWorks() {
           One click to connect. Zero data risk.
         </h2>
         <p className="font-sans text-sm text-[var(--color-muted)] max-w-[550px] mx-auto mb-16">
-          All integrations use OAuth 2.0 protocols — you authorize, we connect. Vocaply never stores password data.
+          All integrations use OAuth 2.0 protocols — you authorize, we connect. Rapto never stores password data.
         </p>
 
         {/* Steps Grid */}

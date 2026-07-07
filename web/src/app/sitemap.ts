@@ -10,7 +10,7 @@ import type { MetadataRoute } from "next";
  * add their URLs to the returned array.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://vocaply.com";
+  const baseUrl = "https://rapto.ai";
   const now = new Date();
 
   return [

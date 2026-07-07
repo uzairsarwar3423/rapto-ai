@@ -33,13 +33,13 @@ export function IntegrationsHero() {
 
       {/* Headline */}
       <h1 className="text-center font-serif text-[clamp(40px,5vw,64px)] font-normal text-[var(--color-foreground)] leading-tight tracking-tight max-w-[800px] mb-6">
-        Your stack. Vocaply{" "}
+        Your stack. Rapto{" "}
         <span className="text-[var(--color-brand)] italic">learns it.</span>
       </h1>
 
       {/* Subheadline */}
       <p className="text-center font-sans font-light text-[clamp(15px,1.8vw,18px)] text-[var(--color-muted)] leading-relaxed max-w-[650px] mb-16">
-        Vocaply connects to the platforms where your team already works.
+        Rapto connects to the platforms where your team already works.
         No ripping out tools. No new workflows. Just accountability — added on top.
       </p>
 

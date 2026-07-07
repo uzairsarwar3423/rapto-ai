@@ -14,7 +14,7 @@ const backendUrl = process.env.API_URL || "http://localhost:5000";
 const getAccessToken = cache(async (): Promise<string | null> => {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("vocaply_access")?.value;
+    const accessToken = cookieStore.get("rapto_access")?.value;
     return accessToken || null;
   } catch (error: any) {
     console.error("Failed to retrieve server-side access token:", error?.message || error);

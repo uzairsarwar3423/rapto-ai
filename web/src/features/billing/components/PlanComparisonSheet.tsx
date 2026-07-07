@@ -174,7 +174,7 @@ function PlanColumnHeader({ planId, isCurrentPlan, onCancelPlan }: PlanColumnHea
           </div>
         ) : planId === "enterprise" ? (
           <a
-            href="mailto:enterprise@vocaply.com"
+            href="mailto:enterprise@rapto.ai"
             className={cn(
               "w-full flex items-center justify-center gap-1 h-7 rounded-lg text-[11px] font-sans font-medium",
               "transition-all duration-150 active:scale-[0.98]",
@@ -187,9 +187,9 @@ function PlanColumnHeader({ planId, isCurrentPlan, onCancelPlan }: PlanColumnHea
           <button
             type="button"
             onClick={() => {
-              if (pricing?.stripePriceId) startCheckout(pricing.stripePriceId);
+              startCheckout(planId.toUpperCase(), "month");
             }}
-            disabled={isRedirecting || !pricing?.stripePriceId}
+            disabled={isRedirecting}
             className={cn(
               "w-full flex items-center justify-center gap-1 h-7 rounded-lg text-[11px] font-sans font-medium",
               "transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed",

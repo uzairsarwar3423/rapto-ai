@@ -18,7 +18,7 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
             <div className="h-6 w-6 rounded-md bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-zinc-50 dark:text-zinc-950 font-bold text-sm">
               V
             </div>
-            <span className="font-semibold text-sm tracking-tight text-foreground">Vocaply</span>
+            <span className="font-semibold text-sm tracking-tight text-foreground">Rapto</span>
           </div>
         </header>
 

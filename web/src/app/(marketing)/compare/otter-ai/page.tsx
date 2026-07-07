@@ -10,13 +10,13 @@ import { CompareFeatures } from "@/components/marketing/sections/CompareFeatures
 import { FinalCTA } from "@/components/marketing/sections/FinalCTA";
 
 export const metadata: Metadata = {
-  title: "Vocaply vs Otter.ai — The Best Tool for Engineering Teams",
+  title: "Rapto vs Otter.ai — The Best Tool for Engineering Teams",
   description:
-    "Discover why engineering teams are switching from Otter.ai to Vocaply. Stop reading long transcripts and start automating Jira syncs and follow-ups.",
+    "Discover why engineering teams are switching from Otter.ai to Rapto. Stop reading long transcripts and start automating Jira syncs and follow-ups.",
   openGraph: {
-    title: "Vocaply vs Otter.ai",
-    description: "Discover why engineering teams are switching from Otter.ai to Vocaply for accountability.",
-    url: "https://vocaply.com/compare/otter-ai",
+    title: "Rapto vs Otter.ai",
+    description: "Discover why engineering teams are switching from Otter.ai to Rapto for accountability.",
+    url: "https://rapto.ai/compare/otter-ai",
     type: "article",
   },
 };

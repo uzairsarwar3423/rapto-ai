@@ -40,7 +40,7 @@ export function AboutHero() {
           transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
           className="text-lg md:text-xl text-muted leading-relaxed font-sans max-w-2xl mx-auto"
         >
-          Vocaply was born out of frustration with endless catch-ups and dropped commitments. 
+          Rapto was born out of frustration with endless catch-ups and dropped commitments. 
           We're on a mission to give remote teams their time back, ensuring every promise made 
           is a promise kept.
         </motion.p>

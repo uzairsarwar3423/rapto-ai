@@ -13,7 +13,7 @@ export function useCancelSubscription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => cancelSubscription(teamId),
+    mutationFn: () => cancelSubscription(),
     onSuccess: () => {
       // Invalidate subscription so the badge flips to "Cancelling" without a page refresh
       queryClient.invalidateQueries({

@@ -33,11 +33,11 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 // ── Day 10: Full production metadata ─────────────────────────
 export const metadata: Metadata = {
   title: {
-    default: "Vocaply — AI Meeting Accountability for Remote Teams",
-    template: "%s | Vocaply",
+    default: "Rapto — AI Meeting Accountability for Remote Teams",
+    template: "%s | Rapto",
   },
   description:
-    "Vocaply automatically tracks every commitment made in your meetings and alerts your team when deadlines slip. Works with Zoom, Meet, and Teams. Free trial, no credit card.",
+    "Rapto automatically tracks every commitment made in your meetings and alerts your team when deadlines slip. Works with Zoom, Meet, and Teams. Free trial, no credit card.",
   keywords: [
     "meeting accountability",
     "AI meeting notes",
@@ -50,32 +50,32 @@ export const metadata: Metadata = {
     "commitment tracking",
     "remote team productivity",
   ],
-  authors: [{ name: "Vocaply" }],
-  creator: "Vocaply",
-  metadataBase: new URL("https://vocaply.com"),
+  authors: [{ name: "Rapto" }],
+  creator: "Rapto",
+  metadataBase: new URL("https://rapto.ai"),
   alternates: {
-    canonical: "https://vocaply.com",
+    canonical: "https://rapto.ai",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://vocaply.com",
-    title: "Vocaply — AI Meeting Accountability for Remote Teams",
+    url: "https://rapto.ai",
+    title: "Rapto — AI Meeting Accountability for Remote Teams",
     description:
-      "Stop chasing your team. Vocaply remembers every promise made in your standups — and follows up automatically.",
-    siteName: "Vocaply",
+      "Stop chasing your team. Rapto remembers every promise made in your standups — and follows up automatically.",
+    siteName: "Rapto",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Vocaply — AI Meeting Accountability dashboard showing commitment tracking",
+        alt: "Rapto — AI Meeting Accountability dashboard showing commitment tracking",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vocaply — AI Meeting Accountability",
+    title: "Rapto — AI Meeting Accountability",
     description:
       "AI that joins your standups and tracks every commitment automatically. Works with Zoom, Meet & Teams.",
     images: ["/og-image.png"],

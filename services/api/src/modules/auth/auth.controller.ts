@@ -119,7 +119,7 @@ export const authController = {
    * Endpoint: GET /auth/sessions
    */
   getSessions: asyncHandler(async (req, res) => {
-    const refreshToken = req.cookies.vocaply_refresh || ''
+    const refreshToken = req.cookies.rapto_refresh || ''
     const result = await authService.getSessions(req.user!.id, refreshToken)
     res.status(200).json(success(result))
   }),
@@ -128,7 +128,7 @@ export const authController = {
    * Endpoint: POST /auth/change-password
    */
   changePassword: asyncHandler(async (req, res) => {
-    const refreshToken = req.cookies.vocaply_refresh || ''
+    const refreshToken = req.cookies.rapto_refresh || ''
     const result = await authService.changePassword(req.user!.id, req.body, refreshToken)
     res.status(200).json(success(result))
   }),

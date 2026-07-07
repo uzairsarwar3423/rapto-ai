@@ -1,5 +1,5 @@
 /**
- * Vocaply Design Tokens — Spacing and Radii
+ * Rapto Design Tokens — Spacing and Radii
  */
 export const SPACING = {
   sidebar: "240px",

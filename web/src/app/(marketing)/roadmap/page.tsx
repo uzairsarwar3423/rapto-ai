@@ -9,13 +9,13 @@ import { RoadmapBoard } from "@/components/marketing/sections/RoadmapBoard";
 import { RoadmapCTA } from "@/components/marketing/sections/RoadmapCTA";
 
 export const metadata: Metadata = {
-  title: "Roadmap — See what's next for Vocaply",
+  title: "Roadmap — See what's next for Rapto",
   description:
     "Explore our product roadmap to see what features are planned, in progress, and recently shipped. Have a feature request? Let us know.",
   openGraph: {
-    title: "Vocaply Roadmap",
+    title: "Rapto Roadmap",
     description: "Explore our product roadmap to see what features are planned, in progress, and recently shipped.",
-    url: "https://vocaply.com/roadmap",
+    url: "https://rapto.ai/roadmap",
     type: "website",
   },
 };

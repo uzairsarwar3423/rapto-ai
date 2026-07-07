@@ -226,11 +226,24 @@ export async function getTranscript(
     throw new NotFoundError('Meeting', id)
   }
 
-  if (!meeting.mongoTranscriptId || meeting.status !== 'DONE') {
+  const transcriptReadyStates = [
+    'DONE',
+    'RESOLVED',
+    'RESOLUTION_FAILED',
+    'EXTRACTION_FAILED',
+    'EXTRACTED',
+    'EXTRACTED_PARTIAL',
+    'TRANSCRIPT_CLEANED',
+    'TRANSCRIPT_CLEANUP_FAILED',
+    'TRANSCRIPT_CLEANUP_DEGRADED',
+    'TRANSCRIBED'
+  ]
+
+  if (!meeting.mongoTranscriptId || !transcriptReadyStates.includes(meeting.status)) {
     throw new AppError(
       'TRANSCRIPT_NOT_AVAILABLE',
       404,
-      'Transcript not yet available. Meeting must be in DONE status.',
+      'Transcript not yet available. Meeting must have completed transcription.',
       { status: meeting.status, hasTranscriptId: !!meeting.mongoTranscriptId }
     )
   }

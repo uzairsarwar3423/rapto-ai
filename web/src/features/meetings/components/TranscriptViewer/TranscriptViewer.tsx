@@ -212,7 +212,19 @@ export function TranscriptViewer({
   }, [jumpToTime])
 
   // Guard: If meeting is not DONE or has failed, render empty/processing state
-  if (meetingStatus !== "DONE" || !transcript) {
+  const transcriptReadyStates = [
+    "DONE", 
+    "RESOLVED", 
+    "RESOLUTION_FAILED", 
+    "EXTRACTION_FAILED", 
+    "EXTRACTED", 
+    "EXTRACTED_PARTIAL",
+    "TRANSCRIPT_CLEANED",
+    "TRANSCRIPT_CLEANUP_FAILED",
+    "TRANSCRIPT_CLEANUP_DEGRADED",
+    "TRANSCRIBED"
+  ]
+  if (!transcriptReadyStates.includes(meetingStatus) || !transcript) {
     return <TranscriptEmptyState status={meetingStatus} onRetry={onRetry} />
   }
 

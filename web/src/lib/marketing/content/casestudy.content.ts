@@ -11,9 +11,9 @@ export const caseStudyContent = {
     after: " in one sprint",
   },
   body:
-    "TechFlow's engineering team was running daily standups with no follow-up system. Sprint after sprint, commitments made on Monday were forgotten by Wednesday. After integrating Vocaply, every standup automatically produced a tracked commitment list — synced to Jira, posted to Slack, and monitored by AI.",
+    "TechFlow's engineering team was running daily standups with no follow-up system. Sprint after sprint, commitments made on Monday were forgotten by Wednesday. After integrating Rapto, every standup automatically produced a tracked commitment list — synced to Jira, posted to Slack, and monitored by AI.",
   pullQuote:
-    '"Before Vocaply, I was the human reminder system for my team. Now the system does it — and I get my Sundays back."',
+    '"Before Rapto, I was the human reminder system for my team. Now the system does it — and I get my Sundays back."',
   pullQuoteAttribution: "— Ali Raza, Engineering Manager at TechFlow",
   ctaText: "Read the full case study",
   ctaHref: "/case-studies/techflow",

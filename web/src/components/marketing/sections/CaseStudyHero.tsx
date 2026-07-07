@@ -30,7 +30,7 @@ export function CaseStudyHero() {
             </h1>
 
             <p className="text-lg text-muted leading-relaxed font-sans mb-8">
-              Discover how a fully remote engineering team of 200+ used Vocaply to regain 
+              Discover how a fully remote engineering team of 200+ used Rapto to regain 
               control over their standups, saving over 40 hours a week in follow-up management.
             </p>
 

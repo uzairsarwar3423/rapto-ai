@@ -74,7 +74,7 @@ export default function CreateTeamPage() {
           </label>
           <div className="flex items-center relative">
             <span className="absolute left-3 text-xs font-mono text-muted-foreground/60 select-none">
-              vocaply.com/teams/
+              rapto.ai/teams/
             </span>
             <input
               id="team-slug"

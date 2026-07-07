@@ -2,7 +2,7 @@
 
 /**
  * ProblemStatement.tsx
- * Contrasting Grid: Left (Pain / Without Vocaply) vs Right (Value / With Vocaply)
+ * Contrasting Grid: Left (Pain / Without Rapto) vs Right (Value / With Rapto)
  * Uses IntersectionObserver hook for staggered reveal animations.
  */
 
@@ -15,8 +15,8 @@ import {
   problemHeaderLabel,
   problemHeadline,
   problemSubheadline,
-  withoutVocaply,
-  withVocaply,
+  withoutRapto,
+  withRapto,
 } from "@/lib/marketing/content/problem.content";
 
 export function ProblemStatement() {
@@ -107,7 +107,7 @@ export function ProblemStatement() {
             border: "1px solid #E4E3DF",
           }}
         >
-          {/* LEFT — WITHOUT VOCAPLY */}
+          {/* LEFT — WITHOUT RAPTO */}
           <motion.div
             variants={fadeUpVariant}
             className="contrast-col pain-col"
@@ -148,20 +148,20 @@ export function ProblemStatement() {
                   lineHeight: 1,
                 }}
               >
-                Without Vocaply
+                Without Rapto
               </span>
             </div>
 
             {/* List */}
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {withoutVocaply.map((item, index) => (
+              {withoutRapto.map((item, index) => (
                 <li
                   key={index}
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: "12px",
-                    marginBottom: index === withoutVocaply.length - 1 ? 0 : "20px",
+                    marginBottom: index === withoutRapto.length - 1 ? 0 : "20px",
                   }}
                 >
                   {renderIcon(item.iconName, false)}
@@ -184,7 +184,7 @@ export function ProblemStatement() {
             </ul>
           </motion.div>
 
-          {/* RIGHT — WITH VOCAPLY */}
+          {/* RIGHT — WITH RAPTO */}
           <motion.div
             variants={fadeUpVariant}
             className="contrast-col solution-col"
@@ -225,20 +225,20 @@ export function ProblemStatement() {
                   lineHeight: 1,
                 }}
               >
-                With Vocaply
+                With Rapto
               </span>
             </div>
 
             {/* List */}
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {withVocaply.map((item, index) => (
+              {withRapto.map((item, index) => (
                 <li
                   key={index}
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: "12px",
-                    marginBottom: index === withVocaply.length - 1 ? 0 : "20px",
+                    marginBottom: index === withRapto.length - 1 ? 0 : "20px",
                   }}
                 >
                   {renderIcon(item.iconName, true)}

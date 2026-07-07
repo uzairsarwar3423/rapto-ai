@@ -62,7 +62,7 @@ export function WaitlistModal() {
               ref={panelRef}
               role="dialog"
               aria-modal="true"
-              aria-label="Join the Vocaply waitlist"
+              aria-label="Join the Rapto waitlist"
               initial={{ opacity: 0, scale: 0.94, y: 24 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 16 }}

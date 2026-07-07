@@ -12,8 +12,8 @@ export function SaveStateIndicator({ state }: SaveStateIndicatorProps) {
 
   const config = {
     saving: { icon: Loader2, spin: true, label: 'Saving…', className: 'text-muted-foreground' },
-    saved: { icon: Check, spin: false, label: 'Saved', className: 'text-brand' }, // Using text-brand instead of text-primary to align with Vocaply style system
-    error: { icon: AlertCircle, spin: false, label: "Couldn't save", className: 'text-error' }, // Using text-error instead of text-destructive to align with Vocaply style system
+    saved: { icon: Check, spin: false, label: 'Saved', className: 'text-brand' }, // Using text-brand instead of text-primary to align with Rapto style system
+    error: { icon: AlertCircle, spin: false, label: "Couldn't save", className: 'text-error' }, // Using text-error instead of text-destructive to align with Rapto style system
   }[state];
 
   const IconComponent = config.icon;

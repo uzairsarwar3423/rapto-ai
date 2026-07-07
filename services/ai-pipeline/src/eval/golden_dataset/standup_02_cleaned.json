@@ -1,0 +1,5 @@
+{
+  "meeting_id": "standup_02",
+  "participants": ["Ahmed", "Sara", "Ali", "Zara", "Omar", "Riya"],
+  "content": "Ahmed: Good morning everyone. Quick updates — I'll submit the PR for the search feature today, it's fully reviewed internally.\nSara: I'll finish the DB migration by Thursday. The schema changes are all mapped out.\nAli: I should be able to review Sara's PR today, schedules permitting.\nZara: I'll try to look at the mobile bug that came in last night. It's intermittent so might take time.\nOmar: I'll handle the customer escalation from Acme Corp — they need a response by EOD.\nRiya: Can Sara review my authentication module PR? Also, Ahmed, please check the monitoring alerts after your deploy.\nOmar: On the release — we're pushing the release to next Monday. Everyone agree?\nAll: Agreed.\nAhmed: We should probably look at improving the test coverage overall once this sprint is done.\nSara: Someone needs to follow up with the client about their integration questions too."
+}

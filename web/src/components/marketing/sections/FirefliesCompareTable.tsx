@@ -8,25 +8,25 @@ const features = [
   {
     category: "General Meeting AI",
     items: [
-      { name: "Meeting Transcripts & Search", vocaply: true, fireflies: true },
-      { name: "General Summaries", vocaply: true, fireflies: true },
-      { name: "Basic Action Items", vocaply: true, fireflies: true },
+      { name: "Meeting Transcripts & Search", rapto: true, fireflies: true },
+      { name: "General Summaries", rapto: true, fireflies: true },
+      { name: "Basic Action Items", rapto: true, fireflies: true },
     ]
   },
   {
     category: "Engineering Specific Workflows",
     items: [
-      { name: "Jira / Linear Two-Way Sync", vocaply: true, fireflies: false },
-      { name: "Standup Specific Context Tuning", vocaply: true, fireflies: false },
-      { name: "Commitment Deadline Extraction", vocaply: true, fireflies: "partial" },
+      { name: "Jira / Linear Two-Way Sync", rapto: true, fireflies: false },
+      { name: "Standup Specific Context Tuning", rapto: true, fireflies: false },
+      { name: "Commitment Deadline Extraction", rapto: true, fireflies: "partial" },
     ]
   },
   {
     category: "Active Accountability",
     items: [
-      { name: "Automated Slack Check-ins", vocaply: true, fireflies: false },
-      { name: "Overdue Task Escalation", vocaply: true, fireflies: false },
-      { name: "Team Velocity Analytics", vocaply: true, fireflies: false },
+      { name: "Automated Slack Check-ins", rapto: true, fireflies: false },
+      { name: "Overdue Task Escalation", rapto: true, fireflies: false },
+      { name: "Team Velocity Analytics", rapto: true, fireflies: false },
     ]
   }
 ];
@@ -63,7 +63,7 @@ export function FirefliesCompareTable() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-lg text-muted font-sans max-w-2xl mx-auto"
           >
-            Fireflies is excellent for sales calls and general notes. Vocaply is built explicitly to track and close engineering tasks.
+            Fireflies is excellent for sales calls and general notes. Rapto is built explicitly to track and close engineering tasks.
           </motion.p>
         </div>
 
@@ -80,7 +80,7 @@ export function FirefliesCompareTable() {
               <div className="col-span-1"></div>
               <div className="col-span-1 text-center">
                 <div className="inline-block px-4 py-1.5 bg-brand text-white rounded-full text-sm font-bold font-sans tracking-wide">
-                  Vocaply
+                  Rapto
                 </div>
               </div>
               <div className="col-span-1 text-center">
@@ -113,7 +113,7 @@ export function FirefliesCompareTable() {
                         </span>
                       </div>
                       <div className="col-span-1 flex items-center justify-center">
-                        {renderIcon(item.vocaply)}
+                        {renderIcon(item.rapto)}
                       </div>
                       <div className="col-span-1 flex items-center justify-center">
                         {renderIcon(item.fireflies)}

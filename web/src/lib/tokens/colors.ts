@@ -1,5 +1,5 @@
 /**
- * Vocaply Design Tokens — Colors
+ * Rapto Design Tokens — Colors
  * Hex values exported for JS/TS environments (workers, dynamic styles, emails, etc.)
  */
 export const COLORS = {

@@ -5,8 +5,8 @@ import { LoginForm } from '@/features/auth/components/LoginForm';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Sign In — Vocaply',
-  description: 'Sign in to your Vocaply account to manage your vocabulary learning.',
+  title: 'Sign In — Rapto',
+  description: 'Sign in to your Rapto account and manage your team\'s meeting accountability.',
 };
 
 export default function LoginPage() {

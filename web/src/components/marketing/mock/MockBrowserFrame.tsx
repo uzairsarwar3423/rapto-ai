@@ -14,7 +14,7 @@ interface MockBrowserFrameProps {
 
 export function MockBrowserFrame({
   children,
-  urlText = "app.vocaply.com/commitments",
+  urlText = "app.rapto.ai/commitments",
 }: MockBrowserFrameProps) {
   return (
     <div

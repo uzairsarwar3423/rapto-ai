@@ -1,0 +1,283 @@
+{
+  "version": "1.0.0",
+  "description": "AI Pipeline service contract — shared between Node.js consumer (vocaply-api) and Python provider (ai-pipeline). Any schema drift between these definitions and the FastAPI Pydantic models MUST be caught in CI, not production.",
+  "consumers": ["vocaply-api"],
+  "provider": "ai-pipeline",
+  "interactions": [
+    {
+      "endpoint": "POST /transcripts/cleanup",
+      "description": "Cleans a raw Recall.ai transcript — removes fillers, normalises speech, maps speaker tags to participant names",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Internal-Service-Key": "<shared_secret>",
+          "X-Service-Name": "vocaply-api",
+          "X-Request-ID": "<uuid_v4>"
+        },
+        "body": {
+          "meeting_id": "string (required)",
+          "team_id": "string (required)",
+          "raw_transcript": [
+            {
+              "speaker": "string — speaker_tag from Recall.ai (e.g. speaker_0)",
+              "text": "string — raw utterance text",
+              "start_timestamp": "number — Unix epoch seconds (float)",
+              "end_timestamp": "number — Unix epoch seconds (float)"
+            }
+          ],
+          "participants": {
+            "<speaker_tag>": {
+              "name": "string (required)",
+              "user_id": "string | null",
+              "role": "string | null"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Full cleanup success",
+          "body": {
+            "meeting_id": "string",
+            "team_id": "string",
+            "cleaned_transcript": [
+              {
+                "turn_id": "string",
+                "cleaned_text": "string",
+                "original_text": "string",
+                "speaker_name": "string",
+                "speaker_user_id": "string | null",
+                "start_time": "number",
+                "end_time": "number",
+                "filler_words_removed": "number (int)",
+                "was_modified": "boolean",
+                "was_modified_suspiciously": "boolean",
+                "uncertain": "boolean",
+                "confidence_detail": {
+                  "flag_type": "string",
+                  "reason": "string"
+                }
+              }
+            ],
+            "metadata": {
+              "model_version": "string",
+              "prompt_version": "string",
+              "total_filler_words_removed": "number (int)",
+              "processing_time_ms": "number (int)"
+            }
+          }
+        },
+        "401": { "description": "Shared secret mismatch — AIPipelineAuthError on Node.js side" },
+        "422": { "description": "Pydantic validation error — AIPipelineValidationError on Node.js side", "body": { "detail": "array of Pydantic error objects" } },
+        "500": {
+          "description": "AI pipeline internal error",
+          "body": {
+            "error": {
+              "error_code": "string",
+              "message": "string",
+              "request_id": "string",
+              "non_retryable": "boolean"
+            }
+          }
+        }
+      }
+    },
+    {
+      "endpoint": "POST /extract",
+      "description": "Extracts commitments, action items, decisions, and blockers from a cleaned transcript",
+      "request": {
+        "headers": { "$ref": "#shared_request_headers" },
+        "body": {
+          "meeting_id": "string (required)",
+          "team_id": "string (required)",
+          "meeting_date": "string — ISO 8601 UTC (required)",
+          "meeting_title": "string (required)",
+          "meeting_duration_seconds": "number | null",
+          "team_timezone": "string — IANA timezone (required, e.g. America/New_York)",
+          "participants": [{ "name": "string", "user_id": "string | null", "role": "string | null" }],
+          "cleaned_transcript": [{ "$ref": "#/interactions/0/responses/200/body/cleaned_transcript/items" }]
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Full extraction success",
+          "body": {
+            "success": true,
+            "request_id": "string",
+            "result": {
+              "meeting_id": "string",
+              "team_id": "string",
+              "commitments": [
+                {
+                  "text": "string",
+                  "owner_name": "string",
+                  "due_date_raw": "string | null",
+                  "due_date_utc": "string | null — ISO 8601 UTC",
+                  "confidence": "number [0.0, 1.0]",
+                  "normalized_text": "string",
+                  "dedup_key": "string",
+                  "calibration_flag": { "flag_type": "string", "reason": "string" } ,
+                  "due_date_resolution": {
+                    "parsed_date_utc": "string",
+                    "confidence": "number",
+                    "reference_date": "string",
+                    "timezone": "string",
+                    "is_relative": "boolean"
+                  }
+                }
+              ],
+              "action_items": [{ "text": "string", "owner_name": "string", "confidence": "number" }],
+              "decisions": [{ "text": "string", "context": "string", "confidence": "number" }],
+              "blockers": [{ "text": "string", "owner_name": "string | null", "confidence": "number" }],
+              "summary": "string",
+              "summary_scope": "'FULL' | 'PARTIAL_FIRST_CHUNK'",
+              "extraction_model": "string",
+              "prompt_version": "string",
+              "chunks_total": "number (int)",
+              "chunks_succeeded": "number (int)",
+              "total_cost": { "input_tokens": "int", "output_tokens": "int", "total_tokens": "int", "estimated_cost_usd": "number (float)" },
+              "per_chunk_costs": [{ "$ref": "total_cost shape" }],
+              "processing_time_ms": "number (int)"
+            }
+          }
+        },
+        "206": {
+          "description": "Partial extraction — some chunks failed. Use result.partial_result.",
+          "body": { "success": true, "request_id": "string", "result": { "$ref": "#partial_extraction_failure" } }
+        },
+        "422": {
+          "description": "Either Pydantic validation error (detail array) OR total failure (success:false + error envelope)",
+          "body_variants": [
+            { "type": "pydantic_validation", "shape": { "detail": "array" } },
+            { "type": "total_failure", "shape": { "success": false, "request_id": "string", "error": { "error_code": "string", "message": "string", "non_retryable": false } } }
+          ]
+        },
+        "401": { "$ref": "#shared_401" },
+        "500": { "$ref": "#shared_500" }
+      }
+    },
+    {
+      "endpoint": "POST /resolve",
+      "description": "Resolves new commitments against historical PENDING/DEFERRED commitments — detects fulfilment",
+      "request": {
+        "headers": { "$ref": "#shared_request_headers" },
+        "body": {
+          "meeting_id": "string (required)",
+          "team_id": "string (required)",
+          "meeting_date": "string — ISO 8601 UTC",
+          "meeting_duration_seconds": "number | null",
+          "team_timezone": "string — IANA timezone",
+          "new_commitments": [{ "$ref": "#parsed_commitment" }],
+          "historical_commitments": [
+            {
+              "id": "string — PostgreSQL commitment.id (CUID)",
+              "owner_id": "string — User.id",
+              "owner_name": "string — User.name (for matching — names appear in transcripts)",
+              "text": "string",
+              "normalized_text": "string",
+              "status": "'PENDING' | 'DEFERRED'",
+              "due_date_utc": "string | null",
+              "created_at": "string — ISO 8601 UTC",
+              "meeting_id": "string — source meeting CUID",
+              "source_meeting_date": "string | null — ISO 8601 UTC"
+            }
+          ]
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Full resolution success",
+          "body": {
+            "success": true,
+            "partial": false,
+            "request_id": "string",
+            "error": null,
+            "result": {
+              "meeting_id": "string",
+              "team_id": "string",
+              "new_commitments": [{ "$ref": "#parsed_commitment" }],
+              "resolved_updates": [
+                {
+                  "historical_commitment_id": "string",
+                  "historical_commitment_text": "string",
+                  "resolved_by_new_commitment": { "$ref": "#parsed_commitment" },
+                  "detection_confidence": "number [0.0, 1.0]",
+                  "similarity_score": "number [0.0, 1.0]",
+                  "prompt_version": "string"
+                }
+              ],
+              "not_resolved_references": [
+                {
+                  "historical_commitment_id": "string",
+                  "historical_commitment_text": "string",
+                  "referenced_by_new_commitment": { "$ref": "#parsed_commitment" },
+                  "detection_status": "'NOT_RESOLVED' | 'DETECTION_FAILED'"
+                }
+              ],
+              "unchanged_commitments": [{ "$ref": "#historical_commitment" }],
+              "partial_failure": null,
+              "stats": {
+                "new_commitments_count": "int",
+                "historical_pool_size": "int",
+                "resolved_count": "int",
+                "not_resolved_count": "int",
+                "stage1_matches": "int",
+                "stage2_calls": "int",
+                "processing_time_ms": "int"
+              }
+            }
+          }
+        },
+        "206": {
+          "description": "Partial resolution — some Stage 2 detection calls failed. Apply resolved_updates; park failed_historical_ids.",
+          "body": {
+            "success": true,
+            "partial": true,
+            "request_id": "string",
+            "result": {
+              "$ref": "#resolve_200_result",
+              "partial_failure": {
+                "failed_historical_ids": ["string"],
+                "error_message": "string"
+              }
+            }
+          }
+        },
+        "422": { "$ref": "#shared_422_total_failure" },
+        "401": { "$ref": "#shared_401" },
+        "500": { "$ref": "#shared_500" }
+      }
+    },
+    {
+      "endpoint": "GET /health",
+      "description": "Liveness probe — returns 200 when process is alive",
+      "response": { "200": { "body": { "status": "ok" } } }
+    },
+    {
+      "endpoint": "GET /ready",
+      "description": "Readiness probe — returns dependency health. 200 even when a dependency is degraded.",
+      "response": {
+        "200": {
+          "body": {
+            "status": "'ready' | 'not_ready'",
+            "checks": {
+              "mongodb": "boolean",
+              "redis": "boolean",
+              "openai": "boolean"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "critical_contract_rules": [
+    "HTTP 422 disambiguation: response.data.detail is an array → Pydantic validation; response.data.success === false → total failure",
+    "HTTP 206: always contains response.data.result or response.data.partial_result — never null",
+    "HTTP 500 with non_retryable:true → invariant error — page immediately, no retry",
+    "X-Request-ID echo: AI pipeline MUST echo the X-Request-ID from the request back in the response header",
+    "tenant isolation: team_id in request MUST match team_id in response — any mismatch is an AI pipeline bug",
+    "owner matching: resolved_updates reference historical_commitment_id values from the request's historical_commitments array only",
+    "Optional[str] → string | null (NEVER undefined)",
+    "float fields (confidence, similarity_score, estimated_cost_usd) may be 0.0 — never null"
+  ]
+}

@@ -74,7 +74,7 @@ function IntegrationsContent() {
           descriptionBullets={[
             "Action items from standups automatically create Jira issues in the correct backlog.",
             "Assignees matched to Jira users by email — no manual linking configuration required.",
-            "When a Jira issue is marked 'Done', the corresponding Vocaply commitment is automatically fulfilled.",
+            "When a Jira issue is marked 'Done', the corresponding Rapto commitment is automatically fulfilled.",
           ]}
           steps={jiraSteps}
           visualComponent={<MockJiraTicket />}
@@ -116,7 +116,7 @@ function IntegrationsContent() {
           }
           descriptionBullets={[
             "Synchronizes with Google Calendar automatically — no manual event copying required.",
-            "The Vocaply bot schedules itself and joins 2 minutes before the call starts.",
+            "The Rapto bot schedules itself and joins 2 minutes before the call starts.",
             "Detects and supports Zoom, Google Meet, and Microsoft Teams meeting URLs inside event details.",
           ]}
           visualComponent={<MockCalendarEvent />}

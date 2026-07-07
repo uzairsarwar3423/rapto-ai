@@ -62,7 +62,7 @@ export function SlackConfigForm({
           )}
         />
         <InlineFieldHint>
-          Choose the Slack channel where Vocaply will broadcast summaries and key action items automatically.
+          Choose the Slack channel where Rapto will broadcast summaries and key action items automatically.
         </InlineFieldHint>
       </div>
     </form>

@@ -61,6 +61,16 @@ const envSchema = z.object({
 
     // Day 22: Google Calendar (distinct callback from Google login)
     GOOGLE_CALENDAR_CALLBACK_URL: z.string().optional(),
+
+    // AI Pipeline
+    AI_PIPELINE_URL: z.string().url().default('http://ai-pipeline:8000'),
+    AI_PIPELINE_SECRET: z.string().min(32).default('change-me-min-32-chars-in-production-please-use-a-secure-secret'),
+    AI_PIPELINE_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+    AI_PIPELINE_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),
+    AI_PIPELINE_RETRY_BASE_DELAY_MS: z.coerce.number().int().positive().default(1000),
+    AI_PIPELINE_CIRCUIT_FAILURE_THRESHOLD: z.coerce.number().int().positive().default(5),
+    AI_PIPELINE_CIRCUIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+    AI_PIPELINE_CIRCUIT_OPEN_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
 })
 
 const parsed = envSchema.safeParse(process.env)

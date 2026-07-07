@@ -2,7 +2,7 @@ import type { HeroContent } from "@/types/marketing.types";
 
 export const heroContent: HeroContent = {
   // ── Announcement bar ────────────────────────────────────────
-  announcementText:     "Vocaply for Microsoft Teams — now in beta.",
+  announcementText:     "Rapto for Microsoft Teams — now in beta.",
   announcementLinkText: "Join waitlist →",
   announcementLinkHref: "/waitlist",
 
@@ -11,7 +11,7 @@ export const heroContent: HeroContent = {
 
   // ── Headline (rendered as two parts) ────────────────────────
   headlinePart1:  "Your team made promises in that meeting.",
-  headlineAccent: "Vocaply remembers them.",
+  headlineAccent: "Rapto remembers them.",
 
   // ── Subheadline ──────────────────────────────────────────────
   subheadline:

@@ -30,15 +30,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   
   setAccessToken: (token) => {
     if (token) {
-      Cookies.set('vocaply_access', token, { path: '/', sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+      Cookies.set('rapto_access', token, { path: '/', sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
     } else {
-      Cookies.remove('vocaply_access', { path: '/' });
+      Cookies.remove('rapto_access', { path: '/' });
     }
     set({ accessToken: token });
   },
   
   clearAuth: () => {
-    Cookies.remove('vocaply_access', { path: '/' });
+    Cookies.remove('rapto_access', { path: '/' });
     set({ 
       accessToken: null, 
       user: null, 

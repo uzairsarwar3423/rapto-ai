@@ -58,7 +58,7 @@ export function ConnectIntegrationSheet({ open, onClose, provider }: ConnectInte
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground mt-1">
-            Authorize Vocaply to access your workspace.
+            Authorize Rapto to access your workspace.
           </DialogDescription>
         </DialogHeader>
 
@@ -67,7 +67,7 @@ export function ConnectIntegrationSheet({ open, onClose, provider }: ConnectInte
             {provider.consentCopy}
           </p>
           <p className="text-[13px] font-sans font-normal text-muted-foreground/60 leading-[20px]">
-            By connecting, you agree to allow Vocaply to access resources according to our privacy policy. Read the{" "}
+            By connecting, you agree to allow Rapto to access resources according to our privacy policy. Read the{" "}
             <a
               href={provider.docsUrl}
               target="_blank"

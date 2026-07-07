@@ -65,7 +65,7 @@ export const integrationsData: IntegrationItem[] = [
     categories: ["Calendar"],
     status: "live",
     logoPath: "/icons/google-calender.svg", // Note: Spelled 'calender' in public/icons/google-calender.svg
-    description: "Sync your meeting schedule automatically and invite the Vocaply bot with zero manual effort.",
+    description: "Sync your meeting schedule automatically and invite the Rapto bot with zero manual effort.",
     hasDeepDive: true,
     deepDiveAnchor: "calendar-integration",
   },
@@ -76,7 +76,7 @@ export const integrationsData: IntegrationItem[] = [
     categories: ["Video Calls"],
     status: "live",
     logoPath: "/icons/zoom.svg",
-    description: "Let Vocaply join your Zoom calls to record, transcribe, and extract accountability metrics.",
+    description: "Let Rapto join your Zoom calls to record, transcribe, and extract accountability metrics.",
     hasDeepDive: false,
   },
   {
@@ -94,7 +94,7 @@ export const integrationsData: IntegrationItem[] = [
     categories: ["Video Calls"],
     status: "live",
     logoPath: "/icons/teams.svg",
-    description: "Enable the Vocaply bot to attend Microsoft Teams meetings and build transcripts seamlessly.",
+    description: "Enable the Rapto bot to attend Microsoft Teams meetings and build transcripts seamlessly.",
     hasDeepDive: false,
   },
   {
@@ -121,7 +121,7 @@ export const integrationsData: IntegrationItem[] = [
     categories: ["Calendar"],
     status: "live",
     logoPath: "/icons/outlook.svg",
-    description: "Synchronize Outlook calendar events to ensure Vocaply is scheduled for every discussion.",
+    description: "Synchronize Outlook calendar events to ensure Rapto is scheduled for every discussion.",
     hasDeepDive: false,
   },
   // COMING SOON INTEGRATIONS
@@ -158,7 +158,7 @@ export const integrationsData: IntegrationItem[] = [
     categories: ["Video Calls"],
     status: "coming_soon",
     logoPath: "/icons/webex.svg",
-    description: "Bring Vocaply automated note-taking and assignment features to Cisco Webex spaces.",
+    description: "Bring Rapto automated note-taking and assignment features to Cisco Webex spaces.",
     hasDeepDive: false,
   },
   {

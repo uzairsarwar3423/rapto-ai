@@ -1,89 +1,59 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Vocaply — features/billing/api/billing.api.ts
+// Rapto — features/billing/api/billing.api.ts
 // REST API calls for billing domain.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import axios from "axios";
-import type { Subscription, UsageSummary, Invoice, InvoiceListResponse } from "../types";
-
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
-  withCredentials: true,
-});
+import { api } from "@/lib/api/client";
+import type { Subscription, UsageSummary, InvoiceListResponse } from "../types";
 
 // ── Subscription ──────────────────────────────────────────────────────────────
 
-export async function fetchSubscription(teamId: string): Promise<Subscription> {
-  const { data } = await api.get(`/api/v1/teams/${teamId}/billing/subscription`);
+export async function fetchSubscription(): Promise<Subscription> {
+  const { data } = await api.get(`/billing/subscription`);
   return data.subscription;
 }
 
 // ── Usage ─────────────────────────────────────────────────────────────────────
 
-export async function fetchUsage(teamId: string): Promise<UsageSummary> {
-  const { data } = await api.get(`/api/v1/teams/${teamId}/billing/usage`);
-  return data.usage;
+export async function fetchUsage(): Promise<UsageSummary> {
+  const { data } = await api.get(`/billing/usage`);
+  return data;
 }
 
 // ── Invoices ──────────────────────────────────────────────────────────────────
 
 export async function fetchInvoices(
-  teamId: string,
   cursor?: string
 ): Promise<InvoiceListResponse> {
   const params = cursor ? { cursor } : {};
-  const { data } = await api.get(`/api/v1/teams/${teamId}/billing/invoices`, {
+  const { data } = await api.get(`/billing/invoices`, {
     params,
   });
   return data;
 }
 
-export async function downloadInvoicePdf(
-  teamId: string,
-  invoiceId: string
-): Promise<Blob> {
-  const { data } = await api.get(
-    `/api/v1/teams/${teamId}/billing/invoices/${invoiceId}/pdf`,
-    { responseType: "blob" }
-  );
-  return data;
-}
-
 // ── Portal ────────────────────────────────────────────────────────────────────
 
-export async function createBillingPortalSession(
-  teamId: string,
-  idempotencyKey: string
-): Promise<string> {
-  const { data } = await api.post(
-    `/api/v1/teams/${teamId}/billing/portal`,
-    {},
-    {
-      headers: { "Idempotency-Key": idempotencyKey },
-    }
-  );
-  return data.url;
+export async function createBillingPortalSession(): Promise<string> {
+  const { data } = await api.post(`/billing/portal`);
+  return data.portalUrl;
 }
 
 // ── Checkout ──────────────────────────────────────────────────────────────────
 
 export async function createCheckoutSession(
-  teamId: string,
-  priceId: string,
-  idempotencyKey: string
-): Promise<string> {
-  const { data } = await api.post(
-    `/api/v1/teams/${teamId}/billing/checkout`,
-    { priceId },
-    {
-      headers: { "Idempotency-Key": idempotencyKey },
-    }
-  );
-  return data.url;
+  planId: string,
+  interval: "month" | "year"
+): Promise<{ transactionId: string; checkoutUrl: string | null }> {
+  const { data } = await api.post(`/billing/checkout`, {
+    planId,
+    interval,
+  });
+  return data;
 }
 
 // ── Cancel ────────────────────────────────────────────────────────────────────
 
-export async function cancelSubscription(teamId: string): Promise<void> {
-  await api.post(`/api/v1/teams/${teamId}/billing/cancel`);
+export async function cancelSubscription(): Promise<void> {
+  await api.post(`/billing/cancel`);
 }

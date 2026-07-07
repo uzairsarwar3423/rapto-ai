@@ -7,19 +7,19 @@ import { cn } from "@/lib/utils";
 const features = [
   {
     title: "Jira Sync over Generic Exports",
-    description: "Otter lets you copy-paste text or export a TXT file. Vocaply understands what an 'action item' is and natively creates Jira tickets, assigns them, and keeps the status synced in real-time.",
+    description: "Otter lets you copy-paste text or export a TXT file. Rapto understands what an 'action item' is and natively creates Jira tickets, assigns them, and keeps the status synced in real-time.",
     icon: Workflow,
     align: "left",
   },
   {
     title: "Signal over Noise",
-    description: "Transcribing a 45-minute standup creates thousands of words of text. Vocaply ignores the fluff and exclusively highlights the 3-5 commitments that actually matter to the sprint.",
+    description: "Transcribing a 45-minute standup creates thousands of words of text. Rapto ignores the fluff and exclusively highlights the 3-5 commitments that actually matter to the sprint.",
     icon: Target,
     align: "right",
   },
   {
     title: "Proactive Nudges",
-    description: "Otter's job ends when the meeting ends. Vocaply acts as your automated project manager, checking in with engineers via Slack right before a commitment is due.",
+    description: "Otter's job ends when the meeting ends. Rapto acts as your automated project manager, checking in with engineers via Slack right before a commitment is due.",
     icon: BellRing,
     align: "left",
   },
@@ -38,7 +38,7 @@ export function CompareFeatures() {
             className="text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight"
             style={{ fontFamily: 'var(--font-plus-jakarta), system-ui, sans-serif' }}
           >
-            Why Engineering Teams Choose Vocaply
+            Why Engineering Teams Choose Rapto
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}

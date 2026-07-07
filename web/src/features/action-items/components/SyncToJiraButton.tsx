@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { useSyncToJira } from "../hooks/useSyncToJira";
 import { SyncStatusBadge } from "./SyncStatusBadge";
@@ -32,36 +32,38 @@ export function SyncToJiraButton({ actionItem }: SyncToJiraButtonProps) {
     <Popover open={showNotConnected} onOpenChange={setShowNotConnected}>
       <PopoverTrigger asChild>
         <div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 rounded p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-                disabled={sync.isPending}
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent row click navigation
-                  sync.mutate(undefined, {
-                    onError: (err: any) => {
-                      const errCode = err?.response?.data?.error?.code;
-                      if (errCode === "INTEGRATION_NOT_CONNECTED") {
-                        setShowNotConnected(true);
-                      }
-                    },
-                  });
-                }}
-              >
-                {sync.isPending ? (
-                  <span className="text-[10px] text-muted-foreground font-sans font-normal animate-pulse">Sync…</span>
-                ) : (
-                  <JiraIcon className="h-3.5 w-3.5 text-blue-500/80 hover:text-blue-600 shrink-0" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              Sync to Jira
-            </TooltipContent>
-          </Tooltip>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  disabled={sync.isPending}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent row click navigation
+                    sync.mutate(undefined, {
+                      onError: (err: any) => {
+                        const errCode = err?.response?.data?.error?.code;
+                        if (errCode === "INTEGRATION_NOT_CONNECTED") {
+                          setShowNotConnected(true);
+                        }
+                      },
+                    });
+                  }}
+                >
+                  {sync.isPending ? (
+                    <span className="text-[10px] text-muted-foreground font-sans font-normal animate-pulse">Sync…</span>
+                  ) : (
+                    <JiraIcon className="h-3.5 w-3.5 text-blue-500/80 hover:text-blue-600 shrink-0" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Sync to Jira
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </PopoverTrigger>
 

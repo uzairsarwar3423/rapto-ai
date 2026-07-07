@@ -31,7 +31,7 @@ export function CaseStudyCTA() {
           </h2>
           
           <p className="text-lg text-brand-subtle mb-8 max-w-xl mx-auto font-sans">
-            Stop chasing status updates. Let Vocaply handle the follow-ups so your engineering 
+            Stop chasing status updates. Let Rapto handle the follow-ups so your engineering 
             team can focus on shipping.
           </p>
           

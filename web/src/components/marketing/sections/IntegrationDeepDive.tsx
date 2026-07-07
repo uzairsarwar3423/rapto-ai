@@ -34,7 +34,7 @@ export function IntegrationDeepDive({
   visualComponent,
   ctaText = "Connect Integration",
   ctaHref = "/settings/integrations",
-  urlText = "app.vocaply.com/commitments",
+  urlText = "app.rapto.ai/commitments",
 }: IntegrationDeepDiveProps) {
   const isWhiteBg = theme === "white";
 

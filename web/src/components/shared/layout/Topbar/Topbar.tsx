@@ -91,7 +91,7 @@ export function Topbar({ onOpenDrawer, drawerOpen = false }: TopbarProps) {
                 /* NotificationBellDropdown is triggered via its own internal state;
                    for the overflow path we dispatch a custom event so the Bell's
                    own DropdownMenu can react without tight coupling */
-                window.dispatchEvent(new CustomEvent("vocaply:open-notifications"));
+                window.dispatchEvent(new CustomEvent("rapto:open-notifications"));
               }}
               unreadCount={unreadCount}
             />

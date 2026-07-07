@@ -17,7 +17,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "Will the bot disrupt our meetings?",
     answer:
-      "The bot announces itself when it joins (\"Vocaply is recording\"). It's silent for the rest of the meeting. Most teams stop noticing it within 2 sessions.",
+      "The bot announces itself when it joins (\"Rapto is recording\"). It's silent for the rest of the meeting. Most teams stop noticing it within 2 sessions.",
   },
   {
     question: "How accurate is the AI extraction?",
@@ -27,7 +27,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "Does it work with our video platform?",
     answer:
-      "Yes. Vocaply works with Zoom, Google Meet, and Microsoft Teams. Webex support is coming Q3 2026.",
+      "Yes. Rapto works with Zoom, Google Meet, and Microsoft Teams. Webex support is coming Q3 2026.",
   },
   {
     question: "Is our meeting data used to train AI models?",
@@ -42,7 +42,7 @@ export const faqItems: FAQItem[] = [
   {
     question: "We already use Jira. Will this duplicate our tickets?",
     answer:
-      "Vocaply creates Jira tickets from action items extracted in meetings. You can toggle this on or off per meeting or globally. Existing tickets are never duplicated — only new action items generate new tickets.",
+      "Rapto creates Jira tickets from action items extracted in meetings. You can toggle this on or off per meeting or globally. Existing tickets are never duplicated — only new action items generate new tickets.",
   },
   {
     question: "Can I change plans later?",

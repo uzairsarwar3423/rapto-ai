@@ -8,8 +8,8 @@ import type { MeetingStatus, PlatformType } from "@/features/meetings/types";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Meetings | Vocaply",
-  description: "Track and manage scheduled, recording, and processed meetings in Vocaply.",
+  title: "Meetings | Rapto",
+  description: "Track and manage scheduled, recording, and processed meetings in Rapto.",
 };
 
 interface MeetingsPageProps {

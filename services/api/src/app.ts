@@ -17,6 +17,7 @@ import { integrationsRouter } from './modules/integrations/integrations.routes'
 import { webhookRoutes } from './modules/webhooks/webhooks.routes'
 import { notificationsRouter } from './modules/notifications/notifications.routes'
 import { analyticsRouter } from './modules/analytics/analytics.routes'
+import { billingRouter } from './modules/billing/billing.routes'
 import { setupBullBoard } from './config/bull-board'
 
 const app = express()
@@ -66,15 +67,15 @@ app.get(['/', '/health'], (req, res) => {
 
 // ── /ready — checks Redis + MongoDB (Day 18 requirement) ─────────────────────
 app.get('/ready', async (req, res) => {
-    const checks: Record<string, string> = {}
+    const checks: Record<string, string | boolean> = {}
     let healthy = true
 
     try {
         const { redis } = await import('./config/redis')
         await redis.ping()
-        checks.redis = 'ok'
+        checks.redis = true
     } catch {
-        checks.redis = 'error'
+        checks.redis = false
         healthy = false
     }
 
@@ -83,12 +84,21 @@ app.get('/ready', async (req, res) => {
         const db = getMongoDB()
         if (db) {
             await db.command({ ping: 1 })
-            checks.mongodb = 'ok'
+            checks.mongodb = true
         } else {
-            checks.mongodb = 'not_connected'
+            checks.mongodb = false
         }
     } catch {
-        checks.mongodb = 'error'
+        checks.mongodb = false
+    }
+
+    try {
+        const { aipipelineClient } = await import('./services/ai-pipeline/ai-pipeline.client')
+        const readyResponse = await aipipelineClient.ready({ timeoutMs: 2000 })
+        checks.ai_pipeline = readyResponse.status === 'ready'
+    } catch {
+        checks.ai_pipeline = false
+        // Note: AI pipeline down does NOT make Node.js API "not_ready"
     }
 
     res.status(healthy ? 200 : 503).json({
@@ -115,6 +125,7 @@ app.use('/api/v1/action-items', actionItemsRouter)
 app.use('/api/v1/integrations', integrationsRouter)
 app.use('/api/v1/notifications', notificationsRouter)
 app.use('/api/v1/analytics', analyticsRouter)
+app.use('/api/v1/billing', billingRouter)
 app.use('/api/webhooks', webhookRoutes)
 
 // ── BullBoard (job monitoring — non-prod only) ────────────────────────────────

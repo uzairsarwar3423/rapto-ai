@@ -40,7 +40,7 @@ export function FinalCTA() {
   return (
     <section
       ref={ref}
-      aria-label="Get started with Vocaply"
+      aria-label="Get started with Rapto"
       style={{
         background: "#0A0A0A",
         padding: "clamp(72px, 10vw, 120px) var(--pad, clamp(20px, 5vw, 80px))",
@@ -88,7 +88,7 @@ export function FinalCTA() {
         >
           Stop chasing your team.{" "}
           <br className="final-cta-br" />
-          {"Let Vocaply "}
+          {"Let Rapto "}
           <em
             style={{
               fontStyle: "italic",

@@ -11,13 +11,13 @@ export function IntegrationsGridHeader({ connectedCount }: IntegrationsGridHeade
   const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
-    setDismissed(localStorage.getItem("vocaply-integrations-cmd-hint-dismissed") === "true");
+    setDismissed(localStorage.getItem("rapto-integrations-cmd-hint-dismissed") === "true");
   }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key?.toLowerCase() === "k") {
-        localStorage.setItem("vocaply-integrations-cmd-hint-dismissed", "true");
+        localStorage.setItem("rapto-integrations-cmd-hint-dismissed", "true");
         setDismissed(true);
       }
     };

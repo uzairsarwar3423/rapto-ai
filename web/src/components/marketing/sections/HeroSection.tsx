@@ -200,7 +200,7 @@ export function HeroSection() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.95, ease: [0.25, 0.1, 0.25, 1] }}
           >
-            <MockBrowserFrame urlText="app.vocaply.com/commitments">
+            <MockBrowserFrame urlText="app.rapto.ai/commitments">
               <MockAppSidebar />
               <MockCommitmentsView />
             </MockBrowserFrame>

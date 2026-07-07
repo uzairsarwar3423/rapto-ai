@@ -8,6 +8,7 @@
  */
 
 import Link from "next/link";
+import { LogoIcon } from "@/components/ui/LogoIcon";
 import { CheckCircle, Users, Clock, TrendingUp, ArrowLeft, Zap } from "lucide-react";
 import { WaitlistForm } from "@/components/marketing/ui/WaitlistForm";
 
@@ -53,31 +54,10 @@ export default function WaitlistPage() {
       >
         <Link
           href="/"
-          style={{ textDecoration: "none", display: "inline-flex", alignItems: "baseline" }}
-          aria-label="Vocaply home"
+          style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+          aria-label="Rapto home"
         >
-          <span
-            style={{
-              fontFamily: "var(--font-serif, Georgia, serif)",
-              fontSize: "26px",
-              fontWeight: 400,
-              color: "#0A0A0A",
-              letterSpacing: "-0.5px",
-            }}
-          >
-            voca
-          </span>
-          <span
-            style={{
-              fontFamily: "var(--font-serif, Georgia, serif)",
-              fontSize: "26px",
-              fontWeight: 400,
-              color: "#1A6B3C",
-              letterSpacing: "-0.5px",
-            }}
-          >
-            ply
-          </span>
+          <LogoIcon size={42} priority />
         </Link>
 
         <Link
@@ -297,7 +277,7 @@ export default function WaitlistPage() {
                   marginBottom: "10px",
                 }}
               >
-                &ldquo;We used to spend 2 hours every week chasing updates. With Vocaply,
+                &ldquo;We used to spend 2 hours every week chasing updates. With Rapto,
                 accountability runs itself. Game changer for remote teams.&rdquo;
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

@@ -121,7 +121,7 @@ export function IntegrationsSection({ id }: IntegrationsSectionProps) {
                 maxWidth: "400px",
               }}
             >
-              No ripping out your stack. Vocaply connects to the tools your
+              No ripping out your stack. Rapto connects to the tools your
               team already lives in — one-click setup, OAuth-secured.
             </motion.p>
 

@@ -1,6 +1,6 @@
 /**
  * problem.content.ts
- * Pain points ("Without Vocaply") vs Solutions ("With Vocaply") content structures.
+ * Pain points ("Without Rapto") vs Solutions ("With Rapto") content structures.
  * Designed for the ProblemStatement comparison grid using Lucide icon names.
  */
 
@@ -15,7 +15,7 @@ export interface ProblemItem {
   text: string;
 }
 
-export const withoutVocaply: ProblemItem[] = [
+export const withoutRapto: ProblemItem[] = [
   {
     iconName: "Clock",
     strongText: "Manager spends 2–3 hours/week",
@@ -43,7 +43,7 @@ export const withoutVocaply: ProblemItem[] = [
   },
 ];
 
-export const withVocaply: ProblemItem[] = [
+export const withRapto: ProblemItem[] = [
   {
     iconName: "Bot",
     strongText: "Bot joins automatically.",

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LogoIcon } from "@/components/ui/LogoIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMobileMenu } from "@/hooks/marketing/useMobileMenu";
 import { navConfig } from "@/lib/marketing/content/navigation.content";
@@ -54,13 +55,8 @@ export function MobileMenuDrawer({ isOpen, onClose }: MobileMenuDrawerProps) {
             }}
           >
             {/* Logo */}
-            <Link href="/" onClick={onClose} style={{ textDecoration: "none", display: "inline-flex", alignItems: "baseline" }}>
-              <span style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(24px, 2.5vw, 30px)", fontWeight: 400, color: "#0A0A0A", letterSpacing: "-0.5px", lineHeight: 1 }}>
-                voca
-              </span>
-              <span style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(24px, 2.5vw, 30px)", fontWeight: 400, color: "#1A6B3C", letterSpacing: "-0.5px", lineHeight: 1 }}>
-                ply
-              </span>
+            <Link href="/" onClick={onClose} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+              <LogoIcon size={42} />
             </Link>
 
             {/* Close button */}

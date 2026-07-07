@@ -17,7 +17,7 @@ export default function NotificationSettingsPage() {
           Notification Settings
         </h1>
         <p className="text-sm text-muted-foreground">
-          Configure how and when you receive notifications from Vocaply.
+          Configure how and when you receive notifications from Rapto.
         </p>
       </div>
 

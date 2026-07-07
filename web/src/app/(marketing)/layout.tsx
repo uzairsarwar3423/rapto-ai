@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { WaitlistModal } from "@/components/marketing/ui/WaitlistModal";
 
 export const metadata: Metadata = {
-  title: "Join the Waitlist — Vocaply",
+  title: "Join the Waitlist — Rapto",
   description:
-    "Get early access to Vocaply — AI that joins your standups and automatically tracks every commitment your team makes.",
+    "Get early access to Rapto — AI that joins your standups and automatically tracks every commitment your team makes.",
 };
 
 /**

@@ -14,6 +14,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
       },
     ],
-    sitemap: "https://vocaply.com/sitemap.xml",
+    sitemap: "https://rapto.ai/sitemap.xml",
   };
 }

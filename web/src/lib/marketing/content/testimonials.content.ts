@@ -16,7 +16,7 @@ export interface TestimonialData {
 export const testimonials: TestimonialData[] = [
   {
     quote:
-      "I used to spend Sunday night writing follow-up emails from our Friday standup. Vocaply made that completely unnecessary. Everything is tracked, everything is sent — automatically.",
+      "I used to spend Sunday night writing follow-up emails from our Friday standup. Rapto made that completely unnecessary. Everything is tracked, everything is sent — automatically.",
     boldPhrase: "completely unnecessary.",
     authorName: "Ali Raza",
     authorRole: "Engineering Manager",

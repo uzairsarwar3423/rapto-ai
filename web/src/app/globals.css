@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-   VOCAPLY DESIGN SYSTEM — Light & Dark Mode Tokens
+   RAPTO DESIGN SYSTEM — Light & Dark Mode Tokens
    ============================================================ */
 :root {
   --background: 0 0% 100%;
@@ -355,4 +355,13 @@ select:focus {
 .scrollbar-none {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+/* ── Paddle Checkout Overrides (Bypass Radix Dialog Pointer Traps) ── */
+body[data-scroll-locked] .paddle-overlay,
+body[data-scroll-locked] iframe[src*="paddle"],
+body[data-scroll-locked] .paddle-frame,
+body[data-scroll-locked] iframe[title*="Paddle"] {
+  pointer-events: auto !important;
+  z-index: 2147483647 !important;
 }

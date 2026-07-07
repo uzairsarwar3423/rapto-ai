@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Vocaply — features/billing/data/plan-features.config.ts
+// Rapto — features/billing/data/plan-features.config.ts
 //
 // ONE source of truth for the feature-comparison matrix.
 // Used by:
@@ -26,7 +26,7 @@ export const PLAN_PRICING: PlanPricing[] = [
   {
     planId: "starter",
     label: "Starter",
-    pricePerMonth: 2900, // $29
+    pricePerMonth: 4900, // $29
     currency: "usd",
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER ?? null,
   },
@@ -40,7 +40,7 @@ export const PLAN_PRICING: PlanPricing[] = [
   {
     planId: "business",
     label: "Business",
-    pricePerMonth: 29900, // $299
+    pricePerMonth: 19900, // $299
     currency: "usd",
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS ?? null,
   },
@@ -84,9 +84,9 @@ export const PLAN_FEATURES: PlanFeatureRow[] = [
     feature: "Meetings per month",
     category: "Meetings",
     free: "5",
-    starter: "50",
-    growth: "Unlimited",
-    business: "Unlimited",
+    starter: "40",
+    growth: "120",
+    business: "300",
     enterprise: "Unlimited",
   },
   {
@@ -119,7 +119,7 @@ export const PLAN_FEATURES: PlanFeatureRow[] = [
   {
     feature: "Commitment tracking",
     category: "Meetings",
-    free: false,
+    free: "Basic",
     starter: true,
     growth: true,
     business: true,
@@ -130,9 +130,9 @@ export const PLAN_FEATURES: PlanFeatureRow[] = [
     feature: "Team members",
     category: "Team",
     free: "Up to 3",
-    starter: "Up to 15",
-    growth: "Up to 50",
-    business: "Unlimited",
+    starter: "Up to 10",
+    growth: "Up to 25",
+    business: "Up to 60",
     enterprise: "Unlimited",
   },
   {
@@ -167,7 +167,7 @@ export const PLAN_FEATURES: PlanFeatureRow[] = [
     feature: "Jira / Linear / Notion",
     category: "Integrations",
     free: false,
-    starter: false,
+    starter: true,
     growth: true,
     business: true,
     enterprise: true,
@@ -203,9 +203,9 @@ export const PLAN_FEATURES: PlanFeatureRow[] = [
   {
     feature: "Data retention",
     category: "Storage & Data",
-    free: "30 days",
-    starter: "1 year",
-    growth: "3 years",
+    free: "7 days",
+    starter: "90 days",
+    growth: "1 year",
     business: "Unlimited",
     enterprise: "Unlimited",
   },
@@ -241,11 +241,11 @@ export function getCancelConsequenceCopy(planId: PlanId): string {
   const dataRetentionCopy: Record<PlanId, string> = {
     free: "",
     starter:
-      " Meeting transcripts and data older than 30 days will no longer be accessible after downgrade.",
+      " Meeting transcripts and data older than 7 days will no longer be accessible after downgrade.",
     growth:
-      " Meeting transcripts and data older than 30 days will no longer be accessible after downgrade.",
+      " Meeting transcripts and data older than 7 days will no longer be accessible after downgrade.",
     business:
-      " Meeting transcripts and data older than 30 days will no longer be accessible after downgrade.",
+      " Meeting transcripts and data older than 7 days will no longer be accessible after downgrade.",
     enterprise:
       " Contact your account manager before cancelling to arrange data export.",
   };

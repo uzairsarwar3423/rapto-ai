@@ -24,9 +24,9 @@ import { MobileCTABar } from "@/components/marketing/layout/MobileCTABar";
 import { SkipLink } from "@/components/marketing/ui/SkipLink";
 
 export const metadata: Metadata = {
-  title: "Vocaply — AI Meeting Accountability for Remote Teams",
+  title: "Rapto — AI Meeting Accountability for Remote Teams",
   description:
-    "Vocaply automatically tracks every commitment made in your meetings and alerts your team when deadlines slip. Works with Zoom, Meet, and Teams. Free trial, no credit card.",
+    "Rapto automatically tracks every commitment made in your meetings and alerts your team when deadlines slip. Works with Zoom, Meet, and Teams. Free trial, no credit card.",
 };
 
 /**
@@ -45,16 +45,16 @@ export const metadata: Metadata = {
 const softwareSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "Vocaply",
+  "name": "Rapto",
   "applicationCategory": "BusinessApplication",
   "operatingSystem": "All",
-  "description": "Vocaply automatically tracks every commitment made in your meetings and alerts your team when deadlines slip. Works with Zoom, Meet, and Teams. Free trial, no credit card.",
-  "url": "https://vocaply.com",
+  "description": "Rapto automatically tracks every commitment made in your meetings and alerts your team when deadlines slip. Works with Zoom, Meet, and Teams. Free trial, no credit card.",
+  "url": "https://rapto.ai",
   "offers": {
     "@type": "AggregateOffer",
     "priceCurrency": "USD",
     "lowPrice": "0",
-    "highPrice": "199",
+    "highPrice": "299",
     "offerCount": "4",
     "offers": [
       {
@@ -62,28 +62,28 @@ const softwareSchema = {
         "name": "Free Plan",
         "price": "0",
         "priceCurrency": "USD",
-        "url": "https://vocaply.com#pricing"
+        "url": "https://rapto.ai#pricing"
       },
       {
         "@type": "Offer",
         "name": "Starter Plan",
-        "price": "49",
+        "price": "29",
         "priceCurrency": "USD",
-        "url": "https://vocaply.com#pricing"
+        "url": "https://rapto.ai#pricing"
       },
       {
         "@type": "Offer",
         "name": "Growth Plan",
         "price": "99",
         "priceCurrency": "USD",
-        "url": "https://vocaply.com#pricing"
+        "url": "https://rapto.ai#pricing"
       },
       {
         "@type": "Offer",
         "name": "Business Plan",
-        "price": "199",
+        "price": "299",
         "priceCurrency": "USD",
-        "url": "https://vocaply.com#pricing"
+        "url": "https://rapto.ai#pricing"
       }
     ]
   }
@@ -106,7 +106,7 @@ const faqSchema = {
       "name": "Will the bot disrupt our meetings?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The bot announces itself when it joins (\"Vocaply is recording\"). It's silent for the rest of the meeting. Most teams stop noticing it within 2 sessions."
+        "text": "The bot announces itself when it joins (\"Rapto is recording\"). It's silent for the rest of the meeting. Most teams stop noticing it within 2 sessions."
       }
     },
     {
@@ -122,7 +122,7 @@ const faqSchema = {
       "name": "Does it work with our video platform?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. Vocaply works with Zoom, Google Meet, and Microsoft Teams. Webex support is coming Q3 2026."
+        "text": "Yes. Rapto works with Zoom, Google Meet, and Microsoft Teams. Webex support is coming Q3 2026."
       }
     },
     {
@@ -146,7 +146,7 @@ const faqSchema = {
       "name": "We already use Jira. Will this duplicate our tickets?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Vocaply creates Jira tickets from action items extracted in meetings. You can toggle this on or off per meeting or globally. Existing tickets are never duplicated — only new action items generate new tickets."
+        "text": "Rapto creates Jira tickets from action items extracted in meetings. You can toggle this on or off per meeting or globally. Existing tickets are never duplicated — only new action items generate new tickets."
       }
     },
     {

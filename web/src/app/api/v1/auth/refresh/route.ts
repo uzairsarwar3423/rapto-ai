@@ -4,7 +4,7 @@ import axios from 'axios';
 
 export async function POST() {
   const cookieStore = await cookies();
-  const refreshToken = cookieStore.get('vocaply_refresh')?.value;
+  const refreshToken = cookieStore.get('rapto_refresh')?.value;
 
   if (!refreshToken) {
     return NextResponse.json(
@@ -22,7 +22,7 @@ export async function POST() {
       {},
       {
         headers: {
-          Cookie: `vocaply_refresh=${refreshToken}`,
+          Cookie: `rapto_refresh=${refreshToken}`,
         },
         validateStatus: () => true,
       }
@@ -30,7 +30,7 @@ export async function POST() {
 
     if (refreshResponse.status !== 200) {
       // Clear cookie locally if refresh failed
-      cookieStore.delete('vocaply_refresh');
+      cookieStore.delete('rapto_refresh');
       return NextResponse.json(
         refreshResponse.data,
         { status: refreshResponse.status }
@@ -52,7 +52,7 @@ export async function POST() {
 
     if (meResponse.status !== 200) {
       // If fetching user profile fails, treat refresh as failed
-      cookieStore.delete('vocaply_refresh');
+      cookieStore.delete('rapto_refresh');
       return NextResponse.json(
         { success: false, error: { code: 'USER_FETCH_FAILED', message: 'Failed to fetch user profile' } },
         { status: 401 }
@@ -66,7 +66,7 @@ export async function POST() {
     let newRefreshToken = '';
     
     if (setCookieHeaders && setCookieHeaders.length > 0) {
-      const match = setCookieHeaders[0].match(/vocaply_refresh=([^;]+)/);
+      const match = setCookieHeaders[0].match(/rapto_refresh=([^;]+)/);
       if (match) {
         newRefreshToken = match[1];
       }
@@ -74,7 +74,7 @@ export async function POST() {
 
     if (newRefreshToken) {
       // Set the HTTP-only cookie locally scoped to the root path
-      cookieStore.set('vocaply_refresh', newRefreshToken, {
+      cookieStore.set('rapto_refresh', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -99,7 +99,7 @@ export async function POST() {
 // Support GET for Server-Side Component silent refresh redirects
 export async function GET(request: Request) {
   const cookieStore = await cookies();
-  const refreshToken = cookieStore.get('vocaply_refresh')?.value;
+  const refreshToken = cookieStore.get('rapto_refresh')?.value;
   const { searchParams } = new URL(request.url);
   const redirectUrl = searchParams.get('redirect') || '/dashboard';
 
@@ -112,12 +112,12 @@ export async function GET(request: Request) {
     const refreshResponse = await axios.post(
       `${backendUrl}/api/v1/auth/refresh`,
       {},
-      { headers: { Cookie: `vocaply_refresh=${refreshToken}` }, validateStatus: () => true }
+      { headers: { Cookie: `rapto_refresh=${refreshToken}` }, validateStatus: () => true }
     );
 
     if (refreshResponse.status !== 200) {
-      cookieStore.delete('vocaply_refresh');
-      cookieStore.delete('vocaply_access');
+      cookieStore.delete('rapto_refresh');
+      cookieStore.delete('rapto_access');
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
@@ -126,12 +126,12 @@ export async function GET(request: Request) {
     let newRefreshToken = '';
     
     if (setCookieHeaders && setCookieHeaders.length > 0) {
-      const match = setCookieHeaders[0].match(/vocaply_refresh=([^;]+)/);
+      const match = setCookieHeaders[0].match(/rapto_refresh=([^;]+)/);
       if (match) newRefreshToken = match[1];
     }
 
     if (newRefreshToken) {
-      cookieStore.set('vocaply_refresh', newRefreshToken, {
+      cookieStore.set('rapto_refresh', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -140,7 +140,7 @@ export async function GET(request: Request) {
       });
     }
     
-    cookieStore.set('vocaply_access', accessToken, {
+    cookieStore.set('rapto_access', accessToken, {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',

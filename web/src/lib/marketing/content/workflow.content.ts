@@ -1,7 +1,7 @@
 /**
  * workflow.content.ts
  * Data for the WorkflowTimeline section — 5 story nodes from Monday standup
- * through the following Monday, showing Vocaply's accountability loop.
+ * through the following Monday, showing Rapto's accountability loop.
  */
 
 export type CalloutType =
@@ -25,7 +25,7 @@ export const workflowSteps: WorkflowStep[] = [
     timestamp: "Monday · 9:00 AM",
     title: "Bot joins your standup",
     description:
-      "Ali says 'I'll finish login by Thursday.' Vocaply bot is in the meeting, silent.",
+      "Ali says 'I'll finish login by Thursday.' Rapto bot is in the meeting, silent.",
     calloutType: "recording-pill",
   },
   {

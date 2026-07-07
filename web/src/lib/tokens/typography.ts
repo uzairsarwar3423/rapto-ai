@@ -1,5 +1,5 @@
 /**
- * Vocaply Design Tokens — Typography
+ * Rapto Design Tokens — Typography
  */
 export const FONTS = {
   sans: "DM Sans, system-ui, -apple-system, sans-serif",
