@@ -53,18 +53,20 @@ function validate(fields: WaitlistFormFields): WaitlistFormErrors {
   return errors;
 }
 
-/** Simulate an API call — replace with real endpoint when backend is ready */
 async function submitToWaitlist(fields: WaitlistFormFields): Promise<void> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Simulate 95% success rate
-      if (Math.random() > 0.05) {
-        resolve();
-      } else {
-        reject(new Error("Something went wrong. Please try again."));
-      }
-    }, 1400);
+  const response = await fetch("/api/waitlist", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(fields),
   });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "Something went wrong. Please try again.");
+  }
 }
 
 export function useWaitlistForm() {
