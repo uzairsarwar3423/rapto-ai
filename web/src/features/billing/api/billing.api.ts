@@ -32,6 +32,13 @@ export async function fetchInvoices(
   return data;
 }
 
+export async function downloadInvoicePdf(invoiceId: string): Promise<Blob> {
+  const { data } = await api.get(`/billing/invoices/${invoiceId}/pdf`, {
+    responseType: "blob",
+  });
+  return data;
+}
+
 // ── Portal ────────────────────────────────────────────────────────────────────
 
 export async function createBillingPortalSession(): Promise<string> {

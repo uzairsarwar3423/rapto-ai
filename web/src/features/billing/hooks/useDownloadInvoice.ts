@@ -32,7 +32,7 @@ export function useDownloadInvoice(): UseDownloadInvoiceReturn {
       });
 
       try {
-        const blob = await downloadInvoicePdf(teamId, invoiceId);
+        const blob = await downloadInvoicePdf(invoiceId);
         // Browser native download dialog takes over — "success" is just reverting to idle
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");

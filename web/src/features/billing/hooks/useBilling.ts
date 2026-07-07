@@ -22,14 +22,14 @@ export function useBilling(): BillingData {
 
   const subscriptionQuery = useQuery({
     queryKey: queryKeys.billing.subscription(teamId),
-    queryFn: () => fetchSubscription(teamId),
+    queryFn: () => fetchSubscription(),
     enabled: !!teamId,
     staleTime: 30 * 1000, // 30s — billing data should feel fresh
   });
 
   const usageQuery = useQuery({
     queryKey: queryKeys.billing.usage(teamId),
-    queryFn: () => fetchUsage(teamId),
+    queryFn: () => fetchUsage(),
     enabled: !!teamId,
     staleTime: 60 * 1000,
   });

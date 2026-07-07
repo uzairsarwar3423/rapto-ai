@@ -16,7 +16,7 @@ export function useInvoices() {
   return useInfiniteQuery<InvoiceListResponse, Error>({
     queryKey: queryKeys.billing.invoices(teamId),
     queryFn: ({ pageParam }) =>
-      fetchInvoices(teamId, pageParam as string | undefined),
+      fetchInvoices(pageParam as string | undefined),
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.nextCursor ?? undefined : undefined,
     initialPageParam: undefined,
