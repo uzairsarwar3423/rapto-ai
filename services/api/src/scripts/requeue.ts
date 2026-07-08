@@ -10,7 +10,7 @@ const extractQueue = new Queue('extract', {
 });
 
 async function run() {
-  const meetingId = 'cmrak9bhg000hh2hkpd76iedk';
+  const meetingId = 'cmrbu3y60000lh2ufwo1j2s5c';
   const meeting = await prisma.meeting.findUnique({ where: { id: meetingId }});
   
   if (!meeting) {

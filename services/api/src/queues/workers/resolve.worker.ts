@@ -24,7 +24,7 @@
 // QUEUE CONFIG: concurrency=5, retries=3, backoff=exponential(5s)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { Worker, Job } from 'bullmq'
+import { Worker, Job, DelayedError } from 'bullmq'
 import { logger } from '../../config/logger'
 import { prisma } from '../../db/client'
 import { aipipelineClient } from '../../services/ai-pipeline/ai-pipeline.client'
@@ -212,7 +212,7 @@ export const resolveWorker = new Worker<ResolveJobData>(
           'resolve.worker: circuit is OPEN — parking job with delay'
         )
         await job.moveToDelayed(Date.now() + waitMs, job.token)
-        return  // Exit cleanly — job is parked, not failed
+        throw new DelayedError()
 
       } else if (error instanceof AIPipelineTotalFailureError) {
         // OpenAI unavailable — mark as failed, let Bull retry

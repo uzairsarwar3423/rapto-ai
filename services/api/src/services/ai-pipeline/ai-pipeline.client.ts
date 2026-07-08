@@ -194,8 +194,20 @@ export class AIPipelineClient {
         //   a) Pydantic validation error (detail is an array) → non-retryable payload bug
         //   b) OpenAI total failure → retryable upstream dependency failure
         if (status === 422) {
+          // Check for custom validation error envelope from middleware
+          if ((data as any)?.error_code === 'VALIDATION_ERROR' && (data as any)?.details?.errors) {
+            logger.error({ validationErrors: (data as any).details.errors }, 'Pydantic validation failed');
+            throw new AIPipelineValidationError(
+              'AI Pipeline rejected request: Pydantic validation error (check TypeScript ↔ Pydantic schema sync)',
+              (data as any).details.errors,
+              requestId,
+              meetingId
+            );
+          }
+
           const detail = (data as any)?.detail;
           if (Array.isArray(detail)) {
+            logger.error({ validationErrors: detail }, 'Pydantic validation failed');
             // Pydantic validation: the Node.js payload is structurally wrong
             throw new AIPipelineValidationError(
               'AI Pipeline rejected request: Pydantic validation error (check TypeScript ↔ Pydantic schema sync)',
@@ -206,9 +218,15 @@ export class AIPipelineClient {
           }
 
           // Total failure: AI pipeline is up but OpenAI call failed internally
-          if ((data as any)?.success === false && (data as any)?.error?.error_code !== 'VALIDATION') {
-            const msg = (data as any)?.error?.message ?? 'Total AI Pipeline failure (OpenAI unavailable)';
-            throw new AIPipelineTotalFailureError(msg, requestId, meetingId);
+          if ((data as any)?.success === false) {
+            const resData = (data as any)?.result;
+            if (resData && !resData.partial_result && resData.error_summary) {
+              throw new AIPipelineTotalFailureError(resData.error_summary, requestId, meetingId);
+            }
+            if ((data as any)?.error?.error_code && (data as any)?.error?.error_code !== 'VALIDATION') {
+              const msg = (data as any)?.error?.message ?? 'Total AI Pipeline failure (OpenAI unavailable)';
+              throw new AIPipelineTotalFailureError(msg, requestId, meetingId);
+            }
           }
         }
 

@@ -1,5 +1,9 @@
 import 'dotenv/config'
 import { z } from 'zod'
+import dns from 'node:dns'
+
+// Fix Node.js 18+ undici fetch timeout issues when IPv6 is available in DNS but blackholed by the network
+dns.setDefaultResultOrder('ipv4first')
 
 const envSchema = z.object({
     NODE_ENV: z

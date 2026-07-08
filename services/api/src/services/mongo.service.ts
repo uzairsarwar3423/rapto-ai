@@ -4,9 +4,10 @@ let client: MongoClient | null = null;
 let db: any = null;
 
 async function init() {
-  if (!client) {
-    client = new MongoClient(process.env.MONGODB_URL || process.env.MONGODB_URI!)
-    await client.connect()
+  if (!db) {
+    const newClient = new MongoClient(process.env.MONGODB_URL || process.env.MONGODB_URI!)
+    await newClient.connect()
+    client = newClient
     db = client.db('vocaply')
   }
 }

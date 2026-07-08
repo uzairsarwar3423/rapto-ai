@@ -12,7 +12,7 @@
 import crypto from 'crypto'
 import { PlanType, UserRole } from '@prisma/client'
 import { teamsRepository } from './teams.repository'
-import { emailService } from '../notifications/email.service'
+import { notifyQueue } from '../../queues/queue.client'
 import { prisma } from '../../db/client'
 import { redis } from '../../config/redis'
 import { logger } from '../../config/logger'
@@ -415,8 +415,10 @@ async function inviteMembers(
       // b. Check if pending invite exists (non-expired)
       const pendingInvite = await teamsRepository.findPendingInvite(teamId, email)
       if (pendingInvite) {
-        results.alreadyInvited.push(email)
-        continue
+        // If an invite is already pending, we delete it and create a new one to resend the email
+        await prisma.teamInvitation.delete({
+          where: { id: pendingInvite.id }
+        })
       }
 
       // c. Generate token (rawToken never stored — only sha256 goes to DB)
@@ -434,21 +436,20 @@ async function inviteMembers(
         expiresAt,
       })
 
-      // e. Send invite email (async, non-blocking — email failure is non-fatal)
+      // e. Queue invite email (scalable & resilient)
       const joinUrl = `${frontendUrl}/invite/${rawToken}`
-      emailService
-        .sendTeamInviteEmail({
+      await notifyQueue.add('TEAM_INVITE_EMAIL', {
+        type: 'TEAM_INVITE_EMAIL',
+        teamId,
+        emailPayload: {
           to: email,
           teamName: team.name,
           inviterName: inviter.name,
           joinUrl,
           role,
           expiresAt,
-        })
-        .catch((err: unknown) => {
-          logger.error({ err, email, teamId }, 'Failed to send invite email')
-          results.failed.push(email)
-        })
+        }
+      })
 
       results.invited.push(email)
     } catch (err) {

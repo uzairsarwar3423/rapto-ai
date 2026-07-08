@@ -8,6 +8,7 @@ import { env } from '../../config/env'
 import { socketEmitter } from '../../realtime/socket.emitter'
 import { userRoom } from '../../realtime/rooms.manager'
 import { SERVER_EVENTS } from '../../realtime/socket.events'
+import { notifyQueue } from '../queue.client'
 
 const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
 
@@ -90,8 +91,9 @@ export const notifyWorker = new Worker<NotifyJobData>(
         // Check user email preferences
         const emailAllowed = await shouldSendEmail(member.id, 'MEETING_PROCESSED')
         if (emailAllowed) {
-          try {
-            await emailService.sendMeetingSummary({
+          await notifyQueue.add('email-meeting-summary', {
+            type: 'EMAIL_MEETING_SUMMARY',
+            emailPayload: {
               to: member.email,
               name: member.name,
               meetingTitle: meeting.title,
@@ -99,10 +101,8 @@ export const notifyWorker = new Worker<NotifyJobData>(
               commitmentsCount: meeting.commitmentCount,
               actionItemsCount: meeting.actionItemCount,
               viewUrl: `${frontendUrl}/meetings/${meeting.id}`
-            })
-          } catch (err) {
-            logger.error({ err, userId: member.id }, 'notify.worker: failed sending meeting summary email')
-          }
+            }
+          })
         }
       }
     }
@@ -135,17 +135,16 @@ export const notifyWorker = new Worker<NotifyJobData>(
 
       const ownerEmailAllowed = await shouldSendEmail(owner.id, 'COMMITMENT_MISSED')
       if (ownerEmailAllowed) {
-        try {
-          await emailService.sendCommitmentMissed({
+        await notifyQueue.add('email-commitment-missed', {
+          type: 'EMAIL_COMMITMENT_MISSED',
+          emailPayload: {
             to: owner.email,
             name: owner.name,
             commitmentText: commitment.text,
             dueDate: commitment.dueDate || new Date(),
             actionUrl: `${frontendUrl}/commitments`
-          })
-        } catch (err) {
-          logger.error({ err, userId: owner.id }, 'notify.worker: failed sending commitment missed email')
-        }
+          }
+        })
       }
 
       // 2. Notify Team Managers / Admins
@@ -179,18 +178,17 @@ export const notifyWorker = new Worker<NotifyJobData>(
 
         const mgrEmailAllowed = await shouldSendEmail(manager.id, 'COMMITMENT_MISSED')
         if (mgrEmailAllowed) {
-          try {
-            await emailService.sendManagerAlert({
+          await notifyQueue.add('email-manager-alert', {
+            type: 'EMAIL_MANAGER_ALERT',
+            emailPayload: {
               to: manager.email,
               name: manager.name,
               assigneeName: owner.name,
               commitmentText: commitment.text,
               dueDate: commitment.dueDate || new Date(),
               actionUrl: `${frontendUrl}/dashboard`
-            })
-          } catch (err) {
-            logger.error({ err, managerId }, 'notify.worker: failed sending manager alert email')
-          }
+            }
+          })
         }
       }
     }
@@ -236,8 +234,9 @@ export const notifyWorker = new Worker<NotifyJobData>(
 
         const emailAllowed = await shouldSendEmail(ownerId, 'DEADLINE_TODAY')
         if (emailAllowed) {
-          try {
-            await emailService.sendDeadlineReminder({
+          await notifyQueue.add('email-deadline-reminder', {
+            type: 'EMAIL_DEADLINE_REMINDER',
+            emailPayload: {
               to: user.email,
               name: user.name,
               commitments: upcomingCommitments.map(c => ({
@@ -246,12 +245,59 @@ export const notifyWorker = new Worker<NotifyJobData>(
                 dueDate: c.dueDate || new Date()
               })),
               actionUrl: `${frontendUrl}/commitments`
-            })
-          } catch (err) {
-            logger.error({ err, ownerId }, 'notify.worker: failed sending deadline reminder email')
-          }
+            }
+          })
         }
       }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 4: VERIFICATION_EMAIL
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'VERIFICATION_EMAIL' && job.data.emailPayload) {
+      await emailService.sendVerificationEmail(job.data.emailPayload)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 5: PASSWORD_RESET_EMAIL
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'PASSWORD_RESET_EMAIL' && job.data.emailPayload) {
+      await emailService.sendPasswordResetEmail(job.data.emailPayload)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 6: TEAM_INVITE_EMAIL
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'TEAM_INVITE_EMAIL' && job.data.emailPayload) {
+      await emailService.sendTeamInviteEmail(job.data.emailPayload)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 7: EMAIL_MEETING_SUMMARY
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_MEETING_SUMMARY' && job.data.emailPayload) {
+      await emailService.sendMeetingSummary(job.data.emailPayload)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 8: EMAIL_COMMITMENT_MISSED
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_COMMITMENT_MISSED' && job.data.emailPayload) {
+      await emailService.sendCommitmentMissed(job.data.emailPayload)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 9: EMAIL_MANAGER_ALERT
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_MANAGER_ALERT' && job.data.emailPayload) {
+      await emailService.sendManagerAlert(job.data.emailPayload)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 10: EMAIL_DEADLINE_REMINDER
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_DEADLINE_REMINDER' && job.data.emailPayload) {
+      await emailService.sendDeadlineReminder(job.data.emailPayload)
     }
   },
   {

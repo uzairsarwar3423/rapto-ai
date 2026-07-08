@@ -35,12 +35,17 @@ export const authController = {
     res.status(200).json(success(result))
   }),
 
-  /**
-   * Endpoint: GET /auth/verify-email
-   */
   verifyEmail: asyncHandler(async (req, res) => {
     const token = req.query.token as string
     const result = await authService.verifyEmail(token, req, res)
+    res.status(200).json(success(result))
+  }),
+
+  /**
+   * Endpoint: POST /auth/resend-verification
+   */
+  resendVerification: asyncHandler(async (req, res) => {
+    const result = await authService.resendVerification(req.body.email)
     res.status(200).json(success(result))
   }),
 

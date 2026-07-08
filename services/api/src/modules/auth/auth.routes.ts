@@ -10,6 +10,7 @@ import {
   resetPasswordSchema,
   updateMeSchema,
   changePasswordSchema,
+  resendVerificationSchema,
 } from './auth.validator'
 
 const router = Router()
@@ -48,6 +49,16 @@ router.post('/refresh', authController.refresh)
  * Route: GET /api/v1/auth/verify-email
  */
 router.get('/verify-email', authController.verifyEmail)
+
+/**
+ * Route: POST /api/v1/auth/resend-verification
+ */
+router.post(
+  '/resend-verification',
+  validate({ body: resendVerificationSchema }),
+  loginRateLimiter,
+  authController.resendVerification
+)
 
 /**
  * Route: POST /api/v1/auth/forgot-password

@@ -1,10 +1,49 @@
 import { env } from '../../config/env'
 import { logger } from '../../config/logger'
-
+import axios from 'axios'
+import https from 'https'
 // Check if Brevo is configured
 const isBrevoConfigured =
   env.BREVO_API_KEY &&
   env.BREVO_API_KEY !== 'xkeysib-your_brevo_api_key_here'
+
+/**
+ * Helper to fetch from Brevo API.
+ * Note: The inline while-loop retry mechanism has been removed.
+ * Retries and exponential backoff are now delegated to BullMQ (notifyQueue)
+ * to prevent blocking the worker event loop and to provide scalable, industry-level resilience.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  _retries?: number,
+  _backoff?: number
+): Promise<{ ok: boolean; status: number; text: () => Promise<string> }> {
+  try {
+    const response = await axios({
+      method: options.method as string,
+      url: url,
+      headers: options.headers as any,
+      data: options.body ? JSON.parse(options.body as string) : undefined,
+      timeout: 30000,
+      httpsAgent: new https.Agent({ keepAlive: false }),
+      validateStatus: () => true, // resolve promise for all HTTP status codes
+    });
+
+    if (response.status >= 500) {
+      throw new Error(`Brevo Server error: ${response.status}`);
+    }
+
+    return {
+      ok: response.status >= 200 && response.status < 300,
+      status: response.status,
+      text: async () => typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
+    };
+  } catch (error: any) {
+    logger.warn({ error: error.message || error }, 'Email API request failed. Delegating retry to BullMQ...');
+    throw error;
+  }
+}
 
 export const emailService = {
   /**
@@ -30,7 +69,7 @@ export const emailService = {
     }
 
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -101,7 +140,7 @@ export const emailService = {
     }
 
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -179,7 +218,7 @@ export const emailService = {
     }
 
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -245,7 +284,7 @@ export const emailService = {
     }
 
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -326,7 +365,7 @@ export const emailService = {
     }
 
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -399,7 +438,7 @@ export const emailService = {
     }
 
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -481,7 +520,7 @@ export const emailService = {
       .join('')
 
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',

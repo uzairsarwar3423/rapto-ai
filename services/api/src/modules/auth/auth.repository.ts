@@ -158,6 +158,15 @@ export const authRepository = {
   },
 
   /**
+   * Delete all email verification tokens for a user.
+   */
+  async deleteEmailVerificationTokensByUserId(userId: string): Promise<void> {
+    await prisma.emailVerificationToken.deleteMany({
+      where: { userId },
+    })
+  },
+
+  /**
    * Create a password reset token entry in the database.
    */
   async createPasswordResetToken(data: {

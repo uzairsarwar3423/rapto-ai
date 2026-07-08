@@ -9,7 +9,7 @@ import {
   hashToken,
   COOKIE_OPTIONS,
 } from './auth.helpers'
-import { emailService } from '../notifications/email.service'
+import { notifyQueue } from '../../queues/queue.client'
 import {
   DuplicateError,
   UnauthorizedError,
@@ -116,11 +116,14 @@ export const authService = {
       await storePendingInviteForVerification(tokenHash, data.inviteToken)
     }
 
-    // 7. Send verification email
-    await emailService.sendVerificationEmail({
-      to: user.email,
-      name: user.name,
-      verificationToken,
+    // 7. Queue verification email (scalable & resilient)
+    await notifyQueue.add('VERIFICATION_EMAIL', {
+      type: 'VERIFICATION_EMAIL',
+      emailPayload: {
+        to: user.email,
+        name: user.name,
+        verificationToken,
+      },
     })
 
     // Return message indicating unverified state (no session tokens returned)
@@ -370,6 +373,53 @@ export const authService = {
   },
 
   /**
+   * Resends the verification email for an unverified account.
+   */
+  async resendVerification(email: string) {
+    const emailLower = email.toLowerCase().trim()
+    const user = await authRepository.findByEmail(emailLower)
+
+    // User enumeration protection
+    const defaultResponse = { message: 'If that email exists and is unverified, a new verification link has been sent' }
+
+    if (!user) {
+      await bcrypt.compare('dummy_password', BCRYPT_FAKE_HASH)
+      return defaultResponse
+    }
+
+    if (user.emailVerified) {
+      return defaultResponse
+    }
+
+    // Delete existing tokens
+    await authRepository.deleteEmailVerificationTokensByUserId(user.id)
+
+    // Generate new token
+    const verificationToken = crypto.randomBytes(32).toString('hex')
+    const tokenHash = hashToken(verificationToken)
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+    await authRepository.createEmailVerificationToken({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    })
+
+    // Queue verification email
+    await notifyQueue.add('VERIFICATION_EMAIL', {
+      type: 'VERIFICATION_EMAIL',
+      emailPayload: {
+        to: user.email,
+        name: user.name,
+        verificationToken,
+      },
+    })
+
+    return defaultResponse
+  },
+
+
+  /**
    * Initiates forgot password flow (always 200).
    */
   async forgotPassword(email: string) {
@@ -400,10 +450,14 @@ export const authService = {
       expiresAt,
     })
 
-    await emailService.sendPasswordResetEmail({
-      to: user.email,
-      name: user.name,
-      token,
+    // Queue reset email (scalable & resilient)
+    await notifyQueue.add('PASSWORD_RESET_EMAIL', {
+      type: 'PASSWORD_RESET_EMAIL',
+      emailPayload: {
+        to: user.email,
+        name: user.name,
+        token,
+      },
     })
 
     return defaultResponse

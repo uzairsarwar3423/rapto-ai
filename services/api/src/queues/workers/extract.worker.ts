@@ -59,15 +59,28 @@ function resolveOwnerId(
 ): string | null {
   if (!ownerName || typeof ownerName !== 'string') return null;
 
-  const userId = participantNameMap.get(ownerName.trim().toLowerCase())
-  if (userId) return userId
-  // Try partial match (first name only)
+  const searchName = ownerName.trim().toLowerCase();
+  const exactMatch = participantNameMap.get(searchName);
+  if (exactMatch) return exactMatch;
+
+  // Try robust partial match (e.g. 'zain' matching 'muhammad zain sarwar')
+  const searchParts = searchName.split(/\s+/);
+  
   for (const [name, uid] of participantNameMap.entries()) {
-    if (uid && ownerName.toLowerCase().startsWith(name.split(' ')[0])) {
-      return uid
+    if (!uid) continue;
+    const nameParts = name.split(/\s+/);
+    
+    // If any part of the extracted owner name exactly matches a part of the real name
+    if (searchParts.some(part => nameParts.includes(part))) {
+      return uid;
+    }
+    
+    // Fallback for prefix matching (e.g. 'uzair' matching 'uzairsarwar')
+    if (searchParts.some(part => name.includes(part))) {
+      return uid;
     }
   }
-  return null
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,8 +100,7 @@ export const extractWorker = new Worker<ExtractJobData>(
       throw new Error(`Transcript document not found in MongoDB: ${mongoTranscriptId}`)
     }
 
-    // normalized_transcript is the cleaned version (or raw in degraded mode)
-    const transcriptTurns = transcriptDoc.normalized_transcript
+    let transcriptTurns = transcriptDoc.normalized_transcript
     if (!transcriptTurns || !Array.isArray(transcriptTurns) || transcriptTurns.length === 0) {
       throw new Error(
         `Transcript document has no normalized_transcript for ${mongoTranscriptId}. ` +
@@ -103,6 +115,23 @@ export const extractWorker = new Worker<ExtractJobData>(
         { jobId: job.id, meetingId },
         'extract.worker: running in degraded mode — using raw transcript (cleanup was unavailable)'
       )
+      // In degraded mode, the transcript is a list of RawTranscriptTurns.
+      // We must map it to CleanedTranscriptTurn so it passes Pydantic validation on the /extract endpoint.
+      const crypto = require('crypto');
+      transcriptTurns = transcriptTurns.map((t: any) => ({
+        turn_id: t.id || crypto.randomUUID(),
+        cleaned_text: t.text || '',
+        original_text: t.text || ' ',
+        speaker_name: t.speaker_tag || t.speaker || t.speaker_name || 'Unknown Speaker',
+        speaker_user_id: null,
+        start_time: t.start_time ?? t.start_timestamp ?? 0,
+        end_time: t.end_time ?? t.end_timestamp ?? 0,
+        filler_words_removed: 0,
+        was_modified: false,
+        was_modified_suspiciously: false,
+        uncertain: false,
+        confidence_detail: null,
+      }))
     }
 
     // ── STEP 2: Fetch meeting + participants from PostgreSQL ────────────────
@@ -207,44 +236,53 @@ export const extractWorker = new Worker<ExtractJobData>(
       participantNameMap.set(p.name.trim().toLowerCase(), p.userId)
     }
 
-    // ── STEP 7: PostgreSQL transaction — ALL writes or NONE ────────────────
-    await prisma.$transaction(async (tx) => {
-      // Pre-process commitments
-      const validCommitments: any[] = []
-      const fallbackActionItems: any[] = []
+    // ── STEP 7: Pre-process extracted entities ─────────────────────────────
+    const validCommitments: any[] = []
+    const fallbackActionItems: any[] = []
 
-      for (const c of result.commitments) {
-        const ownerId = resolveOwnerId(c.owner_name, participantNameMap)
-        if (ownerId) {
-          validCommitments.push({
-            meetingId,
-            teamId,
-            text:           c.text,
-            ownerId,
-            status:         'PENDING',
-            confidenceScore: c.confidence,
-            dueDateRaw:     c.due_date_raw,
-            dueDate:        c.due_date_utc ? new Date(c.due_date_utc) : null,
-            normalizedText: c.normalized_text,
-            dedupKey:       c.dedup_key,
-            extractionModel: result.extraction_model,
-          })
-        } else {
-          // Fallback to Action Item if owner is not a registered user
-          fallbackActionItems.push({
-            meetingId,
-            teamId,
-            text:            c.text,
-            assigneeId:      null,
-            assigneeNameRaw: c.owner_name,
-            confidenceScore: c.confidence,
-            dueDateRaw:      c.due_date_raw,
-            dueDate:         c.due_date_utc ? new Date(c.due_date_utc) : null,
-          })
-        }
+    for (const c of result.commitments) {
+      const ownerId = resolveOwnerId(c.owner_name, participantNameMap)
+      if (ownerId) {
+        validCommitments.push({
+          meetingId,
+          teamId,
+          text:           c.text,
+          ownerId,
+          status:         'PENDING',
+          confidenceScore: c.confidence,
+          dueDateRaw:     c.due_date_raw,
+          dueDate:        c.due_date_utc ? new Date(c.due_date_utc) : null,
+          normalizedText: c.normalized_text,
+          dedupKey:       c.dedup_key,
+          extractionModel: result.extraction_model,
+        })
+      } else {
+        // Fallback to Action Item if owner is not a registered user
+        fallbackActionItems.push({
+          meetingId,
+          teamId,
+          text:            c.text,
+          assigneeId:      null,
+          assigneeNameRaw: c.owner_name,
+          confidenceScore: c.confidence,
+          dueDateRaw:      c.due_date_raw,
+          dueDate:         c.due_date_utc ? new Date(c.due_date_utc) : null,
+        })
       }
+    }
 
-      // ── 7a. Commitments ───────────────────────────────────────────────────
+    const actionItemsData = result.action_items.map((a) => ({
+      meetingId,
+      teamId,
+      text:            a.text,
+      assigneeId:      resolveOwnerId(a.owner_name, participantNameMap),
+      assigneeNameRaw: a.owner_name,
+      confidenceScore: a.confidence,
+    })).concat(fallbackActionItems)
+
+    // ── STEP 8: PostgreSQL transaction — ALL writes or NONE ────────────────
+    await prisma.$transaction(async (tx) => {
+      // ── 8a. Commitments ───────────────────────────────────────────────────
       if (validCommitments.length > 0) {
         await tx.commitment.createMany({
           data: validCommitments,
@@ -252,15 +290,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         })
       }
 
-      // ── 7b. Action Items ──────────────────────────────────────────────────
-      const actionItemsData = result.action_items.map((a) => ({
-        meetingId,
-        teamId,
-        text:            a.text,
-        assigneeId:      resolveOwnerId(a.owner_name, participantNameMap),
-        assigneeNameRaw: a.owner_name,
-        confidenceScore: a.confidence,
-      })).concat(fallbackActionItems)
+      // ── 8b. Action Items ──────────────────────────────────────────────────
 
       if (actionItemsData.length > 0) {
         await tx.actionItem.createMany({
@@ -269,7 +299,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         })
       }
 
-      // ── 7c. Decisions ─────────────────────────────────────────────────────
+      // ── 8c. Decisions ─────────────────────────────────────────────────────
       if (result.decisions.length > 0) {
         await tx.decision.createMany({
           data: result.decisions.map((d) => ({
@@ -282,7 +312,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         })
       }
 
-      // ── 7d. Blockers ──────────────────────────────────────────────────────
+      // ── 8d. Blockers ──────────────────────────────────────────────────────
       if (result.blockers.length > 0) {
         await tx.blocker.createMany({
           data: result.blockers.map((b) => ({
@@ -296,7 +326,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         })
       }
 
-      // ── 7e. Meeting status + summary + extraction metadata ───────────────
+      // ── 8e. Meeting status + summary + extraction metadata ───────────────
       await tx.meeting.update({
         where: { id: meetingId },
         data: {
@@ -333,7 +363,7 @@ export const extractWorker = new Worker<ExtractJobData>(
       'extract.worker: PostgreSQL writes complete'
     )
 
-    // ── STEP 8: Update MongoDB with extraction metadata ────────────────────
+    // ── STEP 9: Update MongoDB with extraction metadata ────────────────────
     await mongoService.updateTranscript(mongoTranscriptId, {
       ai_extraction: {
         commitments_count:  validCommitments.length,
@@ -352,7 +382,7 @@ export const extractWorker = new Worker<ExtractJobData>(
       processing_completed_at: new Date(),
     })
 
-    // ── STEP 9: Emit Socket.io event ────────────────────────────────────────
+    // ── STEP 10: Emit Socket.io event ────────────────────────────────────────
     try {
       const { socketEmitter } = await import('../../realtime/socket.emitter')
 
@@ -382,7 +412,7 @@ export const extractWorker = new Worker<ExtractJobData>(
       logger.warn({ err: e, meetingId }, 'extract.worker: socket emit failed (non-fatal)')
     }
 
-    // ── STEP 10: Push to resolve queue ─────────────────────────────────────
+    // ── STEP 11: Push to resolve queue ─────────────────────────────────────
     const resolveJobData: ResolveJobData = {
       meetingId,
       teamId,
@@ -391,7 +421,7 @@ export const extractWorker = new Worker<ExtractJobData>(
 
     await resolveQueue.add('resolve-commitments', resolveJobData)
 
-    // ── STEP 11: Push to notify queue ──────────────────────────────────────
+    // ── STEP 12: Push to notify queue ──────────────────────────────────────
     await notifyQueue.add('meeting-processed', {
       type:      'MEETING_PROCESSED',
       teamId,
