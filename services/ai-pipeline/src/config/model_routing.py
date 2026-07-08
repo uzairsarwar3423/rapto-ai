@@ -43,9 +43,9 @@ from src.models.common import ModelTier, TaskType
 
 TASK_MODEL_MAP: dict[TaskType, ModelTier] = {
     TaskType.TRANSCRIPT_CLEANUP: ModelTier.MINI,
-    TaskType.EXTRACTION: ModelTier.MINI,
+    TaskType.EXTRACTION: ModelTier.FULL,
     TaskType.RESOLUTION_CHECK: ModelTier.MINI,
-    TaskType.SUMMARY: ModelTier.FULL,
+    TaskType.SUMMARY: ModelTier.MINI,
     TaskType.CHAT_ANSWER: ModelTier.FULL,
     TaskType.EMBEDDING: ModelTier.EMBED,
     TaskType.RERANK: ModelTier.MINI,

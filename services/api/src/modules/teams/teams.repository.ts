@@ -11,6 +11,7 @@
 import { UserRole } from '@prisma/client'
 import { prisma } from '../../db/client'
 import type { CreateTeamData, CreateInvitationData, ListMembersQuery } from './teams.types'
+import { IN_FLIGHT_STATUSES } from '../meetings/meetings.service.state'
 
 // ── Safe member select (never expose sensitive fields) ────────────────────────
 
@@ -353,7 +354,7 @@ async function getUsage(teamId: string) {
     prisma.meeting.count({
       where: {
         teamId,
-        status: { in: ['SCHEDULED', 'BOT_JOINING', 'RECORDING', 'PROCESSING'] },
+        status: { in: IN_FLIGHT_STATUSES },
       },
     }),
   ])

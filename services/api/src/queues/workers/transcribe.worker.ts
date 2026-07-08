@@ -52,7 +52,46 @@ export const transcribeWorker = new Worker<TranscribeJobData>(
       )
     }
 
-    // ── STEP 2: Fetch participant map from PostgreSQL ───────────────────────
+    // ── STEP 1.5: Sync participants to PostgreSQL scalably ──────────────────
+    const uniqueSpeakers = new Set<string>()
+    const normalized = transcript.normalized_transcript as any[]
+    if (normalized && Array.isArray(normalized)) {
+      for (const turn of normalized) {
+        if (turn.speaker) uniqueSpeakers.add(turn.speaker)
+      }
+    } else if (transcript.raw_transcript && Array.isArray(transcript.raw_transcript)) {
+      for (const turn of transcript.raw_transcript as any[]) {
+        const speaker = turn.speaker || turn.speaker_name || turn.speaker_tag || turn.participant?.name || 'Unknown'
+        uniqueSpeakers.add(speaker)
+      }
+    }
+
+    const existingParticipants = await prisma.meetingParticipant.findMany({
+      where: { meetingId },
+      select: { speakerTag: true, userId: true, name: true, email: true },
+    })
+    
+    const existingTags = new Set(existingParticipants.map(p => p.speakerTag))
+    const newSpeakers = Array.from(uniqueSpeakers).filter(tag => tag && !existingTags.has(tag))
+    
+    if (newSpeakers.length > 0) {
+      logger.info({ jobId: job.id, meetingId, newSpeakersCount: newSpeakers.length }, 'transcribe.worker: inserting new meeting participants')
+      await prisma.meetingParticipant.createMany({
+        data: newSpeakers.map(tag => ({
+          meetingId,
+          name: tag,
+          speakerTag: tag,
+        }))
+      })
+
+      // Update the meeting's participantCount
+      await prisma.meeting.update({
+        where: { id: meetingId },
+        data: { participantCount: existingParticipants.length + newSpeakers.length }
+      })
+    }
+
+    // ── STEP 2: Fetch participant map from PostgreSQL (Updated) ─────────────
     const participants = await prisma.meetingParticipant.findMany({
       where: { meetingId },
       select: { speakerTag: true, userId: true, name: true, email: true },

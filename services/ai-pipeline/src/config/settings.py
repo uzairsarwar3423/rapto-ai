@@ -67,8 +67,8 @@ class Settings(BaseSettings):
 
     # Model names
     # A model swap is an env var change, not a code deploy.
-    openai_gpt41_mini_model_name: str = "gpt-4.1-mini"
-    openai_gpt41_model_name: str = "gpt-4.1"
+    openai_gpt41_mini_model_name: str = "gpt-5-mini"
+    openai_gpt41_model_name: str = "gpt-5.1"
     openai_embedding_model_name: str = "text-embedding-3-small"
 
     # Resilience knobs

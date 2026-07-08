@@ -151,7 +151,7 @@ export const resolveWorker = new Worker<ResolveJobData>(
     // ── STEP 4: Fetch current meeting date ─────────────────────────────────
     const meeting = await prisma.meeting.findUnique({
       where:  { id: meetingId },
-      select: { scheduledAt: true, durationMinutes: true },
+      select: { scheduledAt: true, durationMinutes: true, status: true },
     })
 
     if (!meeting) {
@@ -323,7 +323,23 @@ export const resolveWorker = new Worker<ResolveJobData>(
           processingCompletedAt: new Date(),
         },
       })
+
+      // ── 7f. Increment team meetingsUsed if terminal state reached ──────────
+      if (meeting.status !== 'RESOLVED' && meeting.status !== 'DONE') {
+        await tx.team.update({
+          where: { id: teamId },
+          data: { meetingsUsed: { increment: 1 } },
+        })
+      }
     })
+
+    // Invalidate plan cache to reflect the incremented usage or removed in-flight status
+    try {
+      const { invalidatePlanCache } = await import('../../middleware/plan-limits.middleware')
+      await invalidatePlanCache(teamId)
+    } catch (err) {
+      logger.warn({ err, teamId }, 'Failed to invalidate plan cache after resolution')
+    }
 
     logger.info(
       {

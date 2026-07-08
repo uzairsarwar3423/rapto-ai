@@ -72,6 +72,21 @@ export const TERMINAL_STATES = new Set<MeetingStatus>([
   'RESOLUTION_FAILED',  // Resolution exhausted all retries — manual admin action required
 ])
 
+// ── In-Flight States ──────────────────────────────────────────────────────────
+
+export const IN_FLIGHT_STATUSES: MeetingStatus[] = [
+  'SCHEDULED',
+  'BOT_JOINING',
+  'RECORDING',
+  'PROCESSING',
+  'TRANSCRIBED',
+  'TRANSCRIPT_CLEANED',
+  'TRANSCRIPT_CLEANUP_FAILED',
+  'TRANSCRIPT_CLEANUP_DEGRADED',
+  'EXTRACTED',
+  'EXTRACTED_PARTIAL',
+]
+
 // ── State Machine Validator ───────────────────────────────────────────────────
 
 /**

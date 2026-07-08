@@ -111,7 +111,7 @@ class ParsedCommitment(ExtractedCommitment):
     id: Optional[str] = None
     normalized_text: str
     dedup_key: str
-    calibration_flag: ConfidenceCalibrationFlag
+    calibration_flag: Optional[ConfidenceCalibrationFlag] = None
     due_date_utc: Optional[datetime] = None
     due_date_resolution: Optional[DateParseResult] = None
     speaker_user_id: Optional[str] = None

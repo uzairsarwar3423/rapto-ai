@@ -41,6 +41,7 @@ import type {
   TeamUsage,
   MemberSummary,
 } from './teams.types'
+import { IN_FLIGHT_STATUSES } from '../meetings/meetings.service.state'
 
 // ── Cache Helpers ─────────────────────────────────────────────────────────────
 
@@ -237,7 +238,7 @@ async function getTeamWithMembers(teamId: string): Promise<TeamDetailResponse> {
     prisma.meeting.count({
       where: {
         teamId,
-        status: { in: ['SCHEDULED', 'BOT_JOINING', 'RECORDING', 'PROCESSING'] },
+        status: { in: IN_FLIGHT_STATUSES },
       },
     }),
   ])

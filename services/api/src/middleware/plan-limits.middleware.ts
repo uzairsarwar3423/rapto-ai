@@ -19,6 +19,7 @@ import { logger } from '../config/logger'
 import { PLAN_LIMITS, getUpgradeUrl } from '../config/plans.config'
 import { PlanLimitError } from '../utils/errors'
 import { PlanType } from '@prisma/client'
+import { IN_FLIGHT_STATUSES } from '../modules/meetings/meetings.service.state'
 
 // ── Cache Helpers ─────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ async function fetchPlanFromDB(teamId: string): Promise<PlanCacheEntry> {
     prisma.meeting.count({
       where: {
         teamId,
-        status: { in: ['SCHEDULED', 'BOT_JOINING', 'RECORDING', 'PROCESSING'] },
+        status: { in: IN_FLIGHT_STATUSES },
       },
     }),
   ])

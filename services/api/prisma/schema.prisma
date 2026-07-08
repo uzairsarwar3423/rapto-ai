@@ -831,3 +831,18 @@ model AsyncJob {
   @@index([status])
   @@map("async_jobs")
 }
+// ─────────────────────────────────────────────────────────────────────────
+// WAITLIST
+// ─────────────────────────────────────────────────────────────────────────
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  company   String?
+  teamSize  String
+  role      String
+  createdAt DateTime @default(now())
+
+  @@map("waitlist_entries")
+}
