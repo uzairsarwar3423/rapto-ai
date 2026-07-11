@@ -11,6 +11,7 @@ import './queues/workers/notify.worker'
 import './queues/workers/integrate.worker'
 import './queues/workers/deadline.worker'
 import './queues/workers/calendar.worker'
+import './queues/workers/token-refresh.worker'
 import { startScheduler } from './queues/scheduler'
 
 async function startWorkers() {

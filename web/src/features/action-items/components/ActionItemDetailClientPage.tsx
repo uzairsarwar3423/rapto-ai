@@ -195,6 +195,11 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
                   ))}
                 </SelectContent>
               </Select>
+              {!item.assigneeId && item.assigneeNameRaw && (
+                <span className="text-[10px] text-muted-foreground/80 italic pl-1 mt-0.5">
+                  Extracted: {item.assigneeNameRaw}
+                </span>
+              )}
             </div>
 
             {/* Priority */}
@@ -234,6 +239,11 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
                   className="pl-8.5 h-9 text-xs border border-border bg-card w-full focus-visible:ring-0 focus-visible:border-brand"
                 />
               </div>
+              {!item.dueDate && item.dueDateRaw && (
+                <span className="text-[10px] text-muted-foreground/80 italic pl-1 mt-0.5">
+                  Extracted: {item.dueDateRaw}
+                </span>
+              )}
             </div>
 
             {/* Integration Sync */}

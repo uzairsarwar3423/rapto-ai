@@ -12,6 +12,9 @@ export type NotifyJobType =
   | 'EMAIL_COMMITMENT_MISSED'
   | 'EMAIL_MANAGER_ALERT'
   | 'EMAIL_DEADLINE_REMINDER'
+  | 'INTEGRATION_AUTO_DISABLED'
+  | 'CALENDAR_SYNC_FAILED'
+  | 'EMAIL_INTEGRATION_DISABLED'
 
 export interface NotifyJobData {
   type:          NotifyJobType
@@ -21,4 +24,5 @@ export interface NotifyJobData {
   ownerId?:      string
   managerIds?:   string[]
   emailPayload?: any // For transactional emails
+  metadata?:     any // Optional metadata for generic notification payloads
 }

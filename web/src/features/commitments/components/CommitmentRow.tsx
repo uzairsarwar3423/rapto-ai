@@ -64,8 +64,8 @@ export function CommitmentRow({
       />
 
       {/* 2. Elevated Interactive Elements (z-10) */}
-      <div className="relative z-10 flex items-center justify-between w-full gap-3 pointer-events-none">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+      <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-1 sm:gap-3 pointer-events-none py-1 sm:py-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1 w-full sm:w-auto">
           {/* Status Badge Column (w-[72px]) */}
           <div className="w-[76px] shrink-0 pointer-events-auto flex items-center">
             <CommitmentStatusBadge status={commitment.status} />
@@ -88,7 +88,7 @@ export function CommitmentRow({
         </div>
 
         {/* Commitment Metadata Stack */}
-        <div className="flex items-center gap-5 shrink-0 pointer-events-auto">
+        <div className="flex items-center justify-end gap-3 sm:gap-5 shrink-0 pointer-events-auto w-full sm:w-auto mt-1 sm:mt-0 pl-[88px] sm:pl-0">
           {/* Quick actions, only visible on group-hover/group-focus-within */}
           <CommitmentRowQuickActions
             commitment={commitment}
@@ -109,11 +109,15 @@ export function CommitmentRow({
 
           {/* Due Date Display (w-24 text-right) */}
           <div className="w-24 text-right">
-            {commitment.dueDate && (
+            {commitment.dueDate ? (
               <span className="text-3xs font-mono text-muted-foreground/90 font-medium bg-muted/20 px-2 py-0.5 rounded border border-border/25">
                 <HydrationSafeTime dateString={commitment.dueDate} />
               </span>
-            )}
+            ) : commitment.dueDateRaw ? (
+              <span className="text-3xs font-mono text-muted-foreground/80 font-medium bg-muted/10 px-2 py-0.5 rounded border border-border/10 italic truncate max-w-full inline-block align-bottom">
+                {commitment.dueDateRaw}
+              </span>
+            ) : null}
           </div>
 
           {/* Owner Avatar Indicator (w-6 text-center) */}

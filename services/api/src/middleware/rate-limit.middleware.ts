@@ -196,3 +196,15 @@ export const loginRateLimiter = createRateLimiter({
             .digest('hex')
     },
 })
+
+/* -------------------------------------------------------------------------- */
+/* CALENDAR SYNC NOW LIMIT (Day 56) */
+/* 1 request per 5 minutes per user */
+/* -------------------------------------------------------------------------- */
+
+export const calendarSyncNowRateLimiter = createRateLimiter({
+    limit: 1,
+    windowSeconds: 5 * 60,
+    keyPrefix: 'ratelimit:calendar-sync-now',
+    identifier: (req) => req.user?.id ?? null,
+})

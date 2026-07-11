@@ -13,7 +13,7 @@ export function ConnectionStatusDot({ className }: ConnectionStatusDotProps) {
 
   const statusConfig = {
     connected: {
-      color: "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]",
+      color: "bg-emerald-500 animate-heartbeat",
       label: "Connected",
     },
     connecting: {

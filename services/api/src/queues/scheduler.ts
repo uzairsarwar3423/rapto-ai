@@ -19,12 +19,8 @@ import cron from 'node-cron'
 import { addSeconds } from 'date-fns'
 import { logger } from '../config/logger'
 import { runDeadlineReminders, markMissedCommitments } from './workers/deadline.worker'
-import { calendarSyncQueue, notifyQueue } from './queue.client'
+import { calendarSyncQueue, notifyQueue, tokenRefreshQueue } from './queue.client'
 import { prisma } from '../db/client'
-import { encrypt } from '../utils/crypto'
-import { resolveProvider } from '../modules/integrations/integrations.service'
-import { ProviderType } from '../modules/integrations/integrations.types'
-import { googleCalendarProvider } from '../modules/integrations/providers/google-calendar.provider'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Token refresh helpers
@@ -34,7 +30,7 @@ import { googleCalendarProvider } from '../modules/integrations/providers/google
 // 5 consecutive failures of ANY kind disables the integration.
 const CIRCUIT_BREAKER_THRESHOLD = 5
 
-async function refreshTeamIntegrations(): Promise<void> {
+async function enqueueTeamTokenRefreshJobs(): Promise<void> {
     const EXPIRY_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
 
     const expiring = await prisma.teamIntegration.findMany({
@@ -42,81 +38,23 @@ async function refreshTeamIntegrations(): Promise<void> {
             isActive: true,
             tokenExpiresAt: { not: null, lte: new Date(Date.now() + EXPIRY_WINDOW_MS) },
         },
+        select: { id: true },
     })
 
-    logger.info({ count: expiring.length }, 'token-refresh cron: refreshing team integrations')
+    logger.info({ count: expiring.length }, 'token-refresh cron: enqueueing team integrations')
 
-    for (const integration of expiring) {
-        const start = Date.now()
-        try {
-            const providerClient = resolveProvider(integration.provider as ProviderType)
-
-            if (!integration.refreshTokenEnc) {
-                logger.warn({ integrationId: integration.id, provider: integration.provider }, 'token-refresh: no refresh token — skipping')
-                continue
+    for (const { id } of expiring) {
+        await tokenRefreshQueue.add(
+            'refresh-team-token',
+            { type: 'team', integrationId: id },
+            {
+                jobId: `refresh-team-token:${id}:${Math.floor(Date.now() / (15 * 60 * 1000))}`, // per 15-min bucket
             }
-
-            const result = await providerClient.refreshAccessToken(integration.refreshTokenEnc)
-
-            // Only update if provider returned a meaningful new token
-            if (result.accessToken && result.accessToken !== integration.refreshTokenEnc) {
-                await prisma.teamIntegration.update({
-                    where: { id: integration.id },
-                    data: {
-                        accessTokenEnc: encrypt(result.accessToken),
-                        // Only update refreshToken if provider rotated it (rare)
-                        ...(result.refreshToken ? { refreshTokenEnc: encrypt(result.refreshToken) } : {}),
-                        tokenExpiresAt: result.expiresIn ? addSeconds(new Date(), result.expiresIn) : null,
-                        consecutiveErrors: 0,
-                        lastError: null,
-                    },
-                })
-            }
-
-            logger.info(
-                { integrationId: integration.id, provider: integration.provider, latencyMs: Date.now() - start },
-                'token-refresh: team integration refreshed'
-            )
-
-        } catch (err: any) {
-            const latencyMs = Date.now() - start
-            logger.error(
-                { integrationId: integration.id, provider: integration.provider, error: err.message, latencyMs },
-                'token-refresh: team integration refresh failed'
-            )
-
-            const updated = await prisma.teamIntegration.update({
-                where: { id: integration.id },
-                data: {
-                    consecutiveErrors: { increment: 1 },
-                    lastError: err.message,
-                },
-                select: { consecutiveErrors: true, teamId: true },
-            })
-
-            // Circuit breaker — same threshold as integrate.worker.ts
-            if (updated.consecutiveErrors >= CIRCUIT_BREAKER_THRESHOLD) {
-                await prisma.teamIntegration.update({
-                    where: { id: integration.id },
-                    data: { isActive: false, disconnectedAt: new Date() },
-                })
-
-                await notifyQueue.add('send-notification', {
-                    type: 'INTEGRATION_AUTO_DISABLED',
-                    teamId: updated.teamId,
-                    metadata: { provider: integration.provider, reason: 'token_refresh_failed_5_times' },
-                })
-
-                logger.error(
-                    { integrationId: integration.id, provider: integration.provider },
-                    'token-refresh: circuit breaker tripped — integration disabled, admin alerted'
-                )
-            }
-        }
+        )
     }
 }
 
-async function refreshUserIntegrations(): Promise<void> {
+async function enqueueUserTokenRefreshJobs(): Promise<void> {
     const EXPIRY_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
 
     const expiring = await prisma.userIntegration.findMany({
@@ -124,72 +62,19 @@ async function refreshUserIntegrations(): Promise<void> {
             syncEnabled: true,
             tokenExpiresAt: { not: null, lte: new Date(Date.now() + EXPIRY_WINDOW_MS) },
         },
-        include: { user: { select: { id: true, email: true, name: true } } },
+        select: { id: true },
     })
 
-    logger.info({ count: expiring.length }, 'token-refresh cron: refreshing user integrations (Google Calendar)')
+    logger.info({ count: expiring.length }, 'token-refresh cron: enqueueing user integrations')
 
-    for (const integration of expiring) {
-        const start = Date.now()
-        try {
-            if (!integration.refreshTokenEnc) {
-                logger.warn({ integrationId: integration.id }, 'token-refresh: user integration has no refresh token — skipping')
-                continue
+    for (const { id } of expiring) {
+        await tokenRefreshQueue.add(
+            'refresh-user-token',
+            { type: 'user', integrationId: id },
+            {
+                jobId: `refresh-user-token:${id}:${Math.floor(Date.now() / (15 * 60 * 1000))}`, // per 15-min bucket
             }
-
-            const result = await googleCalendarProvider.refreshAccessToken(integration.refreshTokenEnc)
-
-            await prisma.userIntegration.update({
-                where: { id: integration.id },
-                data: {
-                    accessTokenEnc: encrypt(result.accessToken),
-                    tokenExpiresAt: addSeconds(new Date(), result.expiresIn),
-                    consecutiveErrors: 0,
-                    lastError: null,
-                },
-            })
-
-            logger.info(
-                { integrationId: integration.id, userId: integration.userId, latencyMs: Date.now() - start },
-                'token-refresh: user calendar integration refreshed'
-            )
-
-        } catch (err: any) {
-            const latencyMs = Date.now() - start
-            logger.error(
-                { integrationId: integration.id, userId: integration.userId, error: err.message, latencyMs },
-                'token-refresh: user integration refresh failed'
-            )
-
-            const updated = await prisma.userIntegration.update({
-                where: { id: integration.id },
-                data: { consecutiveErrors: { increment: 1 }, lastError: err.message },
-                select: { consecutiveErrors: true },
-            })
-
-            // Circuit breaker — user-level: disable sync + email the individual user
-            if (updated.consecutiveErrors >= CIRCUIT_BREAKER_THRESHOLD) {
-                await prisma.userIntegration.update({
-                    where: { id: integration.id },
-                    data: { syncEnabled: false },
-                })
-
-                await notifyQueue.add('send-notification', {
-                    type: 'CALENDAR_RECONNECT_REQUIRED',
-                    teamId: '',
-                    metadata: {
-                        userId: integration.userId,
-                        userEmail: integration.user?.email,
-                        userName: integration.user?.name,
-                    },
-                })
-
-                logger.error(
-                    { integrationId: integration.id, userId: integration.userId },
-                    'token-refresh: user calendar circuit breaker tripped — sync disabled, user alerted'
-                )
-            }
-        }
+        )
     }
 }
 
@@ -282,8 +167,8 @@ export function startScheduler(): void {
         logger.info('Cron: running proactive token refresh')
         try {
             await Promise.allSettled([
-                refreshTeamIntegrations(),
-                refreshUserIntegrations(),
+                enqueueTeamTokenRefreshJobs(),
+                enqueueUserTokenRefreshJobs(),
             ])
         } catch (err) {
             logger.error({ err }, 'Cron: token refresh cron top-level error')

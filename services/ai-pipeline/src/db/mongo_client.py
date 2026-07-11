@@ -23,7 +23,7 @@ from src.models.exceptions import DependencyUnavailableError
 
 log = get_logger(__name__)
 
-_PING_TIMEOUT_SECONDS = 5.0
+_PING_TIMEOUT_SECONDS = 30.0
 
 
 class MongoClientWrapper:

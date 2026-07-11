@@ -562,5 +562,67 @@ export const emailService = {
       throw error
     }
   },
+
+  /**
+   * Sends a notification email when an integration is disabled due to failures.
+   */
+  async sendIntegrationDisabledEmail(data: {
+    to: string
+    name: string
+    providerName: string
+    reconnectUrl: string
+  }): Promise<void> {
+    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
+    logger.info({ to: data.to }, 'Preparing integration disabled email')
+
+    if (!isBrevoConfigured) {
+      logger.warn(
+        { reconnectUrl: data.reconnectUrl, to: data.to },
+        'BREVO_API_KEY not configured. Integration disabled URL printed to console.'
+      )
+      return
+    }
+
+    try {
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+          'api-key': env.BREVO_API_KEY!,
+        },
+        body: JSON.stringify({
+          sender: { name: 'Vocaply', email: fromEmail },
+          to: [{ email: data.to, name: data.name }],
+          subject: `Action Required: Your ${data.providerName} integration has been disconnected`,
+          htmlContent: `
+            <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; line-height: 1.6;">
+              <h2 style="color: #ef4444; margin-bottom: 8px;">Integration Disconnected</h2>
+              <p>Hi ${data.name},</p>
+              <p>We encountered multiple consecutive errors while attempting to sync with your <strong>${data.providerName}</strong> account. For your security and to prevent rate limits, we have temporarily deactivated this integration.</p>
+              <p>To resume syncing, please reconnect your account:</p>
+              <div style="margin: 24px 0;">
+                <a href="${data.reconnectUrl}" style="background-color: #ef4444; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                  Reconnect Integration
+                </a>
+              </div>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+              <p style="font-size: 12px; color: #999;">If the button doesn't work, copy this link: <a href="${data.reconnectUrl}">${data.reconnectUrl}</a></p>
+            </div>
+          `,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
+      }
+
+      logger.info({ to: data.to }, 'Integration disabled email sent successfully')
+    } catch (error) {
+      logger.error({ error, to: data.to }, 'Failed to send integration disabled email')
+      throw error
+    }
+  },
 }
 

@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Team {
   id: string;
@@ -40,9 +41,11 @@ export function SidebarTeamSwitcher({ team, collapsed }: SidebarTeamSwitcherProp
     <div className={cn("p-2 flex items-center justify-center select-none")}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             className={cn(
-              "flex items-center gap-2 rounded-md hover:bg-surface-hover transition-colors duration-120 cursor-pointer text-left outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "group flex items-center gap-2 rounded-md hover:bg-surface-hover transition-colors duration-120 cursor-pointer text-left outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               collapsed ? "h-9 w-9 justify-center" : "h-9 w-full px-2"
             )}
             aria-label="Switch team workspace"
@@ -54,18 +57,35 @@ export function SidebarTeamSwitcher({ team, collapsed }: SidebarTeamSwitcherProp
               </AvatarFallback>
             </Avatar>
 
-            {!collapsed && (
-              <>
-                <span className="flex-1 truncate text-xs font-medium text-foreground">
-                  {teamName}
-                </span>
-                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-subtle shrink-0" />
-              </>
-            )}
-          </button>
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <>
+                  <motion.span
+                    initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    animate={{ opacity: 1, width: "auto", marginLeft: 8 }}
+                    exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex-1 truncate text-xs font-medium text-foreground"
+                    style={{ overflow: "hidden", whiteSpace: "nowrap" }}
+                  >
+                    {teamName}
+                  </motion.span>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.12 }}
+                    className="shrink-0"
+                  >
+                    <ChevronsUpDown className="h-3.5 w-3.5 text-muted-subtle shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180 group-data-[state=open]:text-foreground" />
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </motion.button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-[220px] bg-white border border-border rounded-xl p-1 shadow-lg"
+          className="w-[220px] bg-popover border border-border rounded-xl p-1 shadow-lg text-popover-foreground"
           align="start"
           side="right"
           sideOffset={8}
@@ -110,3 +130,4 @@ export function SidebarTeamSwitcher({ team, collapsed }: SidebarTeamSwitcherProp
     </div>
   );
 }
+

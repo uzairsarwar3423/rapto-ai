@@ -357,6 +357,22 @@ select:focus {
   scrollbar-width: none;  /* Firefox */
 }
 
+/* ── Heartbeat Glow Animation ───────────────────────────── */
+@keyframes heartbeat-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.75);
+  }
+}
+
+.animate-heartbeat {
+  animation: heartbeat-glow 2s infinite ease-in-out;
+}
+
 /* ── Paddle Checkout Overrides (Bypass Radix Dialog Pointer Traps) ── */
 body[data-scroll-locked] .paddle-overlay,
 body[data-scroll-locked] iframe[src*="paddle"],

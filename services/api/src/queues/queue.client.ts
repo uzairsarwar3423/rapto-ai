@@ -90,7 +90,18 @@ export const resolveQueue = new Queue('resolve', {
   },
 })
 
-const queues = [transcribeQueue, extractQueue, resolveQueue, notifyQueue, integrateQueue, deadlineQueue, calendarSyncQueue]
+// token-refresh: refresh OAuth tokens for integrations
+export const tokenRefreshQueue = new Queue('token-refresh', {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 30_000 },
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  },
+})
+
+const queues = [transcribeQueue, extractQueue, resolveQueue, notifyQueue, integrateQueue, deadlineQueue, calendarSyncQueue, tokenRefreshQueue]
 
 queues.forEach((q) => {
   const events = new QueueEvents(q.name, { connection })

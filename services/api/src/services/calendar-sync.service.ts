@@ -1,373 +1,287 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// calendar-sync.service.ts — Calendar Sync Service (FULL IMPLEMENTATION)
-//
-// This is the MOST consequential piece of business logic in Day 22.
-// It creates meetings and schedules Recall.ai bots — spending REAL money —
-// with zero human in the loop. Every correctness guarantee here is a cost/
-// security control, not merely a data-quality concern.
-//
-// Key design decisions:
-//   1. PROACTIVE token refresh — never hit the Google API with an expired token.
-//   2. 2-LAYER DEDUP — Redis fast-path (cross-user race) + Postgres UNIQUE (authoritative).
-//   3. RECALL.AI BOT scheduling — with graceful failure (FAILED status, not silent drop).
-//   4. INCREMENTAL sync — syncToken → only changed events after first full scan.
-//   5. 410 FALLBACK — expired syncToken triggers full scan, restarts chain cleanly.
-//   6. PERSONAL→TEAM scope transition happens at EXACTLY ONE point in this file.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { logger } from '../config/logger'
-import { platformDetect, buildDedupKey, calculateDedupTTL } from '../utils/platform-detect'
 import { prisma } from '../db/client'
 import { redis } from '../config/redis'
-import { encrypt } from '../utils/crypto'
-import { addSeconds, subMinutes } from 'date-fns'
-import { googleCalendarProvider, GoogleCalendarEvent } from '../modules/integrations/providers/google-calendar.provider'
-import { invalidatePlanCache } from '../middleware/plan-limits.middleware'
+import { googleCalendarProvider, GoogleSyncTokenExpiredError, GoogleCalendarEvent } from '../modules/integrations/providers/google-calendar.provider'
+import { getValidAccessToken } from './token-refresh.service'
+import { detectPlatform, extractMeetingUrl } from '../utils/platform-detect'
+import { dedupService } from './dedup.service'
 import * as recallService from './recall.service'
-import type { CalendarSyncResult, ExtractedMeetingUrl } from '../modules/integrations/integrations.types'
-import type { PlatformType } from '@prisma/client'
-
-// Re-export for external use
-export type { CalendarSyncResult }
+import { createMeetingFromCalendar } from '../modules/meetings/meetings.service'
+import type { CalendarSyncResult } from '../modules/integrations/integrations.types'
+import { PlatformType } from '@prisma/client'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Proactive token refresh helper
-//
-// Called BEFORE every event fetch. Ensures we never hit Google's API with
-// an expired token. This is the LOCAL SAFETY NET — the primary mechanism
-// is the 15-minute token-refresh cron in scheduler.ts.
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function getValidAccessToken(integration: {
-    id: string
-    accessTokenEnc: string
-    refreshTokenEnc: string | null
-    tokenExpiresAt: Date | null
-}): Promise<string> {
-    const now = new Date()
-    const expiresAt = integration.tokenExpiresAt
-
-    // Proactive refresh if token expires within 5 minutes
-    if (expiresAt && expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
-        if (!integration.refreshTokenEnc) {
-            throw new Error('Token is expiring and no refresh token is available — user must reconnect')
-        }
-
-        logger.info({ integrationId: integration.id }, 'Calendar sync: proactively refreshing access token')
-
-        const refreshResult = await googleCalendarProvider.refreshAccessToken(integration.refreshTokenEnc)
-        const newAccessTokenEnc = encrypt(refreshResult.accessToken)
-        const newExpiresAt = addSeconds(now, refreshResult.expiresIn)
-
-        await prisma.userIntegration.update({
-            where: { id: integration.id },
-            data: {
-                accessTokenEnc: newAccessTokenEnc,
-                tokenExpiresAt: newExpiresAt,
-            },
-        })
-
-        // Return the FRESH plain token (pre-encryption value)
-        return refreshResult.accessToken
-    }
-
-    // Token is still valid — decrypt and return
-    const { decrypt } = await import('../utils/crypto')
-    return decrypt(integration.accessTokenEnc)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Meeting URL extraction with source tracking
-// Checks: conferenceData (Google Meet native) → description regex → location
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function extractMeetingUrl(event: GoogleCalendarEvent): ExtractedMeetingUrl | null {
-    // Priority 1: conferenceData (most reliable — Google Meet native)
-    if (event.conferenceData?.entryPoints) {
-        const video = event.conferenceData.entryPoints.find(ep => ep.entryPointType === 'video')
-        if (video?.uri) return { url: video.uri, source: 'conferenceData' }
-    }
-
-    // URL regex for Zoom/Teams/Webex patterns in description or location
-    const urlRegex = /https?:\/\/(?:[\w-]+\.)*(?:zoom\.us|teams\.microsoft\.com|meet\.google\.com|webex\.com|g\.co\/meet)\/[^\s<>"')]+/gi
-
-    // Priority 2: description
-    if (event.description) {
-        const match = event.description.match(urlRegex)
-        if (match?.[0]) return { url: match[0], source: 'description' }
-    }
-
-    // Priority 3: location
-    if (event.location) {
-        const match = event.location.match(urlRegex)
-        if (match?.[0]) return { url: match[0], source: 'location' }
-    }
-
-    return null
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// shouldProcessEvent — filter logic before any dedup or DB work
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function shouldProcessEvent(event: GoogleCalendarEvent, userEmail: string): boolean {
-    // Skip all-day events (no dateTime)
-    if (!event.start?.dateTime) return false
-
-    // Skip cancelled events
-    if (event.status === 'cancelled') return false
-
-    // Skip if the user declined the invite
-    if (event.attendees) {
-        const me = event.attendees.find(a => a.email === userEmail)
-        if (me?.responseStatus === 'declined') return false
-    }
-
-    // Must have a detectable video conference URL
-    if (!extractMeetingUrl(event)) return false
-
-    return true
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// syncUserCalendar — the main sync function
-//
-// Called by: calendar-sync.worker.ts (per-user BullMQ job)
-// Returns: CalendarSyncResult (logged by worker, future admin view)
+// Calendar Sync Service
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function syncUserCalendar(userId: string): Promise<CalendarSyncResult> {
     logger.debug({ userId }, 'syncUserCalendar: started')
 
-    // ── STEP 1 — Load & Validate Integration ─────────────────────────────────
-
+    // STEP 1 — Load Integration
     const integration = await prisma.userIntegration.findUnique({
         where: { userId_provider: { userId, provider: 'GOOGLE_CALENDAR' } },
+        include: { user: true },
     })
 
     if (!integration || !integration.syncEnabled) {
         return {
             synced: 0, skipped: 0, duplicates: 0, errors: 0,
-            message: 'Calendar sync not enabled or integration missing',
+            message: 'NOT_CONNECTED_OR_DISABLED',
         }
     }
 
-    // ── STEP 2 — Ensure a Fresh Token (Proactive, Never Reactive) ────────────
-
-    let accessToken: string
-    try {
-        accessToken = await getValidAccessToken(integration)
-    } catch (err: any) {
-        logger.error({ userId, error: err.message }, 'syncUserCalendar: token refresh failed')
-        await prisma.userIntegration.update({
-            where: { id: integration.id },
-            data: { consecutiveErrors: { increment: 1 }, lastError: err.message },
-        })
-        return { synced: 0, skipped: 0, duplicates: 0, errors: 1, message: `Token refresh failed: ${err.message}` }
+    if (!integration.user.teamId) {
+        return {
+            synced: 0, skipped: 0, duplicates: 0, errors: 1,
+            message: 'User does not belong to a team',
+        }
     }
+    const teamId = integration.user.teamId
 
-    // ── STEP 3 — Fetch Events (Incremental When Possible) ────────────────────
-
-    const calendarId = integration.calendarId || 'primary'
-    const now = new Date()
-    const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) // +7 days
-
-    // Use syncToken for incremental fetch. On 410 (expired token) fall back to full scan.
-    let eventsResult: Awaited<ReturnType<typeof googleCalendarProvider.listEvents>>
-    let isFallbackScan = false
-
-    try {
-        eventsResult = await googleCalendarProvider.listEvents({
-            accessTokenEnc: integration.accessTokenEnc, // pass encrypted — provider decrypts
-            calendarId,
-            ...(integration.nextSyncToken
-                ? { syncToken: integration.nextSyncToken }
-                : {
-                    timeMin: now.toISOString(),
-                    timeMax: timeMax.toISOString(),
-                }),
-        })
-    } catch (err: any) {
-        // 410 = syncToken expired or invalidated by calendar changes
-        if (err.response?.status === 410 || err.status === 410) {
-            logger.info({ userId }, 'syncUserCalendar: syncToken expired (410), falling back to full scan')
-            isFallbackScan = true
-            eventsResult = await googleCalendarProvider.listEvents({
-                accessTokenEnc: integration.accessTokenEnc,
-                calendarId,
-                timeMin: now.toISOString(),
-                timeMax: timeMax.toISOString(),
-            })
-        } else {
-            logger.error({ userId, error: err.message }, 'syncUserCalendar: listEvents failed')
-            await prisma.userIntegration.update({
-                where: { id: integration.id },
-                data: { consecutiveErrors: { increment: 1 }, lastError: err.message },
-            })
-            return { synced: 0, skipped: 0, duplicates: 0, errors: 1, message: `listEvents failed: ${err.message}` }
+    // STEP 2 — Acquire Per-User Sync Lock
+    const lockKey = `sync:calendar:lock:${userId}`
+    const acquired = await redis.set(lockKey, '1', 'EX', 300, 'NX')
+    if (!acquired) {
+        logger.debug({ userId }, 'calendar-sync.lock_skip: SYNC_IN_PROGRESS')
+        return {
+            synced: 0, skipped: 0, duplicates: 0, errors: 0,
+            message: 'SYNC_IN_PROGRESS',
         }
     }
 
-    const events = eventsResult.items
-    let synced = 0, skipped = 0, duplicates = 0
+    let synced = 0, skipped = 0, duplicates = 0, errorsCount = 0
+    let nextSyncToken: string | undefined = undefined
 
-    // ── STEP 4 — Fetch User for Team Context ──────────────────────────────────
-    // PERSONAL→TEAM scope transition: user's calendar events → team meeting records.
-    // This transition happens at EXACTLY THIS POINT. No other function does this.
+    try {
+        logger.info({ userId }, 'calendar-sync.lock_acquired')
 
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, teamId: true, email: true },
-    })
+        // STEP 3 — Obtain a Valid Access Token
+        const accessToken = await getValidAccessToken(integration)
 
-    if (!user || !user.teamId) {
-        return { synced: 0, skipped: 0, duplicates: 0, errors: 1, message: 'User or Team not found' }
-    }
+        // STEP 4 — Fetch Events From Google
+        const calendarId = integration.calendarId || 'primary'
+        const now = new Date()
+        let eventsResult
+        let isFallbackScan = false
 
-    // ── STEP 5 — Per-Event Processing Loop ───────────────────────────────────
-
-    for (const event of events) {
         try {
-            // Filter events that don't need processing
-            if (!shouldProcessEvent(event, user.email || '')) {
-                skipped++
-                continue
-            }
-
-            // Extract meeting URL and detect platform
-            const extracted = extractMeetingUrl(event)
-            if (!extracted) {
-                skipped++
-                continue
-            }
-
-            const { platform, platformMeetingId } = platformDetect(extracted.url)
-
-            if (platform === 'MANUAL' || !platformMeetingId) {
-                skipped++
-                continue
-            }
-
-            // ── LAYER 1 DEDUP — Redis fast-path ────────────────────────────
-            // This is the line that prevents the classic failure mode:
-            // 5 team members each running sync, all seeing the SAME calendar invite,
-            // all racing to create a meeting. Only the first wins the Redis key.
-            // Key is scoped to platform+platformMeetingId (CROSS-USER, BY DESIGN —
-            // different from user-scoped, because two users CAN share the same meeting).
-            const dedupKey = buildDedupKey(platform, platformMeetingId)
-            const existsInRedis = await redis.exists(dedupKey)
-            if (existsInRedis) {
-                logger.debug({ userId, platform, platformMeetingId, dedupKey }, 'syncUserCalendar: skipped (Redis dedup hit)')
-                duplicates++
-                continue
-            }
-
-            // ── LAYER 2 DEDUP — Postgres authoritative ─────────────────────
-            // Catches the race-condition gap: Redis key may have expired or never been
-            // set due to a prior partial failure. The DB UNIQUE constraint
-            // (idx_meetings_platform_dedup) is the FINAL backstop.
-            const existingMeeting = await prisma.meeting.findFirst({
-                where: { teamId: user.teamId, platform: platform as PlatformType, platformMeetingId },
+            eventsResult = await googleCalendarProvider.listEvents(accessToken, {
+                calendarId,
+                ...(integration.nextSyncToken
+                    ? { syncToken: integration.nextSyncToken }
+                    : {
+                        timeMin: now.toISOString(),
+                        timeMax: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                        singleEvents: true,
+                        orderBy: 'startTime'
+                    }),
             })
-            if (existingMeeting) {
-                // Back-fill the Redis key so future syncs hit the faster path
-                await redis.setex(dedupKey, calculateDedupTTL(existingMeeting.scheduledAt || now), existingMeeting.id)
-                duplicates++
-                continue
-            }
-
-            // ── CREATE meeting row ────────────────────────────────────────────
-            const scheduledAt = event.start?.dateTime ? new Date(event.start.dateTime) : now
-
-            const meeting = await prisma.meeting.create({
-                data: {
-                    teamId: user.teamId,
-                    title: event.summary || 'Untitled Meeting',
-                    platform: platform as PlatformType,
-                    meetingUrl: extracted.url,
-                    platformMeetingId,
-                    status: 'SCHEDULED',
-                    scheduledAt,
-                    calendarEventId: event.id,
-                    calendarSourceUserId: userId,
-                },
-            })
-
-            invalidatePlanCache(user.teamId).catch(() => {})
-
-            // ── SCHEDULE Recall.ai bot ────────────────────────────────────────
-            // The bot joins 2 minutes BEFORE scheduledAt.
-            // On failure: meeting row is KEPT with status=FAILED (not silently dropped).
-            // This gives visibility that a calendar event was seen but bot-scheduling failed.
-            try {
-                const bot = await recallService.scheduleBot({
-                    meetingUrl: extracted.url,
-                    joinAt: subMinutes(scheduledAt, 2),
-                    teamId: user.teamId,
-                    meetingId: meeting.id,
-                })
-                await prisma.meeting.update({
-                    where: { id: meeting.id },
-                    data: { recallBotId: bot.botId },
-                })
-            } catch (recallError: any) {
-                logger.error(
-                    { meetingId: meeting.id, error: recallError.message },
-                    'syncUserCalendar: Recall.ai scheduleBot failed — meeting kept as FAILED'
-                )
-                await prisma.meeting.update({
-                    where: { id: meeting.id },
-                    data: {
-                        status: 'FAILED',
-                        processingError: recallError.message,
-                    },
+        } catch (err: any) {
+            if (err instanceof GoogleSyncTokenExpiredError) {
+                logger.warn({ userId }, 'calendar-sync.sync_token_expired')
+                isFallbackScan = true
+                
+                // Clear token and retry immediately
+                await prisma.userIntegration.update({
+                    where: { id: integration.id },
+                    data: { nextSyncToken: null }
                 })
                 
-                invalidatePlanCache(user.teamId).catch(() => {})
-                // Still set Redis key to prevent re-creating the meeting on next sync
-                await redis.setex(dedupKey, calculateDedupTTL(scheduledAt), meeting.id)
-                synced++ // Counted as synced (meeting was detected + row created)
-                continue
+                eventsResult = await googleCalendarProvider.listEvents(accessToken, {
+                    calendarId,
+                    timeMin: now.toISOString(),
+                    timeMax: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    singleEvents: true,
+                    orderBy: 'startTime'
+                })
+            } else {
+                throw err // Caught by outer try/catch
             }
-
-            // ── Set Redis dedup key AFTER successful bot scheduling ────────────
-            const ttl = calculateDedupTTL(scheduledAt)
-            await redis.setex(dedupKey, ttl, meeting.id)
-
-            synced++
-            logger.info(
-                { userId, meetingId: meeting.id, platform, platformMeetingId, source: extracted.source },
-                'syncUserCalendar: meeting created and bot scheduled'
-            )
-
-        } catch (eventError: any) {
-            // Per-event errors should not stop processing other events
-            logger.error({ userId, eventId: event.id, error: eventError.message }, 'syncUserCalendar: error processing event (continuing)')
         }
+
+        const events = eventsResult.items
+        nextSyncToken = eventsResult.nextSyncToken
+
+        // STEP 5 — Process Each Returned Event
+        for (const event of events) {
+            try {
+                // a. Cancelled event
+                if (event.status === 'cancelled') {
+                    await handleCancelledCalendarEvent(teamId, event)
+                    continue
+                }
+
+                // Skip all-day events or declined events
+                if (!event.start?.dateTime) {
+                    skipped++
+                    continue
+                }
+
+                // b. Extract meeting URL
+                const meetingUrl = extractMeetingUrl(event)
+                if (!meetingUrl) {
+                    skipped++
+                    continue
+                }
+
+                // c. Detect platform
+                const { platform, platformMeetingId } = detectPlatform(meetingUrl)
+                if (!platform || platform === PlatformType.MANUAL || !platformMeetingId) {
+                    skipped++
+                    continue
+                }
+
+                const scheduledAt = new Date(event.start.dateTime)
+                // Filter out past events
+                if (scheduledAt.getTime() < now.getTime()) {
+                    skipped++
+                    continue
+                }
+
+                // d. Call dedupService.checkAndClaim()
+                const isDuplicate = await dedupService.checkAndClaim({
+                    teamId,
+                    platform,
+                    platformMeetingId,
+                    scheduledAt
+                })
+
+                if (isDuplicate) {
+                    logger.debug({ userId, eventId: event.id, platformMeetingId }, 'calendar-sync.event_skipped: Duplicate')
+                    duplicates++
+                    continue
+                }
+
+                // e. Call meetingsService.createMeetingFromCalendar()
+                let meetingId: string | null = null
+                try {
+                    const meeting = await createMeetingFromCalendar({
+                        title: event.summary || 'Untitled Meeting',
+                        platform,
+                        meetingUrl,
+                        platformMeetingId,
+                        scheduledAt,
+                        calendarEventId: event.id,
+                        calendarSourceUserId: userId,
+                        teamId
+                    })
+                    meetingId = meeting.id
+                } catch (meetingErr: any) {
+                    logger.error({ userId, eventId: event.id, err: meetingErr.message }, 'calendar-sync.event_failed')
+                    await dedupService.releaseClaim(platform, platformMeetingId)
+                    errorsCount++
+                    continue
+                }
+
+                // f. On success
+                if (meetingId) {
+                    await dedupService.confirmClaim(platform, platformMeetingId, meetingId)
+                    synced++
+                    logger.info({ userId, teamId, meetingId, eventId: event.id }, 'calendar-sync.meeting_created')
+                }
+
+            } catch (eventErr: any) {
+                logger.error({ userId, eventId: event.id, err: eventErr.message }, 'calendar-sync.event_failed')
+                errorsCount++
+            }
+        }
+
+        // STEP 6 — Persist Sync State
+        await prisma.userIntegration.update({
+            where: { id: integration.id },
+            data: {
+                lastSyncedAt: new Date(),
+                nextSyncToken: nextSyncToken ?? (isFallbackScan ? null : integration.nextSyncToken),
+                consecutiveErrors: 0,
+                lastError: null,
+            },
+        })
+
+    } catch (err: any) {
+        await handleSyncFailure(integration, err)
+        throw err // Re-throw for BullMQ retry
+    } finally {
+        // STEP 7 — Release Lock & Return
+        await redis.del(lockKey)
     }
 
-    // ── STEP 6 — Persist Sync Watermark ──────────────────────────────────────
-    // On 410 fallback: old syncToken is REPLACED by the new one from the full scan.
-    // This cleanly restarts the incremental chain.
-
-    await prisma.userIntegration.update({
-        where: { id: integration.id },
-        data: {
-            lastSyncedAt: new Date(),
-            nextSyncToken: eventsResult.nextSyncToken ?? (isFallbackScan ? null : integration.nextSyncToken),
-            consecutiveErrors: 0,
-            lastError: null,
-        },
-    })
-
-    logger.info({ userId, synced, skipped, duplicates }, 'syncUserCalendar: completed')
+    logger.info({ userId, synced, skipped, errorsCount }, 'calendar-sync.completed')
 
     return {
         synced,
         skipped,
         duplicates,
-        errors: 0,
+        errors: errorsCount,
         message: 'Sync complete',
-        nextSyncToken: eventsResult.nextSyncToken ?? undefined,
+        nextSyncToken,
     }
+}
+
+async function handleCancelledCalendarEvent(teamId: string, event: GoogleCalendarEvent) {
+    if (!event.id) return
+
+    const meeting = await prisma.meeting.findFirst({
+        where: { teamId, calendarEventId: event.id }
+    })
+
+    if (!meeting) return // No-op: we never created it
+
+    if (['SCHEDULED', 'BOT_JOINING'].includes(meeting.status)) {
+        if (meeting.recallBotId) {
+            try {
+                await recallService.removeBot(meeting.recallBotId)
+            } catch (err) {
+                // Ignore 404s
+            }
+        }
+        
+        await prisma.meeting.update({
+            where: { id: meeting.id },
+            data: { status: 'CANCELLED' }
+        })
+
+        if (meeting.platform && meeting.platformMeetingId) {
+            await dedupService.releaseClaim(meeting.platform, meeting.platformMeetingId)
+        }
+
+        try {
+            const { getIO } = await import('../realtime/socket.server')
+            const { SERVER_EVENTS } = await import('../realtime/socket.events')
+            const { teamRoom } = await import('../realtime/rooms.manager')
+            getIO().to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_BOT_JOINING, {
+                meetingId: meeting.id,
+                cancelled: true,
+            })
+        } catch (e) {
+            logger.error({ err: e }, 'Failed to emit socket event during calendar event cancellation')
+        }
+    }
+    // Explicitly a no-op for RECORDING, PROCESSING, DONE, FAILED, CANCELLED
+}
+
+async function handleSyncFailure(integration: any, err: any) {
+    const consecutiveErrors = integration.consecutiveErrors + 1
+    const lastError = err.message || 'Unknown error'
+
+    const data: any = { consecutiveErrors, lastError }
+
+    if (consecutiveErrors >= 5) {
+        data.syncEnabled = false
+        logger.warn({ userId: integration.userId, consecutiveErrors }, 'calendar-sync.integration_disabled')
+        try {
+            const { notifyQueue } = await import('../queues/queue.client')
+            await notifyQueue.add('calendar-sync-failed', {
+                type: 'CALENDAR_SYNC_FAILED',
+                ownerId: integration.userId,
+                metadata: { provider: integration.provider }
+            })
+        } catch (queueErr: any) {
+            logger.error({ err: queueErr }, 'calendar-sync.failed_to_queue_notify_job')
+        }
+    }
+
+    await prisma.userIntegration.update({
+        where: { id: integration.id },
+        data
+    })
 }

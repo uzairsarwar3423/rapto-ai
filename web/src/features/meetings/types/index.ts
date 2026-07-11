@@ -61,4 +61,9 @@ export interface MeetingDetail extends MeetingListItem {
   recordingStartedAt?: string | null;
   processingStartedAt?: string | null;
   completedAt?: string | null;
+  decisions?: Array<{
+    id: string;
+    text: string;
+    madeBy: string | null;
+  }>;
 }

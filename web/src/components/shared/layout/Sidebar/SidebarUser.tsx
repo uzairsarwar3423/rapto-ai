@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 import { User } from "@/features/auth/types/auth.types";
 import { ConnectionStatusDot } from "@/components/shared/feedback/ConnectionStatusDot";
@@ -41,7 +42,9 @@ export function SidebarUser({ user, collapsed }: SidebarUserProps) {
     <div className={cn("p-2 shrink-0 select-none border-t border-border bg-surface/50")}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             className={cn(
               "flex items-center gap-2 rounded-md hover:bg-surface-hover transition-colors duration-120 cursor-pointer text-left w-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               collapsed ? "h-9 w-9 justify-center" : "h-auto py-1 px-2"
@@ -66,10 +69,10 @@ export function SidebarUser({ user, collapsed }: SidebarUserProps) {
                 <ConnectionStatusDot />
               </div>
             )}
-          </button>
+          </motion.button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-[180px] bg-popover border border-border rounded-lg p-1"
+          className="w-[190px] bg-popover border border-border rounded-xl p-1 shadow-lg text-popover-foreground"
           align="end"
           side="right"
           sideOffset={8}

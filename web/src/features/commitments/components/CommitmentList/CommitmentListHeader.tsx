@@ -7,7 +7,7 @@ export function CommitmentListHeader() {
         <span className="w-[76px] shrink-0">Status</span>
         <span>Commitment Details</span>
       </div>
-      <div className="flex items-center gap-5 shrink-0 pr-0.5">
+      <div className="hidden sm:flex items-center gap-5 shrink-0 pr-0.5">
         <span className="w-24 text-right">Due Date</span>
         <span className="w-6 text-center">Owner</span>
       </div>

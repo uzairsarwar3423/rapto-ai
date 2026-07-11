@@ -338,16 +338,82 @@ export class IntegrationsService {
         return { healthy: testResult.healthy, lastChecked: new Date() }
     }
 
+    async completeGoogleCalendarConnect(userId: string, code: string) {
+        const { prisma } = await import('../../db/client')
+        const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
+        const { encrypt } = await import('../../utils/crypto')
+
+        // 1. Exchange code for tokens
+        const tokenResponse = await googleCalendarProvider.exchangeCodeForTokens(code)
+        
+        // 2. Fetch primary calendar id
+        let calendarId = 'primary'
+        try {
+            const calendars = await googleCalendarProvider.getUserCalendarList(tokenResponse.access_token)
+            const primary = calendars.find(c => c.primary)
+            if (primary) {
+                calendarId = primary.id
+            }
+        } catch (err: any) {
+            logger.warn({ userId, err: err.message }, 'Failed to fetch calendar list during connect, falling back to primary')
+        }
+
+        // 3. Encrypt tokens
+        const accessTokenEnc = encrypt(tokenResponse.access_token)
+        const refreshTokenEnc = tokenResponse.refresh_token ? encrypt(tokenResponse.refresh_token) : null
+        const tokenExpiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000)
+
+        // 4. Upsert UserIntegration
+        const integration = await prisma.userIntegration.upsert({
+            where: {
+                userId_provider: {
+                    userId,
+                    provider: 'GOOGLE_CALENDAR',
+                },
+            },
+            create: {
+                userId,
+                provider: 'GOOGLE_CALENDAR',
+                accessTokenEnc,
+                refreshTokenEnc,
+                tokenExpiresAt,
+                calendarId,
+                syncEnabled: true,
+            },
+            update: {
+                accessTokenEnc,
+                ...(refreshTokenEnc && { refreshTokenEnc }),
+                tokenExpiresAt,
+                calendarId,
+                syncEnabled: true,
+                consecutiveErrors: 0,
+                lastError: null,
+            },
+        })
+
+        return integration
+    }
+
     async disconnectCalendar(userId: string, provider: 'GOOGLE_CALENDAR' | 'OUTLOOK_CALENDAR') {
         const { prisma } = await import('../../db/client')
         const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
+        const { decrypt } = await import('../../utils/crypto')
         
         const integration = await prisma.userIntegration.findUnique({
             where: { userId_provider: { userId, provider } }
         })
         if (!integration) throw new AppError('NOT_FOUND', 404, 'Integration not found')
 
-        await googleCalendarProvider.revokeToken(integration.accessTokenEnc)
+        let plainAccessToken = ''
+        try {
+            plainAccessToken = decrypt(integration.accessTokenEnc)
+        } catch (err: any) {
+            logger.warn({ userId, err: err.message }, 'Failed to decrypt access token during disconnect')
+        }
+
+        if (plainAccessToken) {
+            await googleCalendarProvider.revokeToken(plainAccessToken)
+        }
 
         await prisma.userIntegration.delete({
             where: { id: integration.id }

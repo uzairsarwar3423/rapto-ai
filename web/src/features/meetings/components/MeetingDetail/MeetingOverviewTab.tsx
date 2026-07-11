@@ -1,4 +1,5 @@
 import { MeetingSummaryBlock } from './MeetingSummaryBlock'
+import { MeetingDecisionsBlock } from './MeetingDecisionsBlock'
 import { MeetingParticipantsList } from './MeetingParticipantsList'
 import { MeetingTimeline } from './MeetingTimeline'
 import type { MeetingDetail } from '../../types'
@@ -9,6 +10,7 @@ export function MeetingOverviewTab({ meeting }: { meeting: MeetingDetail }) {
     <div className="mt-4 grid grid-cols-12 gap-4">
       <div className="col-span-12 md:col-span-8 flex flex-col gap-4">
         <MeetingSummaryBlock summary={meeting.summary} />
+        <MeetingDecisionsBlock decisions={meeting.decisions} />
       </div>
       <div className="col-span-12 md:col-span-4 flex flex-col gap-4">
         <Card className="p-4">

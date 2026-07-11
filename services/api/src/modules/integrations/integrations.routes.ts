@@ -14,7 +14,10 @@ import {
     testCalendarConnectionController,
     disconnectCalendarController,
     updateCalendarConfigController,
-    getCalendarPreviewController
+    getCalendarPreviewController,
+    syncNowController,
+    connectGoogleCalendarController,
+    googleCalendarCallbackController
 } from './integrations.controller'
 import { providerParamSchema, calendarProviderParamSchema, callbackQuerySchema } from './integrations.validator'
 
@@ -25,6 +28,28 @@ router.get('/', requireAuth, injectTenant, listIntegrationsController)
 
 // Calendar Sync Preview
 router.get('/calendar/preview', requireAuth, getCalendarPreviewController)
+
+import { calendarSyncNowRateLimiter } from '../../middleware/rate-limit.middleware'
+
+// Calendar Sync Now
+router.post(
+    '/google-calendar/sync-now',
+    requireAuth,
+    calendarSyncNowRateLimiter,
+    syncNowController
+)
+
+// Specific Google Calendar OAuth Connect & Callback
+router.get(
+    '/google-calendar/connect',
+    requireAuth,
+    connectGoogleCalendarController
+)
+
+router.get(
+    '/google-calendar/callback',
+    googleCalendarCallbackController
+)
 
 // Team Integration OAuth
 router.get(

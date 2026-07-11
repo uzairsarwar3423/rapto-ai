@@ -80,7 +80,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
         // Create In-App Notification
         await createInAppNotification({
           userId: member.id,
-          teamId,
+          teamId: meeting.teamId,
           type: 'MEETING_PROCESSED',
           title: `Meeting processed: ${meeting.title}`,
           body: meeting.summary ? meeting.summary.substring(0, 150) + '...' : 'Meeting summary is ready.',
@@ -125,7 +125,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
       // 1. Notify Assignee / Owner
       await createInAppNotification({
         userId: owner.id,
-        teamId,
+        teamId: commitment.teamId,
         type: 'COMMITMENT_MISSED',
         title: '⚠️ Commitment Overdue',
         body: `You missed the deadline for: "${commitment.text}"`,
@@ -152,7 +152,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
       if (managersToNotify.length === 0) {
         const managers = await prisma.user.findMany({
           where: {
-            teamId,
+            teamId: commitment.teamId,
             role: { in: ['OWNER', 'ADMIN', 'MANAGER'] }
           }
         })
@@ -168,7 +168,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
 
         await createInAppNotification({
           userId: manager.id,
-          teamId,
+          teamId: commitment.teamId,
           type: 'COMMITMENT_MISSED',
           title: `⚠️ Team Overdue Commitment: ${owner.name}`,
           body: `${owner.name} missed the deadline for: "${commitment.text}"`,
@@ -222,10 +222,15 @@ export const notifyWorker = new Worker<NotifyJobData>(
       })
 
       if (upcomingCommitments.length > 0) {
+        const resolvedTeamId = teamId || user.teamId || upcomingCommitments[0].teamId
+        if (!resolvedTeamId) {
+          throw new Error(`No teamId found for user ${ownerId} during deadline reminder dispatch`)
+        }
+
         // Create In-App Notification
         await createInAppNotification({
           userId: ownerId,
-          teamId,
+          teamId: resolvedTeamId,
           type: 'DEADLINE_TODAY',
           title: `⏰ ${upcomingCommitments.length} Commitments Due Soon`,
           body: `You have ${upcomingCommitments.length} commitments coming due today or tomorrow.`,
@@ -298,6 +303,60 @@ export const notifyWorker = new Worker<NotifyJobData>(
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'EMAIL_DEADLINE_REMINDER' && job.data.emailPayload) {
       await emailService.sendDeadlineReminder(job.data.emailPayload)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 11: INTEGRATION_AUTO_DISABLED (Team Integration)
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'INTEGRATION_AUTO_DISABLED' && teamId) {
+      const provider = job.data.metadata?.provider || 'Integration'
+      const providerName = provider.replace('_', ' ')
+      
+      const admins = await prisma.user.findMany({
+        where: {
+          teamId,
+          role: { in: ['OWNER', 'ADMIN'] }
+        }
+      })
+      
+      for (const admin of admins) {
+        await notifyQueue.add('email-integration-disabled', {
+          type: 'EMAIL_INTEGRATION_DISABLED',
+          emailPayload: {
+            to: admin.email,
+            name: admin.name,
+            providerName,
+            reconnectUrl: `${frontendUrl}/settings/integrations`
+          }
+        })
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 12: CALENDAR_SYNC_FAILED (User Calendar Integration)
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'CALENDAR_SYNC_FAILED' && ownerId) {
+      const user = await prisma.user.findUnique({ where: { id: ownerId } })
+      if (user) {
+        const provider = job.data.metadata?.provider || 'GOOGLE_CALENDAR'
+        const providerName = provider.replace('_', ' ')
+        await notifyQueue.add('email-integration-disabled', {
+          type: 'EMAIL_INTEGRATION_DISABLED',
+          emailPayload: {
+            to: user.email,
+            name: user.name,
+            providerName,
+            reconnectUrl: `${frontendUrl}/settings/integrations`
+          }
+        })
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13: EMAIL_INTEGRATION_DISABLED
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_INTEGRATION_DISABLED' && job.data.emailPayload) {
+      await emailService.sendIntegrationDisabledEmail(job.data.emailPayload)
     }
   },
   {

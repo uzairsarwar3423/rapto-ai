@@ -52,3 +52,8 @@ export async function fetchCalendarPreviewClient(): Promise<CalendarEvent[]> {
   const response = await api.get<{ events: CalendarEvent[] }>("/integrations/calendar/preview");
   return response.data.events;
 }
+
+export async function syncCalendarNowClient(): Promise<{ synced: number, skipped: number, errors: string[] }> {
+  const response = await api.post<{ success: boolean, data: { synced: number, skipped: number, errors: string[] } }>("/integrations/google-calendar/sync-now");
+  return response.data.data;
+}

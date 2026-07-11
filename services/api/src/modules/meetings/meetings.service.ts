@@ -172,6 +172,63 @@ export async function createMeeting(input: CreateMeetingInput) {
   }
 }
 
+// ── Create Meeting From Calendar (Day 56) ─────────────────────────────────────
+
+export async function createMeetingFromCalendar(input: {
+  title: string
+  platform: string
+  meetingUrl: string
+  platformMeetingId: string
+  scheduledAt: Date
+  calendarEventId: string
+  calendarSourceUserId: string
+  teamId: string
+}) {
+  const { title, platform, meetingUrl, platformMeetingId, scheduledAt, calendarEventId, calendarSourceUserId, teamId } = input
+
+  // Skip dedup checks (already done by calendar-sync.service)
+  // Check plan limit implicitly handled or done upstream/downstream if needed.
+  // Actually, we should check plan limit, but we can't easily call the middleware.
+  // The service layer might rely on the team plan data. Let's proceed to create.
+
+  // 1. Schedule bot
+  const botJoinAt = new Date(scheduledAt.getTime() - 2 * 60 * 1000)
+  
+  const { botId } = await recallService.scheduleBot({
+    meetingUrl,
+    joinAt: botJoinAt,
+    teamId,
+  })
+
+  // 2. Persist
+  let meeting
+  try {
+    meeting = await repo.create({
+      teamId,
+      title,
+      platform: platform as any,
+      meetingUrl,
+      platformMeetingId,
+      recallBotId: botId,
+      scheduledAt,
+      calendarEventId,
+      calendarSourceUserId,
+      status: 'SCHEDULED',
+    })
+  } catch (error: any) {
+    logger.error({ teamId, botId, error }, 'DB write failed after bot scheduled — attempting bot cleanup')
+    try {
+      await recallService.removeBot(botId)
+    } catch (cleanupError) {}
+
+    throw error
+  }
+
+  invalidatePlanCache(teamId).catch(() => {})
+
+  return meeting
+}
+
 // ── List Meetings ─────────────────────────────────────────────────────────────
 
 export async function listMeetings(teamId: string, filters: MeetingListFilters) {

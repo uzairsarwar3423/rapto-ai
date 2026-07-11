@@ -6,7 +6,7 @@ import { prisma } from './src/db/client';
 import { Queue } from 'bullmq';
 
 async function run() {
-  const meetingId = "cmrbzicng0009h2kkkh18aus2";
+  const meetingId = "cmrelgnpx0005h2vjlsio68my";
   const meeting = await prisma.meeting.findUnique({ where: { id: meetingId }});
   
   if (!meeting) {

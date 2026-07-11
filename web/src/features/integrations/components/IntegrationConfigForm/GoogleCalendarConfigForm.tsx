@@ -8,7 +8,9 @@ import { InlineFieldHint } from "@/shared/components/feedback/InlineFieldHint";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Video } from "lucide-react";
+import { Video, RefreshCw } from "lucide-react";
+import { useSyncGoogleCalendar } from "../../hooks/useSyncGoogleCalendar";
+import { Button } from "@/components/ui/button";
 
 const calendarSchema = z.object({
   calendarId: z.string().min(1, "Calendar ID is required"),
@@ -39,6 +41,8 @@ export function GoogleCalendarConfigForm({
       syncEnabled: initialSyncEnabled,
     },
   });
+
+  const { mutate: syncNow, isPending: isSyncing } = useSyncGoogleCalendar();
 
   return (
     <form
@@ -89,16 +93,28 @@ export function GoogleCalendarConfigForm({
         />
       </div>
 
-      {/* Preview Trigger Link */}
-      <div className="border-t border-muted/10 pt-4">
+      {/* Preview and Sync Triggers */}
+      <div className="border-t border-muted/10 pt-4 flex flex-col gap-3">
         <button
           type="button"
           onClick={onOpenPreview}
-          className="text-xs font-sans font-medium text-primary hover:underline flex items-center gap-1.5 focus:outline-none"
+          className="text-xs font-sans font-medium text-primary hover:underline flex items-center gap-1.5 focus:outline-none self-start"
         >
           <Video className="w-3.5 h-3.5" />
           Preview upcoming meetings from this calendar
         </button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="text-xs h-8 w-fit gap-2"
+          disabled={isSyncing || isLoading}
+          onClick={() => syncNow()}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+          {isSyncing ? "Syncing..." : "Sync Calendar Now"}
+        </Button>
       </div>
     </form>
   );
