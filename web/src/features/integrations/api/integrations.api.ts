@@ -57,3 +57,47 @@ export async function syncCalendarNowClient(): Promise<{ synced: number, skipped
   const response = await api.post<{ success: boolean, data: { synced: number, skipped: number, errors: string[] } }>("/integrations/google-calendar/sync-now");
   return response.data.data;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JIRA-SPECIFIC API FUNCTIONS (Day 58 §24)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** GET /integrations/jira/connect → { authUrl } → navigate to Atlassian consent */
+export async function initiateJiraConnectClient(): Promise<string> {
+  const response = await api.get<{ success: boolean; data: { authUrl: string } }>("/integrations/jira/connect");
+  return response.data.data.authUrl;
+}
+
+/** GET /integrations/jira/projects → { projects: [{key, name}] } */
+export async function fetchJiraProjectsClient(): Promise<Array<{ key: string; name: string }>> {
+  const response = await api.get<{ success: boolean; data: { projects: Array<{ key: string; name: string }> } }>("/integrations/jira/projects");
+  return response.data.data.projects;
+}
+
+/** PATCH /integrations/jira/configure — set project key + issue type */
+export async function configureJiraClient(config: {
+  projectKey: string;
+  defaultIssueType: string;
+  defaultPriority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+}): Promise<{ success: boolean; data: { metadata: Record<string, any> } }> {
+  const response = await api.patch<{ success: boolean; data: { metadata: Record<string, any> } }>("/integrations/jira/configure", config);
+  return response.data;
+}
+
+/** DELETE /integrations/jira — revoke token and delete row */
+export async function disconnectJiraClient(): Promise<void> {
+  await api.delete("/integrations/jira");
+}
+
+/** POST /action-items/:id/sync — enqueue a Jira sync job for a specific action item */
+export async function syncActionItemToJiraClient(
+  actionItemId: string,
+  idempotencyKey: string
+): Promise<{ provider: string; status: string; queuedAt: string }> {
+  const response = await api.post<{ success: boolean; data: { provider: string; status: string; queuedAt: string } }>(
+    `/action-items/${actionItemId}/sync`,
+    { provider: 'JIRA' },
+    { headers: { 'Idempotency-Key': idempotencyKey } }
+  );
+  return response.data.data;
+}

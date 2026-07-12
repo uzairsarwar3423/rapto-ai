@@ -446,6 +446,70 @@ export class SlackProvider implements IntegrationProvider {
             return { ok: false, error: err.message }
         }
     }
+
+    // ── SharedInterface: createExternalItem ──────────────────────────────────
+    // Slack: posts the action item as a formatted message to the team channel.
+    // The "external item" is the message — externalId = message timestamp (Slack's
+    // unique message identifier), externalUrl = deep-link into the channel.
+
+    async createExternalItem(
+        integration: TeamIntegration,
+        input: import('./provider.interface').CreateExternalItemInput
+    ): Promise<import('./provider.interface').ExternalItemResult> {
+        const meta = integration.metadata as any
+        const channelId: string | undefined = meta?.defaultChannelId
+
+        if (!channelId) {
+            throw new Error('SLACK_CHANNEL_NOT_CONFIGURED: No default channel set. Configure a Slack channel first.')
+        }
+
+        const botToken = decrypt(integration.accessTokenEnc)
+        const client = buildSlackClient(botToken)
+
+        const blocks = [
+            {
+                type: 'header',
+                text: {
+                    type: 'plain_text',
+                    text: `📋 Action Item from ${input.context.meetingTitle}`,
+                    emoji: true,
+                },
+            },
+            {
+                type: 'section',
+                text: { type: 'mrkdwn', text: `*${input.text.substring(0, 255)}*` },
+            },
+            {
+                type: 'context',
+                elements: [
+                    {
+                        type: 'mrkdwn',
+                        text: [
+                            input.assigneeEmail ? `👤 ${input.assigneeEmail}` : null,
+                            input.dueDate ? `📅 Due ${new Date(input.dueDate).toLocaleDateString()}` : null,
+                            `Priority: ${input.priority}`,
+                        ].filter(Boolean).join('  •  '),
+                    },
+                ],
+            },
+        ]
+
+        const res = await client.post('/chat.postMessage', {
+            channel: channelId,
+            text: `Action item: ${input.text.substring(0, 100)}`,
+            blocks,
+        })
+
+        if (!res.data.ok) {
+            throw new Error(`Slack createExternalItem failed: ${res.data.error}`)
+        }
+
+        const workspaceUrl = integration.workspaceUrl || 'https://slack.com'
+        return {
+            externalId: res.data.ts,
+            externalUrl: `${workspaceUrl}/archives/${channelId}/p${res.data.ts?.replace('.', '')}`,
+        }
+    }
 }
 
 export const slackProvider = new SlackProvider()

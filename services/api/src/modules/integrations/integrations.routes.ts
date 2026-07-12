@@ -17,21 +17,35 @@ import {
     getCalendarPreviewController,
     syncNowController,
     connectGoogleCalendarController,
-    googleCalendarCallbackController
+    googleCalendarCallbackController,
+    // Jira-specific (Day 58)
+    connectJiraController,
+    jiraCallbackController,
+    listJiraProjectsController,
+    configureJiraController,
+    disconnectJiraController,
 } from './integrations.controller'
-import { providerParamSchema, calendarProviderParamSchema, callbackQuerySchema } from './integrations.validator'
+import {
+    providerParamSchema,
+    calendarProviderParamSchema,
+    callbackQuerySchema,
+    configureJiraBodySchema,
+    jiraCallbackQuerySchema,
+} from './integrations.validator'
+import { calendarSyncNowRateLimiter } from '../../middleware/rate-limit.middleware'
 
 const router = Router()
 
+// ─────────────────────────────────────────────────────────────────────────────
 // List all integrations (returns { teamIntegrations, userIntegrations })
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/', requireAuth, injectTenant, listIntegrationsController)
 
-// Calendar Sync Preview
+// ─────────────────────────────────────────────────────────────────────────────
+// Calendar Sync
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/calendar/preview', requireAuth, getCalendarPreviewController)
 
-import { calendarSyncNowRateLimiter } from '../../middleware/rate-limit.middleware'
-
-// Calendar Sync Now
 router.post(
     '/google-calendar/sync-now',
     requireAuth,
@@ -39,19 +53,70 @@ router.post(
     syncNowController
 )
 
-// Specific Google Calendar OAuth Connect & Callback
+router.get('/google-calendar/connect', requireAuth, connectGoogleCalendarController)
+router.get('/google-calendar/callback', googleCalendarCallbackController)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JIRA-SPECIFIC ROUTES (Day 58 §13, §24)
+//
+// Route ordering matters: specific routes BEFORE the /:provider/* wildcard routes.
+// If jira/* routes came after /:provider/*, Express would never reach them
+// because :provider would match 'jira' first.
+//
+// Security model per §13:
+//   - connect, projects, configure, disconnect: requireAuth + injectTenant + requireRole('ADMIN', 'OWNER')
+//   - callback: NO requireAuth — secured by the Redis state token (single-use, 10-min TTL)
+//     The user's session may have aged during the OAuth round-trip; the state token
+//     is the ONLY required security boundary here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** GET /api/v1/integrations/jira/connect → 200 { authUrl } */
 router.get(
-    '/google-calendar/connect',
+    '/jira/connect',
     requireAuth,
-    connectGoogleCalendarController
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    connectJiraController
 )
 
+/** GET /api/v1/integrations/jira/callback → 302 redirect (no JWT required) */
 router.get(
-    '/google-calendar/callback',
-    googleCalendarCallbackController
+    '/jira/callback',
+    validate(jiraCallbackQuerySchema),
+    jiraCallbackController
 )
 
-// Team Integration OAuth
+/** GET /api/v1/integrations/jira/projects → 200 { projects: [{key, name}] } */
+router.get(
+    '/jira/projects',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    listJiraProjectsController
+)
+
+/** PATCH /api/v1/integrations/jira/configure → 200 { success, data: { metadata } } */
+router.patch(
+    '/jira/configure',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    validate(configureJiraBodySchema),
+    configureJiraController
+)
+
+/** DELETE /api/v1/integrations/jira → 200 { success, data: { message } } */
+router.delete(
+    '/jira',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    disconnectJiraController
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generic Team Integration OAuth (for Linear, Slack, Notion)
+// ─────────────────────────────────────────────────────────────────────────────
 router.get(
     '/:provider/connect',
     requireAuth,
@@ -104,7 +169,9 @@ router.get(
     getProviderOptionsController
 )
 
+// ─────────────────────────────────────────────────────────────────────────────
 // User Calendar Integration management
+// ─────────────────────────────────────────────────────────────────────────────
 router.post(
     '/calendar/:provider/test',
     requireAuth,
@@ -127,4 +194,3 @@ router.patch(
 )
 
 export const integrationsRouter = router
-

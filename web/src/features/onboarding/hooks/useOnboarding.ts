@@ -17,7 +17,7 @@ export interface InviteMembersPayload {
 export const useOnboarding = () => {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { user, setUser } = useAuthStore()
+  const { user, setUser, setAccessToken } = useAuthStore()
 
   // 1. Check if slug is available
   const checkSlugMutation = useMutation({
@@ -32,14 +32,22 @@ export const useOnboarding = () => {
   // 2. Create a team
   const createTeamMutation = useMutation({
     mutationFn: async (payload: CreateTeamPayload) => {
-      const response = await api.post<{ data: { id: string; name: string; slug: string } }>(
+      const response = await api.post<{ data: { id: string; name: string; slug: string; accessToken: string | null } }>(
         '/teams',
         payload
       )
       return response.data.data
     },
     onSuccess: (data) => {
-      // Update local auth store user's team information
+      // CRITICAL: Swap the stale JWT for the fresh one returned by the backend.
+      // The old accessToken has teamId: null (signed before team creation).
+      // injectTenant reads teamId from the JWT — so without this swap, the
+      // very next API call (invite) will get "You must be part of a team".
+      if (data.accessToken) {
+        setAccessToken(data.accessToken)
+      }
+
+      // Update local auth store — no need to re-fetch, avoids step-change flicker
       if (user) {
         setUser({
           ...user,
@@ -48,7 +56,6 @@ export const useOnboarding = () => {
           role: 'ADMIN' // The team creator becomes OWNER/ADMIN
         })
       }
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
     onError: (err: any) => {
       if (err.response?.data?.error?.code === 'DUPLICATE') return
@@ -73,7 +80,6 @@ export const useOnboarding = () => {
           team: { ...user.team, name: data.name } as any
         })
       }
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
     onError: (err: any) => {
       if (err.response?.data?.error?.code === 'DUPLICATE') return
@@ -106,13 +112,14 @@ export const useOnboarding = () => {
       return response.data.data
     },
     onSuccess: (data) => {
-      // Update local store
+      // Update local store — invalidate only after full completion to avoid mid-flow refetch
       if (user) {
         setUser({
           ...user,
           onboardingCompleted: true
         })
       }
+      // Invalidate only on final completion (not mid-flow steps)
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
     onError: (err: any) => {

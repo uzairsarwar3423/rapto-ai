@@ -798,9 +798,17 @@ export const authService = {
     // Store in Redis (TTL 10 min) linking state to the user ID
     await redis.set(`oauth:state:calendar:${state}`, userId, 'EX', 600)
 
+    // Use a dedicated calendar redirect URI if configured, otherwise fall back
+    // to the generic Google redirect URI. The same URI MUST be used in both
+    // googleCalendarInit and googleCalendarCallback — a mismatch causes Google
+    // to reject the token exchange with a 400 redirect_uri_mismatch error.
+    const calendarRedirectUri =
+      env.GOOGLE_CALENDAR_REDIRECT_URI ||
+      `${env.API_URL || 'http://localhost:4000'}/api/v1/auth/google/callback`
+
     const params = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID!,
-      redirect_uri: env.GOOGLE_REDIRECT_URI!,
+      redirect_uri: calendarRedirectUri,
       response_type: 'code',
       scope: 'https://www.googleapis.com/auth/calendar.readonly',
       state,
@@ -838,7 +846,12 @@ export const authService = {
     await redis.del(`oauth:state:calendar:${query.state}`)
 
     try {
-      const activeRedirectUri = redirectUri || `${env.API_URL || 'http://localhost:4000'}/api/v1/auth/google-calendar/callback`
+      // MUST match the redirect_uri used in googleCalendarInit exactly.
+      const activeRedirectUri =
+        env.GOOGLE_CALENDAR_REDIRECT_URI ||
+        redirectUri ||
+        `${env.API_URL || 'http://localhost:4000'}/api/v1/auth/google/callback`
+
       // Exchange code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -853,7 +866,8 @@ export const authService = {
       })
 
       if (!tokenResponse.ok) {
-        throw new Error('Google token exchange failed')
+        const body = await tokenResponse.text()
+        throw new Error(`Google token exchange failed: ${tokenResponse.status} ${body}`)
       }
 
       const tokens = (await tokenResponse.json()) as any
@@ -890,6 +904,8 @@ export const authService = {
           ...(refreshTokenEnc && { refreshTokenEnc }),
           tokenExpiresAt,
           syncEnabled: true,
+          consecutiveErrors: 0,
+          lastError: null,
         },
       })
 
@@ -902,8 +918,12 @@ export const authService = {
         : `${frontendUrl}/onboarding/connect-calendar?connected=true`
 
       res.redirect(redirectUrl)
-    } catch (error) {
-      logger.error({ error }, 'Google Calendar OAuth callback handling failed')
+    } catch (error: any) {
+      // Log the full error so it is never serialized as an empty {}
+      logger.error(
+        { error: error?.message, stack: error?.stack, userId },
+        'Google Calendar OAuth callback handling failed'
+      )
       let user = null
       if (userId) {
         try {

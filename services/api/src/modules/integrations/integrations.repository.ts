@@ -156,6 +156,47 @@ export class IntegrationsRepository {
             },
         })
     }
+
+    /**
+     * updateMetadata — JSONB merge-update, not blind overwrite.
+     * Mirrors the Day 16 updateTeamSettings() merge pattern:
+     * { ...existing.metadata, ...metadataPatch }
+     *
+     * A PATCH .../configure call setting only `projectKey` never
+     * clobbers an already-configured `defaultIssueType` (§12).
+     */
+    async updateMetadata(
+        teamId: string,
+        provider: ProviderType,
+        patch: Record<string, unknown>
+    ): Promise<TeamIntegration> {
+        const existing = await this.findByTeamAndProvider(teamId, provider)
+        if (!existing) {
+            throw new Error(`Integration not found: ${teamId}/${provider}`)
+        }
+
+        const existingMetadata = (existing.metadata as Record<string, unknown>) ?? {}
+        const mergedMetadata = { ...existingMetadata, ...patch }
+
+        return prisma.teamIntegration.update({
+            where: { id: existing.id },
+            data: { metadata: mergedMetadata as Prisma.InputJsonValue },
+        })
+    }
+
+    /**
+     * disableIntegration — used by the auto-disable flow when consecutiveErrors >= 5.
+     * Sets isActive=false and records lastError without a full disconnect audit record.
+     */
+    async disableIntegration(integrationId: string, reason: string): Promise<void> {
+        await prisma.teamIntegration.update({
+            where: { id: integrationId },
+            data: {
+                isActive: false,
+                lastError: reason.substring(0, 1000),
+            },
+        })
+    }
 }
 
 export const integrationsRepository = new IntegrationsRepository()

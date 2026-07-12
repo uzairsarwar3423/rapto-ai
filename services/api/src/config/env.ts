@@ -65,6 +65,9 @@ const envSchema = z.object({
 
     // Day 22: Google Calendar (distinct callback from Google login)
     GOOGLE_CALENDAR_CALLBACK_URL: z.string().optional(),
+    // Alias used in auth.service.ts — maps to the same value.
+    // Set either one in .env; GOOGLE_CALENDAR_REDIRECT_URI takes precedence.
+    GOOGLE_CALENDAR_REDIRECT_URI: z.string().optional(),
 
     // AI Pipeline
     AI_PIPELINE_URL: z.string().url().default('http://127.0.0.1:8000'),

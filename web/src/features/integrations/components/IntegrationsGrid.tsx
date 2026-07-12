@@ -30,6 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { IntegrationBadgeStatus } from "./IntegrationStatusBadge";
+import { JiraIntegration } from "./JiraIntegration";
 
 interface ConfigSheetWrapperProps {
   provider: IntegrationProviderConfig;
@@ -128,7 +129,7 @@ function ConfigSheetWrapper({
 export function IntegrationsGrid() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data, isLoading, error } = useIntegrations();
+  const { data, isLoading, error, refetch: refetchIntegrations } = useIntegrations();
   const { connect, connectingProvider } = useOAuthConnect();
   const disconnectMutation = useDisconnectIntegration();
   const testMutation = useTestConnection();
@@ -436,6 +437,22 @@ export function IntegrationsGrid() {
           {teamProviders.map((p) => {
             const record = getTeamIntegration(p.id);
             const status = getStatus(p.id);
+
+            // ── JIRA: use the self-contained JiraIntegration card ─────────────
+            // It handles all 4 states (NOT_CONNECTED / UNCONFIGURED / CONFIGURED / ERROR)
+            // plus connect, configure sheet, and disconnect dialog internally.
+            if (p.id === "JIRA") {
+              return (
+                <div key="JIRA" className="px-2 py-2">
+                  <JiraIntegration
+                    integration={record as any}
+                    onRefresh={() => refetchIntegrations()}
+                  />
+                </div>
+              );
+            }
+
+            // ── All other providers: use the generic IntegrationRow ────────────
             return (
               <IntegrationRow
                 key={p.id}

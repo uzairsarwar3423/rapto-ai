@@ -17,6 +17,7 @@ import { prisma } from '../../db/client'
 import { redis } from '../../config/redis'
 import { logger } from '../../config/logger'
 import { env } from '../../config/env'
+import { generateAccessToken } from '../auth/auth.helpers'
 import {
   PLAN_LIMITS,
   RESERVED_SLUGS,
@@ -214,12 +215,37 @@ async function createTeam(userId: string, input: CreateTeamInput) {
 
   logger.info({ teamId: team.id, userId, slug }, 'Team created')
 
+  // STEP 8 — Issue a fresh access token reflecting the new teamId.
+  //
+  // WHY: JWT is stateless. The user's current token still has teamId: null
+  // (from before team creation). The next request (e.g. POST /teams/me/invite)
+  // hits injectTenant which reads teamId from the JWT — and fails with
+  // "You must be part of a team" even though the DB is updated.
+  //
+  // Solution: return a new accessToken signed with the correct teamId+role so
+  // the frontend can swap it in-memory immediately. No page refresh needed.
+  const freshUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, teamId: true, role: true },
+  })
+
+  const accessToken = freshUser
+    ? generateAccessToken({
+        id: freshUser.id,
+        email: freshUser.email,
+        teamId: freshUser.teamId,
+        role: freshUser.role,
+      })
+    : null
+
   return {
     id: team.id,
     name: team.name,
     slug: team.slug,
     plan: team.plan,
     createdAt: team.createdAt,
+    // Fresh JWT — frontend MUST store this to replace the stale token
+    accessToken,
   }
 }
 

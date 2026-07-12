@@ -9,8 +9,9 @@ const nextConfig: NextConfig = {
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  // Strict mode for better error detection
-  reactStrictMode: true,
+  // Strict mode: disabled in dev to prevent double-rendering on onboarding steps
+  // (React Strict Mode mounts every component twice in dev, causing visible flicker)
+  reactStrictMode: process.env.NODE_ENV === "production",
 };
 
 export default nextConfig;

@@ -260,6 +260,25 @@ export class LinearProvider implements IntegrationProvider {
             issueUrl: data.issueCreate.issue.url,
         }
     }
+
+    // ── SharedInterface: createExternalItem ──────────────────────────────────
+    // Wraps createIssue() so the registry-based worker can call it generically.
+    // The worker uses CreateExternalItemInput, never LinearProvider.createIssue.
+
+    async createExternalItem(
+        integration: TeamIntegration,
+        input: import('./provider.interface').CreateExternalItemInput
+    ): Promise<import('./provider.interface').ExternalItemResult> {
+        const result = await this.createIssue(integration, {
+            text: input.text,
+            priority: input.priority,
+            assignee: input.assigneeEmail ? { email: input.assigneeEmail } : null,
+        })
+        return {
+            externalId: result.issueId,
+            externalUrl: result.issueUrl,
+        }
+    }
 }
 
 export const linearProvider = new LinearProvider()

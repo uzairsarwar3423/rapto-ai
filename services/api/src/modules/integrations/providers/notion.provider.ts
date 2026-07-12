@@ -292,6 +292,35 @@ export class NotionProvider implements IntegrationProvider {
         logger.info({ integrationId: integration.id, meetingId: meeting.id, pageId }, 'Notion: page created')
         return { pageId, pageUrl }
     }
+
+    // ── SharedInterface: createExternalItem ──────────────────────────────────
+    // Notion: creates a page in the configured database with the action item.
+    // Maps a single action item to a page (not a full meeting-summary page).
+    // This is the interface-contract entry point used by integrate.worker.ts.
+
+    async createExternalItem(
+        integration: TeamIntegration,
+        input: import('./provider.interface').CreateExternalItemInput
+    ): Promise<import('./provider.interface').ExternalItemResult> {
+        const result = await this.createMeetingPage(
+            integration,
+            {
+                id: input.actionItemId,
+                title: `[Action Item] ${input.text.substring(0, 100)}`,
+                scheduledAt: input.context.meetingDate,
+            },
+            {
+                commitments: [],
+                actionItems: [
+                    { text: input.text, assigneeEmail: input.assigneeEmail || null },
+                ],
+            }
+        )
+        return {
+            externalId: result.pageId,
+            externalUrl: result.pageUrl,
+        }
+    }
 }
 
 export const notionProvider = new NotionProvider()

@@ -1,4 +1,4 @@
-import { Worker, Job } from 'bullmq'
+import { Worker, Job, UnrecoverableError } from 'bullmq'
 import { logger } from '../../config/logger'
 import { prisma } from '../../db/client'
 import { resolveProvider } from '../../modules/integrations/integrations.service'
@@ -9,6 +9,19 @@ import { notifyQueue } from '../queue.client'
 import { addSeconds } from 'date-fns'
 
 const CIRCUIT_BREAKER_THRESHOLD = 5
+
+/**
+ * Errors that represent a permanent, non-retriable state.
+ * These immediately trip the circuit breaker — no point retrying.
+ *
+ * - GOOGLE_REFRESH_TOKEN_REVOKED: user explicitly revoked app access in
+ *   their Google account settings. The token is cryptographically dead;
+ *   retrying will always get 400 invalid_grant from Google's token endpoint.
+ */
+const NON_RETRIABLE_ERRORS = new Set([
+    'GOOGLE_CALENDAR: GOOGLE_REFRESH_TOKEN_REVOKED',
+    'GOOGLE_CALENDAR: GOOGLE_AUTH_CODE_INVALID',
+])
 
 export interface TokenRefreshJobData {
   type: 'team' | 'user'
@@ -110,6 +123,41 @@ async function refreshUserIntegration(integrationId: string): Promise<void> {
         const latencyMs = Date.now() - start
         logger.error({ integrationId: integration.id, userId: integration.userId, error: err.message, latencyMs }, 'token-refresh.worker: user integration refresh failed')
 
+        const isNonRetriable = NON_RETRIABLE_ERRORS.has(err.message)
+
+        if (isNonRetriable) {
+            // Immediately trip the circuit breaker — no point accumulating errors.
+            // The refresh token is cryptographically dead; retrying is futile.
+            await prisma.userIntegration.update({
+                where: { id: integration.id },
+                data: {
+                    syncEnabled: false,
+                    consecutiveErrors: CIRCUIT_BREAKER_THRESHOLD,
+                    lastError: err.message,
+                },
+            })
+            await notifyQueue.add(
+                'send-notification',
+                {
+                    type: 'CALENDAR_RECONNECT_REQUIRED',
+                    teamId: '',
+                    metadata: {
+                        userId: integration.userId,
+                        userEmail: integration.user?.email,
+                        userName: integration.user?.name,
+                        reason: 'token_revoked',
+                    },
+                },
+                { jobId: `calendar-reconnect-notify:${integration.id}` } // dedup notification
+            )
+            logger.error(
+                { integrationId: integration.id, userId: integration.userId, error: err.message },
+                'token-refresh.worker: non-retriable error — circuit breaker tripped immediately'
+            )
+            // UnrecoverableError tells BullMQ: do NOT retry, mark as permanently failed.
+            throw new UnrecoverableError(`Non-retriable: ${err.message}`)
+        }
+
         const updated = await prisma.userIntegration.update({
             where: { id: integration.id },
             data: { consecutiveErrors: { increment: 1 }, lastError: err.message },
@@ -121,15 +169,20 @@ async function refreshUserIntegration(integrationId: string): Promise<void> {
                 where: { id: integration.id },
                 data: { syncEnabled: false },
             })
-            await notifyQueue.add('send-notification', {
-                type: 'CALENDAR_RECONNECT_REQUIRED',
-                teamId: '',
-                metadata: {
-                    userId: integration.userId,
-                    userEmail: integration.user?.email,
-                    userName: integration.user?.name,
+            await notifyQueue.add(
+                'send-notification',
+                {
+                    type: 'CALENDAR_RECONNECT_REQUIRED',
+                    teamId: '',
+                    metadata: {
+                        userId: integration.userId,
+                        userEmail: integration.user?.email,
+                        userName: integration.user?.name,
+                        reason: 'consecutive_errors',
+                    },
                 },
-            })
+                { jobId: `calendar-reconnect-notify:${integration.id}` } // dedup notification
+            )
             logger.error({ integrationId: integration.id, userId: integration.userId }, 'token-refresh.worker: user calendar circuit breaker tripped')
         }
         throw err

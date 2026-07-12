@@ -46,14 +46,23 @@ export const notifyQueue = new Queue('notify', {
 })
 
 // integrate: Sync to Jira / Linear / Notion
+// Day 58 §15 — Distinct retry policy, justified against other queues:
+//   5 attempts, 15s base exponential → 15s / 30s / 60s / 120s / 240s (≈7.5 min span)
+//   WHY 5 not 3: A transient Jira 5xx during a brief maintenance window should
+//   self-resolve within 7.5 minutes without human intervention. 2-3 attempts risks
+//   a permanently-unsynced action item after a common Jira blip.
+//   WHY NOT 10+: Too aggressive → looks "stuck" in the settings UI and risks
+//   tripping Jira's own rate limiting, making the problem worse.
+//   concurrency: environment-tunable, default 3 (lower than calendar sync's 5
+//   because ticket creation has externally-visible side effects per call).
 export const integrateQueue = new Queue('integrate', {
   connection,
   defaultJobOptions: {
-    attempts:    3,
-    backoff:     { type: 'exponential', delay: 20_000 },
+    attempts:    5,
+    backoff:     { type: 'exponential', delay: 15_000 },
     priority:    4,
     removeOnComplete: { count: 100 },
-    removeOnFail:     { count: 50 },
+    removeOnFail:     false, // Never auto-remove failed integrate jobs — they need inspection
   },
 })
 

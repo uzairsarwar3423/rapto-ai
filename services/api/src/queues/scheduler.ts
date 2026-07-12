@@ -37,6 +37,10 @@ async function enqueueTeamTokenRefreshJobs(): Promise<void> {
         where: {
             isActive: true,
             tokenExpiresAt: { not: null, lte: new Date(Date.now() + EXPIRY_WINDOW_MS) },
+            // Skip integrations that have already hit the circuit breaker threshold.
+            // consecutiveErrors >= CIRCUIT_BREAKER_THRESHOLD means isActive should be
+            // false already, but this is a belt-and-suspenders guard.
+            consecutiveErrors: { lt: 5 },
         },
         select: { id: true },
     })
@@ -57,10 +61,21 @@ async function enqueueTeamTokenRefreshJobs(): Promise<void> {
 async function enqueueUserTokenRefreshJobs(): Promise<void> {
     const EXPIRY_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
 
+    // NON_RETRIABLE_ERRORS that the worker handles — mirrored here so the
+    // cron never re-enqueues a job that the worker would immediately kill.
+    const NON_RETRIABLE_LAST_ERRORS = [
+        'GOOGLE_CALENDAR: GOOGLE_REFRESH_TOKEN_REVOKED',
+        'GOOGLE_CALENDAR: GOOGLE_AUTH_CODE_INVALID',
+    ]
+
     const expiring = await prisma.userIntegration.findMany({
         where: {
             syncEnabled: true,
             tokenExpiresAt: { not: null, lte: new Date(Date.now() + EXPIRY_WINDOW_MS) },
+            // Skip integrations whose last error is a known permanent failure.
+            // The worker's UnrecoverableError path sets syncEnabled=false; this
+            // is an extra guard for the race between cron-enqueue and DB write.
+            NOT: { lastError: { in: NON_RETRIABLE_LAST_ERRORS } },
         },
         select: { id: true },
     })

@@ -5,6 +5,111 @@ import { env } from '../../config/env'
 import { redis } from '../../config/redis'
 import { logger } from '../../config/logger'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// JIRA-SPECIFIC CONTROLLERS (Day 58 §13)
+// Rule: zero business logic here — handlers are pure request/response adapters.
+// All orchestration lives in integrations.service.ts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/v1/integrations/jira/connect
+ * Role: ADMIN+. Redirects to Atlassian's OAuth consent screen.
+ */
+export const connectJiraController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const userId = req.user!.id
+        const result = await integrationsService.initiateOAuth('JIRA', teamId, userId)
+        // Return auth URL for frontend to redirect — do not redirect server-side
+        // (frontend needs to open the OAuth flow in the same tab/window)
+        res.status(200).json({ success: true, data: { authUrl: result.authUrl } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+/**
+ * GET /api/v1/integrations/jira/callback
+ * No requireAuth — secured by the Redis state token (§13).
+ * The user's session may have aged during the OAuth round-trip, so JWT auth
+ * is intentionally absent; the state token is the security boundary.
+ */
+export const jiraCallbackController = async (req: Request, res: Response, next: NextFunction) => {
+    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+    try {
+        const { code, state, error } = req.query
+
+        if (error) {
+            logger.info({ error }, 'integrate.jira.callback_failed: user denied consent or provider error')
+            return res.redirect(`${frontendUrl}/settings/integrations?error=oauth_denied`)
+        }
+
+        if (!code || !state) {
+            return res.redirect(`${frontendUrl}/settings/integrations?error=oauth_invalid_params`)
+        }
+
+        const result = await integrationsService.handleOAuthCallback('JIRA', code as string, state as string)
+        res.redirect(result.redirectUrl)
+    } catch (e: any) {
+        const errorCode = e.code || 'JIRA_CONNECT_FAILED'
+        logger.error({ err: e.message, code: errorCode }, 'integrate.jira.callback_failed')
+        res.redirect(`${frontendUrl}/settings/integrations?error=${encodeURIComponent(errorCode)}`)
+    }
+}
+
+/**
+ * GET /api/v1/integrations/jira/projects
+ * Role: ADMIN+. Returns simplified project list for the settings dropdown.
+ * 422 if integration exists but cloudId is missing (structurally impossible
+ * per §9's design, but defended anyway per §24).
+ */
+export const listJiraProjectsController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const projects = await integrationsService.getJiraProjects(teamId)
+        res.status(200).json({ success: true, data: { projects } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+/**
+ * PATCH /api/v1/integrations/jira/configure
+ * Role: ADMIN+. Sets projectKey, defaultIssueType, optional defaultPriority.
+ * Uses JSONB merge-update — setting only projectKey never clobbers defaultIssueType.
+ */
+export const configureJiraController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const { projectKey, defaultIssueType, defaultPriority } = req.body
+
+        const configPatch: Record<string, string> = { projectKey, defaultIssueType }
+        if (defaultPriority) configPatch.defaultPriority = defaultPriority
+
+        const result = await integrationsService.updateConfig(teamId, 'JIRA', configPatch)
+        res.status(200).json({ success: true, data: result })
+    } catch (e) {
+        next(e)
+    }
+}
+
+/**
+ * DELETE /api/v1/integrations/jira
+ * Role: ADMIN+. Revokes token, deletes the row.
+ * Already-synced action items KEEP their jiraIssueId/Url/SyncedAt (historical record).
+ */
+export const disconnectJiraController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const userId = req.user!.id
+        await integrationsService.disconnectIntegration(teamId, 'JIRA', userId)
+        res.status(200).json({ success: true, data: { message: 'Jira disconnected successfully' } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+
 export const listIntegrationsController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const teamId = req.teamId!

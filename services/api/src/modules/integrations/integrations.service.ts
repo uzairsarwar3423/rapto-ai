@@ -6,8 +6,9 @@ import { jiraProvider } from './providers/jira.provider'
 import { slackProvider } from './providers/slack.provider'
 import { linearProvider } from './providers/linear.provider'
 import { notionProvider } from './providers/notion.provider'
+import { getProvider } from './providers/provider.registry'
 import { AppError } from '../../utils/errors'
-import { encrypt } from '../../utils/crypto'
+import { encrypt, decrypt } from '../../utils/crypto'
 import { redis } from '../../config/redis'
 import { getIO } from '../../realtime/socket.server'
 import { SERVER_EVENTS } from '../../realtime/socket.events'
@@ -82,18 +83,45 @@ export class IntegrationsService {
         if (!consumed) throw new AppError('OAUTH_INVALID_STATE', 400, 'Invalid state parameter')
         if (consumed.provider !== provider) throw new AppError('OAUTH_PROVIDER_MISMATCH', 400, 'Provider mismatch')
 
+        logger.info({ provider, teamId: consumed.teamId, userId: consumed.userId }, `integrate.${provider.toLowerCase()}.connect_initiated`)
+
         const providerClient = resolveProvider(provider)
         let tokenResponse
         try {
             tokenResponse = await providerClient.exchangeCodeForTokens(code)
         } catch (e: any) {
-            logger.error({ error: e.message, provider }, 'Provider token exchange failed')
+            logger.error({ err: e.message, provider, teamId: consumed.teamId }, `integrate.${provider.toLowerCase()}.callback_failed`)
             throw new AppError('PROVIDER_TOKEN_EXCHANGE_FAILED', 502, 'Provider token exchange failed')
         }
 
         const encryptedAccess = encrypt(tokenResponse.accessToken)
         const encryptedRefresh = tokenResponse.refreshToken ? encrypt(tokenResponse.refreshToken) : null
         const tokenExpiresAt = tokenResponse.expiresIn ? addSeconds(new Date(), tokenResponse.expiresIn) : null
+
+        // ─────────────────────────────────────────────────────────────────────
+        // CRITICAL (Day 58 §18 — upsert-merge, not blind overwrite):
+        //
+        // When an admin reconnects after a NEEDS_RECONNECT state, the upsert MUST
+        // preserve the already-configured metadata.projectKey / defaultIssueType.
+        // Only token fields and isActive / consecutiveErrors should reset.
+        //
+        // A naive upsert that replaces the entire metadata object with a fresh {}
+        // would silently un-configure a previously-working integration on every
+        // reconnect, forcing the admin to redo project configuration — called out
+        // explicitly as a test case in §27.
+        //
+        // Implementation: load existing metadata first, then merge the new provider
+        // extras ON TOP of it (existing config wins for non-token keys).
+        // ─────────────────────────────────────────────────────────────────────
+        const existing = await integrationsRepository.findByTeamAndProvider(consumed.teamId, provider)
+        const existingMetadata = (existing?.metadata as Record<string, unknown>) ?? {}
+        const newProviderExtras = tokenResponse.workspaceMeta.extra
+            ? (tokenResponse.workspaceMeta.extra as Record<string, unknown>)
+            : {}
+
+        // Merge order: existing config first, new extras override only their own keys.
+        // This preserves projectKey/defaultIssueType while updating cloudId on reconnect.
+        const mergedMetadata = { ...existingMetadata, ...newProviderExtras }
 
         await integrationsRepository.upsert(consumed.teamId, provider, {
             accessTokenEnc: encryptedAccess,
@@ -102,9 +130,7 @@ export class IntegrationsService {
             workspaceId: tokenResponse.workspaceMeta.id,
             workspaceName: tokenResponse.workspaceMeta.name,
             workspaceUrl: tokenResponse.workspaceMeta.url,
-            metadata: tokenResponse.workspaceMeta.extra
-                ? { ...(tokenResponse.workspaceMeta.extra as Record<string, unknown>) }
-                : undefined,
+            metadata: mergedMetadata,
             isActive: true,
             consecutiveErrors: 0,
             connectedById: consumed.userId,
@@ -112,16 +138,18 @@ export class IntegrationsService {
 
         await redis.del(`cache:team:integrations:${consumed.teamId}`)
         try {
-          getIO().to(teamRoom(consumed.teamId)).emit(SERVER_EVENTS.INTEGRATION_CONNECTED, {
-            provider,
-            workspaceName: tokenResponse.workspaceMeta.name,
-          })
+            getIO().to(teamRoom(consumed.teamId)).emit(SERVER_EVENTS.INTEGRATION_CONNECTED, {
+                provider,
+                workspaceName: tokenResponse.workspaceMeta.name,
+            })
         } catch (err) {
-          logger.warn({ err }, 'integrations.service: Socket.io emit failed (non-fatal)')
+            logger.warn({ err }, 'integrations.service: Socket.io emit failed (non-fatal)')
         }
 
+        logger.info({ provider, teamId: consumed.teamId }, `integrate.${provider.toLowerCase()}.connected`)
+
         return {
-            redirectUrl: `${env.FRONTEND_URL}/settings/integrations?connected=${provider}`,
+            redirectUrl: `${env.FRONTEND_URL}/settings/integrations?connected=${provider.toLowerCase()}`,
         }
     }
 
@@ -135,9 +163,9 @@ export class IntegrationsService {
         await integrationsRepository.markDisconnected(integration.id, requesterId)
         await redis.del(`cache:team:integrations:${teamId}`)
         try {
-          getIO().to(teamRoom(teamId)).emit(SERVER_EVENTS.INTEGRATION_DISCONNECTED, { provider })
+            getIO().to(teamRoom(teamId)).emit(SERVER_EVENTS.INTEGRATION_DISCONNECTED, { provider })
         } catch (err) {
-          logger.warn({ err }, 'integrations.service: Socket.io disconnect emit failed (non-fatal)')
+            logger.warn({ err }, 'integrations.service: Socket.io disconnect emit failed (non-fatal)')
         }
 
         return { message: 'Disconnected', provider }
@@ -161,34 +189,46 @@ export class IntegrationsService {
         return { healthy: result.healthy, workspaceName: result.workspaceName, lastChecked: new Date() }
     }
 
+    /**
+     * ensureValidTeamToken — thin wrapper delegating to the shared
+     * getValidAccessToken() helper (token-refresh.service.ts). Kept for
+     * backward-compat with getProviderOptions() which still calls this.
+     *
+     * New code should call getValidAccessToken() directly.
+     */
     async ensureValidTeamToken(integration: any): Promise<string> {
-        const { decrypt, encrypt } = await import('../../utils/crypto')
-        const { prisma } = await import('../../db/client')
-        const now = new Date()
-        
-        if (integration.tokenExpiresAt && integration.tokenExpiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
-            if (!integration.refreshTokenEnc) return decrypt(integration.accessTokenEnc)
-            const providerClient = resolveProvider(integration.provider)
-            try {
-                const refreshResult = await providerClient.refreshAccessToken(integration.refreshTokenEnc)
-                const encryptedAccess = encrypt(refreshResult.accessToken)
-                const tokenExpiresAt = refreshResult.expiresIn ? addSeconds(new Date(), refreshResult.expiresIn) : null
-                
-                await prisma.teamIntegration.update({
-                    where: { id: integration.id },
-                    data: {
-                        accessTokenEnc: encryptedAccess,
-                        tokenExpiresAt
-                    }
-                })
-                return refreshResult.accessToken
-            } catch (err) {
-                logger.error({ error: err, integrationId: integration.id }, 'Failed to proactively refresh team integration token')
-                return decrypt(integration.accessTokenEnc)
-            }
-        }
-        return decrypt(integration.accessTokenEnc)
+        const { getValidAccessToken } = await import('../../services/token-refresh.service')
+        return getValidAccessToken(integration, true /* isTeamLevel */)
     }
+
+    /**
+     * getJiraProjects — fetches the team's Jira projects for the configuration dropdown.
+     * Called by GET /integrations/jira/projects (Day 58 §13, §24).
+     * Returns a simplified { key, name }[] — avoids the heavyweight getProviderOptions()
+     * generic branch that also handles Slack/Linear/Notion differently.
+     */
+    async getJiraProjects(teamId: string): Promise<Array<{ key: string; name: string }>> {
+        const integration = await integrationsRepository.findByTeamAndProvider(teamId, 'JIRA')
+
+        if (!integration || !integration.isActive) {
+            throw new AppError('INTEGRATION_NOT_CONNECTED', 422, 'Jira integration is not connected or inactive.')
+        }
+
+        const metadata = integration.metadata as Record<string, any>
+        const cloudId = metadata?.cloudId || integration.workspaceId
+
+        if (!cloudId) {
+            throw new AppError(
+                'JIRA_NO_ACCESSIBLE_SITES',
+                422,
+                'Jira cloudId is missing — the integration must be reconnected.'
+            )
+        }
+
+        const accessToken = await this.ensureValidTeamToken(integration)
+        return jiraProvider.listProjects(accessToken, cloudId)
+    }
+
 
     async updateConfig(teamId: string, provider: ProviderType, config: Record<string, any>) {
         const { prisma } = await import('../../db/client')
@@ -344,7 +384,7 @@ export class IntegrationsService {
 
         // 1. Exchange code for tokens
         const tokenResponse = await googleCalendarProvider.exchangeCodeForTokens(code)
-        
+
         // 2. Fetch primary calendar id
         let calendarId = 'primary'
         try {
@@ -397,7 +437,7 @@ export class IntegrationsService {
         const { prisma } = await import('../../db/client')
         const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
         const { decrypt } = await import('../../utils/crypto')
-        
+
         const integration = await prisma.userIntegration.findUnique({
             where: { userId_provider: { userId, provider } }
         })
@@ -442,7 +482,7 @@ export class IntegrationsService {
         const { prisma } = await import('../../db/client')
         const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
         const { detectPlatform } = await import('../../utils/platform-detect')
-        
+
         const integration = await prisma.userIntegration.findUnique({
             where: { userId_provider: { userId, provider: 'GOOGLE_CALENDAR' } }
         })
@@ -488,7 +528,7 @@ export class IntegrationsService {
 
             const processedEvents = eventsResult.items.map(event => {
                 const extracted = extractMeetingUrl(event)
-                
+
                 return {
                     id: event.id || '',
                     summary: event.summary || 'Untitled Meeting',
