@@ -1,0 +1,46 @@
+src/modules/integrations/integrations.service.ts(308,75): error TS2339: Property 'expiresIn' does not exist on type '{ accessToken: string; expiresAt: Date; }'.
+src/modules/integrations/integrations.service.ts(326,57): error TS2339: Property 'testConnection' does not exist on type 'GoogleCalendarProvider'.
+src/modules/integrations/integrations.service.ts(445,17): error TS2339: Property 'platformDetect' does not exist on type 'typeof import("/home/uzair/vocaply-system/services/api/src/utils/platform-detect")'.
+src/modules/integrations/integrations.service.ts(462,75): error TS2339: Property 'expiresIn' does not exist on type '{ accessToken: string; expiresAt: Date; }'.
+src/modules/integrations/integrations.service.ts(479,63): error TS2554: Expected 2 arguments, but got 1.
+src/modules/integrations/integrations.service.ts(486,21): error TS2339: Property 'extractMeetingUrl' does not exist on type 'typeof import("/home/uzair/vocaply-system/services/api/src/services/calendar-sync.service")'.
+src/modules/integrations/integrations.service.ts(486,40): error TS2339: Property 'shouldProcessEvent' does not exist on type 'typeof import("/home/uzair/vocaply-system/services/api/src/services/calendar-sync.service")'.
+src/modules/meetings/meetings.service.ts(197,7): error TS2353: Object literal may only specify known properties, and 'calendarSourceUserId' does not exist in type 'CreateMeetingData'.
+src/modules/meetings/meetings.service.ts(319,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/modules/meetings/meetings.service.ts(341,7): error TS2322: Type 'PlatformType | null' is not assignable to type 'PlatformType'.
+  Type 'null' is not assignable to type 'PlatformType'.
+src/modules/meetings/meetings.service.ts(351,39): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/modules/meetings/meetings.service.ts(355,39): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/modules/meetings/meetings.validator.ts(9,10): error TS2305: Module '"../../utils/platform-detect"' has no exported member 'urlMatchesPlatform'.
+src/tests/unit/dedup.service.test.ts(6,1): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(8,10): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(9,10): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(13,1): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(14,27): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(17,1): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(19,16): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(23,1): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(25,11): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(26,12): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(27,12): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(28,11): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(32,1): error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+src/tests/unit/dedup.service.test.ts(38,3): error TS2304: Cannot find name 'afterEach'.
+src/tests/unit/dedup.service.test.ts(39,5): error TS2304: Cannot find name 'jest'.
+src/tests/unit/dedup.service.test.ts(42,3): error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+src/tests/unit/dedup.service.test.ts(44,20): error TS2503: Cannot find namespace 'jest'.
+src/tests/unit/dedup.service.test.ts(57,5): error TS2304: Cannot find name 'expect'.
+src/tests/unit/dedup.service.test.ts(58,5): error TS2304: Cannot find name 'expect'.
+src/tests/unit/dedup.service.test.ts(61,3): error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+src/tests/unit/dedup.service.test.ts(64,5): error TS2304: Cannot find name 'expect'.
+src/tests/unit/dedup.service.test.ts(67,3): error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+src/tests/unit/dedup.service.test.ts(68,20): error TS2503: Cannot find namespace 'jest'.
+src/tests/unit/dedup.service.test.ts(69,38): error TS2503: Cannot find namespace 'jest'.
+src/tests/unit/dedup.service.test.ts(73,5): error TS2304: Cannot find name 'expect'.
+src/tests/unit/dedup.service.test.ts(74,5): error TS2304: Cannot find name 'expect'.
+src/tests/unit/dedup.service.test.ts(77,3): error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+src/tests/unit/dedup.service.test.ts(79,5): error TS2304: Cannot find name 'expect'.
+src/tests/unit/dedup.service.test.ts(80,5): error TS2304: Cannot find name 'expect'.

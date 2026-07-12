@@ -25,7 +25,8 @@ import { prisma } from '../../db/client'
 import { logger } from '../../config/logger'
 import { AppError, NotFoundError, DuplicateError } from '../../utils/errors'
 import { invalidatePlanCache } from '../../middleware/plan-limits.middleware'
-import { platformDetect, buildDedupKey, calculateDedupTTL } from '../../utils/platform-detect'
+import { detectPlatform as platformDetect } from '../../utils/platform-detect'
+import { dedupService } from '../../services/dedup.service'
 import * as repo from './meetings.repository'
 import * as recallService from '../../services/recall.service'
 import { mongoService } from '../../services/mongo.service'
@@ -71,34 +72,16 @@ export async function createMeeting(input: CreateMeetingInput) {
   // This is an additional service-layer guard for when service is called directly.
   // The middleware is the primary check — this is defense in depth.
 
-  // ── Step 3: Redis Deduplication (fast path, ~1ms) ─────────────────────────
-  if (platform !== 'MANUAL' && platformMeetingId) {
-    const dedupKey = buildDedupKey(platform, platformMeetingId)
-    const existingId = await redis.get(dedupKey).catch(() => null)
+  // ── Step 3 & 4: Deduplication (Redis + Postgres) ────────────────────────
+  const isDuplicate = await dedupService.checkAndClaim({
+    teamId,
+    platform,
+    platformMeetingId: platformMeetingId ?? '',
+    scheduledAt
+  })
 
-    if (existingId) {
-      logger.warn({ teamId, dedupKey, existingMeetingId: existingId }, 'Duplicate meeting blocked by Redis dedup')
-      throw new DuplicateError(
-        'A meeting with this URL is already scheduled for your team',
-        { existingMeetingId: existingId, platform, platformMeetingId }
-      )
-    }
-  }
-
-  // ── Step 4: DB Deduplication (race condition protection, ~5ms) ───────────
-  if (platform !== 'MANUAL' && platformMeetingId) {
-    const existing = await repo.findByPlatformId(teamId, platform, platformMeetingId)
-
-    if (existing) {
-      logger.warn(
-        { teamId, existingId: existing.id, platformMeetingId },
-        'Duplicate meeting blocked by DB dedup'
-      )
-      throw new DuplicateError(
-        'A meeting with this URL is already scheduled for your team',
-        { existingMeetingId: existing.id, platform, platformMeetingId }
-      )
-    }
+  if (isDuplicate) {
+    throw new DuplicateError('A meeting with this URL is already scheduled for your team', { platform, platformMeetingId })
   }
 
   // ── Step 5: Schedule Recall.ai Bot (BEFORE DB write) ─────────────────────
@@ -138,6 +121,11 @@ export async function createMeeting(input: CreateMeetingInput) {
       // Non-fatal — operations team should reconcile
     }
 
+    // Release dedup claim on failure
+    if (platformMeetingId) {
+      await dedupService.releaseClaim(platform, platformMeetingId)
+    }
+
     // Prisma unique constraint violation (race condition — someone else won)
     if (error?.code === 'P2002') {
       throw new DuplicateError('A meeting with this URL is already scheduled')
@@ -146,15 +134,9 @@ export async function createMeeting(input: CreateMeetingInput) {
     throw error
   }
 
-  // ── Step 7: Set Redis Dedup Key (AFTER DB write) ──────────────────────────
-  if (platform !== 'MANUAL' && platformMeetingId) {
-    const dedupKey = buildDedupKey(platform, platformMeetingId)
-    const ttl = calculateDedupTTL(scheduledAt)
-
-    redis.setex(dedupKey, ttl, meeting.id).catch((err) => {
-      // Non-fatal — DB dedup will catch it on next attempt
-      logger.warn({ dedupKey, ttl, meetingId: meeting.id, err }, 'redis_dedup_key_missing: Redis setex failed')
-    })
+  // ── Step 7: Confirm Claim ───────────────────────────────────────────────
+  if (platformMeetingId) {
+    await dedupService.confirmClaim(platform, platformMeetingId, meeting.id)
   }
 
   // Invalidate plan cache to reflect the new in-flight meeting
@@ -212,7 +194,6 @@ export async function createMeetingFromCalendar(input: {
       recallBotId: botId,
       scheduledAt,
       calendarEventId,
-      calendarSourceUserId,
       status: 'SCHEDULED',
     })
   } catch (error: any) {
@@ -331,16 +312,16 @@ export async function addBotManually(input: AddBotInput) {
   const { platform, platformMeetingId } = platformDetect(meetingUrl)
 
   // Dedup check for manual bot add
-  if (platform !== 'MANUAL' && platformMeetingId) {
-    const dedupKey = buildDedupKey(platform, platformMeetingId)
-    const existingId = await redis.get(dedupKey).catch(() => null)
-    if (existingId) {
+  if (platformMeetingId && platform) {
+    const isDuplicate = await dedupService.checkAndClaim({
+      teamId,
+      platform,
+      platformMeetingId,
+      scheduledAt: new Date()
+    })
+    
+    if (isDuplicate) {
       throw new DuplicateError('A bot is already scheduled or active for this meeting URL')
-    }
-
-    const existing = await repo.findByPlatformId(teamId, platform, platformMeetingId)
-    if (existing) {
-      throw new DuplicateError('A meeting with this URL is already active')
     }
   }
 
@@ -351,21 +332,28 @@ export async function addBotManually(input: AddBotInput) {
     teamId,
   })
 
-  const meeting = await repo.create({
-    teamId,
-    title: 'Manual Bot Addition',
-    platform,
-    meetingUrl,
-    platformMeetingId: platformMeetingId ?? null,
-    recallBotId: botId,
-    scheduledAt: new Date(),
-    status: 'BOT_JOINING',
-  })
+  let meeting
+  try {
+    meeting = await repo.create({
+      teamId,
+      title: 'Manual Bot Addition',
+      platform: platform as any,
+      meetingUrl,
+      platformMeetingId: platformMeetingId ?? null,
+      recallBotId: botId,
+      scheduledAt: new Date(),
+      status: 'BOT_JOINING',
+    })
 
-  // Set Redis dedup key
-  if (platform !== 'MANUAL' && platformMeetingId) {
-    const dedupKey = buildDedupKey(platform, platformMeetingId)
-    redis.setex(dedupKey, 4 * 3600, meeting.id).catch(() => {})
+    // Confirm dedup claim
+    if (platformMeetingId && platform) {
+      await dedupService.confirmClaim(platform, platformMeetingId, meeting.id)
+    }
+  } catch (error) {
+    if (platformMeetingId && platform) {
+      await dedupService.releaseClaim(platform, platformMeetingId)
+    }
+    throw error
   }
 
   // Invalidate plan cache to reflect the new in-flight meeting
@@ -408,8 +396,7 @@ export async function removeBot(id: string, teamId: string) {
 
   // Remove Redis dedup key
   if (meeting.platformMeetingId && meeting.platform) {
-    const dedupKey = buildDedupKey(meeting.platform, meeting.platformMeetingId)
-    redis.del(dedupKey).catch(() => {})
+    await dedupService.releaseClaim(meeting.platform, meeting.platformMeetingId).catch(() => {})
   }
 
   // Invalidate plan cache because in-flight meetings count decreased
@@ -453,8 +440,7 @@ export async function deleteMeeting(
 
   // Remove Redis dedup key
   if (meeting.platformMeetingId && meeting.platform) {
-    const dedupKey = buildDedupKey(meeting.platform, meeting.platformMeetingId)
-    redis.del(dedupKey).catch(() => {})
+    await dedupService.releaseClaim(meeting.platform, meeting.platformMeetingId).catch(() => {})
   }
 
   // Invalidate plan cache in case the deleted meeting was in-flight

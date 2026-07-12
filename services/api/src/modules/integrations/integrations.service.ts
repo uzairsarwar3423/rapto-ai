@@ -305,7 +305,7 @@ export class IntegrationsService {
                 if (!integration.refreshTokenEnc) throw new Error('No refresh token')
                 const refreshResult = await googleCalendarProvider.refreshAccessToken(integration.refreshTokenEnc)
                 const newAccessTokenEnc = encrypt(refreshResult.accessToken)
-                const newExpiresAt = addSeconds(new Date(), refreshResult.expiresIn)
+                const newExpiresAt = refreshResult.expiresAt
                 await prisma.userIntegration.update({
                     where: { id: integration.id },
                     data: { accessTokenEnc: newAccessTokenEnc, tokenExpiresAt: newExpiresAt }
@@ -322,8 +322,7 @@ export class IntegrationsService {
             return { healthy: false, lastChecked: new Date(), error: refreshErr.message }
         }
 
-        const { encrypt } = await import('../../utils/crypto')
-        const testResult = await googleCalendarProvider.testConnection(encrypt(plainAccessToken))
+        const testResult = await googleCalendarProvider.testConnection(plainAccessToken)
         if (testResult.healthy) {
             await prisma.userIntegration.update({
                 where: { id: integration.id },
@@ -442,7 +441,7 @@ export class IntegrationsService {
     async getCalendarPreview(userId: string) {
         const { prisma } = await import('../../db/client')
         const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
-        const { platformDetect } = await import('../../utils/platform-detect')
+        const { detectPlatform } = await import('../../utils/platform-detect')
         
         const integration = await prisma.userIntegration.findUnique({
             where: { userId_provider: { userId, provider: 'GOOGLE_CALENDAR' } }
@@ -459,7 +458,7 @@ export class IntegrationsService {
                 if (!integration.refreshTokenEnc) throw new Error('No refresh token')
                 const refreshResult = await googleCalendarProvider.refreshAccessToken(integration.refreshTokenEnc)
                 const newAccessTokenEnc = encrypt(refreshResult.accessToken)
-                const newExpiresAt = addSeconds(new Date(), refreshResult.expiresIn)
+                const newExpiresAt = refreshResult.expiresAt
                 await prisma.userIntegration.update({
                     where: { id: integration.id },
                     data: { accessTokenEnc: newAccessTokenEnc, tokenExpiresAt: newExpiresAt }
@@ -475,22 +474,19 @@ export class IntegrationsService {
         try {
             const now = new Date()
             const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-            const { encrypt } = await import('../../utils/crypto')
-            const eventsResult = await googleCalendarProvider.listEvents({
-                accessTokenEnc: encrypt(plainAccessToken),
+            const eventsResult = await googleCalendarProvider.listEvents(plainAccessToken, {
                 calendarId: integration.calendarId || 'primary',
                 timeMin: now.toISOString(),
                 timeMax: timeMax.toISOString(),
             })
 
-            const { extractMeetingUrl, shouldProcessEvent } = await import('../../services/calendar-sync.service')
+            const { extractMeetingUrl } = await import('../../utils/platform-detect')
             const user = await prisma.user.findUnique({
                 where: { id: userId },
                 select: { email: true }
             })
 
             const processedEvents = eventsResult.items.map(event => {
-                const hasMeeting = shouldProcessEvent(event, user?.email || '')
                 const extracted = extractMeetingUrl(event)
                 
                 return {
@@ -499,9 +495,9 @@ export class IntegrationsService {
                     start: event.start?.dateTime || event.start?.date || '',
                     end: event.end?.dateTime || event.end?.date || '',
                     location: event.location || null,
-                    meetingUrl: extracted?.url || null,
-                    platform: extracted ? platformDetect(extracted.url).platform : null,
-                    isValid: hasMeeting
+                    meetingUrl: extracted || null,
+                    platform: extracted ? detectPlatform(extracted).platform : null,
+                    isValid: !!extracted
                 }
             })
 

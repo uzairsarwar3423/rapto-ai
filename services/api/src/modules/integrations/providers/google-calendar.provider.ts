@@ -196,6 +196,15 @@ export class GoogleCalendarProvider {
         }
     }
 
+    public async testConnection(accessToken: string): Promise<{ healthy: boolean }> {
+        try {
+            await this.getUserCalendarList(accessToken)
+            return { healthy: true }
+        } catch (e) {
+            return { healthy: false }
+        }
+    }
+
     public async getUserCalendarList(accessToken: string): Promise<GoogleCalendarListEntry[]> {
         try {
             const response = await this.apiClient.get<{ items: GoogleCalendarListEntry[] }>(

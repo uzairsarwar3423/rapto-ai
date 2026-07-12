@@ -97,7 +97,7 @@ export async function findByRecallBotId(botId: string) {
  * Deduplication query: find active meeting with the same platform+meetingId for this team.
  * Excludes terminal statuses (DONE, FAILED, CANCELLED).
  */
-export async function findByPlatformId(
+export async function findActiveByPlatformId(
   teamId: string,
   platform: string,
   platformMeetingId: string

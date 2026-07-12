@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'zod'
-import { urlMatchesPlatform } from '../../utils/platform-detect'
+import { detectPlatform } from '../../utils/platform-detect'
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ export const createMeetingSchema = {
     .superRefine((data, ctx) => {
       // Cross-field: URL must match declared platform
       if (data.platform !== 'MANUAL' && data.meetingUrl) {
-        if (!urlMatchesPlatform(data.meetingUrl, data.platform)) {
+        if (detectPlatform(data.meetingUrl).platform !== data.platform) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: `Meeting URL does not match platform '${data.platform}'. Provide a valid ${data.platform} URL or set platform to MANUAL.`,

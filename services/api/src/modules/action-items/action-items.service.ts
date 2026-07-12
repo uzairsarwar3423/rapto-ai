@@ -6,6 +6,7 @@ import { AppError, ForbiddenError, NotFoundError } from '../../utils/errors'
 import { PriorityLevel } from '@prisma/client'
 import type { ListActionItemsQuery, UpdateActionItemDto } from './action-items.types'
 import { env } from '../../config/env'
+import { IdentityResolutionService } from '../../services/commitment-resolver.service'
 
 function getReconnectUrl(provider: string): string {
   const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
@@ -82,6 +83,14 @@ async function updateActionItem(
         throw new AppError('ASSIGNEE_NOT_IN_TEAM', 400, 'Assignee must be an active member of the same team')
       }
       updatePayload.assigneeId = data.assigneeId
+
+      // TIER 3 SELF-HEALING: If the action item is being manually assigned/reassigned,
+      // and it has an extracted raw name, we train the Identity Resolution System.
+      if (actionItem.assigneeId !== data.assigneeId && actionItem.assigneeNameRaw) {
+        // Fire and forget, don't block the API response
+        IdentityResolutionService.trainSystemWithAlias(data.assigneeId, actionItem.assigneeNameRaw)
+          .catch(err => console.error("Failed to train identity system:", err));
+      }
     }
   }
 
