@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Kbd } from "../Kbd";
 
 interface SidebarNavItemProps {
@@ -24,7 +24,7 @@ interface SidebarNavItemProps {
 }
 
 // Custom hover micro-interactions tailored specifically to each icon type
-const iconVariants = {
+const iconVariants: Record<string, Variants> = {
   Dashboard: {
     hover: {
       rotate: [0, -6, 6, 0],
