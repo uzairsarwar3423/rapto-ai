@@ -76,6 +76,10 @@ export const SERVER_EVENTS = {
   INTEGRATION_CONNECTED:    'integration:connected',
   INTEGRATION_DISCONNECTED: 'integration:disconnected',
   ACTION_ITEM_SYNCED:       'action_item:synced',
+  // Day 59: fired when a Jira webhook marks an action item complete.
+  // Payload: { actionItemId, completed, source: 'jira' }
+  // Frontend reads `source` to decide whether to render the "Synced from Jira" badge.
+  ACTION_ITEM_COMPLETED:    'action_item:completed',
 
   // ── Notifications ────────────────────────────────────────────────────────
   NOTIFICATION_CREATED: 'notification:created',

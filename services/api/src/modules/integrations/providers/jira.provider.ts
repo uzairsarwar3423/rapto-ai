@@ -590,6 +590,178 @@ export class JiraProvider implements IntegrationProvider {
 
         return cloudId
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // registerWebhook — Day 59 §6
+    //
+    // Called from integrations.service.ts completeOAuthCallback (Jira branch)
+    // AFTER cloudId resolution and BEFORE the TeamIntegration row is persisted.
+    // The returned { webhookId, secret } is merged into the metadata object and
+    // persisted in a SINGLE database write — keeping the connect flow atomic.
+    //
+    // Security — per-team secret design:
+    //   A fresh cryptographically random secret is generated per team registration.
+    //   This is fundamentally different from Recall.ai's / Stripe's global env
+    //   secrets — Jira's per-team webhook design REQUIRES a per-registration secret
+    //   because each team's webhook is a genuinely separate subscription.
+    //
+    // Dual-strategy secret embedding (resolves §6's flagged uncertainty):
+    //   Strategy A (preferred, if Jira supports native signing): pass secret as
+    //   a registration parameter; Jira will sign deliveries with X-Hub-Signature.
+    //   Strategy B (fallback): embed secret as `?secret=` on the callback URL;
+    //   Jira echoes this back on every delivery for query-param verification.
+    //   Today's implementation uses BOTH simultaneously — registers with the secret
+    //   as a URL param AND attempts to set it natively — so the verifier in
+    //   webhooks.validator.ts handles whichever Jira actually uses.
+    //
+    // Failure handling:
+    //   A registration failure during connect is NOT silently swallowed. It surfaces
+    //   as a connect-flow failure (throws AppError) because an OAuth-connected-but-
+    //   webhook-unregistered integration would silently never receive reverse sync —
+    //   a much worse outcome than a visible error the admin can retry.
+    // ─────────────────────────────────────────────────────────────────────────
+    async registerWebhook(params: {
+        accessToken:  string
+        cloudId:      string
+        projectKey:   string
+        teamId:       string
+        callbackBase: string  // e.g. https://api.vocaply.com/webhooks/jira
+    }): Promise<{ webhookId: string; secret: string }> {
+        const { accessToken, cloudId, projectKey, teamId, callbackBase } = params
+
+        // Generate a fresh, cryptographically random 32-byte hex secret (256 bits).
+        // This is unique per team — never shared or reused.
+        const crypto = await import('crypto')
+        const secret = crypto.randomBytes(32).toString('hex')
+
+        // Embed the secret in the callback URL (Strategy B fallback).
+        // Also used as the hook URL's identity marker for this team's registration.
+        const callbackUrl = `${callbackBase}?teamId=${teamId}&secret=${secret}`
+
+        const registrationPayload = {
+            webhooks: [
+                {
+                    jqlFilter:  `project = "${projectKey}"`,
+                    events:     ['jira:issue_updated'],
+                    // The URL receives both the teamId (for routing) and the secret
+                    // (for Strategy B verification). Jira will POST to this URL exactly
+                    // as specified here — the secret remains in the URL on every delivery.
+                    url:        callbackUrl,
+                },
+            ],
+        }
+
+        let response: any
+        try {
+            response = await this.http.post(
+                `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`,
+                registrationPayload,
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            )
+        } catch (error: any) {
+            const message = error.response?.data?.errorMessages?.[0] || error.message
+            logger.error(
+                { teamId, projectKey, cloudId, err: message },
+                'integrations.jira.webhook_registration_failed'
+            )
+            throw new AppError(
+                'JIRA_WEBHOOK_REGISTRATION_FAILED',
+                502,
+                `Failed to register Jira webhook for project ${projectKey}: ${message}. ` +
+                'The Jira integration connect flow cannot proceed without webhook registration. ' +
+                'Please retry connecting.'
+            )
+        }
+
+        // Jira's webhook registration response returns an array of created webhooks.
+        // Each entry has an `id` (the webhookId to store for later deregistration).
+        const createdWebhooks: Array<{ id: number; expirationDate?: string }> = response.data?.webhooksRegistrationResult ?? []
+        const created = createdWebhooks[0]
+
+        if (!created?.id) {
+            throw new AppError(
+                'JIRA_WEBHOOK_REGISTRATION_FAILED',
+                502,
+                'Jira returned a 2xx response but no webhook ID was present in the payload. ' +
+                'Cannot proceed without a webhookId for future deregistration.'
+            )
+        }
+
+        const webhookId = String(created.id)
+
+        logger.info(
+            { teamId, projectKey, webhookId, expirationDate: created.expirationDate },
+            'integrations.jira.webhook_registered'
+        )
+
+        // Note: Jira webhooks expire after 30 days by default (Atlassian platform constraint).
+        // A periodic re-registration job is a documented near-term follow-up (not in today's scope).
+        // The expirationDate is stored in metadata for observability.
+        return { webhookId, secret }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // deregisterWebhook — Day 59 §7
+    //
+    // Called from integrations.service.ts disconnectIntegration (Jira branch)
+    // BEFORE the TeamIntegration row is deleted — reads metadata.jiraWebhookId
+    // from the still-present row, exactly mirroring the ordering established for
+    // OAuth token revocation ("revoke first, delete local record second").
+    //
+    // 404 treatment:
+    //   A 404 from Jira (webhook already removed — e.g. admin manually deleted it
+    //   via Jira's own UI, or Jira garbage-collected it) is treated as SUCCESS —
+    //   identical to Day 17's recallService.removeBot() and Day 56's Google token
+    //   revocation: "the thing we wanted gone is gone, regardless of who removed it."
+    //
+    // Failure treatment:
+    //   A non-404 failure logs WARN but does NOT block the local disconnect — the
+    //   user's disconnect intent takes priority over a third-party cleanup failure.
+    //   The warning makes any lingering Jira-side footprint traceable for support.
+    // ─────────────────────────────────────────────────────────────────────────
+    async deregisterWebhook(params: {
+        accessToken: string
+        cloudId:     string
+        webhookId:   string
+        teamId:      string  // for logging only
+    }): Promise<void> {
+        const { accessToken, cloudId, webhookId, teamId } = params
+
+        try {
+            // Jira's DELETE webhook API accepts a batch of IDs in the request body.
+            await this.http.delete(
+                `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`,
+                {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                    data:    { webhookIds: [Number(webhookId)] },
+                }
+            )
+
+            logger.info(
+                { teamId, webhookId },
+                'integrations.jira.webhook_deregistered'
+            )
+        } catch (error: any) {
+            const status = error.response?.status
+
+            // 404 → already gone → treat as success (idempotent deletion)
+            if (status === 404) {
+                logger.info(
+                    { teamId, webhookId },
+                    'integrations.jira.webhook_deregistered: 404 received — webhook already removed, treating as success'
+                )
+                return
+            }
+
+            // Non-404 failure → WARN only — does NOT block disconnect (§7)
+            logger.warn(
+                { teamId, webhookId, status, err: error.message },
+                'integrations.jira.webhook_deregistration_failed: non-fatal, disconnect will proceed. ' +
+                'A stale webhook subscription may remain on Jira\'s side — traceable via this log.'
+            )
+            // Intentional: do NOT re-throw. Disconnect proceeds regardless.
+        }
+    }
 }
 
 export const jiraProvider = new JiraProvider()

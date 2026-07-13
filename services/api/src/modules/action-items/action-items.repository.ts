@@ -137,5 +137,50 @@ async function update(id: string, teamId: string, data: any) {
 export const actionItemsRepository = {
   listActionItems,
   findById,
-  update
+  update,
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // findByJiraIssueId — Day 59 §9 Step 2
+  //
+  // Uses the UNIQUE PARTIAL index idx_ai_jira_issue (jira_issue_id WHERE NOT NULL)
+  // for a sub-millisecond, indexed point lookup. The `teamId` field on the
+  // returned record is what the SERVICE LAYER uses for the explicit cross-tenant
+  // check (Step 3) — this query deliberately does NOT filter by teamId itself,
+  // per Day 59 §9's explanation: "the findById uses the GLOBAL unique index;
+  // the cross-tenant check is EXPLICIT in the service, not implicit in the query."
+  //
+  // Returns null if no action item with this jira_issue_id exists (benign — the
+  // ticket was created directly in Jira, not by Vocaply).
+  // ─────────────────────────────────────────────────────────────────────────
+  async findByJiraIssueId(jiraIssueId: string) {
+    return prisma.actionItem.findFirst({
+      where: { jiraIssueId },
+      include: {
+        assignee:  { select: { id: true, name: true } },
+        meeting:   { select: { id: true, title: true } },
+      },
+    })
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // updateSystemAttributed — Day 59 §9 Step 6
+  //
+  // System-attributed update: completedById is explicitly null (not a userId)
+  // to signal "Jira reverse-sync completed this, not a human clicking the UI."
+  // This is distinct from the human-initiated path (Day 20's action-items
+  // service, which sets completedById: req.user.id).
+  // ─────────────────────────────────────────────────────────────────────────
+  async updateSystemAttributed(
+    id: string,
+    data: {
+      completed: boolean
+      completedAt: Date | null
+      completedById: null  // enforced type: system-attributed must be null
+    }
+  ) {
+    return prisma.actionItem.update({
+      where: { id },
+      data,
+    })
+  },
 }

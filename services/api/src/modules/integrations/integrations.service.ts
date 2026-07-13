@@ -123,6 +123,63 @@ export class IntegrationsService {
         // This preserves projectKey/defaultIssueType while updating cloudId on reconnect.
         const mergedMetadata = { ...existingMetadata, ...newProviderExtras }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // Day 59 §6: Jira Webhook Registration (connect flow)
+        //
+        // MUST happen BEFORE the upsert so that the returned { webhookId, secret }
+        // is included in the SAME database write. This keeps the connect flow atomic:
+        // either tokens + cloudId + webhook registration are ALL persisted, or none.
+        //
+        // RECONNECT GUARD (§17): If an existing integration already has a
+        // jiraWebhookId in metadata, skip re-registration — the original webhook
+        // subscription almost certainly survived the OUTBOUND-sync-failure auto-
+        // disable that triggered the reconnect, and creating a second one would leave
+        // a stale, unreferenced webhook on Jira's side.
+        // ─────────────────────────────────────────────────────────────────────
+        if (provider === 'JIRA') {
+            const cloudId = mergedMetadata['cloudId'] as string | undefined
+            const projectKey = mergedMetadata['projectKey'] as string | undefined
+            const existingWebhookId = existingMetadata['jiraWebhookId'] as string | undefined
+
+            if (cloudId && projectKey && !existingWebhookId) {
+                // Fresh connection (no existing webhook) — register one now.
+                const apiBase = env.API_URL || env.APP_URL
+                const callbackBase = `${apiBase}/webhooks/jira`
+
+                const { webhookId, secret } = await jiraProvider.registerWebhook({
+                    accessToken: tokenResponse.accessToken,
+                    cloudId,
+                    projectKey,
+                    teamId:       consumed.teamId,
+                    callbackBase,
+                })
+
+                // Encrypt the per-team secret (§18: signing key = token-grade protection)
+                const { encrypt: encryptSecret } = await import('../../utils/crypto')
+                mergedMetadata['jiraWebhookId']     = webhookId
+                mergedMetadata['jiraWebhookSecret'] = encryptSecret(secret)
+
+                logger.info(
+                    { provider, teamId: consumed.teamId, webhookId },
+                    'integrations.jira.webhook_registered (connect flow)'
+                )
+            } else if (existingWebhookId) {
+                // Reconnect guard — existing webhook survives; skip re-registration.
+                logger.info(
+                    { provider, teamId: consumed.teamId, existingWebhookId },
+                    'integrations.jira: skipping webhook re-registration on reconnect — existing webhookId preserved'
+                )
+            } else if (!projectKey) {
+                // Integration connected without a projectKey configured yet (admin
+                // must still configure via PATCH /integrations/JIRA/config).
+                // Webhook registration is deferred until configure is called.
+                logger.info(
+                    { provider, teamId: consumed.teamId },
+                    'integrations.jira: no projectKey configured yet — webhook registration deferred until project is configured'
+                )
+            }
+        }
+
         await integrationsRepository.upsert(consumed.teamId, provider, {
             accessTokenEnc: encryptedAccess,
             refreshTokenEnc: encryptedRefresh,
@@ -156,6 +213,43 @@ export class IntegrationsService {
     async disconnectIntegration(teamId: string, provider: ProviderType, requesterId: string) {
         const integration = await integrationsRepository.findByTeamAndProvider(teamId, provider)
         if (!integration) throw new AppError('NOT_FOUND', 404, 'Integration not found')
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Day 59 §7: Jira Webhook Deregistration (disconnect flow)
+        //
+        // Called BEFORE markDisconnected() (row still present → metadata still readable).
+        // Mirrors the ordering for OAuth token revocation: "undo third-party side effect
+        // FIRST, delete local record SECOND." (Principle 3, Day 59 §2)
+        // ─────────────────────────────────────────────────────────────────────
+        if (provider === 'JIRA') {
+            const meta = (integration.metadata as Record<string, any>) ?? {}
+            const webhookId = meta['jiraWebhookId'] as string | undefined
+            const cloudId   = (meta['cloudId'] || integration.workspaceId) as string | undefined
+
+            if (webhookId && cloudId) {
+                try {
+                    const accessToken = decrypt(integration.accessTokenEnc)
+                    await jiraProvider.deregisterWebhook({
+                        accessToken,
+                        cloudId,
+                        webhookId,
+                        teamId,
+                    })
+                } catch (deregErr: any) {
+                    // deregisterWebhook() already handles 404-as-success and WARN-only failures.
+                    // This outer catch is a belt-and-suspenders guard — should never trigger.
+                    logger.warn(
+                        { teamId, webhookId, err: deregErr.message },
+                        'integrations.jira.webhook_deregistration_failed (outer catch) — disconnect proceeding'
+                    )
+                }
+            } else {
+                logger.info(
+                    { teamId, hasWebhookId: !!webhookId, hasCloudId: !!cloudId },
+                    'integrations.jira: no webhookId or cloudId in metadata — skipping deregistration'
+                )
+            }
+        }
 
         const providerClient = resolveProvider(provider)
         await providerClient.revokeToken(integration) // Best effort, swallows errors inside provider
@@ -239,6 +333,54 @@ export class IntegrationsService {
 
         const currentMetadata = (integration.metadata as Record<string, any>) || {}
         const updatedMetadata = { ...currentMetadata, ...config }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Day 59 deferred webhook registration:
+        // If a projectKey is being set for the FIRST TIME (no prior projectKey
+        // and no existing webhookId), register the webhook now.
+        // This handles teams that connected before the project was configured.
+        // ─────────────────────────────────────────────────────────────────────
+        if (
+            provider === 'JIRA' &&
+            config['projectKey'] &&
+            !currentMetadata['projectKey'] &&
+            !currentMetadata['jiraWebhookId'] &&
+            integration.isActive
+        ) {
+            try {
+                const cloudId = (currentMetadata['cloudId'] || integration.workspaceId) as string
+                const accessToken = await this.ensureValidTeamToken(integration)
+                const apiBase = env.API_URL || env.APP_URL
+                const callbackBase = `${apiBase}/webhooks/jira`
+
+                const { webhookId, secret } = await jiraProvider.registerWebhook({
+                    accessToken,
+                    cloudId,
+                    projectKey: config['projectKey'] as string,
+                    teamId,
+                    callbackBase,
+                })
+
+                const { encrypt: encryptSecret } = await import('../../utils/crypto')
+                updatedMetadata['jiraWebhookId']     = webhookId
+                updatedMetadata['jiraWebhookSecret'] = encryptSecret(secret)
+
+                logger.info(
+                    { teamId, webhookId, projectKey: config['projectKey'] },
+                    'integrations.jira.webhook_registered (deferred, triggered by project config)'
+                )
+            } catch (regErr: any) {
+                // Webhook registration failure during config update is a WARN, not a
+                // hard failure — the config update still succeeds (the team can still
+                // use the outbound sync direction; inbound will be unavailable until
+                // they reconnect and registration succeeds).
+                logger.warn(
+                    { teamId, err: regErr.message },
+                    'integrations.jira: deferred webhook registration failed during project config update — ' +
+                    'inbound reverse-sync will be unavailable until reconnect'
+                )
+            }
+        }
 
         await prisma.teamIntegration.update({
             where: { id: integration.id },
