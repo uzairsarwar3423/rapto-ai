@@ -73,26 +73,83 @@ export async function getOrCreatePaddleCustomer(
   })
 
   if (team?.paddleCustomerId) {
-    logger.debug({ teamId, paddleCustomerId: team.paddleCustomerId }, '[paddle.client] Reusing existing Paddle customer')
-    return team.paddleCustomerId
+    try {
+      // Verify the customer still exists in Paddle
+      await paddle.customers.get(team.paddleCustomerId)
+      logger.debug({ teamId, paddleCustomerId: team.paddleCustomerId }, '[paddle.client] Reusing existing Paddle customer')
+      return team.paddleCustomerId
+    } catch (err: any) {
+      if (err?.code === 'not_found') {
+        logger.warn({ teamId, paddleCustomerId: team.paddleCustomerId }, '[paddle.client] Customer not found in Paddle. Proceeding to create a new one.')
+      } else {
+        throw err
+      }
+    }
   }
 
-  // Create new Paddle customer
-  const customer = await paddle.customers.create({
-    email,
-    name,
-  })
+  try {
+    // Create new Paddle customer
+    const customer = await paddle.customers.create({
+      email,
+      name,
+    })
 
-  const paddleCustomerId = customer.id
+    const paddleCustomerId = customer.id
 
-  // Persist immediately — next call will hit branch 1 above
-  await prisma.team.update({
-    where: { id: teamId },
-    data: { paddleCustomerId },
-  })
+    // Persist immediately — next call will hit branch 1 above
+    await prisma.team.update({
+      where: { id: teamId },
+      data: { paddleCustomerId },
+    })
 
-  logger.info({ teamId, paddleCustomerId }, '[paddle.client] Created and persisted new Paddle customer')
-  return paddleCustomerId
+    logger.info({ teamId, paddleCustomerId }, '[paddle.client] Created and persisted new Paddle customer')
+    return paddleCustomerId
+  } catch (err: any) {
+    if (err.code === 'customer_already_exists') {
+      logger.warn({ teamId, email, err: err.message }, '[paddle.client] Customer already exists in Paddle.')
+      
+      let paddleCustomerId: string | undefined
+
+      // Extract from Paddle's error detail: "customer email conflicts with customer of id ctm_..."
+      const match = err.detail?.match(/customer of id (ctm_[a-zA-Z0-9]+)/)
+      if (match && match[1]) {
+        paddleCustomerId = match[1]
+        logger.info({ teamId, paddleCustomerId }, '[paddle.client] Recovered existing Paddle customer from error detail')
+      }
+
+      // Fallback: fetch by email
+      if (!paddleCustomerId) {
+        try {
+          logger.info({ teamId, email }, '[paddle.client] Detail regex failed, fetching customer by email')
+          const collection = paddle.customers.list({ email: [email] })
+          const customers = await collection.next()
+          
+          if (customers && customers.length > 0) {
+            // Ensure exact email match
+            const exactMatch = customers.find(c => c.email.toLowerCase() === email.toLowerCase())
+            if (exactMatch) {
+              paddleCustomerId = exactMatch.id
+              logger.info({ teamId, paddleCustomerId }, '[paddle.client] Recovered existing Paddle customer via list fetch')
+            }
+          }
+        } catch (searchErr: any) {
+          logger.error({ err: searchErr.message }, '[paddle.client] Failed to fetch customer by email')
+        }
+      }
+
+      if (paddleCustomerId) {
+        // Persist recovered ID
+        await prisma.team.update({
+          where: { id: teamId },
+          data: { paddleCustomerId },
+        })
+        return paddleCustomerId
+      }
+    }
+    
+    // If not handled, re-throw
+    throw err
+  }
 }
 
 // ── Transaction (Checkout) ─────────────────────────────────────────────────────

@@ -194,9 +194,12 @@ export interface ParsedCommitment {
  */
 export interface ParsedActionItem {
   text: string;
-  owner_name: string;
+  assignee_name: string;
+  due_date_raw: string | null;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   /** Float in [0.0, 1.0] */
   confidence: number;
+  dedup_key: string;
 }
 
 /**

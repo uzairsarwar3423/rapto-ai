@@ -43,47 +43,9 @@ import {
 import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { teamRoom } from '../../realtime/rooms.manager'
 import { ResolveJobData } from '../jobs/resolve.job'
+import { resolveParticipantToUserId } from '../../utils/participant-matcher'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Resolve owner_id from the participant name map.
- * Falls back to the first participant's userId, then 'unknown'.
- * This is best-effort — the resolver will re-check owner identity via name matching.
- */
-function resolveOwnerId(
-  ownerName: string | null | undefined,
-  participantNameMap: Map<string, string | null | undefined>
-): string | null {
-  if (!ownerName || typeof ownerName !== 'string') return null;
-
-  const searchName = ownerName.trim().toLowerCase();
-  const exactMatch = participantNameMap.get(searchName);
-  if (exactMatch) return exactMatch;
-
-  // Try robust partial match (e.g. 'zain' matching 'muhammad zain sarwar')
-  const searchParts = searchName.split(/\s+/);
-  
-  for (const [name, uid] of participantNameMap.entries()) {
-    if (!uid) continue;
-    const nameParts = name.split(/\s+/);
-    
-    // If any part of the extracted owner name exactly matches a part of the real name
-    if (searchParts.some(part => nameParts.includes(part))) {
-      return uid;
-    }
-    
-    // Fallback for prefix matching (e.g. 'uzair' matching 'uzairsarwar')
-    if (searchParts.some(part => name.includes(part))) {
-      return uid;
-    }
-  }
-  return null;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+// (Helpers removed: Using resolveParticipantToUserId instead)
 // WORKER
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -221,19 +183,18 @@ export const extractWorker = new Worker<ExtractJobData>(
       }
     }
 
-    // ── STEP 6: Build participant name → userId lookup map ─────────────────
-    const participantNameMap = new Map<string, string | null | undefined>()
+    // ── STEP 6: Build pool for participant matching ────────────────────────
+    // Combine teamUsers and meeting participants that have a userId.
+    // teamUsers already has { id, name, email }.
+    // For meeting participants, we only care about those who somehow got a userId 
+    // but maybe their team user name was empty or different from speakerTag.
+    // However, resolveParticipantToUserId mostly needs { id, name, email }.
+    const userPool = [...teamUsers]
     
-    // 6a. Pre-populate with all team users (allows resolving by name even if participant tracking failed)
-    for (const u of teamUsers) {
-      if (u.name) {
-        participantNameMap.set(u.name.trim().toLowerCase(), u.id)
-      }
-    }
-
-    // 6b. Override with specific meeting participants (if available)
     for (const p of meeting.participants) {
-      participantNameMap.set(p.name.trim().toLowerCase(), p.userId)
+      if (p.userId && !userPool.some(u => u.id === p.userId)) {
+        userPool.push({ id: p.userId, name: p.name, email: p.email })
+      }
     }
 
     // ── STEP 7: Pre-process extracted entities ─────────────────────────────
@@ -241,7 +202,7 @@ export const extractWorker = new Worker<ExtractJobData>(
     const fallbackActionItems: any[] = []
 
     for (const c of result.commitments) {
-      const ownerId = resolveOwnerId(c.owner_name, participantNameMap)
+      const ownerId = resolveParticipantToUserId(c.owner_name, userPool)
       if (ownerId) {
         validCommitments.push({
           meetingId,
@@ -275,9 +236,11 @@ export const extractWorker = new Worker<ExtractJobData>(
       meetingId,
       teamId,
       text:            a.text,
-      assigneeId:      resolveOwnerId(a.owner_name, participantNameMap),
-      assigneeNameRaw: a.owner_name,
+      assigneeId:      resolveParticipantToUserId(a.assignee_name, userPool),
+      assigneeNameRaw: a.assignee_name,
       confidenceScore: a.confidence,
+      dueDateRaw:      a.due_date_raw,
+      priority:        a.priority,
     })).concat(fallbackActionItems)
 
     // ── STEP 8: PostgreSQL transaction — ALL writes or NONE ────────────────

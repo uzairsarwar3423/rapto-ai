@@ -32,6 +32,7 @@ import {
 import { AIPipelineAuthError } from '../../services/ai-pipeline/ai-pipeline.errors'
 import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { teamRoom } from '../../realtime/rooms.manager'
+import { resolveParticipantToUserId } from '../../utils/participant-matcher'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WORKER
@@ -76,11 +77,18 @@ export const transcribeWorker = new Worker<TranscribeJobData>(
     
     if (newSpeakers.length > 0) {
       logger.info({ jobId: job.id, meetingId, newSpeakersCount: newSpeakers.length }, 'transcribe.worker: inserting new meeting participants')
+      
+      const teamUsers = await prisma.user.findMany({
+        where: { teamId },
+        select: { id: true, name: true, email: true }
+      })
+
       await prisma.meetingParticipant.createMany({
         data: newSpeakers.map(tag => ({
           meetingId,
           name: tag,
           speakerTag: tag,
+          userId: resolveParticipantToUserId(tag, teamUsers),
         }))
       })
 

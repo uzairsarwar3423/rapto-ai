@@ -174,7 +174,7 @@ export async function scheduleBot(input: RecallScheduleBotInput): Promise<Recall
   const payload = {
     meeting_url: input.meetingUrl,
     join_at: input.joinAt.toISOString(),
-    bot_name: 'Vocaply',
+    bot_name: input.botName || 'Vocaply',
     ...(webhookUrl && { webhook_url: webhookUrl }),
     recording_config: {
       transcript: {

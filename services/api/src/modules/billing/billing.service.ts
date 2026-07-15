@@ -122,9 +122,10 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
       planId,
       interval,
     })
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ err, teamId, planId, interval }, '[billing.service] Paddle createTransaction failed')
-    throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to create checkout session')
+    const paddleErrorMessage = err?.message || 'Unable to create checkout session'
+    throw new AppError('PADDLE_CHECKOUT_FAILED', 502, `Paddle Error: ${paddleErrorMessage}`)
   }
 
   logger.info({ teamId, planId, interval, transactionId: result.transactionId }, '[billing.service] Checkout session created')
@@ -154,8 +155,11 @@ export async function createPortalSession(teamId: string): Promise<PortalResult>
   let portalUrl: string
   try {
     portalUrl = await paddleClient.createCustomerPortalSession(teamRecord.paddleCustomerId)
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ err, teamId }, '[billing.service] Failed to create portal session')
+    if (err?.code === 'not_found' || err?.status === 404) {
+      throw new AppError('NO_BILLING_ACCOUNT', 404, 'Billing account not found on payment provider. Please complete a checkout first.')
+    }
     throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to create billing portal session')
   }
 

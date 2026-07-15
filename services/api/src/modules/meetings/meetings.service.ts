@@ -85,6 +85,10 @@ export async function createMeeting(input: CreateMeetingInput) {
   }
 
   // ── Step 5: Schedule Recall.ai Bot (BEFORE DB write) ─────────────────────
+  const team = await teamsRepository.findById(teamId)
+  const isPremium = team && team.plan !== 'FREE'
+  const botName = (isPremium && (team?.settings as any)?.customBotName) ? (team?.settings as any)?.customBotName : 'Vocaply'
+
   // If Recall.ai fails → throw IntegrationError → no orphaned meeting record
   const botJoinAt = new Date(scheduledAt.getTime() - 2 * 60 * 1000) // 2 minutes early
 
@@ -92,6 +96,7 @@ export async function createMeeting(input: CreateMeetingInput) {
     meetingUrl,
     joinAt: botJoinAt,
     teamId,
+    botName,
     // meetingId not yet known (DB write hasn't happened) — set in metadata after write
   })
 
@@ -174,12 +179,17 @@ export async function createMeetingFromCalendar(input: {
   // The service layer might rely on the team plan data. Let's proceed to create.
 
   // 1. Schedule bot
+  const team = await teamsRepository.findById(teamId)
+  const isPremium = team && team.plan !== 'FREE'
+  const botName = (isPremium && (team?.settings as any)?.customBotName) ? (team?.settings as any)?.customBotName : 'Vocaply'
+
   const botJoinAt = new Date(scheduledAt.getTime() - 2 * 60 * 1000)
   
   const { botId } = await recallService.scheduleBot({
     meetingUrl,
     joinAt: botJoinAt,
     teamId,
+    botName,
   })
 
   // 2. Persist
@@ -326,10 +336,15 @@ export async function addBotManually(input: AddBotInput) {
   }
 
   // Schedule bot immediately (join now)
+  const team = await teamsRepository.findById(teamId)
+  const isPremium = team && team.plan !== 'FREE'
+  const botName = (isPremium && (team?.settings as any)?.customBotName) ? (team?.settings as any)?.customBotName : 'Vocaply'
+
   const { botId } = await recallService.scheduleBot({
     meetingUrl,
     joinAt: new Date(), // immediate join
     teamId,
+    botName,
   })
 
   let meeting

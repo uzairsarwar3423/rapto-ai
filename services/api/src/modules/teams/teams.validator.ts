@@ -71,6 +71,7 @@ export const updateTeamSchema = {
           .enum(['MONDAY', 'FRIDAY', 'SUNDAY'])
           .optional(),
         allowMembersToInvite: z.boolean().optional(),
+        customBotName: z.string().max(50, 'Bot name must be at most 50 characters').optional(),
       })
       .optional(),
   }).refine(

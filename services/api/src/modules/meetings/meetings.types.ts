@@ -159,6 +159,7 @@ export interface RecallScheduleBotInput {
   meetingUrl: string
   joinAt: Date       // 2 minutes before scheduledAt
   teamId: string
+  botName?: string
   meetingId?: string // set after DB write for metadata
 }
 
