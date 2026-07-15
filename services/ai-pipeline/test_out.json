@@ -1,0 +1,160 @@
+{
+  "meeting_id": "m1",
+  "team_id": "t1",
+  "commitments": [
+    {
+      "text": "write the data migration scripts",
+      "owner_name": "Zain Sarwar",
+      "due_date_raw": "this weekend",
+      "confidence": 0.8,
+      "id": null,
+      "normalized_text": "write data migration script",
+      "dedup_key": "zain sarwar::write data migration script",
+      "calibration_flag": {
+        "is_suspicious": true,
+        "reason": "High confidence but no first-person pronoun (first_person)",
+        "model_stated": 0.8,
+        "heuristic_estimate_range": [
+          0.3,
+          0.6
+        ]
+      },
+      "due_date_utc": "2026-07-16T18:00:00Z",
+      "due_date_resolution": {
+        "raw_expression": "this weekend",
+        "status": "RESOLVED",
+        "expression_type": "UNKNOWN",
+        "resolved_datetime_utc": "2026-07-16T18:00:00Z",
+        "confidence": 0.9,
+        "resolution_note": "Layer 3 (GPT-4.1 Mini): resolved Resolved to the nearest upcoming weekend, which is Saturday.",
+        "layer_used": 3
+      },
+      "speaker_user_id": null,
+      "speaker_name": null,
+      "owner_user_id": null
+    },
+    {
+      "text": "handle the cache invalidation update, rewrite the Redis configurations, and deploy the new caching layer",
+      "owner_name": "Sarah Ahmed",
+      "due_date_raw": "by next Wednesday",
+      "confidence": 0.9,
+      "id": null,
+      "normalized_text": "handle cache invalidation update rewrite",
+      "dedup_key": "sarah ahmed::handle cache invalidation update rewrite",
+      "calibration_flag": {
+        "is_suspicious": true,
+        "reason": "High confidence but no first-person pronoun (first_person)",
+        "model_stated": 0.9,
+        "heuristic_estimate_range": [
+          0.3,
+          0.6
+        ]
+      },
+      "due_date_utc": "2026-07-15T18:00:24.035890Z",
+      "due_date_resolution": {
+        "raw_expression": "by next Wednesday",
+        "status": "RESOLVED",
+        "expression_type": "RELATIVE_WEEKDAY",
+        "resolved_datetime_utc": "2026-07-15T18:00:24.035890Z",
+        "confidence": 0.9,
+        "resolution_note": "Layer 2: 'by next Wednesday' resolved as by_weekday",
+        "layer_used": 2
+      },
+      "speaker_user_id": null,
+      "speaker_name": null,
+      "owner_user_id": null
+    },
+    {
+      "text": "update the frontend login flow",
+      "owner_name": "Zain Sarwar",
+      "due_date_raw": "before Friday EOD",
+      "confidence": 0.92,
+      "id": null,
+      "normalized_text": "update frontend login flow",
+      "dedup_key": "zain sarwar::update frontend login flow",
+      "calibration_flag": {
+        "is_suspicious": true,
+        "reason": "High confidence but no first-person pronoun (first_person)",
+        "model_stated": 0.92,
+        "heuristic_estimate_range": [
+          0.3,
+          0.6
+        ]
+      },
+      "due_date_utc": null,
+      "due_date_resolution": {
+        "raw_expression": "before Friday EOD",
+        "status": "UNRESOLVABLE",
+        "expression_type": "UNKNOWN",
+        "resolved_datetime_utc": null,
+        "confidence": 0.0,
+        "resolution_note": "Layer 3: invalid date format",
+        "layer_used": 3
+      },
+      "speaker_user_id": null,
+      "speaker_name": null,
+      "owner_user_id": null
+    }
+  ],
+  "action_items": [
+    {
+      "text": "escalate the server issue to the DevOps lead and get the servers provisioned",
+      "assignee_name": "Ali",
+      "due_date_raw": "by tomorrow",
+      "priority": "HIGH",
+      "confidence": 0.9,
+      "dedup_key": "ali::escalate the server issue to the devops lead and get the servers provisioned"
+    },
+    {
+      "text": "review the new API documentation once it's done",
+      "assignee_name": "John",
+      "due_date_raw": null,
+      "priority": "MEDIUM",
+      "confidence": 0.7,
+      "dedup_key": "john::review the new api documentation once it's done"
+    }
+  ],
+  "decisions": [
+    {
+      "text": "migrate to PostgreSQL for the core application data",
+      "made_by": "Uzair Sarwar",
+      "confidence": 0.9,
+      "text_normalized": "migrate to postgresql for the core application data"
+    }
+  ],
+  "blockers": [
+    {
+      "text": "Blocked by the lack of provisioned staging servers",
+      "affected_name": "Zain Sarwar",
+      "blocking_party": "Devops Team",
+      "confidence": 0.9,
+      "text_normalized": "blocked by the lack of provisioned staging servers",
+      "dedup_key": "blocked by the lack of provisioned staging servers"
+    }
+  ],
+  "summary": "The meeting was a weekly architecture sync focused on database migration and infrastructure issues. Key decisions included migrating to PostgreSQL for core application data. Zain Sarwar committed to writing the data migration scripts this weekend, while Sarah Ahmed committed to updating the caching layer by next Wednesday. A critical blocker involves the DevOps team not provisioning the necessary staging servers, preventing schema design work. Urgent action was assigned to Ali to escalate and resolve this issue by tomorrow. Additional tasks included updating the frontend login flow by Friday.",
+  "summary_scope": "FULL",
+  "extraction_model": "gpt-4o",
+  "prompt_version": "extraction-v1.0",
+  "chunks_total": 1,
+  "chunks_succeeded": 1,
+  "total_cost": {
+    "input_tokens": 8375,
+    "output_tokens": 363,
+    "model_tier": "full",
+    "model_name": "gpt-4o",
+    "estimated_cost_usd": 0.024567500000000003,
+    "total_tokens": 8738
+  },
+  "per_chunk_costs": [
+    {
+      "input_tokens": 8375,
+      "output_tokens": 363,
+      "model_tier": "full",
+      "model_name": "gpt-4o",
+      "estimated_cost_usd": 0.024567500000000003,
+      "total_tokens": 8738
+    }
+  ],
+  "processing_time_ms": 5180.1485089999915
+}

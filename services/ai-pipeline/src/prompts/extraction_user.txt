@@ -1,10 +1,17 @@
-Meeting: {{meeting_title}}
-Date: {{meeting_date_iso}}
-Participants:
-{{participants}}
+MEETING: {{meeting_title}}
+DATE: {{meeting_date_iso}} ({{weekday}})
+DURATION: {{duration_minutes}} min
+TEAM TIMEZONE: {{team_timezone}}
 
---- TRANSCRIPT START ---
-{{transcript_content}}
---- TRANSCRIPT END ---
+PARTICIPANTS:
+{{#each participants}}
+- {{name}} ({{speaker_tag}}){{#if is_external}} [External]{{/if}}
+{{/each}}
 
-Extract all commitments, action items, decisions, and blockers from this transcript. Return only the JSON structure defined in your instructions.
+--- TRANSCRIPT ---
+{{cleaned_transcript}}
+--- END ---
+
+Extract all commitments, action items, decisions, and blockers.
+Return valid JSON only.
+

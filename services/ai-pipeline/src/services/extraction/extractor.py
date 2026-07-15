@@ -230,6 +230,14 @@ def _merge_chunk_results(request: ExtractRequest, chunk_results: List[ChunkExtra
                     merged_action_items[a.dedup_key] = a
     final_action_items = list(merged_action_items.values())
     
+    # ─── RESOLVER & DEDUPLICATION ───
+    from src.services.extraction.deduplicator import deduplicate_commitments_and_action_items
+    final_commitments, final_action_items = deduplicate_commitments_and_action_items(
+        final_commitments,
+        final_action_items
+    )
+
+    
     # Decisions merge
     merged_decisions = {}
     for res in succeeded_chunks:

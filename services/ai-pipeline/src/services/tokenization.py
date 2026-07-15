@@ -14,7 +14,7 @@ from src.config.cleanup_config import TOKEN_ESTIMATE_SAFETY_MARGIN
 # Load the encoder once at module level for performance
 # o200k_base or cl100k_base are standard for OpenAI/OpenRouter approximation
 try:
-    _encoder = tiktoken.encoding_for_model("gpt-4.1-mini")
+    _encoder = tiktoken.encoding_for_model("gpt-4o-mini")
 except KeyError:
     _encoder = tiktoken.get_encoding("o200k_base")
 

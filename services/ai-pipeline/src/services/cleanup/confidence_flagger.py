@@ -116,15 +116,8 @@ def validate_timestamps(
                 detail=f"Start time {turn.start_time} exceeds end time {turn.end_time}",
             ))
             
-        if i < len(turns) - 1:
-            next_turn = turns[i + 1]
-            if turn.end_time > next_turn.start_time + EPSILON:
-                violations.append(TimestampViolation(
-                    turn_id=turn.turn_id,
-                    violation_type="overlap",
-                    detail=f"End time {turn.end_time} overlaps next turn start {next_turn.start_time}",
-                ))
-                
+        # Removed 'overlap' check because crosstalk naturally causes overlaps 
+        # where one turn's end_time > next turn's start_time.
     if turns:
         last_turn = turns[-1]
         if last_turn.end_time > meeting_duration_seconds + EPSILON:

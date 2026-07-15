@@ -71,12 +71,12 @@ class PricingRates:
 
 
 PRICING_TABLE: dict[ModelTier, PricingRates] = {
-    # gpt-4.1-mini: cheapest text generation tier
+    # gpt-5-mini: cheapest text generation tier
     ModelTier.MINI: PricingRates(
         input_per_million_usd=0.40,
         output_per_million_usd=1.60,
     ),
-    # gpt-4.1: standard quality text generation
+    # gpt-5: standard quality text generation
     ModelTier.FULL: PricingRates(
         input_per_million_usd=2.50,
         output_per_million_usd=10.00,
