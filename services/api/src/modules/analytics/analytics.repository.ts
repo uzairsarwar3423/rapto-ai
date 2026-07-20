@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { prisma } from '../../db/client'
+import { Prisma } from '@prisma/client'
 import type {
   RawOverviewRow,
   RawMemberRow,
@@ -151,12 +152,13 @@ export const analyticsRepository = {
     userId?: string
   ): Promise<RawTrendRow[]> {
     const truncUnit = granularity === 'week' ? 'week' : 'month'
+    const truncUnitRaw = Prisma.raw(`'${truncUnit}'`)
 
     if (userId) {
       if (metric === 'fulfillmentRate') {
         return prisma.$queryRaw<RawTrendRow[]>`
           SELECT
-            DATE_TRUNC(${truncUnit}, "createdAt")                               AS bucket,
+            DATE_TRUNC(${truncUnitRaw}, "createdAt")                               AS bucket,
             ROUND(
               100.0 * COUNT(*) FILTER (WHERE status = 'FULFILLED') /
               NULLIF(
@@ -171,7 +173,7 @@ export const analyticsRepository = {
             AND "ownerId" = ${userId}
             AND "createdAt" >= ${from}
             AND "createdAt" <= ${to}
-          GROUP BY DATE_TRUNC(${truncUnit}, "createdAt")
+          GROUP BY DATE_TRUNC(${truncUnitRaw}, "createdAt")
           ORDER BY bucket ASC
         `
       }
@@ -183,7 +185,7 @@ export const analyticsRepository = {
     if (metric === 'fulfillmentRate') {
       return prisma.$queryRaw<RawTrendRow[]>`
         SELECT
-          DATE_TRUNC(${truncUnit}, "createdAt")                               AS bucket,
+          DATE_TRUNC(${truncUnitRaw}, "createdAt")                               AS bucket,
           ROUND(
             100.0 * COUNT(*) FILTER (WHERE status = 'FULFILLED') /
             NULLIF(
@@ -197,7 +199,7 @@ export const analyticsRepository = {
         WHERE "teamId" = ${teamId}
           AND "createdAt" >= ${from}
           AND "createdAt" <= ${to}
-        GROUP BY DATE_TRUNC(${truncUnit}, "createdAt")
+        GROUP BY DATE_TRUNC(${truncUnitRaw}, "createdAt")
         ORDER BY bucket ASC
       `
     }
@@ -205,14 +207,14 @@ export const analyticsRepository = {
     // metric === 'meetingsCount'
     return prisma.$queryRaw<RawTrendRow[]>`
       SELECT
-        DATE_TRUNC(${truncUnit}, "createdAt")   AS bucket,
+        DATE_TRUNC(${truncUnitRaw}, "createdAt")   AS bucket,
         COUNT(*)::numeric                      AS value,
         COUNT(*)                               AS count
       FROM meetings
       WHERE "teamId" = ${teamId}
         AND "createdAt" >= ${from}
         AND "createdAt" <= ${to}
-      GROUP BY DATE_TRUNC(${truncUnit}, "createdAt")
+      GROUP BY DATE_TRUNC(${truncUnitRaw}, "createdAt")
       ORDER BY bucket ASC
     `
   },

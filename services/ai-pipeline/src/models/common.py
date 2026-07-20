@@ -31,7 +31,11 @@ class TaskType(str, Enum):
     """
 
     TRANSCRIPT_CLEANUP = "transcript_cleanup"
-    EXTRACTION = "extraction"
+    EXTRACT_COMMITMENTS = "extract_commitments"
+    EXTRACT_ACTION_ITEMS = "extract_action_items"
+    EXTRACT_DECISIONS = "extract_decisions"
+    EXTRACT_BLOCKERS = "extract_blockers"
+    EXTRACT_RISKS = "extract_risks"
     RESOLUTION_CHECK = "resolution_check"
     SUMMARY = "summary"
     CHAT_ANSWER = "chat_answer"

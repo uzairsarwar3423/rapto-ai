@@ -62,15 +62,49 @@ def chunk_content(
 
 
 def _chunk_speaker_turn_grouped(
-    content: TranscriptContent, max_tokens: int, overlap_turns: int
+    content: TranscriptContent,
+    max_tokens: int,
+    overlap_turns: int,
+    overlap_token_budget: int | None = None,
 ) -> tuple[list[TextChunk], ChunkMetadata]:
+    """Chunk transcript by speaker turns with bounded overlap.
+
+    OPTIMIZATION: Per-turn token counts are computed once and cached in
+    `turn_token_cache` — avoids O(N²) re-computation in the overlap collapse loop.
+
+    OVERLAP BUDGET: overlap_token_budget caps the token cost of overlap context,
+    preventing long speaker turns from causing overlap to consume 40%+ of the
+    next chunk's token budget. Default: 15% of max_tokens.
+
+    Args:
+        content: Transcript turns to chunk.
+        max_tokens: Token budget per chunk.
+        overlap_turns: Maximum number of turns to include as overlap context.
+        overlap_token_budget: Maximum tokens the overlap may consume. Defaults to
+            min(15% of max_tokens, actual overlap turns cost).
+
+    Returns:
+        (chunks, ChunkMetadata)
+    """
+    if overlap_token_budget is None:
+        overlap_token_budget = max(0, int(max_tokens * 0.15))
+
     chunks: list[TextChunk] = []
     oversized_turns: list[str] = []
-    
+
+    # Pre-compute token counts once — avoid O(N²) in collapse loop
+    turn_token_cache: dict[str, int] = {}
+
+    def _turn_tokens(turn) -> int:
+        if turn.turn_id not in turn_token_cache:
+            turn_token_cache[turn.turn_id] = estimate_token_count(
+                f"{turn.speaker_name}: {turn.cleaned_text}"
+            )
+        return turn_token_cache[turn.turn_id]
+
     current_chunk_turns = []
     current_chunk_tokens = 0
     chunk_index = 0
-    
     total_source_tokens = 0
 
     def close_chunk(turns_to_close, index) -> TextChunk:
@@ -87,62 +121,67 @@ def _chunk_speaker_turn_grouped(
             chunk_index=index,
         )
 
+    def _build_overlap(turns: list) -> tuple[list, int]:
+        """Select overlap turns respecting both count and token budget."""
+        overlap: list = []
+        o_tokens = 0
+        for t in reversed(turns[-overlap_turns:] if overlap_turns > 0 else []):
+            t_cost = _turn_tokens(t)
+            if o_tokens + t_cost <= overlap_token_budget:
+                overlap.insert(0, t)
+                o_tokens += t_cost
+            else:
+                break  # Budget exceeded — stop adding overlap turns
+        return overlap, o_tokens
+
     for turn in content.turns:
-        turn_text = f"{turn.speaker_name}: {turn.cleaned_text}"
-        turn_tokens = estimate_token_count(turn_text)
+        turn_tokens = _turn_tokens(turn)
         total_source_tokens += turn_tokens
-        
+
         if turn_tokens > max_tokens:
             oversized_turns.append(turn.turn_id)
-            
-            # If we have accumulated turns, flush them first
+
             if current_chunk_turns:
                 chunks.append(close_chunk(current_chunk_turns, chunk_index))
                 chunk_index += 1
-                
-                # Apply overlap for the oversized turn
-                overlap = current_chunk_turns[-overlap_turns:] if overlap_turns > 0 else []
-                overlap_tokens = sum(estimate_token_count(f"{t.speaker_name}: {t.cleaned_text}") for t in overlap)
+                overlap, o_tokens = _build_overlap(current_chunk_turns)
                 current_chunk_turns = overlap
-                current_chunk_tokens = overlap_tokens
-            
-            # Place the oversized turn alone in its own chunk, plus overlap if any
+                current_chunk_tokens = o_tokens
+
             current_chunk_turns.append(turn)
             chunks.append(close_chunk(current_chunk_turns, chunk_index))
             chunk_index += 1
-            
-            # Reset
-            overlap = current_chunk_turns[-overlap_turns:] if overlap_turns > 0 else []
-            overlap_tokens = sum(estimate_token_count(f"{t.speaker_name}: {t.cleaned_text}") for t in overlap)
+
+            overlap, o_tokens = _build_overlap(current_chunk_turns)
             current_chunk_turns = overlap
-            current_chunk_tokens = overlap_tokens
+            current_chunk_tokens = o_tokens
             continue
 
         if current_chunk_tokens + turn_tokens > max_tokens and current_chunk_turns:
-            # Check if this boundary only contains overlap
             if len(current_chunk_turns) <= overlap_turns:
-                 # This can only happen if overlap alone exceeds budget, we just append
-                 pass
+                pass  # Only overlap — just append (rare edge case)
             else:
-                 chunks.append(close_chunk(current_chunk_turns, chunk_index))
-                 chunk_index += 1
-                 
-                 overlap = current_chunk_turns[-overlap_turns:] if overlap_turns > 0 else []
-                 overlap_tokens = sum(estimate_token_count(f"{t.speaker_name}: {t.cleaned_text}") for t in overlap)
-                 current_chunk_turns = overlap
-                 current_chunk_tokens = overlap_tokens
-                 
-                 # If overlap alone exceeds max_tokens (rare), we must handle it gracefully by reducing overlap
-                 while current_chunk_tokens + turn_tokens > max_tokens and current_chunk_turns:
-                     popped = current_chunk_turns.pop(0)
-                     current_chunk_tokens -= estimate_token_count(f"{popped.speaker_name}: {popped.cleaned_text}")
+                chunks.append(close_chunk(current_chunk_turns, chunk_index))
+                chunk_index += 1
+
+                overlap, o_tokens = _build_overlap(current_chunk_turns)
+                current_chunk_turns = overlap
+                current_chunk_tokens = o_tokens
+
+                # Safety: if overlap + this turn still exceeds budget, shed oldest overlap turn
+                while (
+                    current_chunk_tokens + turn_tokens > max_tokens
+                    and current_chunk_turns
+                ):
+                    popped = current_chunk_turns.pop(0)
+                    current_chunk_tokens -= _turn_tokens(popped)
 
         current_chunk_turns.append(turn)
         current_chunk_tokens += turn_tokens
-        
+
     if current_chunk_turns:
         chunks.append(close_chunk(current_chunk_turns, chunk_index))
-        
+
     meta = ChunkMetadata(
         strategy_used=ChunkingStrategy.SPEAKER_TURN_GROUPED,
         total_chunks=len(chunks),
@@ -151,6 +190,7 @@ def _chunk_speaker_turn_grouped(
         oversized_single_turn_chunks=oversized_turns,
     )
     return chunks, meta
+
 
 
 def _chunk_fixed_size_with_overlap(

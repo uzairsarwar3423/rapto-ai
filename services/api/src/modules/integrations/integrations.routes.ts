@@ -24,6 +24,18 @@ import {
     listJiraProjectsController,
     configureJiraController,
     disconnectJiraController,
+    // Slack-specific (Day 60)
+    connectSlackController,
+    slackCallbackController,
+    listSlackChannelsController,
+    configureSlackController,
+    disconnectSlackController,
+    // Linear-specific (Day 61)
+    connectLinearController,
+    linearCallbackController,
+    listLinearTeamsController,
+    configureLinearController,
+    disconnectLinearController,
 } from './integrations.controller'
 import {
     providerParamSchema,
@@ -31,6 +43,10 @@ import {
     callbackQuerySchema,
     configureJiraBodySchema,
     jiraCallbackQuerySchema,
+    configureSlackBodySchema,
+    slackCallbackQuerySchema,
+    configureLinearBodySchema,
+    linearCallbackQuerySchema,
 } from './integrations.validator'
 import { calendarSyncNowRateLimiter } from '../../middleware/rate-limit.middleware'
 
@@ -112,6 +128,92 @@ router.delete(
     injectTenant,
     requireRole('ADMIN', 'OWNER'),
     disconnectJiraController
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SLACK-SPECIFIC ROUTES (Day 60 §12)
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get(
+    '/slack/connect',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    connectSlackController
+)
+
+router.get(
+    '/slack/callback',
+    validate(slackCallbackQuerySchema),
+    slackCallbackController
+)
+
+router.get(
+    '/slack/channels',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    listSlackChannelsController
+)
+
+router.patch(
+    '/slack/configure',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    validate(configureSlackBodySchema),
+    configureSlackController
+)
+
+router.delete(
+    '/slack',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    disconnectSlackController
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LINEAR-SPECIFIC ROUTES (Day 61)
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get(
+    '/linear/connect',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    connectLinearController
+)
+
+router.get(
+    '/linear/callback',
+    validate(linearCallbackQuerySchema),
+    linearCallbackController
+)
+
+router.get(
+    '/linear/teams',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    listLinearTeamsController
+)
+
+router.patch(
+    '/linear/configure',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    validate(configureLinearBodySchema),
+    configureLinearController
+)
+
+router.delete(
+    '/linear',
+    requireAuth,
+    injectTenant,
+    requireRole('ADMIN', 'OWNER'),
+    disconnectLinearController
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

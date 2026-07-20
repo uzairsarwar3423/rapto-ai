@@ -65,14 +65,14 @@ The fallback_used field on SimilarityBreakdown documents this for callers.
 
 # ─── Prefix-Match Configuration ───────────────────────────────────────────────
 
-PREFIX_MATCH_LENGTH: int = 3
+PREFIX_MATCH_LENGTH: int = 4
 """Number of leading tokens compared in has_prefix_match().
 
-WHY 3: With a 5-token max normalized text, the first 3 tokens represent
-60% of the commitment's content in positional order. Matching 3 leading
-tokens (verb + object + qualifier) is a very strong signal of identity.
-4 would be too strict for short 3-4 token commitments. 2 would produce
-too many false positives on common opening verbs ('finish', 'complete', etc.).
+WHY 4: With an 8-token max normalized text (upgraded from 5), the first 4
+tokens represent 50% of the commitment's content in positional order.
+Matching 4 leading tokens (verb + primary object + qualifier + modifier)
+is a strong positional signal of identity without being overly strict.
+Updated from 3 → 4 when the normalization cap was raised from 5 → 8 tokens.
 """
 
 SCORE_BOOST_FOR_PREFIX_MATCH: float = 0.10
@@ -129,15 +129,18 @@ POLICY NOTE:
 
 # ─── DoS / Safety Guard ──────────────────────────────────────────────────────
 
-MAX_INPUT_TOKENS_GUARD: int = 5
+MAX_INPUT_TOKENS_GUARD: int = 8
 """Maximum tokens allowed into TfidfVectorizer per text input.
 
-This mirrors the 5-token cap in normalize_text() (commitment_parser.py).
+This mirrors the 8-token cap in normalize_text() (commitment_parser.py).
 _validate_and_tokenize() truncates to this value before passing to
 the vectorizer, ensuring a pathologically long normalized_text
 (e.g. if DB corruption bypassed the parser) never causes unbounded
 vectorizer computation.
 
-NOT a new normalization step — the inputs should already be ≤5 tokens.
+Updated from 5 → 8 when normalize_text's _NORMALIZE_MAX_TOKENS was
+raised to fix false deduplication of distinct commitments.
+
+NOT a new normalization step — the inputs should already be ≤8 tokens.
 This is a DEFENSIVE GUARD only.
 """

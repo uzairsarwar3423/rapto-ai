@@ -72,6 +72,15 @@ from src.config.resolution_config import (
     STAGE2_CONFIDENCE_THRESHOLD,
     STAGE2_MAX_CONCURRENT_CALLS,
 )
+
+# ─── Process-level Stage 2 semaphore ─────────────────────────────────────────
+# CRITICAL: This semaphore MUST be process-level (module-level), not per-call.
+# If it were created inside detect_many(), concurrent resolution jobs
+# (multiple meetings processed simultaneously) would each get their own
+# semaphore, effectively making STAGE2_MAX_CONCURRENT_CALLS per-job, not
+# process-wide. At N concurrent jobs, that's N * STAGE2_MAX_CONCURRENT_CALLS
+# simultaneous OpenAI calls — violating the rate-limit contract.
+_STAGE2_SEMAPHORE: asyncio.Semaphore = asyncio.Semaphore(STAGE2_MAX_CONCURRENT_CALLS)
 from src.models.common import CostRecord, TaskType
 from src.models.exceptions import (
     AINonRetryableError,
@@ -625,12 +634,13 @@ async def detect_many(
         stage1_blocked_count=len(pairs) - len(stage2_indices),
     )
 
-    # ── Phase 2: Concurrent Stage 2 dispatch with semaphore ──────────────────
-    semaphore: asyncio.Semaphore = asyncio.Semaphore(STAGE2_MAX_CONCURRENT_CALLS)
+    # ── Phase 2: Concurrent Stage 2 dispatch (process-level semaphore) ────────
+    # Using the module-level _STAGE2_SEMAPHORE (not a new one per call).
+    # This enforces the rate-limit contract across ALL concurrent resolution jobs.
 
     async def _bounded_detect(index: int) -> DetectionResult:
         """Semaphore-bounded single-pair detection for concurrent dispatch."""
-        async with semaphore:
+        async with _STAGE2_SEMAPHORE:
             return await detect_resolution(
                 new_statement_text=pairs[index][0],
                 historical_commitment_text=pairs[index][1],
@@ -645,11 +655,16 @@ async def detect_many(
     for idx, result in zip(stage2_indices, stage2_results):
         results[idx] = result
 
-    # All slots must be filled at this point — invariant check
-    assert all(r is not None for r in results), (
-        "detect_many invariant violation: some result slots are unfilled. "
-        "This is a bug in the Stage 1/Stage 2 dispatch logic."
-    )
+    # All slots must be filled at this point — hard invariant check
+    # NOTE: Using RuntimeError (not assert) because assert is disabled
+    # when Python runs with -O (optimize flag), which Docker production
+    # containers often use. This invariant MUST fire in production if violated.
+    if not all(r is not None for r in results):
+        raise RuntimeError(
+            "detect_many invariant violation: some result slots are unfilled. "
+            f"Expected {len(pairs)} results, got {sum(1 for r in results if r is not None)}. "
+            "This is a bug in the Stage 1/Stage 2 dispatch logic."
+        )
 
     log.info(
         "resolution_detect_many_complete",

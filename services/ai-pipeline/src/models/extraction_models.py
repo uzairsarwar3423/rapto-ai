@@ -15,6 +15,32 @@ class PriorityLevel(str, Enum):
     HIGH = "HIGH"
     URGENT = "URGENT"
 
+class DecisionType(str, Enum):
+    TECHNICAL = "TECHNICAL"
+    PROCESS = "PROCESS"
+    TIMELINE = "TIMELINE"
+    SCOPE = "SCOPE"
+    RESOURCE = "RESOURCE"
+    PRIORITY = "PRIORITY"
+    VENDOR = "VENDOR"
+    POLICY = "POLICY"
+    OTHER = "OTHER"
+
+class SeverityLevel(str, Enum):
+    CRITICAL = "CRITICAL"
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+
+class RiskCategory(str, Enum):
+    TIMELINE = "TIMELINE"
+    TECHNICAL = "TECHNICAL"
+    RESOURCE = "RESOURCE"
+    EXTERNAL = "EXTERNAL"
+    SECURITY = "SECURITY"
+    QUALITY = "QUALITY"
+    BUSINESS = "BUSINESS"
+
 class ExtractedCommitment(BaseModel):
     text: str = Field(..., min_length=5, max_length=1000)
     owner_name: str = Field(..., min_length=1)
@@ -37,6 +63,7 @@ class ExtractedActionItem(BaseModel):
     due_date_raw: Optional[str] = None
     priority: PriorityLevel
     confidence: float = Field(..., ge=0.0, le=1.0)
+    assigner_name: Optional[str] = None
 
     @field_validator('priority', mode='before')
     @classmethod
@@ -63,6 +90,7 @@ class ExtractedActionItem(BaseModel):
 class ExtractedDecision(BaseModel):
     text: str = Field(..., min_length=1)
     made_by: Optional[str] = None
+    decision_type: DecisionType
     confidence: float = Field(..., ge=0.0, le=1.0)
     
     @model_validator(mode='after')
@@ -75,31 +103,59 @@ class ExtractedDecision(BaseModel):
 
 class ExtractedBlocker(BaseModel):
     text: str = Field(..., min_length=1)
+    blocked_work: str = Field(..., min_length=1)
     affected_name: Optional[str] = None
     blocking_party: Optional[str] = None
+    severity: SeverityLevel
     confidence: float = Field(..., ge=0.0, le=1.0)
 
     @model_validator(mode='after')
     def validate_fields(self):
         if not self.text.strip():
             raise ValueError("text cannot be empty or just whitespace")
+        if not self.blocked_work.strip():
+            raise ValueError("blocked_work cannot be empty or just whitespace")
         if self.affected_name is not None and not self.affected_name.strip():
             raise ValueError("affected_name cannot be empty or just whitespace")
         if self.blocking_party is not None and not self.blocking_party.strip():
             raise ValueError("blocking_party cannot be empty or just whitespace")
         return self
 
-class ExtractionResponse(BaseModel):
+class ExtractedRisk(BaseModel):
+    text: str = Field(..., min_length=1)
+    description: str = Field(..., min_length=1)
+    category: RiskCategory
+    raised_by: Optional[str] = None
+    impact: str = Field(..., min_length=1)
+    trigger_condition: str = Field(..., min_length=1)
+    confidence: float = Field(..., ge=0.0, le=1.0)
+
+    @model_validator(mode='after')
+    def validate_fields(self):
+        if not self.text.strip():
+            raise ValueError("text cannot be empty or just whitespace")
+        return self
+
+# Wrapper schemas for structured outputs
+class CommitmentsResponse(BaseModel):
     commitments: List[ExtractedCommitment] = Field(default_factory=list)
-    action_items: List[ExtractedActionItem] = Field(default_factory=list)
-    decisions: List[ExtractedDecision] = Field(default_factory=list)
-    blockers: List[ExtractedBlocker] = Field(default_factory=list)
-    summary: str = Field(..., min_length=20, max_length=1500)
 
     @field_validator("commitments")
     @classmethod
     def filter_low_confidence_commitments(cls, v: List[ExtractedCommitment]) -> List[ExtractedCommitment]:
         return [c for c in v if c.confidence >= 0.3]
+
+class ActionItemsResponse(BaseModel):
+    action_items: List[ExtractedActionItem] = Field(default_factory=list)
+
+class DecisionsResponse(BaseModel):
+    decisions: List[ExtractedDecision] = Field(default_factory=list)
+
+class BlockersResponse(BaseModel):
+    blockers: List[ExtractedBlocker] = Field(default_factory=list)
+
+class RisksResponse(BaseModel):
+    risks: List[ExtractedRisk] = Field(default_factory=list)
 
 class ConfidenceCalibrationFlag(BaseModel):
     is_suspicious: bool
@@ -128,6 +184,9 @@ class ParsedBlocker(ExtractedBlocker):
     text_normalized: str
     dedup_key: str
 
+class ParsedRisk(ExtractedRisk):
+    text_normalized: str
+    dedup_key: str
 
 class ExtractRequest(BaseModel):
     meeting_id: str = Field(..., min_length=1)
@@ -147,6 +206,7 @@ class ChunkExtractionResult(BaseModel):
     parsed_action_items: Optional[List[ParsedActionItem]] = None
     parsed_decisions: Optional[List[ParsedDecision]] = None
     parsed_blockers: Optional[List[ParsedBlocker]] = None
+    parsed_risks: Optional[List[ParsedRisk]] = None
     summary: Optional[str] = None
     cost: Optional[CostRecord] = None
     error: Optional[str] = None
@@ -163,6 +223,7 @@ class ExtractionResultWithMeta(BaseModel):
     action_items: List[ParsedActionItem]
     decisions: List[ParsedDecision]
     blockers: List[ParsedBlocker]
+    risks: List[ParsedRisk]
     summary: str
     summary_scope: SummaryScopeType
     extraction_model: str

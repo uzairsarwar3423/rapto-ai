@@ -1,17 +1,11 @@
 MEETING: {{meeting_title}}
-DATE: {{meeting_date_iso}} ({{weekday}})
-DURATION: {{duration_minutes}} min
-TEAM TIMEZONE: {{team_timezone}}
+DATE: {{meeting_date_iso}}
 
 PARTICIPANTS:
-{{#each participants}}
-- {{name}} ({{speaker_tag}}){{#if is_external}} [External]{{/if}}
-{{/each}}
+{{participants}}
 
 --- TRANSCRIPT ---
-{{cleaned_transcript}}
+{{transcript_content}}
 --- END ---
 
-Extract all commitments, action items, decisions, and blockers.
-Return valid JSON only.
-
+Extract the requested information based on your specific system instructions.

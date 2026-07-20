@@ -159,6 +159,9 @@ export const integrateWorker = new Worker<IntegrateJobData>(
 
         let externalResult: { externalId: string; externalUrl: string }
         try {
+            if (!providerClient.createExternalItem) {
+                throw new UnrecoverableError(`PROVIDER_NOT_SUPPORTED: ${provider} does not support createExternalItem`)
+            }
             externalResult = await providerClient.createExternalItem(integration, {
                 actionItemId: actionItem.id,
                 text: actionItem.text,
@@ -194,13 +197,15 @@ export const integrateWorker = new Worker<IntegrateJobData>(
 
         // ─── Step 7: Persist the result ──────────────────────────────────────
         // DB write AFTER a fully successful API response — no partial/corrupt state possible
+        const providerPrefix = provider.toLowerCase()
+        const updateData: any = {}
+        updateData[`${providerPrefix}IssueId`] = externalResult.externalId
+        updateData[`${providerPrefix}IssueUrl`] = externalResult.externalUrl
+        updateData[`${providerPrefix}IssueSyncedAt`] = new Date()
+
         await prisma.actionItem.update({
             where: { id: actionItem.id },
-            data: {
-                jiraIssueId: externalResult.externalId,
-                jiraIssueUrl: externalResult.externalUrl,
-                jiraIssueSyncedAt: new Date(),
-            },
+            data: updateData,
         })
 
         // Also update the integration's lastSyncedAt and reset error counter on success
@@ -226,7 +231,7 @@ export const integrateWorker = new Worker<IntegrateJobData>(
                 teamId,
                 actionItemId,
                 provider,
-                jiraIssueId: externalResult.externalId,
+                externalIssueId: externalResult.externalId,
                 durationMs,
                 meetingId,
             },

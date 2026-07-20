@@ -40,6 +40,7 @@ from src.models.common import CostRecord, AICallResult, ModelTier, TaskType
 from src.models.exceptions import (
     AINonRetryableError,
     AIRateLimitExhaustedError,
+    AIRefusalError,
     AISchemaValidationError,
     AITimeoutError,
 )
@@ -449,21 +450,55 @@ class OpenAIClient:
     ) -> AICallResult[list[list[float]]]:
         model_name, model_tier = resolve_model(TaskType.EMBEDDING, self._settings)
         start_time = time.monotonic()
+        total_retry_count = 0
+        last_exc: BaseException | None = None
 
         async with self._semaphore:
             try:
-                response = await self._client.embeddings.create(
-                    model=model_name,
-                    input=texts,
-                )
-            except Exception as exc:
-                raise AINonRetryableError(
-                    f"Embedding call failed: {exc}",
-                    upstream_status_code=_extract_status_code(exc),
-                    upstream_message=str(exc),
+                async for attempt in AsyncRetrying(
+                    wait=wait_exponential(multiplier=1.0, min=1, max=20),
+                    stop=stop_after_attempt(self._settings.openai_max_retries),
+                    retry=retry_if_exception(
+                        lambda exc: not isinstance(exc, AINonRetryableError)
+                    ),
+                    reraise=False,
+                ):
+                    with attempt:
+                        total_retry_count = attempt.retry_state.attempt_number - 1
+                        try:
+                            response = await self._client.embeddings.create(
+                                model=model_name,
+                                input=texts,
+                            )
+                        except Exception as exc:
+                            if _is_non_retryable_error(exc):
+                                raise AINonRetryableError(
+                                    f"Embedding non-retryable error: {exc}",
+                                    upstream_status_code=_extract_status_code(exc),
+                                    upstream_message=str(exc),
+                                    task_type=TaskType.EMBEDDING,
+                                    model_tier=model_tier,
+                                ) from exc
+                            last_exc = exc
+                            raise
+            except AINonRetryableError:
+                raise
+            except RetryError as re:
+                root = last_exc or re
+                if root and _is_rate_limit_error(root):
+                    raise AIRateLimitExhaustedError(
+                        f"Embedding rate limit exhausted after {total_retry_count} retries",
+                        task_type=TaskType.EMBEDDING,
+                        model_tier=model_tier,
+                        attempt_count=total_retry_count,
+                    ) from re
+                raise AITimeoutError(
+                    "Embedding call failed after retries",
+                    timeout_seconds=self._settings.openai_timeout_seconds,
                     task_type=TaskType.EMBEDDING,
                     model_tier=model_tier,
-                ) from exc
+                    attempt_count=total_retry_count,
+                ) from re
 
         embeddings = [list(e.embedding) for e in response.data]
         latency_ms = (time.monotonic() - start_time) * 1000
@@ -516,17 +551,32 @@ class OpenAIClient:
 
         response = await self._client.beta.chat.completions.parse(
             model=model_name,
-            messages=messages,
+            messages=[
+                # cache_control enables OpenAI prompt caching for long system prompts.
+                # Repeated identical system prompts (same meeting, multiple chunks)
+                # are served from cache — ~50% cost reduction on input tokens.
+                {"role": "system", "content": [
+                    {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}
+                ]},
+                {"role": "user", "content": user_prompt},
+            ],
             response_format=response_schema,
             temperature=MODEL_TASK_TEMPERATURE_OVERRIDES.get(task_type),
         )
 
         choice = response.choices[0]
         if choice.message.refusal:
-            # We treat refusals as a validation error with a specific message
-            exc = ValidationError.from_exception_data("Refusal", [])
-            exc.raw_response = choice.message.refusal
-            raise exc
+            # FIX: Refusals are OpenAI policy decisions, not schema failures.
+            # Raising ValidationError here was wrong — it triggered a costly
+            # corrective retry. AINonRetryableError surfaces to the caller
+            # correctly without retrying.
+            raise AINonRetryableError(
+                f"OpenAI refused the request: {choice.message.refusal[:200]}",
+                upstream_status_code=200,  # HTTP 200 but logically a refusal
+                upstream_message=choice.message.refusal,
+                task_type=task_type,
+                model_tier=ModelTier.MINI,  # placeholder — resolved by caller
+            )
 
         if not choice.message.parsed:
             exc = ValidationError.from_exception_data("Parsing Failed", [])
@@ -550,8 +600,11 @@ class OpenAIClient:
         system_prompt: str,
         user_prompt: str,
     ) -> tuple[str, dict[str, int]]:
-        messages: list[dict[str, str]] = [
-            {"role": "system", "content": system_prompt},
+        # Use cache_control on system prompt for cost reduction on repeated calls
+        messages: list[dict] = [
+            {"role": "system", "content": [
+                {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}
+            ]},
             {"role": "user", "content": user_prompt},
         ]
 

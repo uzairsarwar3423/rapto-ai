@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  api:
+    image: rapto-ai:latest
+    container_name: rapto-api
+    network_mode: "host"
+    env_file:
+      - .env
+    restart: unless-stopped
+    # The default command in Dockerfile is "npm start", but we define it here for clarity
+    command: ["npm", "start"]
+
+  worker:
+    image: rapto-ai:latest
+    container_name: rapto-worker
+    network_mode: "host"
+    env_file:
+      - .env
+    restart: unless-stopped
+    # Override the default command to run the worker instead
+    command: ["npm", "run", "start:worker"]

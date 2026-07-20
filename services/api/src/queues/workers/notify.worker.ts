@@ -9,6 +9,7 @@ import { socketEmitter } from '../../realtime/socket.emitter'
 import { userRoom } from '../../realtime/rooms.manager'
 import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { notifyQueue } from '../queue.client'
+import { slackProvider } from '../../modules/integrations/providers/slack.provider'
 
 const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
 
@@ -29,6 +30,19 @@ async function shouldSendEmail(userId: string, notificationType: string): Promis
   const userPrefs = pref.preferences as any
   const prefKey = NOTIFICATION_TYPE_TO_PREF_KEY[notificationType]
   if (prefKey && userPrefs.email && userPrefs.email[prefKey] === false) {
+    return false
+  }
+  return true
+}
+
+async function shouldSendSlack(userId: string, notificationType: string): Promise<boolean> {
+  const pref = await prisma.notificationPreference.findUnique({
+    where: { userId }
+  })
+  if (!pref || !pref.preferences) return true // Default: send slack
+  const userPrefs = pref.preferences as any
+  const prefKey = NOTIFICATION_TYPE_TO_PREF_KEY[notificationType]
+  if (prefKey && userPrefs.slack && userPrefs.slack[prefKey] === false) {
     return false
   }
   return true
@@ -104,6 +118,55 @@ export const notifyWorker = new Worker<NotifyJobData>(
             }
           })
         }
+      }
+
+      // Slack Branch
+      try {
+        const resolvedTeamId = teamId || meeting.teamId
+        const slackIntegration = await prisma.teamIntegration.findUnique({
+          where: { teamId_provider: { teamId: resolvedTeamId, provider: 'SLACK' } }
+        })
+
+        if (slackIntegration && slackIntegration.isActive) {
+          const meta = slackIntegration.metadata as any
+          if (!meta?.defaultChannelId) {
+            logger.info({ teamId }, 'notify.worker.slack.skipped_unconfigured: Slack connected but no default channel')
+          } else {
+            // Get meeting commitments/action items again to pass to builder?
+            // Actually, we can get them from DB to have actual texts
+            const commitments = await prisma.commitment.findMany({ where: { meetingId: meeting.id } })
+            
+            const slackMeetingInput = {
+              id: meeting.id,
+              title: meeting.title,
+              scheduledAt: meeting.scheduledAt
+            }
+            const counts = {
+              commitments: meeting.commitmentCount,
+              actionItems: meeting.actionItemCount
+            }
+            const slackCommitments = commitments.map(c => ({
+              text: c.text,
+              dueDate: c.dueDate
+            }))
+            
+            const start = Date.now()
+            const result = await slackProvider.sendMeetingSummaryToChannel(
+              slackIntegration,
+              slackMeetingInput,
+              counts,
+              slackCommitments
+            )
+            
+            if (result.ok) {
+              logger.info({ teamId, notificationType: 'MEETING_PROCESSED', channel: 'channel', durationMs: Date.now() - start }, 'notify.worker.slack.sent')
+            } else {
+              logger.error({ teamId, notificationType: 'MEETING_PROCESSED', err: result.error }, 'notify.worker.slack.send_failed')
+            }
+          }
+        }
+      } catch (err: any) {
+        logger.error({ teamId, notificationType: 'MEETING_PROCESSED', err: err.message }, 'notify.worker.slack.send_failed')
       }
     }
 
@@ -191,6 +254,76 @@ export const notifyWorker = new Worker<NotifyJobData>(
           })
         }
       }
+
+      // Slack Branch
+      try {
+        const slackIntegration = await prisma.teamIntegration.findUnique({
+          where: { teamId_provider: { teamId: commitment.teamId, provider: 'SLACK' } }
+        })
+
+        if (slackIntegration && slackIntegration.isActive) {
+          const slackCommitment = {
+            id: commitment.id,
+            text: commitment.text,
+            dueDate: commitment.dueDate
+          }
+          
+          // Owner DM
+          const ownerSlackAllowed = await shouldSendSlack(owner.id, 'COMMITMENT_MISSED')
+          if (!ownerSlackAllowed) {
+            logger.info({ teamId: commitment.teamId, userId: owner.id, notificationType: 'COMMITMENT_MISSED' }, 'notify.worker.slack.skipped_preference')
+          } else {
+            try {
+              const start = Date.now()
+              const res = await slackProvider.sendCommitmentMissedDM(slackIntegration, owner.email, slackCommitment)
+              if (res.ok) {
+                logger.info({ teamId: commitment.teamId, notificationType: 'COMMITMENT_MISSED', channel: 'dm', durationMs: Date.now() - start }, 'notify.worker.slack.sent')
+              } else {
+                if (res.error === 'SLACK_USER_NOT_FOUND') {
+                  logger.info({ teamId: commitment.teamId, email: owner.email }, 'notify.worker.slack.user_unresolved')
+                } else {
+                  logger.error({ teamId: commitment.teamId, notificationType: 'COMMITMENT_MISSED', err: res.error }, 'notify.worker.slack.send_failed')
+                }
+              }
+            } catch (err: any) {
+              logger.error({ teamId: commitment.teamId, notificationType: 'COMMITMENT_MISSED', err: err.message }, 'notify.worker.slack.send_failed')
+            }
+          }
+
+          // Manager DMs
+          for (const managerId of managersToNotify) {
+            if (managerId === owner.id) continue
+            
+            const manager = await prisma.user.findUnique({ where: { id: managerId } })
+            if (!manager) continue
+
+            const mgrSlackAllowed = await shouldSendSlack(manager.id, 'MANAGER_ALERT')
+            if (!mgrSlackAllowed) {
+              logger.info({ teamId: commitment.teamId, userId: manager.id, notificationType: 'MANAGER_ALERT' }, 'notify.worker.slack.skipped_preference')
+            } else {
+              try {
+                const start = Date.now()
+                // Use a slightly different wording or same for manager?
+                // For now, same block structure since the requirement says so.
+                const res = await slackProvider.sendCommitmentMissedDM(slackIntegration, manager.email, slackCommitment)
+                if (res.ok) {
+                  logger.info({ teamId: commitment.teamId, notificationType: 'MANAGER_ALERT', channel: 'dm', durationMs: Date.now() - start }, 'notify.worker.slack.sent')
+                } else {
+                  if (res.error === 'SLACK_USER_NOT_FOUND') {
+                    logger.info({ teamId: commitment.teamId, email: manager.email }, 'notify.worker.slack.user_unresolved')
+                  } else {
+                    logger.error({ teamId: commitment.teamId, notificationType: 'MANAGER_ALERT', err: res.error }, 'notify.worker.slack.send_failed')
+                  }
+                }
+              } catch (err: any) {
+                logger.error({ teamId: commitment.teamId, notificationType: 'MANAGER_ALERT', err: err.message }, 'notify.worker.slack.send_failed')
+              }
+            }
+          }
+        }
+      } catch (err: any) {
+        logger.error({ teamId: commitment.teamId, notificationType: 'COMMITMENT_MISSED_GLOBAL', err: err.message }, 'notify.worker.slack.send_failed')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -252,6 +385,48 @@ export const notifyWorker = new Worker<NotifyJobData>(
               actionUrl: `${frontendUrl}/commitments`
             }
           })
+        }
+      }
+
+      // Slack Branch
+      if (upcomingCommitments.length > 0) {
+        try {
+          const resolvedTeamId = teamId || user.teamId || upcomingCommitments[0].teamId
+          const slackIntegration = await prisma.teamIntegration.findUnique({
+            where: { teamId_provider: { teamId: resolvedTeamId!, provider: 'SLACK' } }
+          })
+
+          if (slackIntegration && slackIntegration.isActive) {
+            const slackAllowed = await shouldSendSlack(ownerId, 'DEADLINE_TODAY')
+            if (!slackAllowed) {
+              logger.info({ teamId: resolvedTeamId, userId: ownerId, notificationType: 'DEADLINE_TODAY' }, 'notify.worker.slack.skipped_preference')
+            } else {
+              for (const c of upcomingCommitments) {
+                try {
+                  const slackCommitment = {
+                    id: c.id,
+                    text: c.text,
+                    dueDate: c.dueDate
+                  }
+                  const start = Date.now()
+                  const res = await slackProvider.sendDeadlineReminderDM(slackIntegration, user.email, slackCommitment)
+                  if (res.ok) {
+                    logger.info({ teamId: resolvedTeamId, notificationType: 'DEADLINE_REMINDER', channel: 'dm', durationMs: Date.now() - start }, 'notify.worker.slack.sent')
+                  } else {
+                    if (res.error === 'SLACK_USER_NOT_FOUND') {
+                      logger.info({ teamId: resolvedTeamId, email: user.email }, 'notify.worker.slack.user_unresolved')
+                    } else {
+                      logger.error({ teamId: resolvedTeamId, notificationType: 'DEADLINE_REMINDER', err: res.error }, 'notify.worker.slack.send_failed')
+                    }
+                  }
+                } catch (err: any) {
+                  logger.error({ teamId: resolvedTeamId, notificationType: 'DEADLINE_REMINDER', err: err.message }, 'notify.worker.slack.send_failed')
+                }
+              }
+            }
+          }
+        } catch (err: any) {
+          logger.error({ teamId, notificationType: 'DEADLINE_REMINDER', err: err.message }, 'notify.worker.slack.send_failed')
         }
       }
     }

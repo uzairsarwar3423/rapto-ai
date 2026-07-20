@@ -189,6 +189,38 @@ class AIRateLimitExhaustedError(AIClientError):
         )
 
 
+class AIRefusalError(AIClientError):
+    """Raised when OpenAI refuses a request due to content policy.
+
+    WHY DISTINCT FROM AINonRetryableError: Refusals are semantic policy
+    decisions by the model (HTTP 200 response, but logically rejected).
+    They should NEVER be retried — retrying the same prompt will get the
+    same refusal. Distinguished from 4xx errors to allow different operational
+    alerting (refusals may indicate prompt injection or policy drift, not
+    infrastructure failure).
+    """
+
+    error_code = "AI_REFUSAL_ERROR"
+    http_status = 422  # Unprocessable Entity — valid request, refused to process
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        refusal_reason: str,
+        task_type: TaskType | None = None,
+        model_tier: ModelTier | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            task_type=task_type,
+            model_tier=model_tier,
+            attempt_count=1,
+            refusal_reason=refusal_reason[:500],
+        )
+        self.refusal_reason = refusal_reason
+
+
 # ─── Infrastructure Errors ────────────────────────────────────────────────────
 
 

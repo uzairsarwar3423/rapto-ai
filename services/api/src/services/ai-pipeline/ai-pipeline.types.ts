@@ -208,6 +208,8 @@ export interface ParsedActionItem {
  */
 export interface ParsedDecision {
   text: string;
+  made_by: string | null;
+  decision_type: 'TECHNICAL' | 'PROCESS' | 'TIMELINE' | 'SCOPE' | 'RESOURCE' | 'PRIORITY' | 'VENDOR' | 'POLICY' | 'OTHER';
   context: string;
   /** Float in [0.0, 1.0] */
   confidence: number;
@@ -219,7 +221,25 @@ export interface ParsedDecision {
  */
 export interface ParsedBlocker {
   text: string;
-  owner_name: string | null;
+  blocked_work: string;
+  affected_name: string | null;
+  blocking_party: string | null;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  /** Float in [0.0, 1.0] */
+  confidence: number;
+}
+
+/**
+ * A single extracted risk.
+ * Maps Python's ParsedRisk Pydantic model.
+ */
+export interface ParsedRisk {
+  text: string;
+  description: string;
+  category: 'TIMELINE' | 'TECHNICAL' | 'RESOURCE' | 'EXTERNAL' | 'SECURITY' | 'QUALITY' | 'BUSINESS';
+  raised_by: string | null;
+  impact: string;
+  trigger_condition: string;
   /** Float in [0.0, 1.0] */
   confidence: number;
 }
@@ -236,6 +256,7 @@ export interface ExtractionResultWithMeta {
   action_items: ParsedActionItem[];
   decisions: ParsedDecision[];
   blockers: ParsedBlocker[];
+  risks: ParsedRisk[];
   summary: string;
   /** FULL = all transcript chunks succeeded; PARTIAL_FIRST_CHUNK = only the first chunk's summary */
   summary_scope: 'FULL' | 'PARTIAL_FIRST_CHUNK';

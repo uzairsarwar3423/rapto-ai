@@ -20,7 +20,8 @@ async function main() {
     prisma.commitment.deleteMany({ where: { meetingId } }),
     prisma.actionItem.deleteMany({ where: { meetingId } }),
     prisma.decision.deleteMany({ where: { meetingId } }),
-    prisma.blocker.deleteMany({ where: { meetingId } })
+    prisma.blocker.deleteMany({ where: { meetingId } }),
+    prisma.risk.deleteMany({ where: { meetingId } })
   ])
 
   // 2. Also clear meeting status
@@ -31,7 +32,8 @@ async function main() {
       commitmentCount: 0,
       actionItemCount: 0,
       decisionCount: 0,
-      blockerCount: 0
+      blockerCount: 0,
+      riskCount: 0
     }
   })
 

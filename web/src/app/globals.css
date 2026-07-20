@@ -26,17 +26,24 @@
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
-  --color-brand: hsl(149 61% 28%);              /* #1A6B3C — brand green */
-  --color-brand-subtle: hsl(149 67% 95%);       /* #E8F5EE — green tint */
-  --color-brand-mid: hsl(149 51% 36%);          /* #2D8A50 — hover green */
-  --color-brand-dark: hsl(149 52% 60%);         /* #6ECC8E — light green for dark bg */
+  --color-brand: hsl(149 61% 28%);
+  /* #1A6B3C — brand green */
+  --color-brand-subtle: hsl(149 67% 95%);
+  /* #E8F5EE — green tint */
+  --color-brand-mid: hsl(149 51% 36%);
+  /* #2D8A50 — hover green */
+  --color-brand-dark: hsl(149 52% 60%);
+  /* #6ECC8E — light green for dark bg */
   --color-error: hsl(var(--danger));
-  --color-error-subtle: hsl(10 93% 96%);        /* #FDECEA — error bg */
+  --color-error-subtle: hsl(10 93% 96%);
+  /* #FDECEA — error bg */
   --color-muted: hsl(var(--muted-foreground));
-  --color-muted-subtle: hsl(45 4% 60%);         /* #9B9A96 — very muted */
+  --color-muted-subtle: hsl(45 4% 60%);
+  /* #9B9A96 — very muted */
   --color-border: hsl(var(--border));
   --color-surface: hsl(var(--surface));
-  --color-surface-2: hsl(40 7% 97%);            /* #FAFAF8 — page background */
+  --color-surface-2: hsl(40 7% 97%);
+  /* #FAFAF8 — page background */
 
   /* STATUS TOKENS */
   --color-pending-bg: hsl(0 0% 94%);
@@ -57,10 +64,10 @@
   --topbar-height: 48px;
 
   /* SHADOW TOKENS */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 24px rgba(0,0,0,0.08);
-  --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
-  --shadow-brand: 0 4px 24px rgba(26,107,60,0.08);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+  --shadow-brand: 0 4px 24px rgba(26, 107, 60, 0.08);
 
   /* ANIMATION TOKENS */
   --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -86,12 +93,15 @@
   /* DARK MODE COLOR TOKENS */
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
-  --color-brand: hsl(149 52% 60%);              /* Light green for dark bg */
-  --color-brand-subtle: hsl(149 61% 12%);       /* Dark green tint */
+  --color-brand: hsl(149 52% 60%);
+  /* Light green for dark bg */
+  --color-brand-subtle: hsl(149 61% 12%);
+  /* Dark green tint */
   --color-brand-mid: hsl(149 51% 36%);
   --color-brand-dark: hsl(149 61% 28%);
   --color-error: hsl(var(--danger));
-  --color-error-subtle: hsl(10 93% 12%);        /* Dark red tint */
+  --color-error-subtle: hsl(10 93% 12%);
+  /* Dark red tint */
   --color-muted: hsl(var(--muted-foreground));
   --color-muted-subtle: hsl(45 4% 40%);
   --color-border: hsl(var(--border));
@@ -219,7 +229,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-serif);
 }
 
@@ -317,6 +332,7 @@ select:focus {
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -326,6 +342,7 @@ select:focus {
   0% {
     transform: translateX(-50%);
   }
+
   100% {
     transform: translateX(0);
   }
@@ -352,17 +369,23 @@ select:focus {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
 .scrollbar-none {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 /* ── Heartbeat Glow Animation ───────────────────────────── */
 @keyframes heartbeat-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
   }
+
   50% {
     transform: scale(1.15);
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.75);

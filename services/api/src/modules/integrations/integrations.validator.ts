@@ -95,3 +95,42 @@ export const updateConfigBodySchema = {
         config: z.record(z.string(), z.unknown()),
     }),
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Slack-specific schemas (Day 60)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const slackCallbackQuerySchema = {
+    query: z.object({
+        code: z.string().min(1, 'Authorization code is required').optional(),
+        state: z.string().min(32, 'State must be at least 32 characters'),
+        error: z.string().optional(),
+    }),
+}
+
+export const configureSlackBodySchema = {
+    body: z.object({
+        defaultChannelId: z.string().min(1, 'Default channel ID is required'),
+        defaultChannelName: z.string().min(1, 'Default channel name is required'),
+    }),
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Linear-specific schemas (Day 61)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const linearCallbackQuerySchema = {
+    query: z.object({
+        code: z.string().min(1, 'Authorization code is required').optional(),
+        state: z.string().min(32, 'State must be at least 32 characters'),
+        error: z.string().optional(),
+    }),
+}
+
+export const configureLinearBodySchema = {
+    body: z.object({
+        linearTeamId: z.string().min(1, 'Linear Team ID is required'),
+        defaultStateId: z.string().min(1, 'Default State ID is required'),
+    }),
+}
+

@@ -55,10 +55,10 @@ export interface TeamPulseData {
  */
 export async function getMyCommitments(): Promise<CommitmentItem[]> {
   try {
-    const result = await serverApiClient.get<{ items: CommitmentItem[] }>("/commitments/my", {
+    const result = await serverApiClient.get<CommitmentItem[]>("/commitments/my", {
       params: { limit: 5 },
     });
-    return result.items || [];
+    return result || [];
   } catch (error) {
     return handleServerQueryError(error, "getMyCommitments", []);
   }

@@ -323,6 +323,17 @@ export class IntegrationsService {
         return jiraProvider.listProjects(accessToken, cloudId)
     }
 
+    async listLinearTeamsAndStates(teamId: string) {
+        const integration = await integrationsRepository.findByTeamAndProvider(teamId, 'LINEAR')
+
+        if (!integration || !integration.isActive) {
+            throw new AppError('INTEGRATION_NOT_CONNECTED', 422, 'Linear integration is not connected.')
+        }
+
+        const accessToken = await this.ensureValidTeamToken(integration)
+        return linearProvider.listTeamsAndStates(accessToken)
+    }
+
 
     async updateConfig(teamId: string, provider: ProviderType, config: Record<string, any>) {
         const { prisma } = await import('../../db/client')

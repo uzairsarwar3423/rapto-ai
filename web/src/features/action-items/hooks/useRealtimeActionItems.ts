@@ -26,10 +26,21 @@ export function useRealtimeActionItems() {
       });
     };
 
+    const handleCompleted = (payload: { actionItemId: string; completed: boolean; source: string }) => {
+      queryClient.invalidateQueries({
+        queryKey: ["teams", user.teamId, "action-items"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["actionItems", "byMeeting"],
+      });
+    };
+
     socket.on(SERVER_EVENTS.ACTION_ITEM_SYNCED, handleSynced);
+    socket.on(SERVER_EVENTS.ACTION_ITEM_COMPLETED, handleCompleted);
 
     return () => {
       socket.off(SERVER_EVENTS.ACTION_ITEM_SYNCED, handleSynced);
+      socket.off(SERVER_EVENTS.ACTION_ITEM_COMPLETED, handleCompleted);
     };
   }, [queryClient, user?.teamId]);
 }

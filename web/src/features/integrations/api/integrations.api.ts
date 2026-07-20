@@ -101,3 +101,61 @@ export async function syncActionItemToJiraClient(
   );
   return response.data.data;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SLACK-SPECIFIC API FUNCTIONS (Day 60)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function initiateSlackConnectClient(): Promise<string> {
+  const response = await api.get<{ success: boolean; data: { authUrl: string } }>("/integrations/slack/connect");
+  return response.data.data.authUrl;
+}
+
+export async function fetchSlackChannelsClient(): Promise<Array<{ id: string; name: string }>> {
+  const response = await api.get<{ success: boolean; data: { channels: Array<{ id: string; name: string }> } }>("/integrations/slack/channels");
+  return response.data.data.channels;
+}
+
+export async function configureSlackClient(config: {
+  defaultChannelId: string;
+  defaultChannelName: string;
+}): Promise<{ success: boolean; data: { metadata: Record<string, any> } }> {
+  const response = await api.patch<{ success: boolean; data: { metadata: Record<string, any> } }>("/integrations/slack/configure", config);
+  return response.data;
+}
+
+export async function disconnectSlackClient(): Promise<void> {
+  await api.delete("/integrations/slack");
+}
+
+export async function testSlackNotificationClient(): Promise<{ results: { channel: string; success: boolean; error?: string }[] }> {
+  const response = await api.post<{ success: boolean; data: { results: { channel: string; success: boolean; error?: string }[] } }>("/notifications/test", { channel: 'slack' });
+  return response.data.data;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LINEAR-SPECIFIC API FUNCTIONS (Day 61)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function initiateLinearConnectClient(): Promise<string> {
+  const response = await api.get<{ success: boolean; data: { authUrl: string } }>("/integrations/linear/connect");
+  return response.data.data.authUrl;
+}
+
+export async function fetchLinearTeamsClient(): Promise<Array<{ id: string; name: string; states: Array<{ id: string; name: string; type: string }> }>> {
+  const response = await api.get<{ success: boolean; data: { teams: Array<{ id: string; name: string; states: Array<{ id: string; name: string; type: string }> }> } }>("/integrations/linear/teams");
+  return response.data.data.teams;
+}
+
+export async function configureLinearClient(config: {
+  linearTeamId: string;
+  defaultStateId: string;
+}): Promise<{ success: boolean; data: { metadata: Record<string, any> } }> {
+  const response = await api.patch<{ success: boolean; data: { metadata: Record<string, any> } }>("/integrations/linear/configure", config);
+  return response.data;
+}
+
+export async function disconnectLinearClient(): Promise<void> {
+  await api.delete("/integrations/linear");
+}
+

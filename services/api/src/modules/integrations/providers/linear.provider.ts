@@ -1,282 +1,404 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// linear.provider.ts — Linear Integration Provider
-//
-// GraphQL API (Linear has NO REST API for mutations).
-// Architecture: ONE executeGraphQL() function wraps all HTTP calls.
-// Every operation (createIssue, findUserByEmail, testConnection) is a
-// different query/mutation string passed through that single client.
-// This is the correct shape for GraphQL — not 5 separate Axios call sites.
-//
-// Priority mapping: explicit lookup table (NOT a formula).
-// Linear's scale: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low (inverted vs intuition).
-// An explicit table makes the inversion visible and unit-testable.
-//
-// Naming collision: linearTeamId (Linear's internal team concept) vs
-// vocaplyTeamId. Always fully qualify in variable names.
-// ─────────────────────────────────────────────────────────────────────────────
-
-import axios from 'axios'
-import type { TeamIntegration } from '@prisma/client'
-import type { IntegrationProvider, ProviderTestResult } from './provider.interface'
-import type { ProviderTokenResponse, LinearCreateIssueResult } from '../integrations.types'
+import { TeamIntegration } from '@prisma/client'
+import {
+    IntegrationProvider,
+    ProviderTestResult,
+    CreateExternalItemInput,
+    ExternalItemResult,
+} from './provider.interface'
+import { ProviderTokenResponse, LinearTeamWithStates } from '../integrations.types'
 import { OAUTH_CONFIGS } from './oauth-config'
-import { decrypt } from '../../../utils/crypto'
+import { encrypt, decrypt } from '../../../utils/crypto'
+import { redis } from '../../../config/redis'
 import { logger } from '../../../config/logger'
+import { AppError, IntegrationError } from '../../../utils/errors'
+import { graphqlRequest } from '../../../utils/graphql-client'
 
-const LINEAR_API_URL = 'https://api.linear.app/graphql'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Priority mapping — EXPLICIT table, never a formula.
-// Linear's numeric scale is inverted from English intuition.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PRIORITY_MAP: Record<string, number> = {
-    LOW: 4,      // Linear "Low"
-    MEDIUM: 3,   // Linear "Medium"
-    HIGH: 2,     // Linear "High"
-    URGENT: 1,   // Linear "Urgent"
+// Priority mapping from Vocaply's 4-level enum to Linear's integer scale (1-4)
+export const LINEAR_PRIORITY_MAP: Record<string, number> = {
+    LOW: 1,
+    MEDIUM: 2,
+    HIGH: 3,
+    URGENT: 4,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Core GraphQL client — ONE function, used by every Linear operation
+// Redis key helpers — all Linear-specific keys centralized here
 // ─────────────────────────────────────────────────────────────────────────────
+const assigneeCacheKey = (teamId: string, email: string) =>
+    `cache:linear:assignee:${teamId}:${email}`
 
-async function executeGraphQL<T = unknown>(
-    accessToken: string,
-    query: string,
-    variables?: Record<string, unknown>
-): Promise<T> {
-    const response = await axios.post(
-        LINEAR_API_URL,
-        { query, variables: variables ?? {} },
-        {
-            headers: {
-                Authorization: accessToken,
-                'Content-Type': 'application/json',
-            },
-            timeout: 15_000,
-        }
-    )
-
-    if (response.data.errors?.length) {
-        const firstError = response.data.errors[0]
-        logger.error({ linearError: firstError }, 'Linear GraphQL error')
-        throw new Error(`Linear GraphQL error: ${firstError.message}`)
-    }
-
-    return response.data.data as T
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LinearProvider — implements IntegrationProvider shared contract
-// ─────────────────────────────────────────────────────────────────────────────
+const ASSIGNEE_CACHE_TTL = 86400 // 24h
+const NEGATIVE_CACHE_SENTINEL = 'NONE'
 
 export class LinearProvider implements IntegrationProvider {
+    /**
+     * Helper to get OAuth config for Linear
+     */
+    private getConfig() {
+        const config = OAUTH_CONFIGS.LINEAR
+        if (!config) throw new AppError('PROVIDER_NOT_CONFIGURED', 500, 'Linear OAuth config missing')
+        return config
+    }
 
-    // ── SharedInterface: OAuth exchange ──────────────────────────────────────
-    // Linear's token exchange IS REST (even though most API ops are GraphQL).
-
-    async exchangeCodeForTokens(code: string): Promise<ProviderTokenResponse> {
-        const config = OAUTH_CONFIGS.LINEAR!
-
-        const payload = new URLSearchParams({
-            code,
-            redirect_uri: config.callbackUrl,
+    /**
+     * Builds the Linear authorization URL
+     * Called by integrations.service.ts initiateOAuth
+     */
+    getAuthorizationUrl(state: string, redirectUriOverride?: string): string {
+        const config = this.getConfig()
+        const params = new URLSearchParams({
             client_id: config.clientId,
-            client_secret: config.clientSecret,
-            grant_type: 'authorization_code',
+            redirect_uri: redirectUriOverride || config.callbackUrl,
+            response_type: 'code',
+            state,
+            scope: config.scopes.join(' '),
+            prompt: 'consent',
         })
+        return `${config.authUrl}?${params.toString()}`
+    }
 
-        const response = await axios.post(
-            config.tokenUrl,
-            payload.toString(),
-            {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                timeout: 10_000,
+    // ─────────────────────────────────────────────────────────────────────────
+    // OAuth — exchangeCodeForTokens
+    // ─────────────────────────────────────────────────────────────────────────
+    async exchangeCodeForTokens(code: string): Promise<ProviderTokenResponse> {
+        const config = this.getConfig()
+
+        const params = new URLSearchParams()
+        params.append('code', code)
+        params.append('redirect_uri', config.callbackUrl)
+        params.append('client_id', config.clientId)
+        params.append('client_secret', config.clientSecret)
+        params.append('grant_type', 'authorization_code')
+
+        let response: Response
+        try {
+            response = await fetch(config.tokenUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString(),
+            })
+        } catch (error: any) {
+            logger.error({ err: error.message }, 'integrate.linear.callback_failed: token exchange network error')
+            throw new AppError('LINEAR_AUTH_NETWORK_ERROR', 502, `Linear network error: ${error.message}`)
+        }
+
+        if (!response.ok) {
+            const bodyText = await response.text()
+            logger.error({ status: response.status, body: bodyText }, 'integrate.linear.callback_failed: token exchange HTTP error')
+            if (response.status === 400) {
+                throw new AppError('LINEAR_AUTH_CODE_INVALID', 400, 'Invalid or expired Linear authorization code')
             }
-        )
+            throw new IntegrationError('LINEAR', `OAuth exchange failed with status ${response.status}`)
+        }
 
-        const accessToken: string = response.data.access_token
+        const data = await response.json() as any
+        const access_token = data.access_token
 
-        // Follow-up GraphQL query to get workspace metadata
-        type ViewerResult = { viewer: { id: string; name: string; organization: { id: string; name: string; urlKey: string } } }
-        const viewerData = await executeGraphQL<ViewerResult>(
-            accessToken,
-            `query { viewer { id name organization { id name urlKey } } }`
-        )
+        // Verify connection to get workspace details
+        let viewerData: any
+        try {
+            const viewerRes = await graphqlRequest({
+                endpoint: 'https://api.linear.app/graphql',
+                headers: { Authorization: `Bearer ${access_token}` },
+                query: `query { viewer { id name email organization { id name urlKey } } }`,
+                providerName: 'LINEAR',
+            })
+            viewerData = viewerRes.viewer
+        } catch (error: any) {
+            logger.error({ err: error.message }, 'integrate.linear.callback_failed: viewer query failed')
+            throw new IntegrationError('LINEAR', 'Failed to fetch viewer profile after token exchange')
+        }
 
-        const org = viewerData.viewer.organization
         return {
-            accessToken,
-            refreshToken: response.data.refresh_token,
-            expiresIn: response.data.expires_in,
+            accessToken: access_token,
+            // Linear does not expire tokens typically, so refreshToken is null
+            expiresIn: data.expires_in,
             workspaceMeta: {
-                id: org.id,
-                name: org.name,
-                url: `https://linear.app/${org.urlKey}`,
+                id: viewerData.organization.id,
+                name: viewerData.organization.name,
+                url: `https://linear.app/${viewerData.organization.urlKey}`,
             },
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // OAuth — refreshAccessToken (No-op since tokens don't expire for this flow)
+    // ─────────────────────────────────────────────────────────────────────────
     async refreshAccessToken(
         refreshTokenEnc: string
     ): Promise<Omit<ProviderTokenResponse, 'workspaceMeta'>> {
-        const config = OAUTH_CONFIGS.LINEAR!
-        const refreshToken = decrypt(refreshTokenEnc)
-
-        const payload = new URLSearchParams({
-            refresh_token: refreshToken,
-            client_id: config.clientId,
-            client_secret: config.clientSecret,
-            grant_type: 'refresh_token',
-        })
-
-        const response = await axios.post(
-            config.tokenUrl,
-            payload.toString(),
-            {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                timeout: 10_000,
-            }
-        )
-
-        return {
-            accessToken: response.data.access_token,
-            refreshToken: response.data.refresh_token,
-            expiresIn: response.data.expires_in,
-        }
+        // Not used as we set tokenExpiresAt: null
+        throw new AppError('LINEAR_UNSUPPORTED_OPERATION', 500, 'Linear tokens do not require refresh in this implementation')
     }
 
-    // ── SharedInterface: testConnection ──────────────────────────────────────
-
+    // ─────────────────────────────────────────────────────────────────────────
+    // testConnection — query viewer profile
+    // ─────────────────────────────────────────────────────────────────────────
     async testConnection(integration: TeamIntegration): Promise<ProviderTestResult> {
         try {
             const accessToken = decrypt(integration.accessTokenEnc)
-            type ViewerResult = { viewer: { id: string; name: string } }
-            const data = await executeGraphQL<ViewerResult>(
-                accessToken,
-                `query { viewer { id name } }`
+            
+            await graphqlRequest({
+                endpoint: 'https://api.linear.app/graphql',
+                headers: { Authorization: `Bearer ${accessToken}` },
+                query: `query { viewer { id name } }`,
+                providerName: 'LINEAR',
+                timeoutMs: 10000,
+            })
+
+            return { healthy: true, workspaceName: integration.workspaceName || undefined }
+        } catch (error: any) {
+            logger.warn(
+                { integrationId: integration.id, err: error.message },
+                'Linear testConnection failed'
             )
-            if (data.viewer?.id) {
-                return { healthy: true, workspaceName: integration.workspaceName || undefined }
-            }
-            return { healthy: false }
-        } catch (err: any) {
-            logger.warn({ integrationId: integration.id, error: err.message }, 'Linear testConnection failed')
             return { healthy: false }
         }
     }
 
-    // ── SharedInterface: revokeToken — best-effort ────────────────────────────
-
+    // ─────────────────────────────────────────────────────────────────────────
+    // revokeToken — best-effort token revocation
+    // ─────────────────────────────────────────────────────────────────────────
     async revokeToken(integration: TeamIntegration): Promise<void> {
-        // Linear does not currently provide a REST revocation endpoint.
-        // The token simply stops being used from Vocaply's side.
-        logger.info({ integrationId: integration.id }, 'Linear revokeToken: no-op (Linear has no revocation endpoint)')
-    }
-
-    // ── Linear-specific: find user by email ───────────────────────────────────
-    // Called per-job, in-memory-scoped result. NOT cached in Redis.
-    // Per-job lookup is the correct cost/complexity tradeoff here:
-    // caching adds invalidation complexity for a value read exactly once per job.
-
-    async findUserByEmail(integration: TeamIntegration, email: string): Promise<string | null> {
         try {
             const accessToken = decrypt(integration.accessTokenEnc)
-            type UsersResult = { users: { nodes: Array<{ id: string; name: string }> } }
-            const data = await executeGraphQL<UsersResult>(
-                accessToken,
-                `query($email: String!) { users(filter: { email: { eq: $email } }) { nodes { id name } } }`,
-                { email }
+            const config = this.getConfig()
+
+            const params = new URLSearchParams()
+            params.append('token', accessToken)
+            params.append('client_id', config.clientId)
+            params.append('client_secret', config.clientSecret)
+
+            await fetch('https://api.linear.app/oauth/revoke', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString(),
+            })
+
+            logger.info({ integrationId: integration.id }, 'Linear token revoked successfully')
+        } catch (error: any) {
+            logger.warn(
+                { integrationId: integration.id, err: error.message },
+                'Linear token revocation failed (best-effort, non-fatal)'
             )
-            return data.users.nodes[0]?.id ?? null
-        } catch (err: any) {
-            logger.warn({ email, error: err.message }, 'Linear findUserByEmail failed')
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // listTeamsAndStates
+    // ─────────────────────────────────────────────────────────────────────────
+    async listTeamsAndStates(accessToken: string): Promise<LinearTeamWithStates[]> {
+        const query = `
+            query {
+                teams {
+                    nodes {
+                        id
+                        name
+                        states {
+                            nodes {
+                                id
+                                name
+                                type
+                            }
+                        }
+                    }
+                }
+            }
+        `
+        const response = await graphqlRequest({
+            endpoint: 'https://api.linear.app/graphql',
+            headers: { Authorization: `Bearer ${accessToken}` },
+            query,
+            providerName: 'LINEAR',
+        })
+
+        return response.teams.nodes.map((team: any) => ({
+            id: team.id,
+            name: team.name,
+            states: team.states.nodes.map((state: any) => ({
+                id: state.id,
+                name: state.name,
+                type: state.type,
+            })),
+        }))
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // resolveLinearAssignee
+    // ─────────────────────────────────────────────────────────────────────────
+    async resolveLinearAssignee(
+        accessToken: string,
+        teamId: string,
+        email: string
+    ): Promise<string | null> {
+        const cacheKey = assigneeCacheKey(teamId, email)
+
+        const cached = await redis.get(cacheKey)
+        if (cached !== null) {
+            if (cached === NEGATIVE_CACHE_SENTINEL) {
+                logger.info({ teamId, email }, 'integrate.linear.assignee_unresolved (negative cache hit)')
+                return null
+            }
+            logger.info({ teamId }, 'integrate.linear.assignee_resolved (cached: true)')
+            return cached
+        }
+
+        try {
+            const query = `
+                query Users($email: String!) {
+                    users(filter: { email: { eq: $email } }) {
+                        nodes {
+                            id
+                        }
+                    }
+                }
+            `
+            const response = await graphqlRequest({
+                endpoint: 'https://api.linear.app/graphql',
+                headers: { Authorization: `Bearer ${accessToken}` },
+                query,
+                variables: { email },
+                providerName: 'LINEAR',
+            })
+
+            const nodes = response.users?.nodes || []
+            if (nodes.length === 1) {
+                const accountId = nodes[0].id
+                await redis.setex(cacheKey, ASSIGNEE_CACHE_TTL, accountId)
+                logger.info({ teamId, cached: false }, 'integrate.linear.assignee_resolved')
+                return accountId
+            }
+
+            if (nodes.length > 1) {
+                logger.warn({ teamId, email, count: nodes.length }, 'integrate.linear.assignee_unresolved (multiple matches, treating as none)')
+            } else {
+                logger.info({ teamId, email }, 'integrate.linear.assignee_unresolved (no match)')
+            }
+
+            await redis.setex(cacheKey, ASSIGNEE_CACHE_TTL, NEGATIVE_CACHE_SENTINEL)
+            return null
+        } catch (error: any) {
+            logger.warn(
+                { teamId, email, err: error.message },
+                'integrate.linear.assignee_unresolved (API error — proceeding unassigned)'
+            )
             return null
         }
     }
 
-    // ── Linear-specific: createIssue ──────────────────────────────────────────
-
-    async createIssue(
-        integration: TeamIntegration,
-        actionItem: {
-            text: string
-            priority?: string
-            assignee?: { email?: string | null } | null
-        }
-    ): Promise<LinearCreateIssueResult> {
-        const accessToken = decrypt(integration.accessTokenEnc)
-        const meta = integration.metadata as any
-
-        // linearTeamId is Linear's own internal team concept (NOT Vocaply's teamId)
-        const linearTeamId: string = meta?.linearTeamId
-        if (!linearTeamId) {
-            throw new Error('Linear integration missing linearTeamId in metadata')
-        }
-
-        // User resolution — proceed without assignee rather than fail (same philosophy as Jira)
-        let assigneeId: string | null = null
-        if (actionItem.assignee?.email) {
-            assigneeId = await this.findUserByEmail(integration, actionItem.assignee.email)
-            if (!assigneeId) {
-                logger.info({ email: actionItem.assignee.email }, 'Linear: assignee email not found, creating unassigned')
-            }
-        }
-
-        const priorityNum = PRIORITY_MAP[actionItem.priority ?? 'MEDIUM'] ?? 3
-
-        type CreateIssueResult = {
-            issueCreate: {
-                success: boolean
-                issue: { id: string; url: string; identifier: string }
-            }
-        }
-
-        const data = await executeGraphQL<CreateIssueResult>(
-            accessToken,
-            `mutation CreateIssue($input: IssueCreateInput!) {
-                issueCreate(input: $input) {
-                    success
-                    issue { id url identifier }
-                }
-            }`,
-            {
-                input: {
-                    title: actionItem.text.substring(0, 255),
-                    teamId: linearTeamId,
-                    priority: priorityNum,
-                    ...(assigneeId ? { assigneeId } : {}),
-                },
-            }
-        )
-
-        if (!data.issueCreate.success) {
-            throw new Error('Linear issue creation returned success:false')
-        }
-
-        return {
-            issueId: data.issueCreate.issue.id,
-            issueUrl: data.issueCreate.issue.url,
-        }
-    }
-
-    // ── SharedInterface: createExternalItem ──────────────────────────────────
-    // Wraps createIssue() so the registry-based worker can call it generically.
-    // The worker uses CreateExternalItemInput, never LinearProvider.createIssue.
-
+    // ─────────────────────────────────────────────────────────────────────────
+    // createExternalItem
+    // ─────────────────────────────────────────────────────────────────────────
     async createExternalItem(
         integration: TeamIntegration,
-        input: import('./provider.interface').CreateExternalItemInput
-    ): Promise<import('./provider.interface').ExternalItemResult> {
-        const result = await this.createIssue(integration, {
-            text: input.text,
-            priority: input.priority,
-            assignee: input.assigneeEmail ? { email: input.assigneeEmail } : null,
+        input: CreateExternalItemInput
+    ): Promise<ExternalItemResult> {
+        const accessToken = decrypt(integration.accessTokenEnc)
+        const metadata = integration.metadata as Record<string, any>
+
+        const teamId = metadata?.linearTeamId
+        const stateId = metadata?.defaultStateId
+
+        if (!teamId || !stateId) {
+            throw new IntegrationError(
+                'LINEAR',
+                'Linear integration is not fully configured: linearTeamId or defaultStateId is missing.'
+            )
+        }
+
+        const title = input.text.substring(0, 255)
+        
+        let description = `**Extracted from meeting:** ${input.context.meetingTitle} on ${input.context.meetingDate.toISOString().split('T')[0]}\n\n`
+        if (input.context.transcriptExcerpt) {
+            description += `> ${input.context.transcriptExcerpt.trim().substring(0, 500)}\n\n`
+        }
+        description += `_— Created automatically by Vocaply_`
+
+        const priority = LINEAR_PRIORITY_MAP[input.priority] || 0
+
+        let assigneeId: string | null = null
+        if (input.assigneeEmail) {
+            assigneeId = await this.resolveLinearAssignee(
+                accessToken,
+                integration.teamId,
+                input.assigneeEmail
+            )
+        }
+
+        const mutation = `
+            mutation CreateIssue($teamId: String!, $title: String!, $description: String, $stateId: String!, $priority: Int, $assigneeId: String, $dueDate: TimelessDate) {
+                issueCreate(input: {
+                    teamId: $teamId
+                    title: $title
+                    description: $description
+                    stateId: $stateId
+                    priority: $priority
+                    ${assigneeId ? 'assigneeId: $assigneeId' : ''}
+                    ${input.dueDate ? 'dueDate: $dueDate' : ''}
+                }) {
+                    success
+                    issue {
+                        id
+                        identifier
+                        url
+                    }
+                }
+            }
+        `
+
+        const variables: Record<string, any> = {
+            teamId,
+            title,
+            description,
+            stateId,
+            priority,
+        }
+        if (assigneeId) {
+            variables.assigneeId = assigneeId
+        }
+        if (input.dueDate) {
+            variables.dueDate = new Date(input.dueDate).toISOString().split('T')[0]
+        }
+
+        const response = await graphqlRequest({
+            endpoint: 'https://api.linear.app/graphql',
+            headers: { Authorization: `Bearer ${accessToken}` },
+            query: mutation,
+            variables,
+            providerName: 'LINEAR',
         })
+
+        if (response.issueCreate?.success === false) {
+            throw new IntegrationError(
+                'LINEAR',
+                'Linear API rejected the issue creation semantically (success: false). Likely an invalid stateId or revoked permissions.'
+            )
+        }
+
+        const issue = response.issueCreate?.issue
+        if (!issue || !issue.id || !issue.url) {
+            throw new IntegrationError(
+                'LINEAR',
+                'Linear API returned success but issue details were missing.'
+            )
+        }
+
+        logger.info(
+            {
+                teamId: integration.teamId,
+                actionItemId: input.actionItemId,
+                linearIssueId: issue.id,
+            },
+            'integrate.linear.issue_created'
+        )
+
         return {
-            externalId: result.issueId,
-            externalUrl: result.issueUrl,
+            externalId: issue.id,
+            externalUrl: issue.url,
         }
     }
 }

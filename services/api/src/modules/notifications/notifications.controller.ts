@@ -1,6 +1,9 @@
 import type { Request, Response, NextFunction } from 'express'
 import { asyncHandler } from '../../utils/async-handler'
 import { notificationsService } from './notifications.service'
+import { prisma } from '../../db/client'
+import { slackProvider } from '../integrations/providers/slack.provider'
+import { emailService } from './email.service'
 
 export const notificationsController = {
   /**
@@ -73,5 +76,73 @@ export const notificationsController = {
 
     await notificationsService.markAllRead(userId)
     return res.json({ data: { success: true } })
+  }),
+
+  /**
+   * POST /api/v1/notifications/test
+   * Sends a test notification to the requested channel(s).
+   */
+  testNotification: asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+    const userId = req.user!.id
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) throw new Error('User not found')
+    
+    const teamId = user.teamId
+    if (!teamId) throw new Error('User not in a team')
+
+    const channel = req.body.channel as 'slack' | 'email' | undefined
+    const results: { channel: string; success: boolean; error?: string }[] = []
+
+    if (!channel || channel === 'email') {
+      try {
+        await emailService.sendMeetingSummary({
+          to: user.email,
+          name: user.name,
+          meetingTitle: 'Test Meeting',
+          summary: 'This is a sample meeting summary for test notification purposes.',
+          commitmentsCount: 0,
+          actionItemsCount: 0,
+          viewUrl: 'http://localhost:3000'
+        })
+        results.push({ channel: 'email', success: true })
+      } catch (e: any) {
+        results.push({ channel: 'email', success: false, error: e.message })
+      }
+    }
+
+    if (!channel || channel === 'slack') {
+      const slackIntegration = await prisma.teamIntegration.findUnique({
+        where: { teamId_provider: { teamId, provider: 'SLACK' } }
+      })
+      if (!slackIntegration || !slackIntegration.isActive) {
+        results.push({ channel: 'slack', success: false, error: 'Slack not connected' })
+      } else {
+        const meta = slackIntegration.metadata as any
+        if (!meta?.defaultChannelId) {
+          results.push({ channel: 'slack', success: false, error: 'No default channel configured' })
+        } else {
+          const sampleMeeting = { id: 'test', title: 'Test Meeting' }
+          const counts = { commitments: 0, actionItems: 0 }
+          const commitments: any[] = []
+          try {
+            const result = await slackProvider.sendMeetingSummaryToChannel(
+              slackIntegration,
+              sampleMeeting,
+              counts,
+              commitments
+            )
+            if (result.ok) {
+              results.push({ channel: 'slack', success: true })
+            } else {
+              results.push({ channel: 'slack', success: false, error: result.error })
+            }
+          } catch (e: any) {
+            results.push({ channel: 'slack', success: false, error: e.message })
+          }
+        }
+      }
+    }
+
+    return res.json({ success: true, data: { results } })
   }),
 }

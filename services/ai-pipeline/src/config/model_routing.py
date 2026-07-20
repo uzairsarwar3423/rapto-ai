@@ -43,9 +43,13 @@ from src.models.common import ModelTier, TaskType
 
 TASK_MODEL_MAP: dict[TaskType, ModelTier] = {
     TaskType.TRANSCRIPT_CLEANUP: ModelTier.MINI,
-    TaskType.EXTRACTION: ModelTier.FULL,
+    TaskType.EXTRACT_COMMITMENTS: ModelTier.MINI,
+    TaskType.EXTRACT_ACTION_ITEMS: ModelTier.MINI,
+    TaskType.EXTRACT_DECISIONS: ModelTier.MINI,
+    TaskType.EXTRACT_BLOCKERS: ModelTier.MINI,
+    TaskType.EXTRACT_RISKS: ModelTier.MINI,
     TaskType.RESOLUTION_CHECK: ModelTier.MINI,
-    TaskType.SUMMARY: ModelTier.MINI,
+    TaskType.SUMMARY: ModelTier.FULL,
     TaskType.CHAT_ANSWER: ModelTier.FULL,
     TaskType.EMBEDDING: ModelTier.EMBED,
     TaskType.RERANK: ModelTier.MINI,
@@ -54,6 +58,13 @@ TASK_MODEL_MAP: dict[TaskType, ModelTier] = {
 
 MODEL_TASK_TEMPERATURE_OVERRIDES: dict[TaskType, float] = {
     TaskType.DATE_PARSE: 0.0,
+    TaskType.TRANSCRIPT_CLEANUP: 0.1,
+    TaskType.EXTRACT_COMMITMENTS: 0.1,
+    TaskType.EXTRACT_ACTION_ITEMS: 0.1,
+    TaskType.EXTRACT_DECISIONS: 0.0,
+    TaskType.EXTRACT_BLOCKERS: 0.0,
+    TaskType.EXTRACT_RISKS: 0.1,
+    TaskType.SUMMARY: 0.3,
 }
 
 

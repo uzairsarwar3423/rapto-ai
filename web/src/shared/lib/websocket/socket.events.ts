@@ -41,6 +41,7 @@ export const SERVER_EVENTS = {
   INTEGRATION_CONNECTED: "integration:connected",
   INTEGRATION_DISCONNECTED: "integration:disconnected",
   ACTION_ITEM_SYNCED: "action_item:synced",
+  ACTION_ITEM_COMPLETED: "action_item:completed",
 
   // Notifications
   NOTIFICATION_CREATED: "notification:created",

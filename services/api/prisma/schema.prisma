@@ -312,6 +312,7 @@ model Team {
   actionItems           ActionItem[]
   decisions             Decision[]
   blockers              Blocker[]
+  risks                 Risk[]
   teamIntegrations      TeamIntegration[]
   subscription          Subscription?
   invoices              Invoice[]
@@ -373,6 +374,7 @@ model Meeting {
   actionItemCount         Int             @default(0)
   decisionCount           Int             @default(0)
   blockerCount            Int             @default(0)
+  riskCount               Int             @default(0)
   participantCount        Int             @default(0)
   processingStartedAt     DateTime?
   processingCompletedAt   DateTime?
@@ -400,6 +402,7 @@ model Meeting {
   actionItems             ActionItem[]
   decisions               Decision[]
   blockers                Blocker[]
+  risks                   Risk[]
 
   @@index([teamId])
   @@index([teamId, status])
@@ -542,6 +545,7 @@ model Decision {
   teamId          String
   text            String
   madeBy          String?
+  decisionType    String?
   confidenceScore Float     @default(1.0)
   createdAt       DateTime  @default(now())
 
@@ -557,17 +561,41 @@ model Blocker {
   meetingId       String
   teamId          String
   text            String
+  blockedWork     String?
   affectedUser    String?
+  blockingParty   String?
+  severity        String?
   resolved        Boolean   @default(false)
   resolvedAt      DateTime?
   confidenceScore Float     @default(1.0)
   createdAt       DateTime  @default(now())
 
   meeting         Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
- team            Team      @relation(fields: [teamId],    references: [id], onDelete: Cascade)  // ← add this
+  team            Team      @relation(fields: [teamId],    references: [id], onDelete: Cascade)
   @@index([meetingId])
   @@index([teamId, resolved])
   @@map("blockers")
+}
+
+model Risk {
+  id               String    @id @default(cuid())
+  meetingId        String
+  teamId           String
+  text             String
+  description      String?
+  category         String?
+  raisedBy         String?
+  impact           String?
+  triggerCondition String?
+  confidenceScore  Float     @default(1.0)
+  createdAt        DateTime  @default(now())
+
+  meeting          Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  team             Team      @relation(fields: [teamId],    references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@index([teamId])
+  @@map("risks")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

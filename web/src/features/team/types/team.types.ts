@@ -7,6 +7,7 @@ export interface TeamSettings {
   defaultTimezone: string;
   weeklyDigestEnabled: boolean;
   weeklyDigestDay: "MONDAY" | "FRIDAY" | "SUNDAY";
+  customBotName?: string;
 }
 
 export interface TeamUsage {

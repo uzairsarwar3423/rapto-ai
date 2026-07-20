@@ -71,3 +71,12 @@ notificationsRouter.post(
   notificationsController.markAllRead
 )
 
+/**
+ * POST /api/v1/notifications/test
+ * Send test notification
+ */
+notificationsRouter.post(
+  '/test',
+  requireAuth,
+  notificationsController.testNotification
+)

@@ -32,6 +32,7 @@ const teamSettingsSchema = z.object({
   weeklyDigestEnabled: z.boolean(),
   weeklyDigestDay: z.string(),
   allowMembersToInvite: z.boolean(),
+  customBotName: z.string().max(50, 'Bot name must be less than 50 characters').optional(),
 });
 
 type TeamSettingsFormData = z.infer<typeof teamSettingsSchema>;
@@ -62,6 +63,7 @@ export function TeamSettingsForm() {
       weeklyDigestEnabled: true,
       weeklyDigestDay: 'MONDAY',
       allowMembersToInvite: false,
+      customBotName: '',
     },
   });
 
@@ -75,6 +77,7 @@ export function TeamSettingsForm() {
         weeklyDigestEnabled: team.settings?.weeklyDigestEnabled !== false,
         weeklyDigestDay: team.settings?.weeklyDigestDay || 'MONDAY',
         allowMembersToInvite: !!team.settings?.allowMembersToInvite,
+        customBotName: team.settings?.customBotName || '',
       });
     }
   }, [team, reset]);
@@ -91,6 +94,7 @@ export function TeamSettingsForm() {
           weeklyDigestEnabled: data.weeklyDigestEnabled,
           weeklyDigestDay: data.weeklyDigestDay,
           allowMembersToInvite: data.allowMembersToInvite,
+          customBotName: data.customBotName,
         },
       });
     }).catch((err: any) => {
@@ -153,6 +157,39 @@ export function TeamSettingsForm() {
 
         {/* Read-Only Team Slug Field */}
         {team && <TeamSlugField slug={team.slug} />}
+
+        {/* Bot Customization */}
+        <div className="space-y-1.5 pt-2 border-t border-border">
+          <div className="flex items-center justify-between">
+            <label htmlFor="custom-bot-name" className="text-xs font-semibold text-foreground uppercase tracking-wider">
+              Bot Customization
+            </label>
+            {team?.plan === 'FREE' && (
+              <span className="inline-flex items-center rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand">
+                Upgrade to Pro
+              </span>
+            )}
+          </div>
+          <input
+            id="custom-bot-name"
+            type="text"
+            disabled={!isAuthorized || team?.plan === 'FREE'}
+            {...register('customBotName')}
+            className={`w-full rounded-xl border bg-background px-4 py-2.5 text-sm text-foreground shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-60 disabled:cursor-not-allowed ${
+              errors.customBotName ? 'border-error' : 'border-border'
+            }`}
+            placeholder={team?.plan === 'FREE' ? "Available on premium plans" : "e.g. Acme Corp Assistant"}
+          />
+          {errors.customBotName ? (
+            <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3" /> {errors.customBotName.message}
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground leading-normal mt-1">
+              Customize the name of the AI bot that joins your meetings. This feature is available on premium plans.
+            </p>
+          )}
+        </div>
 
         {/* Default Team Timezone */}
         <div className="space-y-1.5">

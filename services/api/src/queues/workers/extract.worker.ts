@@ -108,7 +108,7 @@ export const extractWorker = new Worker<ExtractJobData>(
 
     const teamUsers = await prisma.user.findMany({
       where: { teamId: teamId },
-      select: { id: true, name: true }
+      select: { id: true, name: true, email: true }
     })
 
     // ── STEP 3: Fetch team timezone ────────────────────────────────────────
@@ -189,7 +189,7 @@ export const extractWorker = new Worker<ExtractJobData>(
     // For meeting participants, we only care about those who somehow got a userId 
     // but maybe their team user name was empty or different from speakerTag.
     // However, resolveParticipantToUserId mostly needs { id, name, email }.
-    const userPool = [...teamUsers]
+    const userPool: { id: string, name: string, email: string | null }[] = [...teamUsers]
     
     for (const p of meeting.participants) {
       if (p.userId && !userPool.some(u => u.id === p.userId)) {
@@ -269,6 +269,8 @@ export const extractWorker = new Worker<ExtractJobData>(
             meetingId,
             teamId,
             text:           d.text,
+            madeBy:         d.made_by ?? null,
+            decisionType:   d.decision_type ?? null,
             confidenceScore: d.confidence,
           })),
           skipDuplicates: true,
@@ -282,8 +284,29 @@ export const extractWorker = new Worker<ExtractJobData>(
             meetingId,
             teamId,
             text:           b.text,
-            affectedUser:   b.owner_name,
+            blockedWork:    b.blocked_work ?? null,
+            affectedUser:   b.affected_name ?? null,
+            blockingParty:  b.blocking_party ?? null,
+            severity:       b.severity ?? null,
             confidenceScore: b.confidence,
+          })),
+          skipDuplicates: true,
+        })
+      }
+
+      // ── 8e. Risks ─────────────────────────────────────────────────────────
+      if (result.risks && result.risks.length > 0) {
+        await tx.risk.createMany({
+          data: result.risks.map((r) => ({
+            meetingId,
+            teamId,
+            text:             r.text,
+            description:      r.description ?? null,
+            category:         r.category ?? null,
+            raisedBy:         r.raised_by ?? null,
+            impact:           r.impact ?? null,
+            triggerCondition: r.trigger_condition ?? null,
+            confidenceScore:  r.confidence,
           })),
           skipDuplicates: true,
         })
@@ -299,6 +322,7 @@ export const extractWorker = new Worker<ExtractJobData>(
           actionItemCount:        actionItemsData.length,
           decisionCount:          result.decisions.length,
           blockerCount:           result.blockers.length,
+          riskCount:              result.risks ? result.risks.length : 0,
           // AI extraction provenance — used for cost audit and model version tracking
           extractionModel:        result.extraction_model,
           extractionPromptVersion: result.prompt_version,
@@ -317,6 +341,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         actionItems:      result.action_items.length,
         decisions:        result.decisions.length,
         blockers:         result.blockers.length,
+        risks:            result.risks ? result.risks.length : 0,
         chunksTotal:      result.chunks_total,
         chunksSucceeded:  result.chunks_succeeded,
         costUsd:          result.total_cost.estimated_cost_usd,
@@ -333,6 +358,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         action_items_count: actionItemsData.length,
         decisions_count:    result.decisions.length,
         blockers_count:     result.blockers.length,
+        risks_count:        result.risks ? result.risks.length : 0,
         is_partial:         isPartial,
         chunks_total:       result.chunks_total,
         chunks_succeeded:   result.chunks_succeeded,
@@ -360,6 +386,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         actionItemCount:  actionItemsData.length,
         decisionCount:    result.decisions.length,
         blockerCount:     result.blockers.length,
+        riskCount:        result.risks ? result.risks.length : 0,
         isPartial,
       })
 

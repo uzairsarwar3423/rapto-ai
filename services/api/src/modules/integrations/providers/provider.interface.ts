@@ -101,7 +101,7 @@ export interface IntegrationProvider {
      * twice with the same input either creates exactly one item or throws a
      * typed error — never silently creates duplicates.
      */
-    createExternalItem(
+    createExternalItem?(
         integration: TeamIntegration,
         input: CreateExternalItemInput
     ): Promise<ExternalItemResult>

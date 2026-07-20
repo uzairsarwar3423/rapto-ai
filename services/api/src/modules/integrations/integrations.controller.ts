@@ -109,6 +109,161 @@ export const disconnectJiraController = async (req: Request, res: Response, next
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SLACK-SPECIFIC CONTROLLERS (Day 60 §12)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const connectSlackController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const userId = req.user!.id
+        const result = await integrationsService.initiateOAuth('SLACK', teamId, userId)
+        res.status(200).json({ success: true, data: { authUrl: result.authUrl } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+export const slackCallbackController = async (req: Request, res: Response, next: NextFunction) => {
+    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+    try {
+        const { code, state, error } = req.query
+
+        if (error) {
+            logger.info({ error }, 'integrate.slack.callback_failed: user denied consent or provider error')
+            return res.redirect(`${frontendUrl}/settings/integrations?error=oauth_denied`)
+        }
+
+        if (!code || !state) {
+            return res.redirect(`${frontendUrl}/settings/integrations?error=oauth_invalid_params`)
+        }
+
+        const result = await integrationsService.handleOAuthCallback('SLACK', code as string, state as string)
+        res.redirect(result.redirectUrl)
+    } catch (e: any) {
+        const errorCode = e.code || 'SLACK_CONNECT_FAILED'
+        logger.error({ err: e.message, code: errorCode }, 'integrate.slack.callback_failed')
+        res.redirect(`${frontendUrl}/settings/integrations?error=${encodeURIComponent(errorCode)}`)
+    }
+}
+
+export const listSlackChannelsController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const result = await integrationsService.getProviderOptions(teamId, 'SLACK')
+        // result.options already returns {id, name}
+        res.status(200).json({ success: true, data: { channels: result.options } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+export const configureSlackController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const { defaultChannelId, defaultChannelName } = req.body
+
+        const result = await integrationsService.updateConfig(teamId, 'SLACK', { defaultChannelId, defaultChannelName })
+        res.status(200).json({ success: true, data: result })
+    } catch (e) {
+        next(e)
+    }
+}
+
+export const disconnectSlackController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const userId = req.user!.id
+        await integrationsService.disconnectIntegration(teamId, 'SLACK', userId)
+        res.status(200).json({ success: true, data: { message: 'Slack disconnected successfully' } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LINEAR-SPECIFIC CONTROLLERS (Day 61)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const connectLinearController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const userId = req.user!.id
+        const result = await integrationsService.initiateOAuth('LINEAR', teamId, userId)
+        res.status(200).json({ success: true, data: { authUrl: result.authUrl } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+export const linearCallbackController = async (req: Request, res: Response, next: NextFunction) => {
+    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+    try {
+        const { code, state, error } = req.query
+
+        if (error) {
+            logger.info({ error }, 'integrate.linear.callback_failed: user denied consent or provider error')
+            return res.redirect(`${frontendUrl}/settings/integrations?error=oauth_denied`)
+        }
+
+        if (!code || !state) {
+            return res.redirect(`${frontendUrl}/settings/integrations?error=oauth_invalid_params`)
+        }
+
+        const result = await integrationsService.handleOAuthCallback('LINEAR', code as string, state as string)
+        res.redirect(result.redirectUrl)
+    } catch (e: any) {
+        const errorCode = e.code || 'LINEAR_CONNECT_FAILED'
+        logger.error({ err: e.message, code: errorCode }, 'integrate.linear.callback_failed')
+        res.redirect(`${frontendUrl}/settings/integrations?error=${encodeURIComponent(errorCode)}`)
+    }
+}
+
+export const listLinearTeamsController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const teams = await integrationsService.listLinearTeamsAndStates(teamId)
+        res.status(200).json({ success: true, data: { teams } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+export const configureLinearController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const { linearTeamId, defaultStateId } = req.body
+
+        // Verify the team and state exist
+        const teamsAndStates = await integrationsService.listLinearTeamsAndStates(teamId)
+        const team = teamsAndStates.find(t => t.id === linearTeamId)
+        if (!team) {
+            return res.status(422).json({ success: false, error: 'Invalid linearTeamId' })
+        }
+        const state = team.states.find(s => s.id === defaultStateId)
+        if (!state) {
+            return res.status(422).json({ success: false, error: 'Invalid defaultStateId' })
+        }
+
+        const result = await integrationsService.updateConfig(teamId, 'LINEAR', { linearTeamId, defaultStateId })
+        res.status(200).json({ success: true, data: result })
+    } catch (e) {
+        next(e)
+    }
+}
+
+export const disconnectLinearController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const teamId = req.teamId!
+        const userId = req.user!.id
+        await integrationsService.disconnectIntegration(teamId, 'LINEAR', userId)
+        res.status(200).json({ success: true, data: { message: 'Linear disconnected successfully' } })
+    } catch (e) {
+        next(e)
+    }
+}
+
+
 
 export const listIntegrationsController = async (req: Request, res: Response, next: NextFunction) => {
     try {

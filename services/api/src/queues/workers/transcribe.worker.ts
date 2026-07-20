@@ -56,14 +56,15 @@ export const transcribeWorker = new Worker<TranscribeJobData>(
     // ── STEP 1.5: Sync participants to PostgreSQL scalably ──────────────────
     const uniqueSpeakers = new Set<string>()
     const normalized = transcript.normalized_transcript as any[]
-    if (normalized && Array.isArray(normalized)) {
+    if (normalized && Array.isArray(normalized) && normalized.length > 0) {
       for (const turn of normalized) {
-        if (turn.speaker) uniqueSpeakers.add(turn.speaker)
+        const speaker = turn.speaker || turn.speaker_name || turn.speaker_tag || turn.participant?.name || 'Unknown'
+        if (speaker !== 'Unknown') uniqueSpeakers.add(speaker)
       }
     } else if (transcript.raw_transcript && Array.isArray(transcript.raw_transcript)) {
       for (const turn of transcript.raw_transcript as any[]) {
         const speaker = turn.speaker || turn.speaker_name || turn.speaker_tag || turn.participant?.name || 'Unknown'
-        uniqueSpeakers.add(speaker)
+        if (speaker !== 'Unknown') uniqueSpeakers.add(speaker)
       }
     }
 

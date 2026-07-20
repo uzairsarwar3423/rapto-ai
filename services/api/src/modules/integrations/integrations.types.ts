@@ -81,6 +81,22 @@ export interface LinearCreateIssueResult {
     issueUrl: string
 }
 
+export interface LinearConfigureInput {
+    linearTeamId: string
+    defaultStateId: string
+}
+
+export interface LinearTeamWithStates {
+    id: string
+    name: string
+    states: { id: string; name: string; type: string }[]
+}
+
+export interface LinearAssigneeCacheEntry {
+    accountId: string
+    resolvedAt: number
+}
+
 /**
  * Notion page creation result.
  */
