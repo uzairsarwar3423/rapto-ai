@@ -16,8 +16,8 @@ import {
     updateCalendarConfigController,
     getCalendarPreviewController,
     syncNowController,
-    connectGoogleCalendarController,
-    googleCalendarCallbackController,
+    connectCalendarController,
+    calendarCallbackController,
     // Jira-specific (Day 58)
     connectJiraController,
     jiraCallbackController,
@@ -69,8 +69,18 @@ router.post(
     syncNowController
 )
 
-router.get('/google-calendar/connect', requireAuth, connectGoogleCalendarController)
-router.get('/google-calendar/callback', googleCalendarCallbackController)
+router.post(
+    '/outlook-calendar/sync-now',
+    requireAuth,
+    calendarSyncNowRateLimiter,
+    syncNowController
+)
+
+router.get('/google-calendar/connect', requireAuth, connectCalendarController)
+router.get('/google-calendar/callback', calendarCallbackController)
+
+router.get('/outlook-calendar/connect', requireAuth, connectCalendarController)
+router.get('/outlook-calendar/callback', calendarCallbackController)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // JIRA-SPECIFIC ROUTES (Day 58 §13, §24)

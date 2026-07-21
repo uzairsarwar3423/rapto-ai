@@ -1,6 +1,7 @@
-import { TeamProvider } from '@prisma/client'
+import { TeamProvider, CalendarProvider } from '@prisma/client'
 
 export type ProviderType = TeamProvider
+export type CalendarProviderName = CalendarProvider
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Integration Shapes
@@ -20,6 +21,12 @@ export interface TeamIntegrationSummary {
 
 export interface OAuthCallbackResult {
     redirectUrl: string
+}
+
+export interface OAuthTokenResult {
+    accessToken: string
+    refreshToken?: string
+    expiresAt?: Date
 }
 
 /**

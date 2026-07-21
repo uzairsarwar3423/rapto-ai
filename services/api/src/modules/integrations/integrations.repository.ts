@@ -1,9 +1,18 @@
-import { TeamIntegration, Prisma } from '@prisma/client'
+import { TeamIntegration, Prisma, UserIntegration } from '@prisma/client'
 import { prisma } from '../../db/client'
 import { ProviderType, TeamIntegrationSummary } from './integrations.types'
 import { addMinutes } from 'date-fns'
 
 export class IntegrationsRepository {
+    async findActiveCalendarIntegration(userId: string): Promise<UserIntegration | null> {
+        return prisma.userIntegration.findFirst({
+            where: {
+                userId,
+                syncEnabled: true,
+            },
+        })
+    }
+
     async findByTeamAndProvider(
         teamId: string,
         provider: ProviderType

@@ -70,29 +70,34 @@ export async function getValidAccessToken(
 
     const provider = integration.provider
 
-    // ─── Google Calendar (user-level) ─────────────────────────────────────────
-    if (provider === 'GOOGLE_CALENDAR') {
+    // ─── Calendar Integrations (user-level or team-level) ────────────────────────
+    const calendarProviders = ['GOOGLE_CALENDAR', 'OUTLOOK_CALENDAR']
+    if (calendarProviders.includes(provider)) {
+        const { calendarProviderRegistry } = await import('../modules/integrations/providers/calendar-provider.registry')
+        const providerClient = calendarProviderRegistry.getProvider(provider as any)
+        
         const plainRefreshToken = decrypt(integration.refreshTokenEnc)
-        const refreshResult = await googleCalendarProvider.refreshAccessToken(plainRefreshToken)
+        const refreshResult = await providerClient.refreshAccessToken(plainRefreshToken)
         const newAccessTokenEnc = encrypt(refreshResult.accessToken)
+
+        const updateData: any = {
+            accessTokenEnc: newAccessTokenEnc,
+            tokenExpiresAt: refreshResult.expiresAt ?? null,
+            consecutiveErrors: 0,
+        }
+        if (refreshResult.refreshToken) {
+            updateData.refreshTokenEnc = encrypt(refreshResult.refreshToken)
+        }
 
         if (isTeamLevel) {
             await prisma.teamIntegration.update({
                 where: { id: integration.id },
-                data: {
-                    accessTokenEnc: newAccessTokenEnc,
-                    tokenExpiresAt: refreshResult.expiresAt,
-                    consecutiveErrors: 0,
-                },
+                data: updateData,
             })
         } else {
             await prisma.userIntegration.update({
                 where: { id: integration.id },
-                data: {
-                    accessTokenEnc: newAccessTokenEnc,
-                    tokenExpiresAt: refreshResult.expiresAt,
-                    consecutiveErrors: 0,
-                },
+                data: updateData,
             })
         }
 

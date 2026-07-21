@@ -1,14 +1,16 @@
 import { logger } from '../config/logger'
 import { prisma } from '../db/client'
 import { redis } from '../config/redis'
-import { googleCalendarProvider, GoogleSyncTokenExpiredError, GoogleCalendarEvent } from '../modules/integrations/providers/google-calendar.provider'
+import { calendarProviderRegistry } from '../modules/integrations/providers/calendar-provider.registry'
+import { CalendarProviderEvent } from '../modules/integrations/providers/calendar-provider.interface'
 import { getValidAccessToken } from './token-refresh.service'
-import { detectPlatform, extractMeetingUrl } from '../utils/platform-detect'
+import { detectPlatform } from '../utils/platform-detect'
 import { dedupService } from './dedup.service'
 import * as recallService from './recall.service'
 import { createMeetingFromCalendar } from '../modules/meetings/meetings.service'
 import type { CalendarSyncResult } from '../modules/integrations/integrations.types'
 import { PlatformType } from '@prisma/client'
+import { integrationsRepository } from '../modules/integrations/integrations.repository'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calendar Sync Service
@@ -18,25 +20,22 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
     logger.debug({ userId }, 'syncUserCalendar: started')
 
     // STEP 1 — Load Integration
-    const integration = await prisma.userIntegration.findUnique({
-        where: { userId_provider: { userId, provider: 'GOOGLE_CALENDAR' } },
-        include: { user: true },
-    })
-
-    if (!integration || !integration.syncEnabled) {
+    const integration = await integrationsRepository.findActiveCalendarIntegration(userId)
+    if (!integration) {
         return {
             synced: 0, skipped: 0, duplicates: 0, errors: 0,
             message: 'NOT_CONNECTED_OR_DISABLED',
         }
     }
 
-    if (!integration.user.teamId) {
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.teamId) {
         return {
             synced: 0, skipped: 0, duplicates: 0, errors: 1,
             message: 'User does not belong to a team',
         }
     }
-    const teamId = integration.user.teamId
+    const teamId = user.teamId
 
     // STEP 2 — Acquire Per-User Sync Lock
     const lockKey = `sync:calendar:lock:${userId}`
@@ -58,49 +57,38 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
         // STEP 3 — Obtain a Valid Access Token
         const accessToken = await getValidAccessToken(integration)
 
-        // STEP 4 — Fetch Events From Google
+        // STEP 4 — Fetch Events From Provider
         const calendarId = integration.calendarId || 'primary'
-        const now = new Date()
         let eventsResult
         let isFallbackScan = false
 
-        try {
-            eventsResult = await googleCalendarProvider.listEvents(accessToken, {
-                calendarId,
-                ...(integration.nextSyncToken
-                    ? { syncToken: integration.nextSyncToken }
-                    : {
-                        timeMin: now.toISOString(),
-                        timeMax: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                        singleEvents: true,
-                        orderBy: 'startTime'
-                    }),
+        const provider = calendarProviderRegistry.getProvider(integration.provider)
+
+        eventsResult = await provider.listEvents(accessToken, {
+            calendarId,
+            syncToken: integration.nextSyncToken || undefined
+        })
+
+        if (eventsResult.fullResyncRequired) {
+            logger.warn({ userId }, 'calendar-sync.sync_token_expired_or_invalid')
+            isFallbackScan = true
+            
+            // Clear token and retry immediately
+            await prisma.userIntegration.update({
+                where: { id: integration.id },
+                data: { nextSyncToken: null }
             })
-        } catch (err: any) {
-            if (err instanceof GoogleSyncTokenExpiredError) {
-                logger.warn({ userId }, 'calendar-sync.sync_token_expired')
-                isFallbackScan = true
-                
-                // Clear token and retry immediately
-                await prisma.userIntegration.update({
-                    where: { id: integration.id },
-                    data: { nextSyncToken: null }
-                })
-                
-                eventsResult = await googleCalendarProvider.listEvents(accessToken, {
-                    calendarId,
-                    timeMin: now.toISOString(),
-                    timeMax: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                    singleEvents: true,
-                    orderBy: 'startTime'
-                })
-            } else {
-                throw err // Caught by outer try/catch
-            }
+            
+            eventsResult = await provider.listEvents(accessToken, {
+                calendarId,
+                syncToken: undefined
+            })
         }
 
-        const events = eventsResult.items
+        const events = eventsResult.events
         nextSyncToken = eventsResult.nextSyncToken
+
+        const now = new Date()
 
         // STEP 5 — Process Each Returned Event
         for (const event of events) {
@@ -112,13 +100,13 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
                 }
 
                 // Skip all-day events or declined events
-                if (!event.start?.dateTime) {
+                if (event.isAllDay) {
                     skipped++
                     continue
                 }
 
                 // b. Extract meeting URL
-                const meetingUrl = extractMeetingUrl(event)
+                const meetingUrl = event.meetingUrl
                 if (!meetingUrl) {
                     skipped++
                     continue
@@ -131,7 +119,7 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
                     continue
                 }
 
-                const scheduledAt = new Date(event.start.dateTime)
+                const scheduledAt = event.startTime
                 // Filter out past events
                 if (scheduledAt.getTime() < now.getTime()) {
                     skipped++
@@ -217,7 +205,7 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
     }
 }
 
-async function handleCancelledCalendarEvent(teamId: string, event: GoogleCalendarEvent) {
+async function handleCancelledCalendarEvent(teamId: string, event: CalendarProviderEvent) {
     if (!event.id) return
 
     const meeting = await prisma.meeting.findFirst({

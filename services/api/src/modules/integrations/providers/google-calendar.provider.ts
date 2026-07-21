@@ -1,6 +1,9 @@
 import axios, { AxiosInstance } from 'axios'
 import { oauthProvidersConfig } from '../../../config/oauth-providers.config'
 import { IntegrationError } from '../../../utils/errors'
+import { CalendarProvider, CalendarProviderEvent, CalendarSyncResult } from './calendar-provider.interface'
+import { OAuthTokenResult } from '../integrations.types'
+import { extractMeetingUrl } from '../../../utils/platform-detect'
 
 export class GoogleSyncTokenExpiredError extends Error {
     constructor() {
@@ -57,17 +60,7 @@ export interface GoogleEventsResponse {
     items: GoogleCalendarEvent[]
 }
 
-interface ListEventsParams {
-    calendarId: string
-    syncToken?: string
-    timeMin?: string
-    timeMax?: string
-    singleEvents?: boolean
-    orderBy?: string
-    maxResults?: number
-}
-
-export class GoogleCalendarProvider {
+export class GoogleCalendarProvider implements CalendarProvider {
     private readonly oauthClient: AxiosInstance
     private readonly apiClient: AxiosInstance
     private readonly config = oauthProvidersConfig.GOOGLE_CALENDAR
@@ -115,7 +108,7 @@ export class GoogleCalendarProvider {
         )
     }
 
-    public getAuthorizationUrl(state: string): string {
+    public getAuthorizationUrl(state: string, userId: string): string {
         const url = new URL(this.config.authUrl)
         url.searchParams.append('client_id', this.config.clientId)
         url.searchParams.append('redirect_uri', this.config.redirectUri)
@@ -127,7 +120,7 @@ export class GoogleCalendarProvider {
         return url.toString()
     }
 
-    public async exchangeCodeForTokens(code: string): Promise<GoogleTokenResponse> {
+    public async exchangeCodeForTokens(code: string): Promise<OAuthTokenResult> {
         try {
             const params = new URLSearchParams({
                 client_id: this.config.clientId,
@@ -145,14 +138,18 @@ export class GoogleCalendarProvider {
                 }
             )
 
-            return response.data
+            return {
+                accessToken: response.data.access_token,
+                refreshToken: response.data.refresh_token,
+                expiresAt: new Date(Date.now() + response.data.expires_in * 1000)
+            }
         } catch (error: any) {
             this.handleOAuthError(error, 'AUTH_CODE_INVALID')
             throw new IntegrationError('GOOGLE_CALENDAR', 'Failed to exchange code')
         }
     }
 
-    public async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; expiresAt: Date }> {
+    public async refreshAccessToken(refreshToken: string): Promise<OAuthTokenResult> {
         try {
             const params = new URLSearchParams({
                 client_id: this.config.clientId,
@@ -171,6 +168,7 @@ export class GoogleCalendarProvider {
 
             return {
                 accessToken: response.data.access_token,
+                refreshToken: response.data.refresh_token,
                 expiresAt: new Date(Date.now() + response.data.expires_in * 1000)
             }
         } catch (error: any) {
@@ -182,11 +180,11 @@ export class GoogleCalendarProvider {
         }
     }
 
-    public async revokeToken(token: string): Promise<void> {
+    public async revokeToken(accessToken: string): Promise<void> {
         try {
             await this.oauthClient.post(
                 this.config.revokeUrl,
-                new URLSearchParams({ token }).toString(),
+                new URLSearchParams({ token: accessToken }).toString(),
                 {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
                 }
@@ -196,47 +194,18 @@ export class GoogleCalendarProvider {
         }
     }
 
-    public async testConnection(accessToken: string): Promise<{ healthy: boolean }> {
+    public async listEvents(accessToken: string, params: { calendarId: string; syncToken?: string }): Promise<CalendarSyncResult> {
         try {
-            await this.getUserCalendarList(accessToken)
-            return { healthy: true }
-        } catch (e) {
-            return { healthy: false }
-        }
-    }
-
-    public async getUserCalendarList(accessToken: string): Promise<GoogleCalendarListEntry[]> {
-        try {
-            const response = await this.apiClient.get<{ items: GoogleCalendarListEntry[] }>(
-                '/users/me/calendarList',
-                {
-                    headers: { Authorization: `Bearer ${accessToken}` }
-                }
-            )
-            return response.data.items
-        } catch (error: any) {
-            this.handleApiError(error)
-            throw new IntegrationError('GOOGLE_CALENDAR', 'Failed to fetch calendar list')
-        }
-    }
-
-    public async listEvents(accessToken: string, params: ListEventsParams): Promise<GoogleEventsResponse> {
-        try {
-            // Validate mutual exclusivity
-            if (params.syncToken && (params.timeMin || params.timeMax)) {
-                throw new Error('Cannot provide timeMin/timeMax alongside syncToken')
-            }
-
             const queryParams: Record<string, string | boolean | number> = {}
             if (params.syncToken) {
                 queryParams.syncToken = params.syncToken
             } else {
-                if (params.timeMin) queryParams.timeMin = params.timeMin
-                if (params.timeMax) queryParams.timeMax = params.timeMax
-                if (params.singleEvents !== undefined) queryParams.singleEvents = params.singleEvents
-                if (params.orderBy) queryParams.orderBy = params.orderBy
+                const now = new Date()
+                queryParams.timeMin = now.toISOString()
+                queryParams.timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+                queryParams.singleEvents = true
+                queryParams.orderBy = 'startTime'
             }
-            if (params.maxResults) queryParams.maxResults = params.maxResults
 
             const response = await this.apiClient.get<GoogleEventsResponse>(
                 `/calendars/${encodeURIComponent(params.calendarId)}/events`,
@@ -246,10 +215,41 @@ export class GoogleCalendarProvider {
                 }
             )
             
-            return response.data
+            const rawEvents = response.data.items || []
+            
+            const events: CalendarProviderEvent[] = rawEvents.map(event => {
+                const isCancelled = event.status === 'cancelled'
+                const isAllDay = !event.start?.dateTime && !!event.start?.date
+                let startTime = new Date(0)
+                if (event.start?.dateTime) {
+                    startTime = new Date(event.start.dateTime)
+                } else if (event.start?.date) {
+                    startTime = new Date(event.start.date)
+                }
+                
+                return {
+                    id: event.id,
+                    status: isCancelled ? 'cancelled' : 'confirmed',
+                    summary: event.summary || null,
+                    description: event.description || null,
+                    location: event.location || null,
+                    startTime,
+                    isAllDay,
+                    meetingUrl: extractMeetingUrl(event)
+                }
+            })
+
+            return {
+                events,
+                nextSyncToken: response.data.nextSyncToken,
+                fullResyncRequired: false
+            }
         } catch (error: any) {
             if (error.response?.status === 410) {
-                throw new GoogleSyncTokenExpiredError()
+                return {
+                    events: [],
+                    fullResyncRequired: true
+                }
             }
             this.handleApiError(error)
             throw new IntegrationError('GOOGLE_CALENDAR', 'Failed to list events')

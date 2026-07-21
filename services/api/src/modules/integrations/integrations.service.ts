@@ -530,52 +530,68 @@ export class IntegrationsService {
         return { healthy: testResult.healthy, lastChecked: new Date() }
     }
 
-    async completeGoogleCalendarConnect(userId: string, code: string) {
+    async completeCalendarConnect(userId: string, provider: 'GOOGLE_CALENDAR' | 'OUTLOOK_CALENDAR', code: string) {
         const { prisma } = await import('../../db/client')
-        const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
+        const { calendarProviderRegistry } = await import('./providers/calendar-provider.registry')
         const { encrypt } = await import('../../utils/crypto')
 
-        // 1. Exchange code for tokens
-        const tokenResponse = await googleCalendarProvider.exchangeCodeForTokens(code)
+        const providerClient = calendarProviderRegistry.getProvider(provider)
 
-        // 2. Fetch primary calendar id
+        // 1. Exchange code for tokens
+        const tokenResponse = await providerClient.exchangeCodeForTokens(code)
+
+        // 2. Fetch primary calendar id (currently only Google needs to fetch lists explicitly, Outlook uses default endpoint)
         let calendarId = 'primary'
-        try {
-            const calendars = await googleCalendarProvider.getUserCalendarList(tokenResponse.access_token)
-            const primary = calendars.find(c => c.primary)
-            if (primary) {
-                calendarId = primary.id
+        if (provider === 'GOOGLE_CALENDAR') {
+            try {
+                // We cast since this is a Google-specific method
+                const googleClient = providerClient as any
+                const calendars = await googleClient.getUserCalendarList(tokenResponse.accessToken)
+                const primary = calendars.find((c: any) => c.primary)
+                if (primary) {
+                    calendarId = primary.id
+                }
+            } catch (err: any) {
+                logger.warn({ userId, err: err.message }, 'Failed to fetch calendar list during connect, falling back to primary')
             }
-        } catch (err: any) {
-            logger.warn({ userId, err: err.message }, 'Failed to fetch calendar list during connect, falling back to primary')
         }
 
         // 3. Encrypt tokens
-        const accessTokenEnc = encrypt(tokenResponse.access_token)
-        const refreshTokenEnc = tokenResponse.refresh_token ? encrypt(tokenResponse.refresh_token) : null
-        const tokenExpiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000)
+        const accessTokenEnc = encrypt(tokenResponse.accessToken)
+        const refreshTokenEnc = tokenResponse.refreshToken ? encrypt(tokenResponse.refreshToken) : null
+        
+        // 4. Enforce Single-Active-Calendar-Provider rule
+        // Before upserting the new one, disable any other active calendar providers
+        await prisma.userIntegration.updateMany({
+            where: {
+                userId,
+                provider: { not: provider },
+                syncEnabled: true
+            },
+            data: { syncEnabled: false }
+        })
 
-        // 4. Upsert UserIntegration
+        // 5. Upsert UserIntegration
         const integration = await prisma.userIntegration.upsert({
             where: {
                 userId_provider: {
                     userId,
-                    provider: 'GOOGLE_CALENDAR',
+                    provider,
                 },
             },
             create: {
                 userId,
-                provider: 'GOOGLE_CALENDAR',
+                provider,
                 accessTokenEnc,
                 refreshTokenEnc,
-                tokenExpiresAt,
+                tokenExpiresAt: tokenResponse.expiresAt || null,
                 calendarId,
                 syncEnabled: true,
             },
             update: {
                 accessTokenEnc,
                 ...(refreshTokenEnc && { refreshTokenEnc }),
-                tokenExpiresAt,
+                tokenExpiresAt: tokenResponse.expiresAt || null,
                 calendarId,
                 syncEnabled: true,
                 consecutiveErrors: 0,
@@ -588,7 +604,7 @@ export class IntegrationsService {
 
     async disconnectCalendar(userId: string, provider: 'GOOGLE_CALENDAR' | 'OUTLOOK_CALENDAR') {
         const { prisma } = await import('../../db/client')
-        const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
+        const { calendarProviderRegistry } = await import('./providers/calendar-provider.registry')
         const { decrypt } = await import('../../utils/crypto')
 
         const integration = await prisma.userIntegration.findUnique({
@@ -604,7 +620,12 @@ export class IntegrationsService {
         }
 
         if (plainAccessToken) {
-            await googleCalendarProvider.revokeToken(plainAccessToken)
+            try {
+                const providerClient = calendarProviderRegistry.getProvider(provider)
+                await providerClient.revokeToken(plainAccessToken)
+            } catch (e: any) {
+                logger.warn({ err: e.message }, 'Failed to revoke token remotely during disconnect')
+            }
         }
 
         await prisma.userIntegration.delete({
@@ -633,64 +654,41 @@ export class IntegrationsService {
 
     async getCalendarPreview(userId: string) {
         const { prisma } = await import('../../db/client')
-        const { googleCalendarProvider } = await import('./providers/google-calendar.provider')
-        const { detectPlatform } = await import('../../utils/platform-detect')
-
-        const integration = await prisma.userIntegration.findUnique({
-            where: { userId_provider: { userId, provider: 'GOOGLE_CALENDAR' } }
-        })
-        if (!integration || !integration.syncEnabled) {
+        const { integrationsRepository } = await import('./integrations.repository')
+        const { calendarProviderRegistry } = await import('./providers/calendar-provider.registry')
+        
+        const integration = await integrationsRepository.findActiveCalendarIntegration(userId)
+        if (!integration) {
             return { events: [] }
         }
 
         let plainAccessToken: string
         try {
-            const { decrypt, encrypt } = await import('../../utils/crypto')
-            const now = new Date()
-            if (integration.tokenExpiresAt && integration.tokenExpiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
-                if (!integration.refreshTokenEnc) throw new Error('No refresh token')
-                const refreshResult = await googleCalendarProvider.refreshAccessToken(integration.refreshTokenEnc)
-                const newAccessTokenEnc = encrypt(refreshResult.accessToken)
-                const newExpiresAt = refreshResult.expiresAt
-                await prisma.userIntegration.update({
-                    where: { id: integration.id },
-                    data: { accessTokenEnc: newAccessTokenEnc, tokenExpiresAt: newExpiresAt }
-                })
-                plainAccessToken = refreshResult.accessToken
-            } else {
-                plainAccessToken = decrypt(integration.accessTokenEnc)
-            }
+            const { getValidAccessToken } = await import('../../services/token-refresh.service')
+            plainAccessToken = await getValidAccessToken(integration, false)
         } catch (err: any) {
             return { events: [], error: `Failed to authenticate: ${err.message}` }
         }
 
         try {
-            const now = new Date()
-            const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-            const eventsResult = await googleCalendarProvider.listEvents(plainAccessToken, {
-                calendarId: integration.calendarId || 'primary',
-                timeMin: now.toISOString(),
-                timeMax: timeMax.toISOString(),
+            const providerClient = calendarProviderRegistry.getProvider(integration.provider)
+            const eventsResult = await providerClient.listEvents(plainAccessToken, {
+                calendarId: integration.calendarId || 'primary'
             })
 
-            const { extractMeetingUrl } = await import('../../utils/platform-detect')
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-                select: { email: true }
-            })
-
-            const processedEvents = eventsResult.items.map(event => {
-                const extracted = extractMeetingUrl(event)
-
+            const processedEvents = eventsResult.events.map(event => {
+                const isCancelled = event.status === 'cancelled'
+                const { platform } = await import('../../utils/platform-detect')
+                
                 return {
                     id: event.id || '',
                     summary: event.summary || 'Untitled Meeting',
-                    start: event.start?.dateTime || event.start?.date || '',
-                    end: event.end?.dateTime || event.end?.date || '',
+                    start: event.startTime.toISOString(),
+                    end: event.startTime.toISOString(),
                     location: event.location || null,
-                    meetingUrl: extracted || null,
-                    platform: extracted ? detectPlatform(extracted).platform : null,
-                    isValid: !!extracted
+                    meetingUrl: event.meetingUrl || null,
+                    platform: event.meetingUrl ? platform(event.meetingUrl).platform : null,
+                    isValid: !!event.meetingUrl
                 }
             })
 

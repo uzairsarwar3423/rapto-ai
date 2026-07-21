@@ -40,6 +40,7 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@azure/msal-node": "^5.4.1",
     "@bull-board/api": "^8.0.0",
     "@bull-board/express": "^8.0.0",
     "@paddle/paddle-node-sdk": "^3.8.0",
@@ -52,6 +53,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
     "express": "^5.2.1",
     "googleapis": "^173.0.0",
     "helmet": "^8.2.0",

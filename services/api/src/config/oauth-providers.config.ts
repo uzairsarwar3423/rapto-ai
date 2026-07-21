@@ -10,6 +10,16 @@ export const oauthProvidersConfig = {
         clientSecret: env.GOOGLE_CLIENT_SECRET || '',
         redirectUri: env.GOOGLE_CALENDAR_CALLBACK_URL || `${env.API_URL || env.APP_URL}/api/v1/integrations/google-calendar/callback`,
     },
+    OUTLOOK_CALENDAR: {
+        authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+        tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+        revokeUrl: '',
+        scopes: ['Calendars.Read', 'offline_access', 'openid', 'profile', 'email'],
+        clientId: env.OUTLOOK_CLIENT_ID || '',
+        clientSecret: env.OUTLOOK_CLIENT_SECRET || '',
+        redirectUri: env.OUTLOOK_CALLBACK_URL || `${env.API_URL || env.APP_URL}/api/v1/integrations/outlook-calendar/callback`,
+        tenantId: env.OUTLOOK_TENANT_ID || 'common',
+    },
     // Placeholders for future integrations
     JIRA: {
         authUrl: 'https://auth.atlassian.com/authorize',

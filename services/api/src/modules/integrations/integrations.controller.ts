@@ -445,45 +445,37 @@ export const syncNowController = async (req: Request, res: Response, next: NextF
     }
 }
 
-export const connectGoogleCalendarController = async (req: Request, res: Response, next: NextFunction) => {
+export const connectCalendarController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.user!.id
+        const providerName = req.path.includes('outlook') ? 'OUTLOOK_CALENDAR' : 'GOOGLE_CALENDAR'
         const context = req.query.context === 'onboarding' ? 'onboarding' : 'settings'
         
         const crypto = await import('crypto')
         const state = crypto.randomBytes(32).toString('hex')
         
-        const redisValue = JSON.stringify({ userId, context })
+        const redisValue = JSON.stringify({ userId, context, provider: providerName })
         await redis.set(`oauth:state:calendar:${state}`, redisValue, 'EX', 600)
         
-        const { oauthProvidersConfig } = await import('../../config/oauth-providers.config')
-        const config = oauthProvidersConfig.GOOGLE_CALENDAR
+        const { calendarProviderRegistry } = await import('./providers/calendar-provider.registry')
+        const providerClient = calendarProviderRegistry.getProvider(providerName)
         
-        const params = new URLSearchParams({
-            client_id: config.clientId,
-            redirect_uri: config.redirectUri,
-            response_type: 'code',
-            scope: config.scopes.join(' '),
-            state,
-            access_type: 'offline',
-            prompt: 'consent',
-        })
-        
-        const authUrl = `${config.authUrl}?${params.toString()}`
+        const authUrl = providerClient.getAuthorizationUrl(state, userId)
         res.redirect(authUrl)
     } catch (e) {
         next(e)
     }
 }
 
-export const googleCalendarCallbackController = async (req: Request, res: Response, next: NextFunction) => {
+export const calendarCallbackController = async (req: Request, res: Response, next: NextFunction) => {
     const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
     try {
+        const providerName = req.path.includes('outlook') ? 'OUTLOOK_CALENDAR' : 'GOOGLE_CALENDAR'
         const code = req.query.code as string
         const state = req.query.state as string
         const error = req.query.error as string
         
-        if (error === 'access_denied') {
+        if (error) {
             return res.redirect(`${frontendUrl}/settings/integrations?error=oauth_denied`)
         }
         
@@ -499,23 +491,29 @@ export const googleCalendarCallbackController = async (req: Request, res: Respon
         
         let userId = ''
         let context = 'settings'
+        let storedProvider = providerName
         try {
             const parsed = JSON.parse(stored)
             userId = parsed.userId
             context = parsed.context || 'settings'
+            if (parsed.provider) storedProvider = parsed.provider
         } catch (_) {
             userId = stored
         }
+
+        if (storedProvider !== providerName) {
+            return res.redirect(`${frontendUrl}/settings/integrations?error=oauth_provider_mismatch`)
+        }
         
-        await integrationsService.completeGoogleCalendarConnect(userId, code)
+        await integrationsService.completeCalendarConnect(userId, providerName, code)
         
         const redirectUrl = context === 'onboarding'
             ? `${frontendUrl}/onboarding/connect-calendar?connected=true`
-            : `${frontendUrl}/settings/integrations?connected=GOOGLE_CALENDAR`
+            : `${frontendUrl}/settings/integrations?connected=${providerName}`
             
         res.redirect(redirectUrl)
     } catch (e: any) {
-        logger.error({ err: e.message }, 'Google Calendar OAuth callback failed')
+        logger.error({ err: e.message }, 'Calendar OAuth callback failed')
         res.redirect(`${frontendUrl}/settings/integrations?error=oauth_failed`)
     }
 }
