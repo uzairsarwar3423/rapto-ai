@@ -804,7 +804,8 @@ export const authService = {
     // to reject the token exchange with a 400 redirect_uri_mismatch error.
     const calendarRedirectUri =
       env.GOOGLE_CALENDAR_REDIRECT_URI ||
-      `${env.API_URL || 'http://localhost:4000'}/api/v1/auth/google/callback`
+      env.GOOGLE_CALENDAR_CALLBACK_URL ||
+      `${env.API_URL || 'http://localhost:5000'}/api/v1/auth/google-calendar/callback`
 
     const params = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID!,
@@ -815,6 +816,11 @@ export const authService = {
       access_type: 'offline',
       prompt: 'consent',
     })
+
+    logger.info(
+      { clientId: env.GOOGLE_CLIENT_ID, redirectUri: calendarRedirectUri },
+      'googleCalendarInit: generated authorization URL'
+    )
 
     res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
   },
@@ -849,8 +855,9 @@ export const authService = {
       // MUST match the redirect_uri used in googleCalendarInit exactly.
       const activeRedirectUri =
         env.GOOGLE_CALENDAR_REDIRECT_URI ||
+        env.GOOGLE_CALENDAR_CALLBACK_URL ||
         redirectUri ||
-        `${env.API_URL || 'http://localhost:4000'}/api/v1/auth/google/callback`
+        `${env.API_URL || 'http://localhost:5000'}/api/v1/auth/google-calendar/callback`
 
       // Exchange code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {

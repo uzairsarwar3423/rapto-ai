@@ -8,7 +8,7 @@ export const oauthProvidersConfig = {
         scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
         clientId: env.GOOGLE_CLIENT_ID || '',
         clientSecret: env.GOOGLE_CLIENT_SECRET || '',
-        redirectUri: env.GOOGLE_CALENDAR_CALLBACK_URL || `${env.API_URL || env.APP_URL}/api/v1/integrations/google-calendar/callback`,
+        redirectUri: env.GOOGLE_CALENDAR_REDIRECT_URI || env.GOOGLE_CALENDAR_CALLBACK_URL || `${env.API_URL || env.APP_URL}/api/v1/auth/google-calendar/callback`,
     },
     OUTLOOK_CALENDAR: {
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',

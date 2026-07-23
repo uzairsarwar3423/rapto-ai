@@ -4,13 +4,13 @@ import { useAuthStore } from "@/features/auth/store/auth.store";
 import { syncCalendarNowClient } from "../api/integrations.api";
 import { toast } from "sonner";
 
-export function useSyncGoogleCalendar() {
+export function useSyncGoogleCalendar(provider: string = "GOOGLE_CALENDAR") {
   const queryClient = useQueryClient();
   const teamId = useAuthStore((state) => state.user?.teamId) || "";
 
   return useMutation({
     mutationFn: async () => {
-      return syncCalendarNowClient();
+      return syncCalendarNowClient(provider);
     },
     onSuccess: (data) => {
       if (data.synced > 0) {

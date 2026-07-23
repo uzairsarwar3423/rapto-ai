@@ -174,19 +174,20 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
             }
         }
 
-        // STEP 6 — Persist Sync State
+        // STEP 6 — Persist Sync State & Record Health Success
         await prisma.userIntegration.update({
             where: { id: integration.id },
             data: {
                 lastSyncedAt: new Date(),
                 nextSyncToken: nextSyncToken ?? (isFallbackScan ? null : integration.nextSyncToken),
-                consecutiveErrors: 0,
-                lastError: null,
             },
         })
+        const { integrationHealthService } = await import('./integration-health.service')
+        await integrationHealthService.recordSuccess(integration)
 
     } catch (err: any) {
-        await handleSyncFailure(integration, err)
+        const { integrationHealthService } = await import('./integration-health.service')
+        await integrationHealthService.recordFailure(integration, err.message || 'Unknown calendar sync error')
         throw err // Re-throw for BullMQ retry
     } finally {
         // STEP 7 — Release Lock & Return
@@ -245,31 +246,4 @@ async function handleCancelledCalendarEvent(teamId: string, event: CalendarProvi
         }
     }
     // Explicitly a no-op for RECORDING, PROCESSING, DONE, FAILED, CANCELLED
-}
-
-async function handleSyncFailure(integration: any, err: any) {
-    const consecutiveErrors = integration.consecutiveErrors + 1
-    const lastError = err.message || 'Unknown error'
-
-    const data: any = { consecutiveErrors, lastError }
-
-    if (consecutiveErrors >= 5) {
-        data.syncEnabled = false
-        logger.warn({ userId: integration.userId, consecutiveErrors }, 'calendar-sync.integration_disabled')
-        try {
-            const { notifyQueue } = await import('../queues/queue.client')
-            await notifyQueue.add('calendar-sync-failed', {
-                type: 'CALENDAR_SYNC_FAILED',
-                ownerId: integration.userId,
-                metadata: { provider: integration.provider }
-            })
-        } catch (queueErr: any) {
-            logger.error({ err: queueErr }, 'calendar-sync.failed_to_queue_notify_job')
-        }
-    }
-
-    await prisma.userIntegration.update({
-        where: { id: integration.id },
-        data
-    })
 }

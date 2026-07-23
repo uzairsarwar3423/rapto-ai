@@ -53,8 +53,9 @@ export async function fetchCalendarPreviewClient(): Promise<CalendarEvent[]> {
   return response.data.events;
 }
 
-export async function syncCalendarNowClient(): Promise<{ synced: number, skipped: number, errors: string[] }> {
-  const response = await api.post<{ success: boolean, data: { synced: number, skipped: number, errors: string[] } }>("/integrations/google-calendar/sync-now");
+export async function syncCalendarNowClient(provider: string = "GOOGLE_CALENDAR"): Promise<{ synced: number, skipped: number, errors: string[] }> {
+  const endpoint = provider.toLowerCase().replace('_', '-');
+  const response = await api.post<{ success: boolean, data: { synced: number, skipped: number, errors: string[] } }>(`/integrations/${endpoint}/sync-now`);
   return response.data.data;
 }
 

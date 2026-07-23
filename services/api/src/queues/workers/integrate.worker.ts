@@ -208,14 +208,21 @@ export const integrateWorker = new Worker<IntegrateJobData>(
             data: updateData,
         })
 
-        // Also update the integration's lastSyncedAt and reset error counter on success
+        // Also update the integration's lastSyncedAt and record health success
         await prisma.teamIntegration.update({
             where: { id: integration.id },
             data: {
-                consecutiveErrors: 0,
-                lastError: null,
                 lastSyncedAt: new Date(),
             },
+        })
+        const { integrationHealthService } = await import('../../services/integration-health.service')
+        await integrationHealthService.recordSuccess({
+            id: integration.id,
+            provider: integration.provider,
+            consecutiveErrors: integration.consecutiveErrors,
+            lastError: integration.lastError,
+            teamId: integration.teamId,
+            isTeamLevel: true,
         })
 
         // ─── Step 8: Mark idempotency complete ───────────────────────────────
@@ -298,42 +305,27 @@ integrateWorker.on('failed', async (job, err) => {
         try {
             const integration = await prisma.teamIntegration.findFirst({
                 where: { teamId, provider: provider as TeamProvider },
-                select: { id: true, consecutiveErrors: true },
+                select: { id: true, provider: true, consecutiveErrors: true, lastError: true, teamId: true },
             })
 
             if (integration) {
-                const updateResult = await prisma.teamIntegration.update({
-                    where: { id: integration.id },
-                    data: {
-                        consecutiveErrors: { increment: 1 },
-                        lastError: err.message.substring(0, 1000),
+                const { integrationHealthService } = await import('../../services/integration-health.service')
+                await integrationHealthService.recordFailure(
+                    {
+                        id: integration.id,
+                        provider: integration.provider,
+                        consecutiveErrors: integration.consecutiveErrors,
+                        lastError: integration.lastError,
+                        teamId: integration.teamId,
+                        isTeamLevel: true,
                     },
-                    select: { consecutiveErrors: true },
-                })
-
-                if (updateResult.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-                    await prisma.teamIntegration.update({
-                        where: { id: integration.id },
-                        data: { isActive: false },
-                    })
-
-                    logger.warn(
-                        { teamId, provider, consecutiveErrors: updateResult.consecutiveErrors },
-                        'integrate.worker.integration_disabled: auto-disabled after consecutive failures'
-                    )
-
-                    // Queue admin notification
-                    await notifyQueue.add('integration-auto-disabled', {
-                        type: 'INTEGRATION_AUTO_DISABLED',
-                        teamId,
-                        metadata: { provider, consecutiveErrors: updateResult.consecutiveErrors },
-                    })
-                }
+                    err.message
+                )
             }
         } catch (dbErr: any) {
             logger.error(
                 { teamId, provider, err: dbErr.message },
-                'integrate.worker: failed to update consecutiveErrors (non-fatal)'
+                'integrate.worker: failed to record integration failure via health service (non-fatal)'
             )
         }
 

@@ -280,6 +280,7 @@ export const listIntegrationsController = async (req: Request, res: Response, ne
                 syncEnabled: true,
                 lastSyncedAt: true,
                 consecutiveErrors: true,
+                lastError: true,
                 calendarId: true,
             }
         })
@@ -292,6 +293,7 @@ export const listIntegrationsController = async (req: Request, res: Response, ne
                 syncEnabled: u.syncEnabled,
                 lastSyncedAt: u.lastSyncedAt,
                 consecutiveErrors: u.consecutiveErrors,
+                lastError: u.lastError,
                 calendarId: u.calendarId,
             }))
         })
@@ -448,7 +450,7 @@ export const syncNowController = async (req: Request, res: Response, next: NextF
 export const connectCalendarController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.user!.id
-        const providerName = req.path.includes('outlook') ? 'OUTLOOK_CALENDAR' : 'GOOGLE_CALENDAR'
+        const providerName = req.path.toLowerCase().includes('outlook') ? 'OUTLOOK_CALENDAR' : 'GOOGLE_CALENDAR'
         const context = req.query.context === 'onboarding' ? 'onboarding' : 'settings'
         
         const crypto = await import('crypto')
@@ -470,7 +472,7 @@ export const connectCalendarController = async (req: Request, res: Response, nex
 export const calendarCallbackController = async (req: Request, res: Response, next: NextFunction) => {
     const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
     try {
-        const providerName = req.path.includes('outlook') ? 'OUTLOOK_CALENDAR' : 'GOOGLE_CALENDAR'
+        const providerName = req.path.toLowerCase().includes('outlook') ? 'OUTLOOK_CALENDAR' : 'GOOGLE_CALENDAR'
         const code = req.query.code as string
         const state = req.query.state as string
         const error = req.query.error as string

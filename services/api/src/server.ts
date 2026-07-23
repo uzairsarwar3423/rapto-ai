@@ -6,7 +6,7 @@ import { redis } from './config/redis'
 import { connectMongoDB } from './db/mongo.client'
 import { initializeSocketServer, setIO } from './realtime/socket.server'
 
-const PORT = env.PORT || 4000
+const PORT = env.PORT || 5000
 
 async function startServer() {
     try {

@@ -624,5 +624,101 @@ export const emailService = {
       throw error
     }
   },
+
+  async sendIntegrationWarningEmail(data: {
+    to: string
+    name: string
+    providerName: string
+    workspaceName?: string
+    settingsUrl: string
+  }): Promise<void> {
+    const { renderIntegrationWarningHtml } = await import('./templates/IntegrationWarning')
+    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
+    logger.info({ to: data.to, providerName: data.providerName }, 'Preparing integration warning email')
+
+    if (!isBrevoConfigured) {
+      logger.warn(
+        { settingsUrl: data.settingsUrl, to: data.to },
+        'BREVO_API_KEY not configured. Integration warning URL printed to console.'
+      )
+      return
+    }
+
+    try {
+      const htmlContent = renderIntegrationWarningHtml(data)
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+          'api-key': env.BREVO_API_KEY!,
+        },
+        body: JSON.stringify({
+          sender: { name: 'Vocaply', email: fromEmail },
+          to: [{ email: data.to, name: data.name }],
+          subject: `⚠️ Connection Warning: Issue syncing with ${data.providerName}`,
+          htmlContent,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
+      }
+
+      logger.info({ to: data.to, providerName: data.providerName }, 'Integration warning email sent successfully')
+    } catch (error) {
+      logger.error({ error, to: data.to }, 'Failed to send integration warning email')
+      throw error
+    }
+  },
+
+  async sendIntegrationDeactivatedEmail(data: {
+    to: string
+    name: string
+    providerName: string
+    workspaceName?: string
+    settingsUrl: string
+  }): Promise<void> {
+    const { renderIntegrationDeactivatedHtml } = await import('./templates/IntegrationDeactivated')
+    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
+    logger.info({ to: data.to, providerName: data.providerName }, 'Preparing integration deactivated email')
+
+    if (!isBrevoConfigured) {
+      logger.warn(
+        { settingsUrl: data.settingsUrl, to: data.to },
+        'BREVO_API_KEY not configured. Integration deactivated URL printed to console.'
+      )
+      return
+    }
+
+    try {
+      const htmlContent = renderIntegrationDeactivatedHtml(data)
+      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+          'api-key': env.BREVO_API_KEY!,
+        },
+        body: JSON.stringify({
+          sender: { name: 'Vocaply', email: fromEmail },
+          to: [{ email: data.to, name: data.name }],
+          subject: `🚨 Action Required: ${data.providerName} integration has been disconnected`,
+          htmlContent,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
+      }
+
+      logger.info({ to: data.to, providerName: data.providerName }, 'Integration deactivated email sent successfully')
+    } catch (error) {
+      logger.error({ error, to: data.to }, 'Failed to send integration deactivated email')
+      throw error
+    }
+  },
 }
 

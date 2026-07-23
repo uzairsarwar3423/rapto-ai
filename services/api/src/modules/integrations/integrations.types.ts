@@ -17,6 +17,7 @@ export interface TeamIntegrationSummary {
         name: string
     } | null
     consecutiveErrors: number
+    lastError: string | null
 }
 
 export interface OAuthCallbackResult {

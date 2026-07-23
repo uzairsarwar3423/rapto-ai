@@ -357,6 +357,18 @@ export class OutlookCalendarProvider implements CalendarProvider {
             throw new IntegrationError('OUTLOOK_CALENDAR', 'Failed to list events: ' + (error.response?.data?.error?.message || error.message))
         }
     }
+
+    public async testConnection(accessToken: string): Promise<{ healthy: boolean }> {
+        try {
+            await axios.get('https://graph.microsoft.com/v1.0/me', {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            })
+            return { healthy: true }
+        } catch (e: any) {
+            logger.error({ err: e.message }, 'outlookCalendarProvider.testConnection failed')
+            return { healthy: false }
+        }
+    }
 }
 
 export const outlookCalendarProvider = new OutlookCalendarProvider()

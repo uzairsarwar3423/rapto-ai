@@ -36,6 +36,7 @@ export class IntegrationsRepository {
                 isActive: true,
                 lastSyncedAt: true,
                 consecutiveErrors: true,
+                lastError: true,
                 connectedBy: {
                     select: {
                         id: true,
@@ -51,6 +52,7 @@ export class IntegrationsRepository {
             isActive: i.isActive,
             lastSyncedAt: i.lastSyncedAt,
             consecutiveErrors: i.consecutiveErrors,
+            lastError: i.lastError,
             connectedBy: i.connectedBy
                 ? {
                       id: i.connectedBy.id,
@@ -89,12 +91,14 @@ export class IntegrationsRepository {
                 provider,
                 ...data,
                 metadata: metadataJson,
+                lastError: null,
             },
             update: {
                 ...data,
                 metadata: metadataJson,
                 disconnectedById: null,
                 disconnectedAt: null,
+                lastError: null,
             },
         })
     }

@@ -15,6 +15,8 @@ export type NotifyJobType =
   | 'INTEGRATION_AUTO_DISABLED'
   | 'CALENDAR_SYNC_FAILED'
   | 'EMAIL_INTEGRATION_DISABLED'
+  | 'INTEGRATION_WARNING'
+  | 'INTEGRATION_DEACTIVATED'
 
 export interface NotifyJobData {
   type:          NotifyJobType

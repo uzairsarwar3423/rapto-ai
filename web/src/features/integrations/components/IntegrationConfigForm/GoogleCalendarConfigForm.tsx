@@ -20,6 +20,7 @@ const calendarSchema = z.object({
 type CalendarSchema = z.infer<typeof calendarSchema>;
 
 interface GoogleCalendarConfigFormProps {
+  providerId?: string;
   initialCalendarId?: string;
   initialSyncEnabled?: boolean;
   isLoading: boolean;
@@ -28,6 +29,7 @@ interface GoogleCalendarConfigFormProps {
 }
 
 export function GoogleCalendarConfigForm({
+  providerId = "GOOGLE_CALENDAR",
   initialCalendarId = "primary",
   initialSyncEnabled = true,
   isLoading,
@@ -42,7 +44,7 @@ export function GoogleCalendarConfigForm({
     },
   });
 
-  const { mutate: syncNow, isPending: isSyncing } = useSyncGoogleCalendar();
+  const { mutate: syncNow, isPending: isSyncing } = useSyncGoogleCalendar(providerId);
 
   return (
     <form

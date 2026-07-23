@@ -1,0 +1,83 @@
+name: Continuous Integration — Integration Test Gate
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    paths:
+      - 'services/api/src/modules/integrations/**'
+      - 'services/api/src/services/calendar-sync.service.ts'
+      - 'services/api/src/services/token-refresh.service.ts'
+      - 'services/api/src/services/integration-health.service.ts'
+      - 'services/api/src/queues/workers/integrate.worker.ts'
+      - 'services/api/src/queues/workers/calendar-sync.worker.ts'
+      - 'services/api/src/queues/workers/token-refresh.worker.ts'
+      - 'services/api/tests/integration/**'
+
+jobs:
+  integrations-test:
+    name: Integrations & Cross-Provider E2E Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: vocaply_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Root & Services Dependencies
+        run: npm ci --prefix services/api
+
+      - name: Generate Prisma Client
+        run: npm run prisma:generate --prefix services/api
+        env:
+          DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
+
+      - name: Run Database Migrations
+        run: npx prisma migrate dev --name init_test_db --prefix services/api
+        env:
+          DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
+
+      - name: Execute Automated Integration & E2E Test Suite
+        run: npm test --prefix services/api -- --testPathPattern=tests/integration
+        env:
+          NODE_ENV: test
+          DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          ENCRYPTION_KEY: "vocaply_ci_encryption_test_key_32_bytes!!"
+
+      - name: Upload Test Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-coverage
+          path: services/api/coverage/

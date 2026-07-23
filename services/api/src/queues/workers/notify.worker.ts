@@ -533,6 +533,50 @@ export const notifyWorker = new Worker<NotifyJobData>(
     else if (type === 'EMAIL_INTEGRATION_DISABLED' && job.data.emailPayload) {
       await emailService.sendIntegrationDisabledEmail(job.data.emailPayload)
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 14: INTEGRATION_WARNING & INTEGRATION_DEACTIVATED (Day 64 Centralized Health Alerts)
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'INTEGRATION_WARNING' || type === 'INTEGRATION_DEACTIVATED') {
+      const { metadata, teamId, ownerId } = job.data
+      const provider = metadata?.provider || 'INTEGRATION'
+      const providerName = provider.replace('_', ' ')
+      const settingsUrl = `${frontendUrl}/settings/integrations`
+
+      let recipients: Array<{ email: string; name: string }> = []
+
+      if (teamId) {
+        const admins = await prisma.user.findMany({
+          where: { teamId, role: { in: ['ADMIN', 'OWNER'] } },
+          select: { email: true, name: true }
+        })
+        recipients = admins
+      } else if (ownerId) {
+        const user = await prisma.user.findUnique({
+          where: { id: ownerId },
+          select: { email: true, name: true }
+        })
+        if (user) recipients = [user]
+      }
+
+      for (const recipient of recipients) {
+        if (type === 'INTEGRATION_WARNING') {
+          await emailService.sendIntegrationWarningEmail({
+            to: recipient.email,
+            name: recipient.name,
+            providerName,
+            settingsUrl,
+          })
+        } else {
+          await emailService.sendIntegrationDeactivatedEmail({
+            to: recipient.email,
+            name: recipient.name,
+            providerName,
+            settingsUrl,
+          })
+        }
+      }
+    }
   },
   {
     connection: { host: process.env.REDIS_HOST, port: parseInt(process.env.REDIS_PORT ?? '6379') },

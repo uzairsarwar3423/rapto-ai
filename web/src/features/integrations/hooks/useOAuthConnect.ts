@@ -10,9 +10,11 @@ export function useOAuthConnect() {
   const connect = async (provider: string) => {
     setConnectingProvider(provider);
     try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       if (provider === "GOOGLE_CALENDAR") {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         window.location.href = `${apiBase}/api/v1/auth/google-calendar?token=${accessToken}`;
+      } else if (provider === "OUTLOOK_CALENDAR") {
+        window.location.href = `${apiBase}/api/v1/integrations/outlook-calendar/connect?token=${accessToken}`;
       } else {
         const authUrl = await initiateOAuthConnectClient(provider);
         window.location.href = authUrl;

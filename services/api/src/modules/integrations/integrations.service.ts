@@ -493,10 +493,12 @@ export class IntegrationsService {
         let plainAccessToken: string
         try {
             const { decrypt, encrypt } = await import('../../utils/crypto')
+            const { calendarProviderRegistry } = await import('./providers/calendar-provider.registry')
+            const providerClient = calendarProviderRegistry.getProvider(provider)
             const now = new Date()
             if (integration.tokenExpiresAt && integration.tokenExpiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
                 if (!integration.refreshTokenEnc) throw new Error('No refresh token')
-                const refreshResult = await googleCalendarProvider.refreshAccessToken(integration.refreshTokenEnc)
+                const refreshResult = await providerClient.refreshAccessToken(integration.refreshTokenEnc)
                 const newAccessTokenEnc = encrypt(refreshResult.accessToken)
                 const newExpiresAt = refreshResult.expiresAt
                 await prisma.userIntegration.update({
@@ -514,8 +516,10 @@ export class IntegrationsService {
             })
             return { healthy: false, lastChecked: new Date(), error: refreshErr.message }
         }
-
-        const testResult = await googleCalendarProvider.testConnection(plainAccessToken)
+        const { calendarProviderRegistry } = await import('./providers/calendar-provider.registry')
+        const providerClient = calendarProviderRegistry.getProvider(provider)
+        
+        const testResult = await providerClient.testConnection(plainAccessToken)
         if (testResult.healthy) {
             await prisma.userIntegration.update({
                 where: { id: integration.id },
@@ -676,9 +680,9 @@ export class IntegrationsService {
                 calendarId: integration.calendarId || 'primary'
             })
 
+            const { detectPlatform } = await import('../../utils/platform-detect')
             const processedEvents = eventsResult.events.map(event => {
                 const isCancelled = event.status === 'cancelled'
-                const { platform } = await import('../../utils/platform-detect')
                 
                 return {
                     id: event.id || '',
@@ -687,7 +691,7 @@ export class IntegrationsService {
                     end: event.startTime.toISOString(),
                     location: event.location || null,
                     meetingUrl: event.meetingUrl || null,
-                    platform: event.meetingUrl ? platform(event.meetingUrl).platform : null,
+                    platform: event.meetingUrl ? detectPlatform(event.meetingUrl).platform : null,
                     isValid: !!event.meetingUrl
                 }
             })

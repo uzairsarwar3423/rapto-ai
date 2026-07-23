@@ -278,6 +278,28 @@ export class GoogleCalendarProvider implements CalendarProvider {
              throw new IntegrationError('GOOGLE_CALENDAR', 'GOOGLE_SERVICE_ERROR')
         }
     }
+
+    public async getUserCalendarList(accessToken: string): Promise<any[]> {
+        try {
+            const response = await this.apiClient.get(
+                '/users/me/calendarList',
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            )
+            return response.data.items || []
+        } catch (error: any) {
+            this.handleApiError(error)
+            throw new IntegrationError('GOOGLE_CALENDAR', 'Failed to fetch calendar list')
+        }
+    }
+
+    public async testConnection(accessToken: string): Promise<{ healthy: boolean }> {
+        try {
+            await this.getUserCalendarList(accessToken)
+            return { healthy: true }
+        } catch (error) {
+            return { healthy: false }
+        }
+    }
 }
 
 export const googleCalendarProvider = new GoogleCalendarProvider()

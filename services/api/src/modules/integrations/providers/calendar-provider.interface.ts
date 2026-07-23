@@ -23,4 +23,5 @@ export interface CalendarProvider {
     refreshAccessToken(refreshToken: string): Promise<OAuthTokenResult>
     listEvents(accessToken: string, params: { calendarId: string; syncToken?: string }): Promise<CalendarSyncResult>
     revokeToken(accessToken: string): Promise<void>
+    testConnection(accessToken: string): Promise<{ healthy: boolean }>
 }

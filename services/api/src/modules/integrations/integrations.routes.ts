@@ -76,11 +76,11 @@ router.post(
     syncNowController
 )
 
-router.get('/google-calendar/connect', requireAuth, connectCalendarController)
-router.get('/google-calendar/callback', calendarCallbackController)
+router.get(['/google-calendar/connect', '/GOOGLE_CALENDAR/connect'], requireAuth, connectCalendarController)
+router.get(['/google-calendar/callback', '/GOOGLE_CALENDAR/callback'], calendarCallbackController)
 
-router.get('/outlook-calendar/connect', requireAuth, connectCalendarController)
-router.get('/outlook-calendar/callback', calendarCallbackController)
+router.get(['/outlook-calendar/connect', '/OUTLOOK_CALENDAR/connect'], requireAuth, connectCalendarController)
+router.get(['/outlook-calendar/callback', '/OUTLOOK_CALENDAR/callback'], calendarCallbackController)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // JIRA-SPECIFIC ROUTES (Day 58 §13, §24)

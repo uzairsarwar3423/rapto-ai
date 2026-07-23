@@ -1,53 +1,121 @@
 /**
- * token-refresh.service.ts — Shared access token validation and proactive refresh.
+ * token-refresh.service.ts — Shared access token validation, proactive refresh, and sweep discovery.
  *
- * Day 56 origin: Built for Google Calendar (user_integrations).
- * Day 58 extension: Generalized to support ALL team-level integrations via the
- *   provider registry. Jira is the second provider, proving the design generalizes.
- *
- * CRITICAL ASYMMETRY handled here:
- *   Google Calendar (Day 56): refreshAccessToken() does NOT return a new refresh token.
- *   Jira (Day 58):            refreshAccessToken() ALWAYS returns a new refresh token.
- *
- * The conditional-spread pattern below handles both correctly without an
- * `if (provider === 'JIRA')` branch — the DATA (whether refreshed.refreshToken is
- * present) drives the behavior, not a provider-name check. This is Principle 2
- * (§2) preserved even inside this cross-provider shared utility.
+ * Day 64 Principal Architecture:
+ * - findExpiringIntegrations(): Proactive sweep querying TeamIntegration & UserIntegration rows nearing expiry (within 30 mins).
+ *   Excluded by design: rows with tokenExpiresAt: null (Linear, Notion, Slack).
+ * - refreshIntegration(): Accepts either a TeamIntegration or UserIntegration row, wraps getValidAccessToken in try/catch,
+ *   reporting outcomes directly to integrationHealthService. Does not re-throw outside its boundary.
+ * - getValidAccessToken(): Reactive-refresh fallback helper used by action-item and calendar sync flows.
  */
 
 import { prisma } from '../db/client'
 import { encrypt, decrypt } from '../utils/crypto'
 import { addSeconds } from 'date-fns'
-import { googleCalendarProvider } from '../modules/integrations/providers/google-calendar.provider'
 import { getProvider } from '../modules/integrations/providers/provider.registry'
 import { TeamProvider } from '@prisma/client'
 import { logger } from '../config/logger'
 import { AppError } from '../utils/errors'
+import { integrationHealthService, IntegrationRow } from './integration-health.service'
 
-// Integration shape accepted by this helper — deliberately minimal to allow
-// use with both TeamIntegration and UserIntegration rows.
-interface IntegrationRecord {
-    id: string
-    provider: string
-    accessTokenEnc: string
-    refreshTokenEnc: string | null
-    tokenExpiresAt: Date | null
-    consecutiveErrors: number
+export interface ExpiringIntegrationsResult {
+    teamIntegrations: Array<{ id: string; provider: string; teamId: string }>
+    userIntegrations: Array<{ id: string; provider: string; userId: string }>
+}
+
+/**
+ * findExpiringIntegrations — scans database for active team and user integrations
+ * whose tokens expire within the lookahead window (30 minutes).
+ *
+ * Excludes rows with tokenExpiresAt: null (Linear, Notion, Slack) automatically.
+ */
+export async function findExpiringIntegrations(lookaheadMinutes = 30): Promise<ExpiringIntegrationsResult> {
+    const lookaheadDate = new Date(Date.now() + lookaheadMinutes * 60 * 1000)
+
+    const teamIntegrations = await prisma.teamIntegration.findMany({
+        where: {
+            isActive: true,
+            tokenExpiresAt: {
+                not: null,
+                lte: lookaheadDate,
+            },
+        },
+        select: {
+            id: true,
+            provider: true,
+            teamId: true,
+        },
+    })
+
+    const userIntegrations = await prisma.userIntegration.findMany({
+        where: {
+            syncEnabled: true,
+            tokenExpiresAt: {
+                not: null,
+                lte: lookaheadDate,
+            },
+        },
+        select: {
+            id: true,
+            provider: true,
+            userId: true,
+        },
+    })
+
+    logger.info(
+        {
+            teamCount: teamIntegrations.length,
+            userCount: userIntegrations.length,
+            lookaheadMinutes,
+        },
+        'token-refresh.service: findExpiringIntegrations completed'
+    )
+
+    return {
+        teamIntegrations,
+        userIntegrations,
+    }
+}
+
+/**
+ * refreshIntegration — attempts to refresh a single integration's access token,
+ * recording outcome (success or failure) in integrationHealthService.
+ *
+ * Returns a result object and NEVER throws outside its boundary.
+ */
+export async function refreshIntegration(
+    integration: IntegrationRow & { accessTokenEnc?: string; refreshTokenEnc?: string | null; tokenExpiresAt?: Date | null },
+    isTeamLevel = false
+): Promise<{ success: boolean; error?: string }> {
+    const start = Date.now()
+    try {
+        await getValidAccessToken(integration as any, isTeamLevel)
+        await integrationHealthService.recordSuccess(integration)
+
+        logger.info(
+            { integrationId: integration.id, provider: integration.provider, latencyMs: Date.now() - start },
+            'token-refresh.service: integration refreshed successfully'
+        )
+        return { success: true }
+    } catch (err: any) {
+        const errorMsg = err.message || 'Unknown token refresh failure'
+        logger.error(
+            { integrationId: integration.id, provider: integration.provider, error: errorMsg, latencyMs: Date.now() - start },
+            'token-refresh.service: integration refresh failed'
+        )
+
+        await integrationHealthService.recordFailure(integration, errorMsg)
+        return { success: false, error: errorMsg }
+    }
 }
 
 /**
  * getValidAccessToken — obtain a valid (possibly just-refreshed) access token.
  *
  * Proactive refresh window: 30 minutes before expiry.
- * This prevents requests from failing mid-flight due to a token expiring
- * between the "check" and the "use" window.
- *
- * @param integration - The integration record (team or user level)
- * @param isTeamLevel - true → update teamIntegration table; false → userIntegration table
- * @returns decrypted access token string, valid for at least ~30 minutes
  */
 export async function getValidAccessToken(
-    integration: IntegrationRecord,
+    integration: IntegrationRow & { accessTokenEnc: string; refreshTokenEnc: string | null; tokenExpiresAt: Date | null },
     isTeamLevel = false
 ): Promise<string> {
     const now = new Date()
@@ -75,7 +143,7 @@ export async function getValidAccessToken(
     if (calendarProviders.includes(provider)) {
         const { calendarProviderRegistry } = await import('../modules/integrations/providers/calendar-provider.registry')
         const providerClient = calendarProviderRegistry.getProvider(provider as any)
-        
+
         const plainRefreshToken = decrypt(integration.refreshTokenEnc)
         const refreshResult = await providerClient.refreshAccessToken(plainRefreshToken)
         const newAccessTokenEnc = encrypt(refreshResult.accessToken)
@@ -84,6 +152,7 @@ export async function getValidAccessToken(
             accessTokenEnc: newAccessTokenEnc,
             tokenExpiresAt: refreshResult.expiresAt ?? null,
             consecutiveErrors: 0,
+            lastError: null,
         }
         if (refreshResult.refreshToken) {
             updateData.refreshTokenEnc = encrypt(refreshResult.refreshToken)
@@ -105,9 +174,6 @@ export async function getValidAccessToken(
     }
 
     // ─── All team-level providers (JIRA, SLACK, LINEAR, NOTION) ─────────────
-    // These are handled via the provider registry — no provider-name branching
-    // inside this function. The DATA (whether refreshed.refreshToken is present)
-    // drives the update, not a conditional branch on provider name.
     const teamProviders: TeamProvider[] = ['JIRA', 'SLACK', 'LINEAR', 'NOTION']
     if (teamProviders.includes(provider as TeamProvider)) {
         let providerClient
@@ -137,10 +203,6 @@ export async function getValidAccessToken(
             ? addSeconds(new Date(), refreshResult.expiresIn)
             : null
 
-        // Conditional-spread: only update refreshTokenEnc if the provider returned a new one.
-        // Jira ALWAYS returns a new refresh token (the old one is invalidated).
-        // Google Calendar NEVER returns one on refresh.
-        // This single update handles both correctly without branching on provider name.
         await prisma.teamIntegration.update({
             where: { id: integration.id },
             data: {

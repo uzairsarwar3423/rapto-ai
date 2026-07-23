@@ -69,6 +69,12 @@ const envSchema = z.object({
     // Set either one in .env; GOOGLE_CALENDAR_REDIRECT_URI takes precedence.
     GOOGLE_CALENDAR_REDIRECT_URI: z.string().optional(),
 
+    // Day 63: Outlook Calendar
+    OUTLOOK_CLIENT_ID: z.string().optional(),
+    OUTLOOK_CLIENT_SECRET: z.string().optional(),
+    OUTLOOK_CALLBACK_URL: z.string().optional(),
+    OUTLOOK_TENANT_ID: z.string().optional(),
+
     // AI Pipeline
     AI_PIPELINE_URL: z.string().url().default('http://127.0.0.1:8000'),
     AI_PIPELINE_SECRET: z.string().min(32).default('change-me-min-32-chars-in-production-please-use-a-secure-secret'),

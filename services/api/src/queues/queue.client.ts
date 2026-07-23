@@ -103,8 +103,7 @@ export const resolveQueue = new Queue('resolve', {
 export const tokenRefreshQueue = new Queue('token-refresh', {
   connection,
   defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 30_000 },
+    attempts: 1,
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 50 },
   },

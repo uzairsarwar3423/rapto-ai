@@ -69,7 +69,7 @@ function ConfigSheetWrapper({
     if (provider.id === "JIRA") config = { projectKey: values.projectKey };
     if (provider.id === "LINEAR") config = { linearTeamId: values.linearTeamId };
     if (provider.id === "NOTION") config = { databaseId: values.databaseId };
-    if (provider.id === "GOOGLE_CALENDAR") config = values;
+    if (provider.id === "GOOGLE_CALENDAR" || provider.id === "OUTLOOK_CALENDAR") config = values;
 
     run(() => saveAsync(config));
   };
@@ -106,8 +106,9 @@ function ConfigSheetWrapper({
           onSubmit={handleFormSubmit}
         />
       )}
-      {provider.id === "GOOGLE_CALENDAR" && (
+      {(provider.id === "GOOGLE_CALENDAR" || provider.id === "OUTLOOK_CALENDAR") && (
         <GoogleCalendarConfigForm
+          providerId={provider.id}
           initialCalendarId={integration?.calendarId || "primary"}
           initialSyncEnabled={integration?.syncEnabled ?? true}
           isLoading={isLoadingOptions || saveState === "saving"}

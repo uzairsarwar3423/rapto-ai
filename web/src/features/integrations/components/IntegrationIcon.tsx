@@ -10,6 +10,7 @@ const PROVIDER_LOGOS: Record<string, string> = {
   NOTION: "/icons/notion.svg",
   GOOGLE_CALENDAR: "/icons/google-calender.svg",
   GOOGLE_MEET: "/icons/google-meet.svg",
+  OUTLOOK_CALENDAR: "/icons/outlook.svg",
 };
 
 interface IntegrationIconProps {
