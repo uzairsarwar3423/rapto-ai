@@ -51,8 +51,9 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
+          cache-dependency-path: 'services/api/package-lock.json'
 
       - name: Install Root & Services Dependencies
         run: npm ci --prefix services/api
