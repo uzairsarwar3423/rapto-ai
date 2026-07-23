@@ -62,18 +62,21 @@ jobs:
         run: npm run prisma:generate --prefix services/api
         env:
           DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
+          DIRECT_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
 
       - name: Sync Database Schema (Non-Interactive CI)
         run: npx prisma db push --schema=prisma/schema.prisma
         working-directory: services/api
         env:
           DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
+          DIRECT_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
 
       - name: Execute Automated Integration & E2E Test Suite
         run: npm test --prefix services/api -- --testPathPattern=tests/integration
         env:
           NODE_ENV: test
           DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
+          DIRECT_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           ENCRYPTION_KEY: "vocaply_ci_encryption_test_key_32_bytes!!"
