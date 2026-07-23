@@ -5,7 +5,16 @@ module.exports = {
     roots: ['<rootDir>/src', '<rootDir>/tests'],
     testMatch: ['**/*.test.ts'],
     transform: {
-        '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
+        '^.+\\.tsx?$': ['ts-jest', {
+            tsconfig: {
+                target: 'ES2022',
+                module: 'commonjs',
+                lib: ['es2022'],
+                esModuleInterop: true,
+                skipLibCheck: true,
+                types: ['node', 'jest']
+            }
+        }],
     },
     moduleDirectories: ['node_modules', 'src'],
     collectCoverageFrom: [

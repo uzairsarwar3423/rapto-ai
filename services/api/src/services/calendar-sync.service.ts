@@ -247,3 +247,8 @@ async function handleCancelledCalendarEvent(teamId: string, event: CalendarProvi
     }
     // Explicitly a no-op for RECORDING, PROCESSING, DONE, FAILED, CANCELLED
 }
+
+export const calendarSyncService = {
+    syncUserCalendar,
+}
+

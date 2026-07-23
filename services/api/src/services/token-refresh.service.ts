@@ -225,3 +225,12 @@ export async function getValidAccessToken(
         `Unsupported provider for token refresh: ${provider}`
     )
 }
+
+export const tokenRefreshService = {
+    findExpiringIntegrations,
+    refreshIntegration,
+    refreshTeamIntegration: (integration: any) => refreshIntegration(integration, true),
+    refreshUserIntegration: (integration: any) => refreshIntegration(integration, false),
+    getValidAccessToken,
+}
+

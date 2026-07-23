@@ -88,34 +88,49 @@ describe('Integrations E2E — Composite Cross-Provider Suite', () => {
             mockNotionResponse('/v1/pages', mockNotionPageCreateSuccess, 200, 'POST')
 
             // 1. Sync to Jira
-            const jiraRes = await jiraProvider.createExternalItem(jiraInt, {
-                title: actionItem.text,
-                description: 'Action item from meeting',
+            const jiraRes = await jiraProvider.createExternalItem!(jiraInt, {
+                actionItemId: actionItem.id,
+                text: actionItem.text,
+                priority: 'HIGH',
+                context: {
+                    meetingTitle: meeting.title,
+                    meetingDate: meeting.scheduledAt,
+                },
+                teamMetadata: { projectKey: 'ENG' },
             })
             await prisma.actionItem.update({
                 where: { id: actionItem.id },
-                data: { jiraIssueId: jiraRes.id, jiraIssueUrl: jiraRes.url, jiraIssueSyncedAt: new Date() },
+                data: { jiraIssueId: jiraRes.externalId, jiraIssueUrl: jiraRes.externalUrl, jiraIssueSyncedAt: new Date() },
             })
 
             // 2. Sync to Linear
-            const linearRes = await linearProvider.createExternalItem(linearInt, {
-                title: actionItem.text,
-                description: 'Action item from meeting',
+            const linearRes = await linearProvider.createExternalItem!(linearInt, {
+                actionItemId: actionItem.id,
+                text: actionItem.text,
+                priority: 'HIGH',
+                context: {
+                    meetingTitle: meeting.title,
+                    meetingDate: meeting.scheduledAt,
+                },
+                teamMetadata: {},
             })
             await prisma.actionItem.update({
                 where: { id: actionItem.id },
-                data: { linearIssueId: linearRes.id, linearIssueUrl: linearRes.url, linearIssueSyncedAt: new Date() },
+                data: { linearIssueId: linearRes.externalId, linearIssueUrl: linearRes.externalUrl, linearIssueSyncedAt: new Date() },
             })
 
             // 3. Sync to Notion
             const notionRes = await notionProvider.createMeetingPage!(notionInt, {
-                title: actionItem.text,
+                id: meeting.id,
+                title: meeting.title,
+                scheduledAt: meeting.scheduledAt,
+            }, {
                 commitments: [],
                 actionItems: [{ text: actionItem.text }],
             })
             await prisma.actionItem.update({
                 where: { id: actionItem.id },
-                data: { notionPageId: notionRes.id, notionPageUrl: notionRes.url, notionPageSyncedAt: new Date() },
+                data: { notionPageId: notionRes.pageId, notionPageUrl: notionRes.pageUrl, notionPageSyncedAt: new Date() },
             })
 
             // Assert DB columns are independently populated
@@ -272,16 +287,34 @@ describe('Integrations E2E — Composite Cross-Provider Suite', () => {
             mockNotionResponse('/v1/pages', mockNotionPageCreateSuccess, 200, 'POST')
 
             // Process jobs concurrently
-            const jiraTask = jiraProvider.createExternalItem(jiraInt, { title: 'Jira Action' }).catch(err => err)
-            const linearTask = linearProvider.createExternalItem(linearInt, { title: 'Linear Action' })
-            const notionTask = notionProvider.createMeetingPage!(notionInt, { title: 'Notion Page', commitments: [], actionItems: [] })
+            const jiraTask = jiraProvider.createExternalItem!(jiraInt, {
+                actionItemId: 'item-jira',
+                text: 'Jira Action',
+                priority: 'HIGH',
+                context: { meetingTitle: 'Meeting', meetingDate: new Date() },
+                teamMetadata: { projectKey: 'ENG' },
+            }).catch(err => err)
+            const linearTask = linearProvider.createExternalItem!(linearInt, {
+                actionItemId: 'item-linear',
+                text: 'Linear Action',
+                priority: 'HIGH',
+                context: { meetingTitle: 'Meeting', meetingDate: new Date() },
+                teamMetadata: {},
+            })
+            const notionTask = notionProvider.createMeetingPage!(notionInt, {
+                id: 'm-notion',
+                title: 'Meeting',
+            }, {
+                commitments: [],
+                actionItems: [{ text: 'Notion Page' }],
+            })
 
             const [jiraRes, linearRes, notionRes] = await Promise.all([jiraTask, linearTask, notionTask])
 
             // Assert Jira failed while Linear and Notion completed with zero degradation
             expect(jiraRes instanceof Error).toBe(true)
-            expect(linearRes.id).toEqual('lin-issue-101')
-            expect(notionRes.id).toEqual('page-notion-999')
+            expect(linearRes.externalId).toEqual('lin-issue-101')
+            expect(notionRes.pageId).toEqual('page-notion-999')
         })
     })
 
@@ -297,6 +330,7 @@ describe('Integrations E2E — Composite Cross-Provider Suite', () => {
                 isActive: false,
                 consecutiveErrors: 5,
                 lastError: 'Deactivated due to auth failures',
+                metadata: { projectKey: 'ENG' },
             })
 
             // 2. Admin performs reconnect callback
@@ -316,8 +350,14 @@ describe('Integrations E2E — Composite Cross-Provider Suite', () => {
 
             // 3. Next queued sync succeeds
             mockJiraResponse('/rest/api/3/issue', mockJiraIssueCreateSuccess, 201, 'POST')
-            const res = await jiraProvider.createExternalItem(reconnectedInt!, { title: 'Resumed Sync Action' })
-            expect(res.id).toEqual('10042')
+            const res = await jiraProvider.createExternalItem!(reconnectedInt!, {
+                actionItemId: 'item-resumed',
+                text: 'Resumed Sync Action',
+                priority: 'HIGH',
+                context: { meetingTitle: 'Meeting', meetingDate: new Date() },
+                teamMetadata: { projectKey: 'ENG' },
+            })
+            expect(res.externalId).toEqual('10042')
         })
     })
 
@@ -350,7 +390,13 @@ describe('Integrations E2E — Composite Cross-Provider Suite', () => {
             mockLinearResponse('/graphql', mockLinearIssueCreateSuccess, 200, 'POST')
 
             const dummyIntegrateProcessor = async (job: any) => {
-                return linearProvider.createExternalItem(integration, { title: job.data.title })
+                return linearProvider.createExternalItem!(integration, {
+                    actionItemId: 'item-sanity',
+                    text: job.data.title,
+                    priority: 'HIGH',
+                    context: { meetingTitle: 'Meeting', meetingDate: new Date() },
+                    teamMetadata: {},
+                })
             }
 
             const jobs = Array.from({ length: 15 }, (_, i) => ({ title: `Task ${i}` }))

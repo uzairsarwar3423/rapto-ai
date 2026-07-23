@@ -84,3 +84,6 @@ export const OAUTH_CONFIGS: Partial<Record<ProviderType, OAuthConfig>> = {
         },
     },
 }
+
+export { getValidAccessToken } from '../../../services/token-refresh.service'
+

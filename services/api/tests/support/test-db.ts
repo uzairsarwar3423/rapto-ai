@@ -55,6 +55,7 @@ export async function seedTestTeamIntegration(
         isActive?: boolean
         consecutiveErrors?: number
         lastError?: string | null
+        metadata?: any
     } = {}
 ) {
     const rawToken = override.accessToken || `tok_${provider.toLowerCase()}_secret_123`
@@ -70,6 +71,7 @@ export async function seedTestTeamIntegration(
             tokenExpiresAt: override.expiresAt !== undefined ? override.expiresAt : new Date(Date.now() + 3600_000),
             workspaceId: override.workspaceId || `ws-${provider.toLowerCase()}-001`,
             workspaceName: `Test ${provider} Workspace`,
+            metadata: override.metadata !== undefined ? override.metadata : {},
             isActive: override.isActive !== undefined ? override.isActive : true,
             consecutiveErrors: override.consecutiveErrors || 0,
             lastError: override.lastError || null,
