@@ -25,7 +25,9 @@ export interface ActionItem {
   notionPageUrl: string | null;
   notionPageSyncedAt: string | null;
   confidenceScore: number;
+  autoSynced?: boolean | null;
   createdAt: string;
+
   updatedAt: string;
   assignee?: User | null;
   meeting?: {

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// notifications.types.ts
+// notifications.types.ts — Notification Types & Preferences Interfaces
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -11,6 +11,7 @@ export interface NotificationPreferences {
     meetingSummary: boolean
     deadlineReminder: boolean
     commitmentMissed: boolean
+    commitmentFulfilled: boolean
     weeklyDigest: boolean
     paymentAlerts: boolean
   }
@@ -18,6 +19,7 @@ export interface NotificationPreferences {
     meetingSummary: boolean
     deadlineReminder: boolean
     commitmentMissed: boolean
+    commitmentFulfilled: boolean
     dailyDigest: boolean
     personalDMs: boolean
   }
@@ -45,6 +47,7 @@ export const DEFAULT_PREFERENCES: NotificationPreferences = {
     meetingSummary: true,
     deadlineReminder: true,
     commitmentMissed: true,
+    commitmentFulfilled: true,
     weeklyDigest: true,
     paymentAlerts: true,
   },
@@ -52,10 +55,50 @@ export const DEFAULT_PREFERENCES: NotificationPreferences = {
     meetingSummary: true,
     deadlineReminder: true,
     commitmentMissed: true,
+    commitmentFulfilled: true,
     dailyDigest: false,
     personalDMs: true,
   },
   inApp: {
     all: true,
   },
+}
+
+// ── Block Kit Input Types (Pure Data Structures) ─────────────────────────────
+
+export interface CommitmentMissedBlockInput {
+  id: string
+  text: string
+  dueDateRaw?: string | null
+  dueDate?: Date | null
+  actionUrl: string
+}
+
+export interface ManagerAlertBlockInput {
+  id: string
+  text: string
+  ownerName: string
+  commitmentScore?: number | null
+  profileUrl: string
+}
+
+export interface DeadlineReminderBlockInput {
+  id: string
+  text: string
+  dueDateRaw?: string | null
+  dueDate?: Date | null
+  actionUrl: string
+}
+
+export interface CommitmentFulfilledBlockInput {
+  id: string
+  text: string
+  ownerName: string
+  actionUrl: string
+}
+
+export interface ManagerFanOutResult {
+  sent: number
+  skipped: number
+  failed: number
 }

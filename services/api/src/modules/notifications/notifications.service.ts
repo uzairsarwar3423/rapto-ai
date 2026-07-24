@@ -1,18 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// notifications.service.ts — Preferences CRUD + Test-Send Orchestration
+// notifications.service.ts — Preferences CRUD + Recipient Resolution + Dedup Helpers
 //
 // Design decisions (from spec):
 //  - getPreferences: returns DEFAULT_PREFERENCES on read-miss (never writes DB)
 //  - updatePreferences: true deep merge (not shallow assign), then cache-busts
 //    the user cache key so notify.worker's cached preference view stays fresh
-//  - sendTestNotification: calls the SAME underlying send function as notify.worker
-//    (not via BullMQ queue — test-send is synchronous/immediate, but uses the
-//    SAME delivery path so a successful test genuinely proves the real path)
+//  - getManagersToNotify: central, tenant-isolated team membership query for OWNER, ADMIN, MANAGER roles.
+//  - shouldSendSlack & shouldSendEmail: shared preference evaluation logic reused by
+//    Slack and Email dispatch workers.
+//  - checkAndSetDedup: Redis atomic SET EX NX helper for idempotency.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { logger } from '../../config/logger'
 import { redis } from '../../config/redis'
-import { emailService } from './email.service'
 import { notificationsRepository } from './notifications.repository'
 import {
   DEFAULT_PREFERENCES,
@@ -24,12 +24,31 @@ import { env } from '../../config/env'
 
 const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
 
+const NOTIFICATION_TYPE_TO_SLACK_PREF_KEY: Record<string, keyof NotificationPreferences['slack']> = {
+  MEETING_PROCESSED: 'meetingSummary',
+  COMMITMENT_MISSED: 'commitmentMissed',
+  DEADLINE_REMINDER: 'deadlineReminder',
+  DEADLINE_TODAY: 'deadlineReminder',
+  COMMITMENT_FULFILLED: 'commitmentFulfilled',
+  MANAGER_ALERT: 'commitmentMissed',
+  WEEKLY_DIGEST: 'dailyDigest',
+}
+
+const NOTIFICATION_TYPE_TO_EMAIL_PREF_KEY: Record<string, keyof NotificationPreferences['email']> = {
+  MEETING_PROCESSED: 'meetingSummary',
+  COMMITMENT_MISSED: 'commitmentMissed',
+  DEADLINE_REMINDER: 'deadlineReminder',
+  DEADLINE_TODAY: 'deadlineReminder',
+  COMMITMENT_FULFILLED: 'commitmentFulfilled',
+  MANAGER_ALERT: 'commitmentMissed',
+  WEEKLY_DIGEST: 'weeklyDigest',
+}
+
 // ── Deep Merge ────────────────────────────────────────────────────────────────
 
 /**
  * True deep merge: email.* sub-keys merge independently of slack.* sub-keys.
- * Same philosophy as Day 16's team.settings update logic (not reimplemented,
- * same pattern recognized by engineers elsewhere in the codebase).
+ * Same philosophy as Day 16's team.settings update logic.
  */
 function deepMergePreferences(
   current: NotificationPreferences,
@@ -63,18 +82,11 @@ export const notificationsService = {
     userId: string,
     partialUpdate: PartialNotificationPreferences
   ): Promise<NotificationPreferences> {
-    // 1. Read current (reuses getPreferences so "default if missing" logic is written once)
     const current = await notificationsService.getPreferences(userId)
-
-    // 2. True deep merge
     const merged = deepMergePreferences(current, partialUpdate)
 
-    // 3. Persist
     await notificationsRepository.upsert(userId, merged)
 
-    // 4. Invalidate the user cache key — notify.worker reads `cache:user:{userId}`
-    //    to get preferences per-send; bust it so the worker's view stays fresh
-    //    without it needing to hit Postgres on every notification
     try {
       await redis.del(`cache:user:${userId}`)
     } catch (err) {
@@ -85,6 +97,63 @@ export const notificationsService = {
     return merged
   },
 
+  /**
+   * Central recipient resolution helper: resolve all users in a team holding MANAGER, ADMIN, or OWNER role.
+   * Strictly tenant-scoped to `teamId`.
+   */
+  async getManagersToNotify(teamId: string): Promise<Array<{ id: string; email: string; name: string }>> {
+    return prisma.user.findMany({
+      where: {
+        teamId,
+        role: { in: ['OWNER', 'ADMIN', 'MANAGER'] },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    })
+  },
+
+  /**
+   * Shared preference evaluation for Slack channel.
+   * Returns true if sending is allowed, false if opted out by user preference.
+   */
+  async shouldSendSlack(userId: string, notificationType: string): Promise<boolean> {
+    const prefs = await notificationsService.getPreferences(userId)
+    const prefKey = NOTIFICATION_TYPE_TO_SLACK_PREF_KEY[notificationType]
+    if (prefKey && prefs.slack && prefs.slack[prefKey] === false) {
+      return false
+    }
+    return true
+  },
+
+  /**
+   * Shared preference evaluation for Email channel.
+   * Returns true if sending is allowed, false if opted out by user preference.
+   */
+  async shouldSendEmail(userId: string, notificationType: string): Promise<boolean> {
+    const prefs = await notificationsService.getPreferences(userId)
+    const prefKey = NOTIFICATION_TYPE_TO_EMAIL_PREF_KEY[notificationType]
+    if (prefKey && prefs.email && prefs.email[prefKey] === false) {
+      return false
+    }
+    return true
+  },
+
+  /**
+   * Check and set an atomic Redis deduplication slot.
+   * @returns true if slot WAS claimed (fresh send), false if slot WAS ALREADY set (duplicate, skip).
+   */
+  async checkAndSetDedup(key: string, ttlSeconds: number): Promise<boolean> {
+    try {
+      const result = await redis.set(key, '1', 'EX', ttlSeconds, 'NX')
+      return result === 'OK'
+    } catch (err) {
+      logger.warn({ err, key }, 'notifications.service: redis dedup check failed (defaulting to proceed)')
+      return true
+    }
+  },
 
   /**
    * List user's in-app notifications with cursor-based pagination.

@@ -25,8 +25,9 @@ export function SyncToJiraButton({ actionItem }: SyncToJiraButtonProps) {
 
   // If already synced, show the badge directly
   if (actionItem.jiraIssueId) {
-    return <SyncStatusBadge status="synced" url={actionItem.jiraIssueUrl} />;
+    return <SyncStatusBadge status="synced" url={actionItem.jiraIssueUrl} autoSynced={actionItem.autoSynced} />;
   }
+
 
   return (
     <Popover open={showNotConnected} onOpenChange={setShowNotConnected}>

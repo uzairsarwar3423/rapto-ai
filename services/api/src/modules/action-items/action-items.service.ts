@@ -247,12 +247,91 @@ async function getActionItem(actionItemId: string, teamId: string) {
   return actionItem
 }
 
+async function enqueueAutoSyncJobs(meetingId: string, teamId: string) {
+  // 1. Fetch team settings
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: { settings: true },
+  })
+
+  const settings = (team?.settings ?? {}) as Record<string, any>
+  const autoSyncEnabled = Boolean(settings.autoSyncEnabled)
+  const configuredProviders: string[] = Array.isArray(settings.autoSyncProviders)
+    ? settings.autoSyncProviders
+    : []
+
+  // Fast no-op if auto-sync is disabled or no providers configured
+  if (!autoSyncEnabled || configuredProviders.length === 0) {
+    return { enqueuedCount: 0 }
+  }
+
+  // 2. Fetch active TeamIntegrations for defense-in-depth runtime check
+  const activeIntegrations = await prisma.teamIntegration.findMany({
+    where: { teamId, isActive: true },
+    select: { provider: true },
+  })
+
+  const activeProviderSet = new Set(activeIntegrations.map((i) => i.provider))
+  const enabledProviders = configuredProviders.filter(
+    (p): p is 'JIRA' | 'LINEAR' | 'NOTION' =>
+      ['JIRA', 'LINEAR', 'NOTION'].includes(p) && activeProviderSet.has(p as any)
+  )
+
+  if (enabledProviders.length === 0) {
+    return { enqueuedCount: 0 }
+  }
+
+  // 3. Query eligible action items (confidence >= 0.5, scoped to team & meeting)
+  const eligibleItems = await actionItemsRepository.findAutoSyncEligibleItems(meetingId, teamId, 0.5)
+  if (eligibleItems.length === 0) {
+    return { enqueuedCount: 0 }
+  }
+
+  let enqueuedCount = 0
+
+  // 4. Multi-provider fan-out loop
+  for (const item of eligibleItems) {
+    for (const provider of enabledProviders) {
+      // Exclude items already synced for this provider
+      if (provider === 'JIRA' && item.jiraIssueId) continue
+      if (provider === 'LINEAR' && item.linearIssueId) continue
+      if (provider === 'NOTION' && item.notionPageId) continue
+
+      // System-generated deterministic idempotency key
+      const idempotencyKey = `auto-sync:${item.id}:${provider}:${meetingId}`
+
+      await integrateQueue.add(
+        'sync-action-item',
+        {
+          teamId,
+          actionItemId: item.id,
+          provider,
+          idempotencyKey,
+          meetingId,
+          source: 'auto',
+        },
+        {
+          jobId: idempotencyKey,
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 15_000 },
+        }
+      )
+
+      enqueuedCount++
+    }
+  }
+
+  return { enqueuedCount }
+}
+
 export const actionItemsService = {
   listActionItems,
   updateActionItem,
   syncActionItem,
   bulkUpdateActionItems,
-  getActionItem
+  getActionItem,
+  enqueueAutoSyncJobs,
 }
+
 
 

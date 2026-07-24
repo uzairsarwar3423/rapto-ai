@@ -513,6 +513,7 @@ model ActionItem {
   notionPageUrl         String?
   notionPageSyncedAt    DateTime?
   confidenceScore       Float           @default(1.0)
+  autoSynced            Boolean?
   // Day 59 (Path B): Nullable FK linking an action item back to the commitment
   // it was co-extracted from. Populated at extraction time; READ by the Jira
   // reverse-sync cascade (jira-sync.service.ts §14). completedById=null is the

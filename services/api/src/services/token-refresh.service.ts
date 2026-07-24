@@ -24,7 +24,8 @@ export interface ExpiringIntegrationsResult {
 }
 
 /**
- * findExpiringIntegrations — scans database for active team and user integrations
+ * findExpiringIntegrat
+ * ions — scans database for active team and user integrations
  * whose tokens expire within the lookahead window (30 minutes).
  *
  * Excludes rows with tokenExpiresAt: null (Linear, Notion, Slack) automatically.
@@ -225,6 +226,8 @@ export async function getValidAccessToken(
         `Unsupported provider for token refresh: ${provider}`
     )
 }
+
+
 
 export const tokenRefreshService = {
     findExpiringIntegrations,

@@ -16,11 +16,15 @@ export interface UpdateTeamInput {
   settings?: TeamSettingsInput
 }
 
+import type { AutoSyncProvider } from '../../config/team-settings.config'
+
 export interface TeamSettingsInput {
   defaultTimezone?: string
   weeklyDigestEnabled?: boolean
   weeklyDigestDay?: 'MONDAY' | 'FRIDAY' | 'SUNDAY'
   allowMembersToInvite?: boolean
+  autoSyncEnabled?: boolean
+  autoSyncProviders?: AutoSyncProvider[]
 }
 
 export interface InviteMembersInput {
@@ -46,7 +50,10 @@ export interface TeamSettings {
   weeklyDigestEnabled: boolean
   weeklyDigestDay: 'MONDAY' | 'FRIDAY' | 'SUNDAY'
   allowMembersToInvite: boolean
+  autoSyncEnabled: boolean
+  autoSyncProviders: AutoSyncProvider[]
 }
+
 
 export interface TeamUsage {
   meetingsUsed: number

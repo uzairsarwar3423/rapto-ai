@@ -10,8 +10,7 @@
 //   Slack bot tokens do NOT expire → refreshAccessToken() is a documented NO-OP.
 //
 // Rate limiting: Slack Tier 2 ≈ 1 message/second per channel.
-//   Handled at the BullMQ queue-limiter level (Redis-backed, cross-replica safe).
-//   Never use in-process setTimeout — it breaks under horizontal scaling.
+//   Handled at the BullMQ queue-limiter level and sequential delay in fan-out.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import axios from 'axios'
@@ -54,7 +53,7 @@ function buildSlackClient(botToken: string) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helper — resolve a DM channel for a Slack user ID
-// Written ONCE and shared by both sendCommitmentMissedDM and sendDeadlineReminderDM
+// Written ONCE and shared by all DM send functions
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function openDMChannel(client: ReturnType<typeof buildSlackClient>, slackUserId: string): Promise<string | null> {
@@ -99,7 +98,6 @@ async function lookupSlackUserByEmail(
 
 /**
  * Build Block Kit payload for a meeting summary posted to a channel.
- * Includes: header, divider, commitment list, divider, "View Full Summary" CTA button.
  */
 export function buildMeetingSummaryBlocks(
     meeting: { id: string; title: string; scheduledAt?: Date | null },
@@ -159,12 +157,10 @@ export function buildMeetingSummaryBlocks(
 
 /**
  * Build Block Kit payload for a "commitment missed" DM.
- * Shorter and more direct than the channel version.
  */
 export function buildCommitmentMissedBlocks(
     commitment: { id: string; text: string; dueDate?: Date | null }
 ): SlackBlock[] {
-    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
     return [
         {
             type: 'header',
@@ -197,7 +193,6 @@ export function buildCommitmentMissedBlocks(
 export function buildDeadlineReminderBlocks(
     commitment: { id: string; text: string; dueDate?: Date | null }
 ): SlackBlock[] {
-    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
     return [
         {
             type: 'header',
@@ -235,8 +230,6 @@ export class SlackProvider implements IntegrationProvider {
 
     async exchangeCodeForTokens(code: string): Promise<ProviderTokenResponse> {
         const config = OAUTH_CONFIGS.SLACK!
-
-        // Slack uses Basic auth (client_id:client_secret) for token exchange
         const credentials = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64')
 
         const response = await axios.post(
@@ -261,7 +254,6 @@ export class SlackProvider implements IntegrationProvider {
             throw new Error(`Slack OAuth failed: ${data.error}`)
         }
 
-        // Bot token lives at data.access_token, team info at data.team
         const botToken: string = data.access_token
         const botUserId: string = data.bot_user_id || ''
         const teamId: string = data.team?.id || ''
@@ -276,24 +268,17 @@ export class SlackProvider implements IntegrationProvider {
 
         return {
             accessToken: botToken,
-            refreshToken: undefined, // Slack bot tokens don't expire
+            refreshToken: undefined,
             expiresIn: undefined,
             workspaceMeta,
         }
     }
 
-    /**
-     * Slack bot tokens do NOT expire under normal operation.
-     * This is a documented NO-OP satisfying the shared interface contract.
-     * The function exists so the shared token-refresh cron can call it safely
-     * for ALL providers without special-casing Slack.
-     */
     async refreshAccessToken(
         refreshTokenEnc: string
     ): Promise<Omit<ProviderTokenResponse, 'workspaceMeta'>> {
-        // No-op: return a sentinel that signals "no rotation needed"
         return {
-            accessToken: refreshTokenEnc, // caller should not re-encrypt if this is the same
+            accessToken: refreshTokenEnc,
             refreshToken: undefined,
             expiresIn: undefined,
         }
@@ -318,7 +303,7 @@ export class SlackProvider implements IntegrationProvider {
         }
     }
 
-    // ── SharedInterface: revokeToken — best-effort, never throws ─────────────
+    // ── SharedInterface: revokeToken ──────────────────────────────────────────
 
     async revokeToken(integration: TeamIntegration): Promise<void> {
         try {
@@ -330,13 +315,78 @@ export class SlackProvider implements IntegrationProvider {
         }
     }
 
-    // ── Slack-specific: send meeting summary to channel ──────────────────────
+    // ── Generic Slack primitives: DM and Channel ──────────────────────────────
 
     /**
-     * Post a meeting summary to the team's configured Slack channel.
-     * If no defaultChannelId is configured → documented no-op (not an error).
-     * Rate limiting is handled at the BullMQ queue-limiter level, NOT here.
+     * Generic primitive: Send a Direct Message to a user resolved by email.
      */
+    async sendDirectMessage(
+        integration: TeamIntegration,
+        recipientEmail: string,
+        fallbackText: string,
+        blocks: SlackBlock[]
+    ): Promise<SlackSendResult> {
+        try {
+            const botToken = decrypt(integration.accessTokenEnc)
+            const client = buildSlackClient(botToken)
+
+            const slackUserId = await lookupSlackUserByEmail(client, recipientEmail)
+            if (!slackUserId) return { ok: false, error: 'SLACK_USER_NOT_FOUND' }
+
+            const channelId = await openDMChannel(client, slackUserId)
+            if (!channelId) return { ok: false, error: 'SLACK_DM_OPEN_FAILED' }
+
+            const res = await client.post('/chat.postMessage', {
+                channel: channelId,
+                text: fallbackText,
+                blocks,
+            })
+
+            if (!res.data.ok) {
+                logger.warn({ error: res.data.error, recipientEmail }, 'Slack: sendDirectMessage failed')
+                return { ok: false, error: res.data.error }
+            }
+
+            return { ok: true, ts: res.data.ts, channel: channelId }
+        } catch (err: any) {
+            logger.warn({ error: err.message, recipientEmail }, 'Slack: sendDirectMessage threw')
+            return { ok: false, error: err.message }
+        }
+    }
+
+    /**
+     * Generic primitive: Send a message to a specific Slack channel.
+     */
+    async sendChannelMessage(
+        integration: TeamIntegration,
+        channelId: string,
+        fallbackText: string,
+        blocks: SlackBlock[]
+    ): Promise<SlackSendResult> {
+        try {
+            const botToken = decrypt(integration.accessTokenEnc)
+            const client = buildSlackClient(botToken)
+
+            const res = await client.post('/chat.postMessage', {
+                channel: channelId,
+                text: fallbackText,
+                blocks,
+            })
+
+            if (!res.data.ok) {
+                logger.error({ integrationId: integration.id, error: res.data.error }, 'Slack: sendChannelMessage failed')
+                return { ok: false, error: res.data.error }
+            }
+
+            return { ok: true, ts: res.data.ts, channel: res.data.channel }
+        } catch (err: any) {
+            logger.error({ integrationId: integration.id, error: err.message }, 'Slack: sendChannelMessage threw')
+            return { ok: false, error: err.message }
+        }
+    }
+
+    // ── Slack-specific: send meeting summary to channel ──────────────────────
+
     async sendMeetingSummaryToChannel(
         integration: TeamIntegration,
         meeting: { id: string; title: string; scheduledAt?: Date | null },
@@ -351,28 +401,8 @@ export class SlackProvider implements IntegrationProvider {
             return { ok: false, error: 'SLACK_CHANNEL_NOT_CONFIGURED' }
         }
 
-        try {
-            const botToken = decrypt(integration.accessTokenEnc)
-            const client = buildSlackClient(botToken)
-            const blocks = buildMeetingSummaryBlocks(meeting, counts, commitments)
-
-            const res = await client.post('/chat.postMessage', {
-                channel: defaultChannelId,
-                text: `Meeting summary: ${meeting.title}`, // fallback for notifications
-                blocks,
-            })
-
-            if (!res.data.ok) {
-                logger.error({ integrationId: integration.id, error: res.data.error }, 'Slack chat.postMessage failed')
-                return { ok: false, error: res.data.error }
-            }
-
-            logger.info({ integrationId: integration.id, meetingId: meeting.id, ts: res.data.ts }, 'Slack: meeting summary posted')
-            return { ok: true, ts: res.data.ts, channel: res.data.channel }
-        } catch (err: any) {
-            logger.error({ integrationId: integration.id, error: err.message }, 'Slack sendMeetingSummaryToChannel threw')
-            return { ok: false, error: err.message }
-        }
+        const blocks = buildMeetingSummaryBlocks(meeting, counts, commitments)
+        return this.sendChannelMessage(integration, defaultChannelId, `Meeting summary: ${meeting.title}`, blocks)
     }
 
     // ── Slack-specific: send "commitment missed" DM ──────────────────────────
@@ -382,33 +412,8 @@ export class SlackProvider implements IntegrationProvider {
         ownerEmail: string,
         commitment: { id: string; text: string; dueDate?: Date | null }
     ): Promise<SlackSendResult> {
-        try {
-            const botToken = decrypt(integration.accessTokenEnc)
-            const client = buildSlackClient(botToken)
-
-            const slackUserId = await lookupSlackUserByEmail(client, ownerEmail)
-            if (!slackUserId) return { ok: false, error: 'SLACK_USER_NOT_FOUND' }
-
-            const channelId = await openDMChannel(client, slackUserId)
-            if (!channelId) return { ok: false, error: 'SLACK_DM_OPEN_FAILED' }
-
-            const blocks = buildCommitmentMissedBlocks(commitment)
-            const res = await client.post('/chat.postMessage', {
-                channel: channelId,
-                text: `⚠️ Missed commitment: ${commitment.text}`,
-                blocks,
-            })
-
-            if (!res.data.ok) {
-                logger.warn({ error: res.data.error, ownerEmail }, 'Slack: DM (missed) failed')
-                return { ok: false, error: res.data.error }
-            }
-
-            return { ok: true, ts: res.data.ts, channel: channelId }
-        } catch (err: any) {
-            logger.warn({ error: err.message, ownerEmail }, 'Slack sendCommitmentMissedDM threw (no-op)')
-            return { ok: false, error: err.message }
-        }
+        const blocks = buildCommitmentMissedBlocks(commitment)
+        return this.sendDirectMessage(integration, ownerEmail, `⚠️ Missed commitment: ${commitment.text}`, blocks)
     }
 
     // ── Slack-specific: send "deadline reminder" DM ──────────────────────────
@@ -418,39 +423,11 @@ export class SlackProvider implements IntegrationProvider {
         ownerEmail: string,
         commitment: { id: string; text: string; dueDate?: Date | null }
     ): Promise<SlackSendResult> {
-        try {
-            const botToken = decrypt(integration.accessTokenEnc)
-            const client = buildSlackClient(botToken)
-
-            const slackUserId = await lookupSlackUserByEmail(client, ownerEmail)
-            if (!slackUserId) return { ok: false, error: 'SLACK_USER_NOT_FOUND' }
-
-            const channelId = await openDMChannel(client, slackUserId)
-            if (!channelId) return { ok: false, error: 'SLACK_DM_OPEN_FAILED' }
-
-            const blocks = buildDeadlineReminderBlocks(commitment)
-            const res = await client.post('/chat.postMessage', {
-                channel: channelId,
-                text: `⏰ Deadline reminder: ${commitment.text}`,
-                blocks,
-            })
-
-            if (!res.data.ok) {
-                logger.warn({ error: res.data.error, ownerEmail }, 'Slack: DM (reminder) failed')
-                return { ok: false, error: res.data.error }
-            }
-
-            return { ok: true, ts: res.data.ts, channel: channelId }
-        } catch (err: any) {
-            logger.warn({ error: err.message, ownerEmail }, 'Slack sendDeadlineReminderDM threw (no-op)')
-            return { ok: false, error: err.message }
-        }
+        const blocks = buildDeadlineReminderBlocks(commitment)
+        return this.sendDirectMessage(integration, ownerEmail, `⏰ Deadline reminder: ${commitment.text}`, blocks)
     }
 
     // ── SharedInterface: createExternalItem ──────────────────────────────────
-    // Slack: posts the action item as a formatted message to the team channel.
-    // The "external item" is the message — externalId = message timestamp (Slack's
-    // unique message identifier), externalUrl = deep-link into the channel.
 
     async createExternalItem(
         integration: TeamIntegration,

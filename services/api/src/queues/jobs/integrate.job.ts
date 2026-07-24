@@ -26,4 +26,11 @@ export interface IntegrateJobData {
     idempotencyKey?: string
     /** Optional: meeting ID for structured log context */
     meetingId?: string
+    /**
+     * Optional provenance trigger source ('manual' | 'auto').
+     * OBSERVABILITY & PROVENANCE RECORDING ONLY — NEVER read by any conditional
+     * statement that would alter sync mechanics, retries, or health tracking.
+     */
+    source?: 'manual' | 'auto'
 }
+

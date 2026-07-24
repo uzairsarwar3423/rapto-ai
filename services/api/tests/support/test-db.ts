@@ -13,21 +13,30 @@ export async function cleanTestDatabase() {
     // Delete in reverse FK dependency order
     await prisma.actionItem.deleteMany()
     await prisma.commitment.deleteMany()
+    await prisma.decision.deleteMany()
+    await prisma.blocker.deleteMany()
+    await prisma.risk.deleteMany()
     await prisma.meetingParticipant.deleteMany()
     await prisma.meeting.deleteMany()
     await prisma.teamIntegration.deleteMany()
     await prisma.userIntegration.deleteMany()
+    await prisma.teamInvitation.deleteMany()
+    await prisma.notificationPreference.deleteMany()
+    await prisma.subscription.deleteMany().catch(() => {})
+    await prisma.usageEvent.deleteMany().catch(() => {})
     await prisma.user.deleteMany()
     await prisma.team.deleteMany()
 }
 
-export async function seedTestTeam(override: { name?: string; slug?: string } = {}) {
+
+export async function seedTestTeam(override: { name?: string; slug?: string; settings?: any } = {}) {
     const uniqueId = Math.random().toString(36).substring(2, 9)
     return prisma.team.create({
         data: {
             name: override.name || `Test Team ${uniqueId}`,
             slug: override.slug || `test-team-${uniqueId}`,
             plan: 'STARTER',
+            settings: override.settings !== undefined ? override.settings : undefined,
         },
     })
 }
@@ -139,6 +148,7 @@ export async function seedTestActionItem(
         linearIssueUrl?: string
         notionPageId?: string
         notionPageUrl?: string
+        confidenceScore?: number
     } = {}
 ) {
     return prisma.actionItem.create({
@@ -154,6 +164,8 @@ export async function seedTestActionItem(
             linearIssueUrl: override.linearIssueUrl || null,
             notionPageId: override.notionPageId || null,
             notionPageUrl: override.notionPageUrl || null,
+            confidenceScore: override.confidenceScore !== undefined ? override.confidenceScore : 1.0,
         },
     })
 }
+

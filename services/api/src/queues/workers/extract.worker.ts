@@ -418,10 +418,26 @@ export const extractWorker = new Worker<ExtractJobData>(
       meetingId,
     })
 
+    // ── STEP 13: Auto-sync trigger ─────────────────────────────────────────
+    try {
+      const { actionItemsService } = await import('../../modules/action-items/action-items.service')
+      const { enqueuedCount } = await actionItemsService.enqueueAutoSyncJobs(meetingId, teamId)
+      logger.info(
+        { jobId: job.id, meetingId, teamId, enqueuedCount },
+        'extract.worker: auto-sync check complete'
+      )
+    } catch (autoSyncErr: any) {
+      logger.warn(
+        { jobId: job.id, meetingId, teamId, err: autoSyncErr.message },
+        'extract.worker: auto-sync trigger failed (non-fatal)'
+      )
+    }
+
     logger.info(
       { jobId: job.id, meetingId, isPartial },
-      'extract.worker: completed — pushed to resolve and notify queues'
+      'extract.worker: completed — pushed to resolve, notify, and integrate queues'
     )
+
   },
   {
     connection: {

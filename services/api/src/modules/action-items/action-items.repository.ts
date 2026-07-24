@@ -183,4 +183,33 @@ export const actionItemsRepository = {
       data,
     })
   },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // findAutoSyncEligibleItems — Day 66 Layer 2/5
+  //
+  // Confidence-filtered (>= minConfidence, default 0.5), tenant-scoped,
+  // meeting-scoped query identifying newly-extracted action items eligible
+  // for automatic sync fan-out.
+  // ─────────────────────────────────────────────────────────────────────────
+  async findAutoSyncEligibleItems(meetingId: string, teamId: string, minConfidence = 0.5) {
+    return prisma.actionItem.findMany({
+      where: {
+        teamId,
+        meetingId,
+        confidenceScore: { gte: minConfidence },
+      },
+      select: {
+        id: true,
+        text: true,
+        confidenceScore: true,
+        assigneeId: true,
+        dueDate: true,
+        priority: true,
+        jiraIssueId: true,
+        linearIssueId: true,
+        notionPageId: true,
+      },
+    })
+  },
 }
+

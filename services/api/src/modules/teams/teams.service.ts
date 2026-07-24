@@ -127,14 +127,8 @@ function sortMembersByRole<T extends { role: UserRole }>(members: T[]): T[] {
   )
 }
 
-// ── Default team settings ─────────────────────────────────────────────────────
+import { DEFAULT_TEAM_SETTINGS } from '../../config/team-settings.config'
 
-const DEFAULT_TEAM_SETTINGS: TeamSettings = {
-  defaultTimezone: 'UTC',
-  weeklyDigestEnabled: true,
-  weeklyDigestDay: 'MONDAY',
-  allowMembersToInvite: false,
-}
 
 // ── Service Functions ─────────────────────────────────────────────────────────
 
@@ -314,6 +308,8 @@ async function getTeamWithMembers(teamId: string): Promise<TeamDetailResponse> {
     weeklyDigestEnabled: (rawSettings.weeklyDigestEnabled as boolean) ?? DEFAULT_TEAM_SETTINGS.weeklyDigestEnabled,
     weeklyDigestDay: (rawSettings.weeklyDigestDay as TeamSettings['weeklyDigestDay']) ?? DEFAULT_TEAM_SETTINGS.weeklyDigestDay,
     allowMembersToInvite: (rawSettings.allowMembersToInvite as boolean) ?? DEFAULT_TEAM_SETTINGS.allowMembersToInvite,
+    autoSyncEnabled: (rawSettings.autoSyncEnabled as boolean) ?? DEFAULT_TEAM_SETTINGS.autoSyncEnabled,
+    autoSyncProviders: (rawSettings.autoSyncProviders as any) ?? DEFAULT_TEAM_SETTINGS.autoSyncProviders,
   }
 
   const result: TeamDetailResponse = {
@@ -344,6 +340,25 @@ async function updateTeamSettings(teamId: string, input: UpdateTeamInput) {
   const team = await teamsRepository.findById(teamId)
   if (!team) throw new NotFoundError('Team', teamId)
 
+  // STEP 1b — Cross-field validation: autoSyncProviders vs active TeamIntegration rows
+  if (input.settings?.autoSyncProviders && input.settings.autoSyncProviders.length > 0) {
+    const activeIntegrations = await prisma.teamIntegration.findMany({
+      where: { teamId, isActive: true },
+      select: { provider: true },
+    })
+    const activeSet = new Set(activeIntegrations.map((i) => i.provider))
+    const invalidProviders = input.settings.autoSyncProviders.filter(
+      (p) => !activeSet.has(p as any)
+    )
+    if (invalidProviders.length > 0) {
+      throw new AppError(
+        'INVALID_AUTO_SYNC_PROVIDER',
+        422,
+        `Cannot enable auto-sync for disconnected or inactive provider(s): ${invalidProviders.join(', ')}`
+      )
+    }
+  }
+
   // STEP 2 — JSONB merge for settings (partial update, not replace)
   const currentSettings = (team.settings ?? {}) as Record<string, unknown>
   const updatedSettings = input.settings
@@ -367,6 +382,8 @@ async function updateTeamSettings(teamId: string, input: UpdateTeamInput) {
     weeklyDigestEnabled: (rawSettings.weeklyDigestEnabled as boolean) ?? DEFAULT_TEAM_SETTINGS.weeklyDigestEnabled,
     weeklyDigestDay: (rawSettings.weeklyDigestDay as TeamSettings['weeklyDigestDay']) ?? DEFAULT_TEAM_SETTINGS.weeklyDigestDay,
     allowMembersToInvite: (rawSettings.allowMembersToInvite as boolean) ?? DEFAULT_TEAM_SETTINGS.allowMembersToInvite,
+    autoSyncEnabled: (rawSettings.autoSyncEnabled as boolean) ?? DEFAULT_TEAM_SETTINGS.autoSyncEnabled,
+    autoSyncProviders: (rawSettings.autoSyncProviders as any) ?? DEFAULT_TEAM_SETTINGS.autoSyncProviders,
   }
 
   return {
@@ -378,6 +395,7 @@ async function updateTeamSettings(teamId: string, input: UpdateTeamInput) {
     updatedAt: updated.updatedAt,
   }
 }
+
 
 /**
  * Invite one or more members to the team.

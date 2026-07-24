@@ -202,11 +202,17 @@ export const integrateWorker = new Worker<IntegrateJobData>(
         updateData[`${providerPrefix}IssueId`] = externalResult.externalId
         updateData[`${providerPrefix}IssueUrl`] = externalResult.externalUrl
         updateData[`${providerPrefix}IssueSyncedAt`] = new Date()
+        if (job.data.source === 'auto') {
+            updateData.autoSynced = true
+        } else if (job.data.source === 'manual') {
+            updateData.autoSynced = false
+        }
 
         await prisma.actionItem.update({
             where: { id: actionItem.id },
             data: updateData,
         })
+
 
         // Also update the integration's lastSyncedAt and record health success
         await prisma.teamIntegration.update({

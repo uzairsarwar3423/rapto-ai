@@ -72,12 +72,18 @@ export const updateTeamSchema = {
           .optional(),
         allowMembersToInvite: z.boolean().optional(),
         customBotName: z.string().max(50, 'Bot name must be at most 50 characters').optional(),
+        autoSyncEnabled: z.boolean().optional(),
+        autoSyncProviders: z
+          .array(z.enum(['JIRA', 'LINEAR', 'NOTION']))
+          .max(3, 'Cannot specify more than 3 auto-sync providers')
+          .optional(),
       })
       .optional(),
   }).refine(
     (data) => data.name !== undefined || data.settings !== undefined,
     { message: 'At least one field (name or settings) must be provided' }
   ),
+
 }
 
 /**

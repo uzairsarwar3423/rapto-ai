@@ -27,3 +27,11 @@ export interface UpdateActionItemDto {
 export interface SyncActionItemDto {
   provider: 'JIRA' | 'LINEAR' | 'NOTION'
 }
+
+export type { AutoSyncProvider } from '../../config/team-settings.config'
+
+export interface AutoSyncJobCandidate {
+  actionItemId: string
+  provider: 'JIRA' | 'LINEAR' | 'NOTION'
+}
+

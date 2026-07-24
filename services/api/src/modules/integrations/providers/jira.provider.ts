@@ -91,6 +91,7 @@ function buildIssueDescription(
                 text: '— Created automatically by Vocaply',
                 marks: [{ type: 'em' }],
             },
+            
         ],
     })
 

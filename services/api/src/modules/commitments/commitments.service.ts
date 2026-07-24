@@ -165,9 +165,9 @@ export async function updateCommitmentStatus(
   }
 
   if (data.status === 'FULFILLED') {
-    // If we had a logic to check for Jira link, we'd add it to integrate queue here
-    // Example:
+    // Enqueue Jira reverse sync & notification job for COMMITMENT_FULFILLED
     await integrateQueue.add('jira-sync', { type: 'COMMITMENT_FULFILLED', commitmentId: id, teamId })
+    await notifyQueue.add('notify-commitment-fulfilled', { type: 'COMMITMENT_FULFILLED', commitmentId: id, teamId, ownerId: commitment.ownerId })
   }
 
   return updatedCommitment
