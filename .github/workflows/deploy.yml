@@ -99,48 +99,63 @@ jobs:
             # Authenticate VPS Docker to GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            # Inject secrets into VPS .env file
-            cat << 'EOF' > ${DEPLOY_DIR}/.env
-            NODE_ENV=production
-            PORT=5000
-            DOCKER_REGISTRY=ghcr.io
-            IMAGE_NAME=${{ github.repository }}/api
-            IMAGE_TAG=${{ env.TAG }}
+            # Safely merge secrets into VPS .env file without wiping existing manual VPS keys
+            python3 -c "
+import os
 
-            DATABASE_URL="${{ secrets.PROD_DATABASE_URL }}"
-            DIRECT_URL="${{ secrets.PROD_DIRECT_URL }}"
-            MONGODB_URL="${{ secrets.PROD_MONGODB_URL }}"
-            REDIS_URL="${{ secrets.PROD_REDIS_URL }}"
+env_file = '${DEPLOY_DIR}/.env'
+existing = {}
+if os.path.exists(env_file):
+    with open(env_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                k, v = line.split('=', 1)
+                existing[k.strip()] = v.strip()
 
-            JWT_ACCESS_SECRET="${{ secrets.PROD_JWT_ACCESS_SECRET }}"
-            JWT_REFRESH_SECRET="${{ secrets.PROD_JWT_REFRESH_SECRET }}"
+updates = {
+    'NODE_ENV': 'production',
+    'PORT': '5000',
+    'DOCKER_REGISTRY': 'ghcr.io',
+    'IMAGE_NAME': '''${{ github.repository }}/api''',
+    'IMAGE_TAG': '''${{ env.TAG }}''',
+    'DATABASE_URL': '''${{ secrets.PROD_DATABASE_URL }}''',
+    'DIRECT_URL': '''${{ secrets.PROD_DIRECT_URL }}''',
+    'MONGODB_URL': '''${{ secrets.PROD_MONGODB_URL }}''',
+    'REDIS_URL': '''${{ secrets.PROD_REDIS_URL }}''',
+    'JWT_ACCESS_SECRET': '''${{ secrets.PROD_JWT_ACCESS_SECRET }}''',
+    'JWT_REFRESH_SECRET': '''${{ secrets.PROD_JWT_REFRESH_SECRET }}''',
+    'APP_URL': '''${{ secrets.PROD_APP_URL }}''',
+    'FRONTEND_URL': '''${{ secrets.PROD_FRONTEND_URL }}''',
+    'API_URL': '''${{ secrets.PROD_API_URL }}''',
+    'JIRA_CLIENT_ID': '''${{ secrets.PROD_JIRA_CLIENT_ID }}''',
+    'JIRA_CLIENT_SECRET': '''${{ secrets.PROD_JIRA_CLIENT_SECRET }}''',
+    'JIRA_CALLBACK_URL': '''${{ secrets.PROD_JIRA_CALLBACK_URL }}''',
+    'JIRA_WEBHOOK_SECRET': '''${{ secrets.PROD_JIRA_WEBHOOK_SECRET }}''',
+    'BREVO_API_KEY': '''${{ secrets.PROD_BREVO_API_KEY }}''',
+    'BREVO_FROM_EMAIL': '''${{ secrets.PROD_BREVO_FROM_EMAIL }}''',
+    'PADDLE_API_KEY': '''${{ secrets.PROD_PADDLE_API_KEY }}''',
+    'PADDLE_CLIENT_TOKEN': '''${{ secrets.PROD_PADDLE_CLIENT_TOKEN }}''',
+    'PADDLE_WEBHOOK_SECRET': '''${{ secrets.PROD_PADDLE_WEBHOOK_SECRET }}''',
+    'PADDLE_ENVIRONMENT': '''${{ secrets.PROD_PADDLE_ENVIRONMENT || 'production' }}''',
+    'PADDLE_PRICE_STARTER_M': '''${{ secrets.PROD_PADDLE_PRICE_STARTER_M }}''',
+    'PADDLE_PRICE_STARTER_Y': '''${{ secrets.PROD_PADDLE_PRICE_STARTER_Y }}''',
+    'PADDLE_PRICE_GROWTH_M': '''${{ secrets.PROD_PADDLE_PRICE_GROWTH_M }}''',
+    'PADDLE_PRICE_GROWTH_Y': '''${{ secrets.PROD_PADDLE_PRICE_GROWTH_Y }}''',
+    'PADDLE_PRICE_BUSINESS_M': '''${{ secrets.PROD_PADDLE_PRICE_BUSINESS_M }}''',
+    'PADDLE_PRICE_BUSINESS_Y': '''${{ secrets.PROD_PADDLE_PRICE_BUSINESS_Y }}''',
+    'AI_PIPELINE_URL': '''${{ secrets.PROD_AI_PIPELINE_URL }}''',
+    'AI_PIPELINE_SECRET': '''${{ secrets.PROD_AI_PIPELINE_SECRET }}'''
+}
 
-            APP_URL="${{ secrets.PROD_APP_URL }}"
-            FRONTEND_URL="${{ secrets.PROD_FRONTEND_URL }}"
-            API_URL="${{ secrets.PROD_API_URL }}"
+for k, v in updates.items():
+    if v != '':
+        existing[k] = v
 
-            JIRA_CLIENT_ID="${{ secrets.PROD_JIRA_CLIENT_ID }}"
-            JIRA_CLIENT_SECRET="${{ secrets.PROD_JIRA_CLIENT_SECRET }}"
-            JIRA_CALLBACK_URL="${{ secrets.PROD_JIRA_CALLBACK_URL }}"
-            JIRA_WEBHOOK_SECRET="${{ secrets.PROD_JIRA_WEBHOOK_SECRET }}"
-
-            BREVO_API_KEY="${{ secrets.PROD_BREVO_API_KEY }}"
-            BREVO_FROM_EMAIL="${{ secrets.PROD_BREVO_FROM_EMAIL }}"
-
-            PADDLE_API_KEY="${{ secrets.PROD_PADDLE_API_KEY }}"
-            PADDLE_CLIENT_TOKEN="${{ secrets.PROD_PADDLE_CLIENT_TOKEN }}"
-            PADDLE_WEBHOOK_SECRET="${{ secrets.PROD_PADDLE_WEBHOOK_SECRET }}"
-            PADDLE_ENVIRONMENT="${{ secrets.PROD_PADDLE_ENVIRONMENT || 'production' }}"
-            PADDLE_PRICE_STARTER_M="${{ secrets.PROD_PADDLE_PRICE_STARTER_M }}"
-            PADDLE_PRICE_STARTER_Y="${{ secrets.PROD_PADDLE_PRICE_STARTER_Y }}"
-            PADDLE_PRICE_GROWTH_M="${{ secrets.PROD_PADDLE_PRICE_GROWTH_M }}"
-            PADDLE_PRICE_GROWTH_Y="${{ secrets.PROD_PADDLE_PRICE_GROWTH_Y }}"
-            PADDLE_PRICE_BUSINESS_M="${{ secrets.PROD_PADDLE_PRICE_BUSINESS_M }}"
-            PADDLE_PRICE_BUSINESS_Y="${{ secrets.PROD_PADDLE_PRICE_BUSINESS_Y }}"
-
-            AI_PIPELINE_URL="${{ secrets.PROD_AI_PIPELINE_URL }}"
-            AI_PIPELINE_SECRET="${{ secrets.PROD_AI_PIPELINE_SECRET }}"
-            EOF
+with open(env_file, 'w') as f:
+    for k, v in existing.items():
+        f.write(f'{k}={v}\n')
+"
 
       - name: 📦 Sync Configuration & Run Deployment Script
         uses: appleboy/scp-action@v0.1.7
