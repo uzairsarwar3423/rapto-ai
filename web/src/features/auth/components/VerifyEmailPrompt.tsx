@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { authApi } from '@/features/auth/api/auth.api';
 import { useAuthStore } from '@/features/auth/store/auth.store';
 import axios from 'axios';
+import { getPublicApiUrl } from '@/lib/api/config';
 
 // Cache to prevent duplicate verification requests for the same token in React 18 Strict Mode
 const verificationPromises: Record<string, Promise<any>> = {};
@@ -76,7 +77,7 @@ export function VerifyEmailPrompt() {
 
     setResendStatus('loading');
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const backendUrl = getPublicApiUrl();
       await axios.post(`${backendUrl}/api/v1/auth/resend-verification`, { email });
       setResendStatus('success');
     } catch (err) {

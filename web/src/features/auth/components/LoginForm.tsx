@@ -10,6 +10,7 @@ import { useSearchParams } from 'next/navigation';
 import { useLogin } from '../hooks/useLogin';
 import { OAuthButton } from './OAuthButton';
 import axios from 'axios';
+import { getPublicApiUrl } from '@/lib/api/config';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
@@ -82,7 +83,7 @@ export function LoginForm() {
 
     setResendStatus('loading');
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const backendUrl = getPublicApiUrl();
       await axios.post(`${backendUrl}/api/v1/auth/resend-verification`, { email });
       setResendStatus('success');
     } catch (err: any) {

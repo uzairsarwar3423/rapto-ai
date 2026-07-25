@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { getPublicApiUrl } from '@/lib/api/config';
 
 interface OAuthButtonProps {
   /** Raw invite token — if present, will be forwarded through the OAuth state
@@ -9,7 +10,7 @@ interface OAuthButtonProps {
 }
 
 export function OAuthButton({ inviteToken }: OAuthButtonProps = {}) {
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const backendUrl = getPublicApiUrl();
   const params = new URLSearchParams();
   if (inviteToken) params.set('inviteToken', inviteToken);
   const queryString = params.toString();

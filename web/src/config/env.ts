@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  NEXT_PUBLIC_API_URL: z.string().url().optional().default("http://localhost:5000"),
+  NEXT_PUBLIC_API_URL: z.string().url().optional().default("https://api.rapto.cloud"),
   API_URL: z.string().url().optional(),
   NEXT_PUBLIC_PADDLE_ENVIRONMENT: z.string().optional(),
   NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: z.string().optional(),

@@ -1,9 +1,10 @@
 import { io, Socket } from "socket.io-client";
+import { getPublicApiUrl } from "@/lib/api/config";
 
 let socket: Socket | null = null;
 let connectionToken: string | null = null;
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const SOCKET_URL = getPublicApiUrl();
 
 export const socketManager = {
   connect(token: string) {

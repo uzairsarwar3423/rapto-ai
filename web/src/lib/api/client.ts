@@ -1,9 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/features/auth/store/auth.store';
+import { getPublicApiUrl } from './config';
 
 // Set up base Axios instance pointing to the Express Backend API
 export const api = axios.create({
-  baseURL: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/v1`,
+  baseURL: `${getPublicApiUrl()}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },

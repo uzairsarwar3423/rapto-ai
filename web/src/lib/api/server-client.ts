@@ -4,8 +4,9 @@ import { cookies } from "next/headers";
 import axios from "axios";
 import { cache } from "react";
 import { unstable_rethrow } from "next/navigation";
+import { getServerApiUrl } from "./config";
 
-const backendUrl = process.env.API_URL || "http://localhost:5000";
+const backendUrl = getServerApiUrl();
 
 /**
  * De-duplicated server-side fetch of a fresh access token using the user's HttpOnly refresh cookie.

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import axios from 'axios';
+import { getServerApiUrl } from '@/lib/api/config';
 
 export async function POST() {
   const cookieStore = await cookies();
@@ -14,7 +15,7 @@ export async function POST() {
   }
 
   try {
-    const backendUrl = process.env.API_URL || 'http://localhost:5000';
+    const backendUrl = getServerApiUrl();
     
     // 1. Call backend Express /refresh endpoint to rotate refresh token
     const refreshResponse = await axios.post(

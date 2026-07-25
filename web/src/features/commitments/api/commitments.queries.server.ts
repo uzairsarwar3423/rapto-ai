@@ -4,11 +4,12 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import axios from "axios";
 import { serverApiClient, handleServerQueryError } from "@/lib/api/server-client";
+import { getServerApiUrl } from "@/lib/api/config";
 import type { Commitment } from "../types";
 import type { CommitmentFiltersState } from "../hooks/useCommitmentFilters";
 import type { TeamStatsResponse } from "./commitments.queries";
 
-const backendUrl = process.env.API_URL || "http://localhost:5000";
+const backendUrl = getServerApiUrl();
 
 export interface PaginatedCommitmentsServerResponse {
   commitments: Commitment[];
