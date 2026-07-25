@@ -18,6 +18,7 @@ import Redis from 'ioredis'
 import jwt from 'jsonwebtoken'
 import { env } from '../config/env'
 import { logger } from '../config/logger'
+import { isOriginAllowed } from '../config/cors.config'
 import { teamRoom, userRoom, handleJoinMeeting, handleLeaveMeeting } from './rooms.manager'
 import { CLIENT_EVENTS } from './socket.events'
 
@@ -96,9 +97,14 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
 
   const io = new Server(httpServer, {
     cors: {
-      // NEVER '*' — an open CORS policy on an authenticated WebSocket server
-      // is a real cross-origin data-leak vector
-      origin: frontendUrl || 'http://localhost:3000',
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          callback(null, true)
+        } else {
+          logger.warn({ origin }, 'socket.server: CORS blocked unauthorized WebSocket connection')
+          callback(new Error('CORS_DISALLOWED'))
+        }
+      },
       credentials: true,
     },
     // Skip long-polling: adds load-balancer/sticky-session complexity for

@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser'
 
 import { env } from './config/env'
 import { isServerReady } from './config/server-state'
+import { corsOptions } from './config/cors.config'
 import { requestLogger } from './middleware/request-logger.middleware'
 import { ipRateLimiter } from './middleware/rate-limit.middleware'
 import { errorMiddleware } from './middleware/error.middleware'
@@ -97,12 +98,7 @@ app.get('/ready', async (_req, res) => {
 // ──────────────────────────────────────────────────────────────────────────────
 // Security & Utility Middleware
 // ──────────────────────────────────────────────────────────────────────────────
-app.use(
-    cors({
-        origin: env.APP_URL,
-        credentials: true,
-    })
-)
+app.use(cors(corsOptions))
 app.use(helmet())
 app.use(express.json({
     limit: '10mb',
