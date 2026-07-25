@@ -82,7 +82,7 @@ export class AIPipelineClient {
         // Auth header always injected here — workers never touch this
         'X-Internal-Service-Key':   config.sharedSecret,
         // Identifies this caller in the AI pipeline's structured logs
-        'X-Service-Name':           'vocaply-api',
+        'X-Service-Name':           'rapto-api',
       },
     });
 
@@ -103,7 +103,7 @@ export class AIPipelineClient {
       // SAFE log: URL, method, meeting_id only — NO auth header, NO body
       logger.info({
         event:      'ai_pipeline_request_start',
-        service:    'vocaply-api',
+        service:    'rapto-api',
         endpoint:   config.url,
         method:     config.method?.toUpperCase(),
         meeting_id: (config.data as any)?.meeting_id ?? null,

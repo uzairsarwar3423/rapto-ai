@@ -28,7 +28,7 @@ ${reason ? `<p style="margin: 4px 0 0 0; font-size: 13px; color: ${EmailColors.t
 
 ${renderEmailCard({ contentHtml: cardHtml, variant: 'warning' })}
 
-<p>Please update your billing information or payment method to avoid any interruption to your team's Vocaply service.</p>
+<p>Please update your billing information or payment method to avoid any interruption to your team's Rapto service.</p>
 
 ${renderEmailButton({ href: retryUrl, label: 'Update Payment Details', variant: 'warning' })}
 

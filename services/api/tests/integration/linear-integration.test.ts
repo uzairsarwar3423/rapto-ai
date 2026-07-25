@@ -67,7 +67,7 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
             expect(tokenResult.accessToken).toEqual('lin_access_token_super_secret_999')
             expect(tokenResult.tokenExpiresAt).toBeNull() // Linear personal access tokens do not expire
             expect(tokenResult.workspaceId).toEqual('lin-org-888')
-            expect(tokenResult.workspaceName).toEqual('Vocaply Organization')
+            expect(tokenResult.workspaceName).toEqual('Rapto Organization')
         })
     })
 
@@ -87,14 +87,14 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
                 title: 'Security Audit: RSA Key Rotation',
                 description: 'Rotate standard JWT secret keys',
                 priority: 'URGENT',
-                assigneeEmail: 'alice@vocaply.dev',
+                assigneeEmail: 'alice@rapto.dev',
             })
 
             expect(result.id).toEqual('lin-issue-101')
-            expect(result.url).toEqual('https://linear.app/vocaply/issue/ENG-101/security-audit')
+            expect(result.url).toEqual('https://linear.app/rapto/issue/ENG-101/security-audit')
         })
 
-        it('correctly maps all 4 Vocaply priority levels to Linear 1-4 integers', () => {
+        it('correctly maps all 4 Rapto priority levels to Linear 1-4 integers', () => {
             expect(LINEAR_PRIORITY_MAP['LOW']).toEqual(1)
             expect(LINEAR_PRIORITY_MAP['MEDIUM']).toEqual(2)
             expect(LINEAR_PRIORITY_MAP['HIGH']).toEqual(3)
@@ -158,19 +158,19 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
             const firstResult = await (linearProvider as any).resolveAssigneeId(
                 'secret_tok',
                 'lin-team-001',
-                'alice@vocaply.dev'
+                'alice@rapto.dev'
             )
             expect(firstResult).toEqual('lin-usr-alice')
 
             // Assert Redis cache is set with TTL
-            const cachedValue = await redis.get(`cache:linear:assignee:lin-team-001:alice@vocaply.dev`)
+            const cachedValue = await redis.get(`cache:linear:assignee:lin-team-001:alice@rapto.dev`)
             expect(cachedValue).toEqual('lin-usr-alice')
 
             // Second lookup — serviced from cache without network call
             const secondResult = await (linearProvider as any).resolveAssigneeId(
                 'secret_tok',
                 'lin-team-001',
-                'alice@vocaply.dev'
+                'alice@rapto.dev'
             )
             expect(secondResult).toEqual('lin-usr-alice')
         })

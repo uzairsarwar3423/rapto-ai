@@ -95,7 +95,7 @@ export interface IntegrationProvider {
 
     /**
      * Create an external item (Jira issue, Linear issue, Notion page) from a
-     * Vocaply action item. This is the core outbound integration operation.
+     * Rapto action item. This is the core outbound integration operation.
      *
      * IDEMPOTENCY: implementations must be designed so that calling this method
      * twice with the same input either creates exactly one item or throws a

@@ -7,7 +7,7 @@ export async function connectMongoDB(): Promise<Db> {
     if (db) return db
     client = new MongoClient(process.env.MONGODB_URL!)
     await client.connect()
-    db = client.db('vocaply')
+    db = client.db('rapto')
     return db
 }
 

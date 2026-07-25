@@ -31,7 +31,7 @@ const DEFAULT_CAPABILITIES: TeamCapability[] = [
   {
     icon: '📌',
     title: 'Commitment & Task Tracking',
-    description: 'Never miss a promise or deliverable. Vocaply captures verbal commitments and tracks them automatically.',
+    description: 'Never miss a promise or deliverable. Rapto captures verbal commitments and tracks them automatically.',
   },
   {
     icon: '🔍',
@@ -57,7 +57,7 @@ export function renderTeamMemberWelcomeHtml(props: TeamMemberWelcomeProps): stri
     dashboardUrl,
     capabilities = DEFAULT_CAPABILITIES,
     unsubscribeToken,
-    supportEmail = 'support@vocaply.com',
+    supportEmail = 'support@rapto.cloud',
   } = props
 
   const capabilitiesHtml = capabilities
@@ -92,7 +92,7 @@ export function renderTeamMemberWelcomeHtml(props: TeamMemberWelcomeProps): stri
   </span>
 </div>
 <p style="margin: 0; font-size: 14px; color: ${EmailColors.textHeadline}; font-weight: ${EmailTypography.fontWeightMedium};">
-  You’ve joined <strong>${workspaceName}</strong> workspace on Vocaply!
+  You’ve joined <strong>${workspaceName}</strong> workspace on Rapto!
 </p>
 <p style="margin: 4px 0 0 0; font-size: 13px; color: ${EmailColors.textMuted};">
   Invited by <strong>${inviterName}</strong>
@@ -111,7 +111,7 @@ export function renderTeamMemberWelcomeHtml(props: TeamMemberWelcomeProps): stri
   Welcome to the team, ${memberName}! 🎉
 </h2>
 <p style="margin: 0 0 20px 0; font-size: 15px; color: ${EmailColors.textBody}; line-height: 1.5;">
-  You now have full access to the <strong>${workspaceName}</strong> workspace on Vocaply.
+  You now have full access to the <strong>${workspaceName}</strong> workspace on Rapto.
 </p>
 
 ${renderEmailCard({ contentHtml: cardHtml, variant: 'neutral' })}
@@ -125,7 +125,7 @@ ${renderEmailButton({ href: dashboardUrl, label: 'Open Dashboard →', variant: 
     Questions or need assistance?
   </p>
   <p style="margin: 0; font-size: 13px; color: ${EmailColors.textMuted}; line-height: 1.5;">
-    Reach out to your workspace administrator <strong>${inviterName}</strong> or contact Vocaply support at <a href="mailto:${supportEmail}" style="color: ${EmailColors.brandPrimary}; text-decoration: underline;">${supportEmail}</a>.
+    Reach out to your workspace administrator <strong>${inviterName}</strong> or contact Rapto support at <a href="mailto:${supportEmail}" style="color: ${EmailColors.brandPrimary}; text-decoration: underline;">${supportEmail}</a>.
   </p>
 </div>`
 
@@ -135,7 +135,7 @@ ${renderEmailButton({ href: dashboardUrl, label: 'Open Dashboard →', variant: 
   })
 
   return renderEmailLayout({
-    title: `Welcome to ${workspaceName} on Vocaply`,
+    title: `Welcome to ${workspaceName} on Rapto`,
     previewText: `Hi ${memberName}, welcome to ${workspaceName}! ${inviterName} has invited you to join the team.`,
     childrenHtml: content,
     footerHtml: footer,
@@ -146,7 +146,7 @@ ${renderEmailButton({ href: dashboardUrl, label: 'Open Dashboard →', variant: 
  * Render Plain Text Fallback version of Team Member Welcome Email
  */
 export function renderTeamMemberWelcomeText(props: TeamMemberWelcomeProps): string {
-  const { memberName, workspaceName, inviterName, role, dashboardUrl, capabilities = DEFAULT_CAPABILITIES, supportEmail = 'support@vocaply.com' } = props
+  const { memberName, workspaceName, inviterName, role, dashboardUrl, capabilities = DEFAULT_CAPABILITIES, supportEmail = 'support@rapto.cloud' } = props
 
   const capabilitiesText = capabilities
     .map((cap) => `  * ${cap.title}: ${cap.description}`)
@@ -154,7 +154,7 @@ export function renderTeamMemberWelcomeText(props: TeamMemberWelcomeProps): stri
 
   return `
 ===================================================================
-WELCOME TO ${workspaceName.toUpperCase()} ON VOCAPLY!
+WELCOME TO ${workspaceName.toUpperCase()} ON RAPTO!
 ===================================================================
 
 Hi ${memberName},
@@ -162,7 +162,7 @@ Hi ${memberName},
 Welcome to the team! You have successfully joined the "${workspaceName}" workspace as a ${role}. You were invited by ${inviterName}.
 
 -------------------------------------------------------------------
-WHAT YOU CAN DO IN VOCAPLY
+WHAT YOU CAN DO IN RAPTO
 -------------------------------------------------------------------
 ${capabilitiesText}
 
@@ -175,10 +175,10 @@ ${dashboardUrl}
 -------------------------------------------------------------------
 QUESTIONS & SUPPORT
 -------------------------------------------------------------------
-Reach out to your workspace administrator ${inviterName} or contact Vocaply support at ${supportEmail}.
+Reach out to your workspace administrator ${inviterName} or contact Rapto support at ${supportEmail}.
 
 -------------------------------------------------------------------
-Vocaply Inc. | 100 Enterprise Way, Suite 400
+Rapto Inc. | 100 Enterprise Way, Suite 400
 Unsubscribe / Preferences: ${dashboardUrl}/settings/notifications
 ===================================================================
 `.trim()

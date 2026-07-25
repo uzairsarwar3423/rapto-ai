@@ -79,7 +79,7 @@ async function login(email: string) {
 }
 
 async function main() {
-  console.log('\n🧪 Vocaply Day 21 — Integrations API Full Test Suite')
+  console.log('\n🧪 Rapto Day 21 — Integrations API Full Test Suite')
   console.log('═'.repeat(60))
 
   let ADMIN_TOKEN = '', adminUser: any

@@ -71,8 +71,8 @@ async function openDMChannel(client: ReturnType<typeof buildSlackClient>, slackU
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Internal helper — lookup Slack user ID by Vocaply email
-// Returns null (never throws) — mismatch between Slack and Vocaply member lists
+// Internal helper — lookup Slack user ID by Rapto email
+// Returns null (never throws) — mismatch between Slack and Rapto member lists
 // is an EXPECTED condition, not an error.
 // ─────────────────────────────────────────────────────────────────────────────
 

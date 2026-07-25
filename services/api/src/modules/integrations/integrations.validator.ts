@@ -54,13 +54,13 @@ export const jiraCallbackQuerySchema = {
  * configureJiraBodySchema — validates PATCH /integrations/jira/configure.
  *
  * projectKey format: Jira project keys are uppercase letters and numbers,
- * 2–10 characters (e.g. "TECH", "VOCAPLY1"). The regex enforces this exactly.
+ * 2–10 characters (e.g. "TECH", "RAPTO1"). The regex enforces this exactly.
  *
  * defaultIssueType: freeform string — validated at the Jira API level.
  * Common values: 'Task', 'Story', 'Bug'. A live /issuetype fetch per project
  * is deferred as a future enhancement (§17).
  *
- * defaultPriority: validated against Vocaply's own PriorityLevel enum — NOT
+ * defaultPriority: validated against Rapto's own PriorityLevel enum — NOT
  * a Jira-specific duplicate enum. Consistency with the platform's own types
  * is the design intent here.
  */

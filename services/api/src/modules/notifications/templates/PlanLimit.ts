@@ -18,7 +18,7 @@ export function renderPlanLimitHtml(props: PlanLimitProps): string {
 
   const content = `
 <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">Workspace Usage Limit Reached</h2>
-<p>Your team <strong>${teamName}</strong> is getting great value out of Vocaply! You are currently approaching or have reached your monthly <strong>${resource}</strong> plan limit:</p>
+<p>Your team <strong>${teamName}</strong> is getting great value out of Rapto! You are currently approaching or have reached your monthly <strong>${resource}</strong> plan limit:</p>
 
 <div style="margin: 24px 0;">
   ${renderEmailStatCallout({

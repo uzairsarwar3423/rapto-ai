@@ -14,7 +14,7 @@ describe('Email Templates Roster Rendering', () => {
   it('1. VerifyEmail renders correct verify link and props', () => {
     const html = renderVerifyEmailHtml({
       name: 'Alice Smith',
-      url: 'https://app.vocaply.com/verify-email?token=v123',
+      url: 'https://app.rapto.cloud/verify-email?token=v123',
     })
 
     expect(html).toContain('Alice Smith')
@@ -26,7 +26,7 @@ describe('Email Templates Roster Rendering', () => {
   it('2. PasswordReset renders correct reset link and props', () => {
     const html = renderPasswordResetHtml({
       name: 'Bob Jones',
-      url: 'https://app.vocaply.com/reset-password?token=p456',
+      url: 'https://app.rapto.cloud/reset-password?token=p456',
     })
 
     expect(html).toContain('Bob Jones')
@@ -40,7 +40,7 @@ describe('Email Templates Roster Rendering', () => {
       to: 'charlie@acme.com',
       teamName: 'Acme Product Team',
       inviterName: 'Diana Manager',
-      joinUrl: 'https://app.vocaply.com/invite/accept?token=t789',
+      joinUrl: 'https://app.rapto.cloud/invite/accept?token=t789',
       role: 'MEMBER',
       expiresAt: new Date('2026-12-31'),
     })
@@ -58,7 +58,7 @@ describe('Email Templates Roster Rendering', () => {
       summary: 'Discussed Q3 roadmap and allocated API work.',
       commitmentsCount: 5,
       actionItemsCount: 3,
-      viewUrl: 'https://app.vocaply.com/meetings/m101',
+      viewUrl: 'https://app.rapto.cloud/meetings/m101',
     })
 
     expect(html).toContain('Sprint Planning Sync')
@@ -75,7 +75,7 @@ describe('Email Templates Roster Rendering', () => {
         { id: 'c1', text: 'Deploy search service', dueDate: new Date('2026-08-01') },
         { id: 'c2', text: 'Update OpenAPI docs', dueDate: new Date('2026-08-02') },
       ],
-      actionUrl: 'https://app.vocaply.com/commitments',
+      actionUrl: 'https://app.rapto.cloud/commitments',
     })
 
     expect(html).toContain('Deploy search service')
@@ -89,7 +89,7 @@ describe('Email Templates Roster Rendering', () => {
       name: 'Grace Dev',
       commitmentText: 'Fix memory leak in redis worker',
       dueDate: new Date('2026-07-20'),
-      actionUrl: 'https://app.vocaply.com/commitments/c3',
+      actionUrl: 'https://app.rapto.cloud/commitments/c3',
     })
 
     expect(html).toContain('Fix memory leak in redis worker')
@@ -104,7 +104,7 @@ describe('Email Templates Roster Rendering', () => {
       assigneeName: 'Grace Dev',
       commitmentText: 'Fix memory leak in redis worker',
       dueDate: new Date('2026-07-20'),
-      actionUrl: 'https://app.vocaply.com/dashboard',
+      actionUrl: 'https://app.rapto.cloud/dashboard',
     })
 
     expect(html).toContain('Grace Dev')
@@ -117,7 +117,7 @@ describe('Email Templates Roster Rendering', () => {
     const html = renderPaymentFailedHtml({
       teamName: 'Starlight Corp',
       amountDue: '$149.00',
-      retryUrl: 'https://app.vocaply.com/settings/billing',
+      retryUrl: 'https://app.rapto.cloud/settings/billing',
       reason: 'Card declined by issuing bank',
     })
 
@@ -134,7 +134,7 @@ describe('Email Templates Roster Rendering', () => {
       resource: 'meetings',
       used: 48,
       limit: 50,
-      upgradeUrl: 'https://app.vocaply.com/settings/billing/upgrade',
+      upgradeUrl: 'https://app.rapto.cloud/settings/billing/upgrade',
     })
 
     expect(html).toContain('Starlight Corp')
@@ -148,7 +148,7 @@ describe('Email Templates Roster Rendering', () => {
     const warningHtml = renderIntegrationWarningHtml({
       providerName: 'Slack',
       workspaceName: 'Acme Workspace',
-      settingsUrl: 'https://app.vocaply.com/settings/integrations',
+      settingsUrl: 'https://app.rapto.cloud/settings/integrations',
     })
     expect(warningHtml).toContain('Slack')
     expect(warningHtml).toContain('Acme Workspace')
@@ -156,7 +156,7 @@ describe('Email Templates Roster Rendering', () => {
 
     const deactivatedHtml = renderIntegrationDeactivatedHtml({
       providerName: 'Linear',
-      settingsUrl: 'https://app.vocaply.com/settings/integrations',
+      settingsUrl: 'https://app.rapto.cloud/settings/integrations',
     })
     expect(deactivatedHtml).toContain('Linear')
     expect(deactivatedHtml).toContain('Reconnect Integration')

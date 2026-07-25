@@ -32,8 +32,8 @@ export function renderTeamInviteHtml(props: TeamInviteProps): string {
 
   const content = `
 <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">You've been invited to join ${teamName}</h2>
-<p><strong>${inviterName}</strong> has invited you to join their workspace on Vocaply as a <strong>${role}</strong>.</p>
-<p>Vocaply tracks meeting commitments and team accountability automatically.</p>
+<p><strong>${inviterName}</strong> has invited you to join their workspace on Rapto as a <strong>${role}</strong>.</p>
+<p>Rapto tracks meeting commitments and team accountability automatically.</p>
 
 ${renderEmailCard({ contentHtml: cardHtml, variant: 'neutral' })}
 
@@ -50,7 +50,7 @@ ${renderEmailButton({ href: joinUrl, label: 'Accept Invitation', variant: 'prima
   })
 
   return renderEmailLayout({
-    title: `${inviterName} invited you to join ${teamName} on Vocaply`,
+    title: `${inviterName} invited you to join ${teamName} on Rapto`,
     previewText: `${inviterName} invited you to join the ${teamName} workspace`,
     childrenHtml: content,
     footerHtml: footer,

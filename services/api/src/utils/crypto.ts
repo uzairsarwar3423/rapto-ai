@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 
-const rawKey = process.env.ENCRYPTION_KEY || 'vocaply_secret_key_fallback_12345'
+const rawKey = process.env.ENCRYPTION_KEY || 'rapto_secret_key_fallback_12345'
 // Ensure the key is exactly 32 bytes by hashing it, regardless of the env variable length
 const ENCRYPTION_KEY = crypto.createHash('sha256').update(rawKey).digest()
 const IV_LENGTH = 16 // For AES

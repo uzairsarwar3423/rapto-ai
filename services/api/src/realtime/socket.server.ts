@@ -104,8 +104,8 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
     try {
       const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, {
         algorithms: ['HS256'],
-        issuer: 'vocaply.com',
-        audience: 'vocaply-api',
+        issuer: 'rapto.cloud',
+        audience: 'rapto-api',
       }) as { sub: string; teamId: string; role: string; email: string }
 
       // Attach to socket.data — available for all subsequent handlers

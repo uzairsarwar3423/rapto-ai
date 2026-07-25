@@ -136,10 +136,10 @@ describe('Integrations E2E — Composite Cross-Provider Suite', () => {
             // Assert DB columns are independently populated
             const finalItem = await prisma.actionItem.findUnique({ where: { id: actionItem.id } })
             expect(finalItem?.jiraIssueId).toEqual('10042')
-            expect(finalItem?.jiraIssueUrl).toEqual('https://vocaply.atlassian.net/browse/ENG-42')
+            expect(finalItem?.jiraIssueUrl).toEqual('https://rapto.atlassian.net/browse/ENG-42')
 
             expect(finalItem?.linearIssueId).toEqual('lin-issue-101')
-            expect(finalItem?.linearIssueUrl).toEqual('https://linear.app/vocaply/issue/ENG-101/security-audit')
+            expect(finalItem?.linearIssueUrl).toEqual('https://linear.app/rapto/issue/ENG-101/security-audit')
 
             expect(finalItem?.notionPageId).toEqual('page-notion-999')
             expect(finalItem?.notionPageUrl).toEqual('https://www.notion.so/Sprint-Retrospective-Notes-page-notion-999')

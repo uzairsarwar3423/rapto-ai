@@ -1,0 +1,272 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # NGINX Reverse Proxy & SSL Termination
+  # ==========================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: rapto-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ==========================================
+  # Main API Backend Service
+  # ==========================================
+  api:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${IMAGE_NAME:-rapto/api}:${IMAGE_TAG:-latest}
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: rapto-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
+      - MONGODB_URL=${MONGODB_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - APP_URL=${APP_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - API_URL=${API_URL}
+      - JIRA_CLIENT_ID=${JIRA_CLIENT_ID}
+      - JIRA_CLIENT_SECRET=${JIRA_CLIENT_SECRET}
+      - JIRA_CALLBACK_URL=${JIRA_CALLBACK_URL}
+      - JIRA_WEBHOOK_SECRET=${JIRA_WEBHOOK_SECRET}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_FROM_EMAIL=${BREVO_FROM_EMAIL}
+      - SLACK_CLIENT_ID=${SLACK_CLIENT_ID}
+      - SLACK_CLIENT_SECRET=${SLACK_CLIENT_SECRET}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}
+      - SLACK_CALLBACK_URL=${SLACK_CALLBACK_URL}
+      - LINEAR_CLIENT_ID=${LINEAR_CLIENT_ID}
+      - LINEAR_CLIENT_SECRET=${LINEAR_CLIENT_SECRET}
+      - LINEAR_CALLBACK_URL=${LINEAR_CALLBACK_URL}
+      - NOTION_CLIENT_ID=${NOTION_CLIENT_ID}
+      - NOTION_CLIENT_SECRET=${NOTION_CLIENT_SECRET}
+      - NOTION_CALLBACK_URL=${NOTION_CALLBACK_URL}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - GOOGLE_CALENDAR_CALLBACK_URL=${GOOGLE_CALENDAR_CALLBACK_URL}
+      - OUTLOOK_CLIENT_ID=${OUTLOOK_CLIENT_ID}
+      - OUTLOOK_CLIENT_SECRET=${OUTLOOK_CLIENT_SECRET}
+      - OUTLOOK_CALLBACK_URL=${OUTLOOK_CALLBACK_URL}
+      - OUTLOOK_TENANT_ID=${OUTLOOK_TENANT_ID}
+      - PADDLE_API_KEY=${PADDLE_API_KEY}
+      - PADDLE_CLIENT_TOKEN=${PADDLE_CLIENT_TOKEN}
+      - PADDLE_WEBHOOK_SECRET=${PADDLE_WEBHOOK_SECRET}
+      - PADDLE_ENVIRONMENT=${PADDLE_ENVIRONMENT:-production}
+      - PADDLE_PRICE_STARTER_M=${PADDLE_PRICE_STARTER_M}
+      - PADDLE_PRICE_STARTER_Y=${PADDLE_PRICE_STARTER_Y}
+      - PADDLE_PRICE_GROWTH_M=${PADDLE_PRICE_GROWTH_M}
+      - PADDLE_PRICE_GROWTH_Y=${PADDLE_PRICE_GROWTH_Y}
+      - PADDLE_PRICE_BUSINESS_M=${PADDLE_PRICE_BUSINESS_M}
+      - PADDLE_PRICE_BUSINESS_Y=${PADDLE_PRICE_BUSINESS_Y}
+      - RECALL_API_KEY=${RECALL_API_KEY}
+      - RECALL_WEBHOOK_SECRET=${RECALL_WEBHOOK_SECRET}
+      - AI_PIPELINE_URL=${AI_PIPELINE_URL:-http://ai-pipeline:8000}
+      - AI_PIPELINE_SECRET=${AI_PIPELINE_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ==========================================
+  # Background Worker (BullMQ Queues)
+  # ==========================================
+  worker:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${IMAGE_NAME:-rapto/api}:${IMAGE_TAG:-latest}
+    container_name: rapto-worker
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
+      - MONGODB_URL=${MONGODB_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JIRA_CLIENT_ID=${JIRA_CLIENT_ID}
+      - JIRA_CLIENT_SECRET=${JIRA_CLIENT_SECRET}
+      - JIRA_CALLBACK_URL=${JIRA_CALLBACK_URL}
+      - JIRA_WEBHOOK_SECRET=${JIRA_WEBHOOK_SECRET}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_FROM_EMAIL=${BREVO_FROM_EMAIL}
+      - AI_PIPELINE_URL=${AI_PIPELINE_URL:-http://ai-pipeline:8000}
+      - AI_PIPELINE_SECRET=${AI_PIPELINE_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # PostgreSQL Database Service
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: rapto-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rapto_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-rapto_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_super_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-rapto_user} -d $${POSTGRES_DB:-rapto_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # Redis Store (Queues & Realtime Sockets)
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: rapto-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel notice ${REDIS_PASSWORD_ARG:-}
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # MongoDB Document Store
+  # ==========================================
+  mongodb:
+    image: mongo:7-jammy
+    container_name: rapto-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-change_me_mongo_secret}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-rapto}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet | grep 1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # Certbot SSL Auto-Renewal (Optional Sidecar)
+  # ==========================================
+  certbot:
+    image: certbot/certbot:latest
+    container_name: rapto-certbot
+    restart: unless-stopped
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while true; do certbot renew; sleep 12h & wait $${!}; done'"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+  certbot_certs:
+    driver: local
+  certbot_www:
+    driver: local

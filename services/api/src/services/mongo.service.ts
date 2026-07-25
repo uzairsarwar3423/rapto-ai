@@ -8,7 +8,7 @@ async function init() {
     const newClient = new MongoClient(process.env.MONGODB_URL || process.env.MONGODB_URI!)
     await newClient.connect()
     client = newClient
-    db = client.db('vocaply')
+    db = client.db('rapto')
   }
 }
 

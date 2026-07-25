@@ -3,7 +3,7 @@
 //
 // ARCHITECTURAL ROLE:
 //   This service is the ONLY place where Jira inbound webhook data results in
-//   actual writes to Vocaply's database. jira.webhook.ts is a thin translator;
+//   actual writes to Rapto's database. jira.webhook.ts is a thin translator;
 //   all decisions live here.
 //
 // DESIGN PRINCIPLES IMPLEMENTED:
@@ -101,13 +101,13 @@ export async function handleStatusChange(input: JiraStatusChangeInput): Promise<
 
   // ── STEP 2: Resolve Action Item (§9 Step 2) ────────────────────────────────
   // Uses the unique partial index idx_ai_jira_issue for a sub-ms point lookup.
-  // Not found → the Jira issue was created directly in Jira (not by Vocaply) → silent return.
+  // Not found → the Jira issue was created directly in Jira (not by Rapto) → silent return.
   const actionItem = await actionItemsRepository.findByJiraIssueId(jiraIssueKey)
 
   if (!actionItem) {
     logger.info(
       { teamId, jiraIssueKey },
-      'webhook.jira.action_item_not_found: no Vocaply action item linked to this Jira issue key — ignoring'
+      'webhook.jira.action_item_not_found: no Rapto action item linked to this Jira issue key — ignoring'
     )
     return
   }

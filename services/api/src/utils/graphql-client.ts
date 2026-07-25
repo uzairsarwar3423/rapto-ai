@@ -21,7 +21,7 @@ interface GraphQLRequestOptions {
 
 /**
  * A minimal, generic GraphQL client wrapper.
- * Design rule (Day 61): This file knows NOTHING about Linear or Vocaply domain logic.
+ * Design rule (Day 61): This file knows NOTHING about Linear or Rapto domain logic.
  * It exists solely to encapsulate the "GraphQL Error Triad" handling.
  */
 export async function graphqlRequest<T = any>({

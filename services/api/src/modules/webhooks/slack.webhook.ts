@@ -2,7 +2,7 @@
 // slack.webhook.ts — Slack Interactive Webhook Handler
 //
 // Handles: Slack user clicking a button in a Block Kit message
-// e.g. "Mark Fulfilled" inside a commitment DM → real Vocaply state change.
+// e.g. "Mark Fulfilled" inside a commitment DM → real Rapto state change.
 //
 // Architecture principle (from Day 19):
 //   ONE business rule, TWO entry points, ZERO logic duplication.
@@ -44,10 +44,10 @@ async function updateCommitmentStatus(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Resolve a Slack user.id → Vocaply userId by matching email
+// Resolve a Slack user.id → Rapto userId by matching email
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function resolveVocaplyUser(
+async function resolveRaptoUser(
     teamId: string,
     slackEmail: string
 ): Promise<{ id: string; teamId: string } | null> {
@@ -122,7 +122,7 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
 
     logger.info({ actionId, commitmentId, slackUserId, actionTs }, 'Slack webhook: processing interactive action')
 
-    // ── 6. Resolve Vocaply teamId from Slack teamId ──────────────────────────
+    // ── 6. Resolve Rapto teamId from Slack teamId ──────────────────────────
     const integration = await prisma.teamIntegration.findFirst({
         where: { workspaceId: teamId, provider: 'SLACK', isActive: true },
         select: { teamId: true },
@@ -133,25 +133,25 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
         return
     }
 
-    const vocaplyTeamId = integration.teamId
+    const raptoTeamId = integration.teamId
 
-    // ── 7. Resolve actor (Slack user → Vocaply user) ──────────────────────────
+    // ── 7. Resolve actor (Slack user → Rapto user) ──────────────────────────
     // Note: payload.user.email is only present if users:read.email scope was granted
     let actorUser: { id: string; teamId: string } | null = null
     if (slackUserEmail) {
-        actorUser = await resolveVocaplyUser(vocaplyTeamId, slackUserEmail)
+        actorUser = await resolveRaptoUser(raptoTeamId, slackUserEmail)
     }
 
     if (!actorUser && slackUserId) {
         // Fallback: use first team admin if actor can't be resolved
         actorUser = await prisma.user.findFirst({
-            where: { teamId: vocaplyTeamId, role: { in: ['OWNER', 'ADMIN'] } },
+            where: { teamId: raptoTeamId, role: { in: ['OWNER', 'ADMIN'] } },
             select: { id: true, teamId: true },
         }) as any
     }
 
     if (!actorUser) {
-        logger.warn({ slackUserId, slackUserEmail }, 'Slack webhook: could not resolve actor to Vocaply user — skipping')
+        logger.warn({ slackUserId, slackUserEmail }, 'Slack webhook: could not resolve actor to Rapto user — skipping')
         return
     }
 
@@ -163,7 +163,7 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
                     logger.warn({ actionId }, 'Slack webhook: mark_fulfilled missing commitmentId in value')
                     break
                 }
-                await updateCommitmentStatus(commitmentId, 'FULFILLED', actorUser.id, vocaplyTeamId)
+                await updateCommitmentStatus(commitmentId, 'FULFILLED', actorUser.id, raptoTeamId)
                 logger.info({ commitmentId, actorUserId: actorUser.id }, 'Slack webhook: commitment marked fulfilled via button')
 
                 // Optionally update the original message in-place (UX nicety)

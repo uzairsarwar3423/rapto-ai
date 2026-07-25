@@ -24,7 +24,7 @@ const isBrevoConfigured =
   env.BREVO_API_KEY !== 'xkeysib-your_brevo_api_key_here'
 
 const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
-const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
+const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@rapto.cloud'
 
 /**
  * Helper to fetch from Brevo API with timeout and error classification.
@@ -96,7 +96,7 @@ async function sendBrevoEmail(payload: {
         'api-key': env.BREVO_API_KEY!,
       },
       body: JSON.stringify({
-        sender: { name: 'Vocaply', email: fromEmail },
+        sender: { name: 'Rapto', email: fromEmail },
         to: payload.to,
         subject: payload.subject,
         htmlContent: payload.htmlContent,
@@ -151,7 +151,7 @@ export const emailService = {
     logger.info({ to: data.to }, 'email.service: sending verification email')
     await sendBrevoEmail({
       to: [{ email: data.to, name: data.name }],
-      subject: 'Verify your Vocaply account',
+      subject: 'Verify your Rapto account',
       htmlContent,
       notificationType: 'VERIFICATION_EMAIL',
       userId: data.userId || data.to,
@@ -178,7 +178,7 @@ export const emailService = {
     logger.info({ to: data.to }, 'email.service: sending password reset email')
     await sendBrevoEmail({
       to: [{ email: data.to, name: data.name }],
-      subject: 'Reset your Vocaply password',
+      subject: 'Reset your Rapto password',
       htmlContent,
       notificationType: 'PASSWORD_RESET_EMAIL',
       userId: data.userId || data.to,
@@ -211,7 +211,7 @@ export const emailService = {
     logger.info({ to: data.to, teamName: data.teamName }, 'email.service: sending team invite email')
     await sendBrevoEmail({
       to: [{ email: data.to }],
-      subject: `${data.inviterName} invited you to join ${data.teamName} on Vocaply`,
+      subject: `${data.inviterName} invited you to join ${data.teamName} on Rapto`,
       htmlContent,
       notificationType: 'TEAM_INVITE_EMAIL',
       userId: data.userId || data.to,
@@ -521,7 +521,7 @@ export const emailService = {
     logger.info({ to: data.to, workspaceName: data.workspaceName }, 'email.service: sending owner welcome email')
     await sendBrevoEmail({
       to: [{ email: data.to, name: data.ownerName }],
-      subject: `Welcome to Vocaply! ${data.workspaceName} is ready 🚀`,
+      subject: `Welcome to Rapto! ${data.workspaceName} is ready 🚀`,
       htmlContent,
       notificationType: 'OWNER_WELCOME_EMAIL',
       userId: data.userId || data.to,
@@ -561,7 +561,7 @@ export const emailService = {
     logger.info({ to: data.to, workspaceName: data.workspaceName }, 'email.service: sending team member welcome email')
     await sendBrevoEmail({
       to: [{ email: data.to, name: data.memberName }],
-      subject: `Welcome to ${data.workspaceName} on Vocaply 🎉`,
+      subject: `Welcome to ${data.workspaceName} on Rapto 🎉`,
       htmlContent,
       notificationType: 'TEAM_MEMBER_WELCOME_EMAIL',
       userId: data.userId || data.to,

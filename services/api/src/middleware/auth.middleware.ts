@@ -29,8 +29,8 @@ export async function requireAuth(
   try {
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, {
       algorithms: ['HS256'],
-      issuer: 'vocaply.com',
-      audience: 'vocaply-api',
+      issuer: 'rapto.cloud',
+      audience: 'rapto-api',
     }) as JwtPayload
 
     req.user = {

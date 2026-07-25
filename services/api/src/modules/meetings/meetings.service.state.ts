@@ -15,7 +15,7 @@ import { AppError } from '../../utils/errors'
 
 // ── Valid Transition Matrix ───────────────────────────────────────────────────
 //
-//  State machine for the Vocaply meeting AI pipeline lifecycle:
+//  State machine for the Rapto meeting AI pipeline lifecycle:
 //
 //  SCHEDULED                  → BOT_JOINING (webhook: bot.joining_call)
 //  SCHEDULED                  → CANCELLED   (user: DELETE /meetings/:id/bot)

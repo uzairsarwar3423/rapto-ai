@@ -10,10 +10,10 @@ export const mockLinearViewer = {
         viewer: {
             id: 'lin-usr-001',
             name: 'Engineering Admin',
-            email: 'admin@vocaply.dev',
+            email: 'admin@rapto.dev',
             organization: {
                 id: 'lin-org-888',
-                name: 'Vocaply Organization',
+                name: 'Rapto Organization',
             },
         },
     },
@@ -48,13 +48,13 @@ export const mockLinearUsersSearch = {
                 {
                     id: 'lin-usr-alice',
                     name: 'Alice Smith',
-                    email: 'alice@vocaply.dev',
+                    email: 'alice@rapto.dev',
                     active: true,
                 },
                 {
                     id: 'lin-usr-bob',
                     name: 'Bob Jones',
-                    email: 'bob@vocaply.dev',
+                    email: 'bob@rapto.dev',
                     active: true,
                 },
             ],
@@ -70,7 +70,7 @@ export const mockLinearIssueCreateSuccess = {
                 id: 'lin-issue-101',
                 identifier: 'ENG-101',
                 title: 'Security Audit: Implement RSA Key Rotation',
-                url: 'https://linear.app/vocaply/issue/ENG-101/security-audit',
+                url: 'https://linear.app/rapto/issue/ENG-101/security-audit',
                 createdAt: '2026-07-23T10:00:00.000Z',
                 updatedAt: '2026-07-23T10:00:00.000Z',
                 priority: 3, // High
@@ -81,7 +81,7 @@ export const mockLinearIssueCreateSuccess = {
                 assignee: {
                     id: 'lin-usr-alice',
                     name: 'Alice Smith',
-                    email: 'alice@vocaply.dev',
+                    email: 'alice@rapto.dev',
                 },
             },
         },

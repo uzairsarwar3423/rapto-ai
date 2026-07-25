@@ -236,7 +236,7 @@ export class OutlookCalendarProvider implements CalendarProvider {
     }
 
     public async revokeToken(accessToken: string): Promise<void> {
-        // "revokeToken() for Outlook performs the operations that genuinely are within Vocaply's control...
+        // "revokeToken() for Outlook performs the operations that genuinely are within Rapto's control...
         // and explicitly does not claim to have invalidated the token at Microsoft's end"
         // This is a deliberate no-op server-side since there is no equivalent single-token-revocation endpoint.
         logger.info('Outlook token local revocation complete (Microsoft remote revocation not supported)')

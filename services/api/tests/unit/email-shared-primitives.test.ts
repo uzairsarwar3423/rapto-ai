@@ -17,7 +17,7 @@ describe('Email Shared Primitives', () => {
       expect(html).toContain('<!DOCTYPE html>')
       expect(html).toContain('Test Email Title')
       expect(html).toContain('This is a preview text for email clients')
-      expect(html).toContain('Vocaply')
+      expect(html).toContain('Rapto')
       expect(html).toContain('Test Body Content')
     })
   })
@@ -25,19 +25,19 @@ describe('Email Shared Primitives', () => {
   describe('EmailButton', () => {
     it('renders primary CTA button link with correct styling', () => {
       const html = renderEmailButton({
-        href: 'https://app.vocaply.com/action',
+        href: 'https://app.rapto.cloud/action',
         label: 'Click Me',
         variant: 'primary',
       })
 
-      expect(html).toContain('href="https://app.vocaply.com/action"')
+      expect(html).toContain('href="https://app.rapto.cloud/action"')
       expect(html).toContain('Click Me')
       expect(html).toContain('background-color: #10B981')
     })
 
     it('renders warning variant button', () => {
       const html = renderEmailButton({
-        href: 'https://app.vocaply.com/resolve',
+        href: 'https://app.rapto.cloud/resolve',
         label: 'Fix Issue',
         variant: 'warning',
       })
@@ -73,7 +73,7 @@ describe('Email Shared Primitives', () => {
       expect(htmlMissed).toContain('You are receiving this email because a commitment assigned to you or your team is overdue.')
 
       const htmlInvite = renderEmailFooter({ notificationType: 'TEAM_INVITE_EMAIL' })
-      expect(htmlInvite).toContain('You are receiving this email because you were invited to join a workspace on Vocaply.')
+      expect(htmlInvite).toContain('You are receiving this email because you were invited to join a workspace on Rapto.')
 
       const htmlPayment = renderEmailFooter({ notificationType: 'PAYMENT_FAILED' })
       expect(htmlPayment).toContain('You are receiving this transactional email regarding your workspace subscription payment.')

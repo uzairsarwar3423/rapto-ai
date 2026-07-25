@@ -13,7 +13,7 @@
 export interface IntegrateJobData {
     /** The team owning this action item — used for integration lookup */
     teamId: string
-    /** The Vocaply action item to sync externally */
+    /** The Rapto action item to sync externally */
     actionItemId: string
     /** The provider to sync to — must match a registered TeamProvider */
     provider: 'JIRA' | 'LINEAR' | 'NOTION' | 'SLACK'

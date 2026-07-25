@@ -6,7 +6,7 @@
 
 export const EmailColors = {
   // Brand tokens
-  brandPrimary: '#10B981', // Vocaply primary emerald green
+  brandPrimary: '#10B981', // Rapto primary emerald green
   brandHover: '#059669',
   brandLight: '#ECFDF5',
 

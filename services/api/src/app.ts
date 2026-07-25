@@ -60,7 +60,7 @@ app.use((_req, res, next) => {
 app.get(['/', '/health'], (req, res) => {
     res.status(200).json({
         success: true,
-        message: 'Vocaply API is running 🚀',
+        message: 'Rapto API is running 🚀',
         timestamp: new Date().toISOString(),
     })
 })

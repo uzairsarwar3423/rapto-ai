@@ -15,7 +15,7 @@ function runWelcomeEmailTests() {
     ownerName: 'Sarah Jenkins',
     ownerEmail: 'sarah@acmecorp.com',
     workspaceName: 'Acme Growth Workspace',
-    dashboardUrl: 'https://app.vocaply.com/dashboard?team=acme-growth',
+    dashboardUrl: 'https://app.rapto.cloud/dashboard?team=acme-growth',
     checklist: [
       {
         step: 1,
@@ -37,7 +37,7 @@ function runWelcomeEmailTests() {
       },
     ],
     unsubscribeToken: 'test-unsub-token-owner-123',
-    supportEmail: 'support@vocaply.com',
+    supportEmail: 'support@rapto.cloud',
   }
 
   const ownerHtml = renderOwnerWelcomeHtml(ownerPayload)
@@ -45,14 +45,14 @@ function runWelcomeEmailTests() {
 
   // Assertions for Owner Email
   const ownerHtmlValid =
-    ownerHtml.includes('Welcome to Vocaply, Sarah Jenkins!') &&
+    ownerHtml.includes('Welcome to Rapto, Sarah Jenkins!') &&
     ownerHtml.includes('Acme Growth Workspace') &&
     ownerHtml.includes('Connect Google Calendar') &&
     ownerHtml.includes('Go to Dashboard →') &&
     ownerHtml.includes('prefers-color-scheme: dark')
 
   const ownerTextValid =
-    ownerText.includes('WELCOME TO VOCAPLY, SARAH JENKINS!') &&
+    ownerText.includes('WELCOME TO RAPTO, SARAH JENKINS!') &&
     ownerText.includes('Acme Growth Workspace') &&
     ownerText.includes('Connect Google Calendar')
 
@@ -70,7 +70,7 @@ function runWelcomeEmailTests() {
     workspaceName: 'Acme Growth Workspace',
     inviterName: 'Sarah Jenkins',
     role: 'Senior Product Manager',
-    dashboardUrl: 'https://app.vocaply.com/dashboard?team=acme-growth',
+    dashboardUrl: 'https://app.rapto.cloud/dashboard?team=acme-growth',
     capabilities: [
       {
         icon: '⚡',
@@ -89,7 +89,7 @@ function runWelcomeEmailTests() {
       },
     ],
     unsubscribeToken: 'test-unsub-token-member-456',
-    supportEmail: 'support@vocaply.com',
+    supportEmail: 'support@rapto.cloud',
   }
 
   const memberHtml = renderTeamMemberWelcomeHtml(teamMemberPayload)
@@ -105,7 +105,7 @@ function runWelcomeEmailTests() {
     memberHtml.includes('prefers-color-scheme: dark')
 
   const memberTextValid =
-    memberText.includes('WELCOME TO ACME GROWTH WORKSPACE ON VOCAPLY!') &&
+    memberText.includes('WELCOME TO ACME GROWTH WORKSPACE ON RAPTO!') &&
     memberText.includes('Alex Rivera') &&
     memberText.includes('Senior Product Manager')
 

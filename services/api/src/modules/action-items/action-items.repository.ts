@@ -150,7 +150,7 @@ export const actionItemsRepository = {
   // the cross-tenant check is EXPLICIT in the service, not implicit in the query."
   //
   // Returns null if no action item with this jira_issue_id exists (benign — the
-  // ticket was created directly in Jira, not by Vocaply).
+  // ticket was created directly in Jira, not by Rapto).
   // ─────────────────────────────────────────────────────────────────────────
   async findByJiraIssueId(jiraIssueId: string) {
     return prisma.actionItem.findFirst({

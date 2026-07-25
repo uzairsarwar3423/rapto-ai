@@ -191,7 +191,7 @@ export function isPlanHigherThan(planA: PlanType, planB: PlanType): boolean {
 
 export const RESERVED_SLUGS = new Set([
   'api', 'admin', 'app', 'www', 'mail', 'dev', 'staging', 'dashboard',
-  'login', 'register', 'vocaply', 'support', 'help', 'blog', 'pricing',
+  'login', 'register', 'rapto', 'support', 'help', 'blog', 'pricing',
   'about', 'contact', 'terms', 'privacy', 'docs', 'status', 'health',
   'metrics', 'internal', 'onboarding', 'invite', 'settings', 'billing',
   'analytics', 'reports',

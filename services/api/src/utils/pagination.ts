@@ -48,7 +48,7 @@ export function decodeCursor(cursor: string): { id: string; createdAt: Date } {
 //   3. Slice to exactly limit items
 //   4. Encode cursor from last item
 //
-// All list queries in Vocaply follow this pattern.
+// All list queries in Rapto follow this pattern.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function buildCursorPage<T extends { id: string; createdAt: Date }>(

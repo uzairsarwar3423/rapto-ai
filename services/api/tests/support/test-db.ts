@@ -47,7 +47,7 @@ export async function seedTestUser(teamId: string, override: { email?: string; n
     const uniqueId = Math.random().toString(36).substring(2, 9)
     return prisma.user.create({
         data: {
-            email: override.email || `test.user.${uniqueId}@vocaply.dev`,
+            email: override.email || `test.user.${uniqueId}@rapto.dev`,
             name: override.name || `Test User ${uniqueId}`,
             teamId,
             role: override.role || 'MEMBER',

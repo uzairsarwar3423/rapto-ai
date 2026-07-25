@@ -154,7 +154,7 @@ export const integrateWorker = new Worker<IntegrateJobData>(
         }
 
         // ─── Step 6: Call createExternalItem() ───────────────────────────────
-        const meetingTitle = actionItem.meeting?.title || 'Vocaply Meeting'
+        const meetingTitle = actionItem.meeting?.title || 'Rapto Meeting'
         const meetingDate = actionItem.meeting?.startedAt || actionItem.createdAt
 
         let externalResult: { externalId: string; externalUrl: string }

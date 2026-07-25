@@ -6,11 +6,11 @@ export interface EmailFooterProps {
 }
 
 const REASON_EXPLANATIONS: Record<string, string> = {
-  VERIFICATION_EMAIL: 'You are receiving this email because a new Vocaply account was registered with your address.',
+  VERIFICATION_EMAIL: 'You are receiving this email because a new Rapto account was registered with your address.',
   PASSWORD_RESET_EMAIL: 'You are receiving this email because a password reset request was made for your account.',
-  TEAM_INVITE_EMAIL: 'You are receiving this email because you were invited to join a workspace on Vocaply.',
-  OWNER_WELCOME_EMAIL: 'You are receiving this email because you recently created a workspace owner account on Vocaply.',
-  TEAM_MEMBER_WELCOME_EMAIL: 'You are receiving this email because you recently joined a team workspace on Vocaply.',
+  TEAM_INVITE_EMAIL: 'You are receiving this email because you were invited to join a workspace on Rapto.',
+  OWNER_WELCOME_EMAIL: 'You are receiving this email because you recently created a workspace owner account on Rapto.',
+  TEAM_MEMBER_WELCOME_EMAIL: 'You are receiving this email because you recently joined a team workspace on Rapto.',
   MEETING_PROCESSED: 'You are receiving this email because a meeting you participated in was processed.',
   DEADLINE_REMINDER: 'You are receiving this email based on your notification preferences for upcoming deadlines.',
   DEADLINE_TODAY: 'You are receiving this email based on your notification preferences for upcoming deadlines.',
@@ -24,7 +24,7 @@ const REASON_EXPLANATIONS: Record<string, string> = {
 
 export function renderEmailFooter(props: EmailFooterProps): string {
   const { notificationType, unsubscribeToken } = props
-  const explanation = REASON_EXPLANATIONS[notificationType] || 'You are receiving this transactional email from Vocaply.'
+  const explanation = REASON_EXPLANATIONS[notificationType] || 'You are receiving this transactional email from Rapto.'
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
 
   const unsubscribeUrl = unsubscribeToken
@@ -35,7 +35,7 @@ export function renderEmailFooter(props: EmailFooterProps): string {
 <div style="border-top: 1px solid ${EmailColors.borderDivider}; padding-top: 20px; font-size: ${EmailTypography.fontSizeSmall}; color: ${EmailColors.textFooter}; line-height: 1.5; font-family: ${EmailTypography.fontFamily};">
   <p style="margin: 0 0 8px 0;">${explanation}</p>
   <p style="margin: 0;">
-    <a href="${unsubscribeUrl}" style="color: ${EmailColors.textMuted}; text-decoration: underline;">Unsubscribe or change preferences</a> &bull; Vocaply Inc., 100 Enterprise Way, Suite 400
+    <a href="${unsubscribeUrl}" style="color: ${EmailColors.textMuted}; text-decoration: underline;">Unsubscribe or change preferences</a> &bull; Rapto Inc., 100 Enterprise Way, Suite 400
   </p>
 </div>`
 }

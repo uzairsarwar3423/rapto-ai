@@ -403,7 +403,7 @@ async function handleSubscriptionCanceled(data: any): Promise<void> {
  * transaction.payment_failed — Payment failure handling
  *
  * Paddle handles its own dunning/retry schedule (configured in the Paddle dashboard).
- * Vocaply ONLY reacts to failures — never reimplements retry logic.
+ * Rapto ONLY reacts to failures — never reimplements retry logic.
  * If Paddle eventually cancels after retries, that arrives as subscription.canceled (above).
  */
 async function handleTransactionPaymentFailed(data: any): Promise<void> {

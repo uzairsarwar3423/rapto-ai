@@ -15,7 +15,7 @@ export function renderVerifyEmailHtml(props: VerifyEmailProps): string {
   const content = `
 <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">Verify your email address</h2>
 <p>Hi ${name},</p>
-<p>Thank you for signing up with Vocaply. Please click the button below to verify your email address and activate your account:</p>
+<p>Thank you for signing up with Rapto. Please click the button below to verify your email address and activate your account:</p>
 
 ${renderEmailButton({ href: url, label: 'Verify Email Address', variant: 'primary' })}
 
@@ -24,7 +24,7 @@ ${renderEmailButton({ href: url, label: 'Verify Email Address', variant: 'primar
   <a href="${url}" style="color: ${EmailColors.brandPrimary}; word-break: break-all;">${url}</a>
 </p>
 <p style="font-size: 12px; color: ${EmailColors.textMuted}; margin-top: 16px;">
-  This verification link will expire in 24 hours. If you did not create a Vocaply account, no further action is required.
+  This verification link will expire in 24 hours. If you did not create a Rapto account, no further action is required.
 </p>`
 
   const footer = renderEmailFooter({
@@ -33,8 +33,8 @@ ${renderEmailButton({ href: url, label: 'Verify Email Address', variant: 'primar
   })
 
   return renderEmailLayout({
-    title: 'Verify your Vocaply account',
-    previewText: 'Confirm your email address to complete your Vocaply registration',
+    title: 'Verify your Rapto account',
+    previewText: 'Confirm your email address to complete your Rapto registration',
     childrenHtml: content,
     footerHtml: footer,
   })

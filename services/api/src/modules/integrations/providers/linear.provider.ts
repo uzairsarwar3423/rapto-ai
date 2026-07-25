@@ -13,7 +13,7 @@ import { logger } from '../../../config/logger'
 import { AppError, IntegrationError } from '../../../utils/errors'
 import { graphqlRequest } from '../../../utils/graphql-client'
 
-// Priority mapping from Vocaply's 4-level enum to Linear's integer scale (1-4)
+// Priority mapping from Rapto's 4-level enum to Linear's integer scale (1-4)
 export const LINEAR_PRIORITY_MAP: Record<string, number> = {
     LOW: 1,
     MEDIUM: 2,
@@ -316,7 +316,7 @@ export class LinearProvider implements IntegrationProvider {
         if (input.context.transcriptExcerpt) {
             description += `> ${input.context.transcriptExcerpt.trim().substring(0, 500)}\n\n`
         }
-        description += `_— Created automatically by Vocaply_`
+        description += `_— Created automatically by Rapto_`
 
         const priority = LINEAR_PRIORITY_MAP[input.priority] || 0
 

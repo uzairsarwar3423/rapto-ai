@@ -34,7 +34,7 @@ async function run(label: string, fn: () => Promise<void>) {
 }
 
 async function main() {
-    console.log(`\n🚀 Vocaply Day 22 — Integration Test Suite`)
+    console.log(`\n🚀 Rapto Day 22 — Integration Test Suite`)
     console.log(`   API: ${BASE}\n`)
 
     // ── LIST integrations (should now show JIRA + SLACK + LINEAR + NOTION) ──

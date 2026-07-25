@@ -15,7 +15,7 @@ export function renderPasswordResetHtml(props: PasswordResetProps): string {
   const content = `
 <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">Reset your password</h2>
 <p>Hi ${name},</p>
-<p>We received a request to reset the password for your Vocaply account. Click the button below to set a new password:</p>
+<p>We received a request to reset the password for your Rapto account. Click the button below to set a new password:</p>
 
 ${renderEmailButton({ href: url, label: 'Reset Password', variant: 'primary' })}
 
@@ -33,8 +33,8 @@ ${renderEmailButton({ href: url, label: 'Reset Password', variant: 'primary' })}
   })
 
   return renderEmailLayout({
-    title: 'Reset your Vocaply password',
-    previewText: 'Password reset request for your Vocaply account',
+    title: 'Reset your Rapto password',
+    previewText: 'Password reset request for your Rapto account',
     childrenHtml: content,
     footerHtml: footer,
   })

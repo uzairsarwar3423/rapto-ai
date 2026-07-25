@@ -68,7 +68,7 @@ async function login(email: string) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('\n🧪 Vocaply Day 17 — Meetings API Full Test Suite')
+  console.log('\n🧪 Rapto Day 17 — Meetings API Full Test Suite')
   console.log('═'.repeat(60))
 
   // ── Setup: Get tokens ────────────────────────────────────────────────────

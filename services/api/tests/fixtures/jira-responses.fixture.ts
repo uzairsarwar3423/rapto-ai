@@ -15,8 +15,8 @@ export const mockJiraTokenExchange = {
 export const mockJiraAccessibleResources = [
     {
         id: 'cloud-site-id-12345',
-        name: 'vocaply-jira-instance',
-        url: 'https://vocaply.atlassian.net',
+        name: 'rapto-jira-instance',
+        url: 'https://rapto.atlassian.net',
         scopes: ['read:jira-work', 'write:jira-work'],
         avatarUrl: 'https://site-admin.atlassian.net/avatars/240/site.png',
     },
@@ -26,7 +26,7 @@ export const mockJiraIssueCreateSuccess = {
     id: '10042',
     key: 'ENG-42',
     self: 'https://api.atlassian.com/ex/jira/cloud-site-id-12345/rest/api/3/issue/10042',
-    keyUrl: 'https://vocaply.atlassian.net/browse/ENG-42',
+    keyUrl: 'https://rapto.atlassian.net/browse/ENG-42',
 }
 
 export const mockJira500Error = {

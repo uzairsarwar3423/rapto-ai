@@ -56,7 +56,7 @@ describe('NotionIntegrationProvider — Automated Test Suite', () => {
 
             expect(tokenResult.accessToken).toEqual('secret_notion_oauth_access_token_v1_xyz')
             expect(tokenResult.workspaceId).toEqual('ws-notion-888')
-            expect(tokenResult.workspaceName).toEqual('Vocaply Engineering Workspace')
+            expect(tokenResult.workspaceName).toEqual('Rapto Engineering Workspace')
 
             // Verify Basic-Auth Header was dispatched
             const logs = httpMockRegistry.getCallLogs()
@@ -116,8 +116,8 @@ describe('NotionIntegrationProvider — Automated Test Suite', () => {
 
             const users = await (notionProvider as any).fetchWorkspaceUsers('secret_notion_tok')
             expect(users).toHaveLength(2)
-            expect(users[0].email).toEqual('bob@vocaply.dev')
-            expect(users[1].email).toEqual('alice@vocaply.dev')
+            expect(users[0].email).toEqual('bob@rapto.dev')
+            expect(users[1].email).toEqual('alice@rapto.dev')
         })
     })
 })

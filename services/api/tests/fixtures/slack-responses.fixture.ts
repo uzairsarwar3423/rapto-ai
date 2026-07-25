@@ -13,7 +13,7 @@ export const mockSlackTokenExchange = {
     app_id: 'A001APP',
     team: {
         id: 'T001TEAM',
-        name: 'Vocaply Slack Workspace',
+        name: 'Rapto Slack Workspace',
     },
     authed_user: {
         id: 'U001USER',

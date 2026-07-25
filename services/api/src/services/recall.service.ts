@@ -71,7 +71,7 @@ async function recallFetch(
         'Authorization': `Token ${getApiKey()}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'User-Agent': 'Vocaply-API/1.0',
+        'User-Agent': 'Rapto-API/1.0',
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
@@ -174,7 +174,7 @@ export async function scheduleBot(input: RecallScheduleBotInput): Promise<Recall
   const payload = {
     meeting_url: input.meetingUrl,
     join_at: input.joinAt.toISOString(),
-    bot_name: input.botName || 'Vocaply',
+    bot_name: input.botName || 'Rapto',
     ...(webhookUrl && { webhook_url: webhookUrl }),
     recording_config: {
       transcript: {
@@ -192,7 +192,7 @@ export async function scheduleBot(input: RecallScheduleBotInput): Promise<Recall
     metadata: {
       teamId: input.teamId,
       ...(input.meetingId && { meetingId: input.meetingId }),
-      source: 'vocaply-api',
+      source: 'rapto-api',
     },
   }
 

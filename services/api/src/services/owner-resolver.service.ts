@@ -3,7 +3,7 @@ import levenshtein from 'js-levenshtein'
 import { logger } from '../config/logger'
 
 /**
- * Resolves a speaker name/email from the AI extraction to a concrete Vocaply userId
+ * Resolves a speaker name/email from the AI extraction to a concrete Rapto userId
  * using exact email matching or fuzzy name matching (Levenshtein distance).
  */
 export async function resolveOwner(

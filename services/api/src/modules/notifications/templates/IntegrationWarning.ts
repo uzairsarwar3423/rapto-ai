@@ -24,11 +24,11 @@ export function renderIntegrationWarningHtml(props: IntegrationWarningEmailProps
 
   const content = `
 <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">Integration Connection Warning</h2>
-<p>Vocaply experienced temporary issues maintaining a connection with your <strong>${providerName}</strong> integration${workspaceName ? ` (${workspaceName})` : ''}.</p>
+<p>Rapto experienced temporary issues maintaining a connection with your <strong>${providerName}</strong> integration${workspaceName ? ` (${workspaceName})` : ''}.</p>
 
 ${renderEmailCard({ contentHtml: cardHtml, variant: 'warning' })}
 
-<p>Vocaply is continuing to retry automatically. No immediate action is required, but you may want to verify your integration credentials in your settings.</p>
+<p>Rapto is continuing to retry automatically. No immediate action is required, but you may want to verify your integration credentials in your settings.</p>
 
 ${renderEmailButton({ href: settingsUrl, label: 'View Integration Settings', variant: 'warning' })}
 

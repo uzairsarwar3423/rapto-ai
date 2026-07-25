@@ -269,7 +269,7 @@ export const analyticsService = {
         activityItems.push({
           id: `meeting-recording-${m.id}`,
           type: 'MEETING_RECORDED',
-          actorName: 'Vocaply Bot',
+          actorName: 'Rapto Bot',
           actionText: `started recording meeting: "${m.title}"`,
           occurredAt: m.createdAt.toISOString(),
         });
@@ -277,7 +277,7 @@ export const analyticsService = {
         activityItems.push({
           id: `meeting-bot-${m.id}`,
           type: 'BOT_JOINED',
-          actorName: 'Vocaply Bot',
+          actorName: 'Rapto Bot',
           actionText: `joining meeting: "${m.title}"`,
           occurredAt: m.createdAt.toISOString(),
         });
@@ -285,7 +285,7 @@ export const analyticsService = {
         activityItems.push({
           id: `meeting-created-${m.id}`,
           type: 'MEETING_RECORDED',
-          actorName: 'Vocaply Bot',
+          actorName: 'Rapto Bot',
           actionText: `finished processing meeting: "${m.title}"`,
           occurredAt: m.createdAt.toISOString(),
         });
@@ -309,7 +309,7 @@ export const analyticsService = {
         {
           id: 'mock-2',
           type: 'MEETING_RECORDED',
-          actorName: 'Vocaply Bot',
+          actorName: 'Rapto Bot',
           actionText: 'recorded meeting: "Weekly Sync & Architecture Review"',
           occurredAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
         },
@@ -323,7 +323,7 @@ export const analyticsService = {
         {
           id: 'mock-4',
           type: 'BOT_JOINED',
-          actorName: 'Vocaply Bot',
+          actorName: 'Rapto Bot',
           actionText: 'joining meeting: "Design System Align"',
           occurredAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
         },
@@ -331,7 +331,7 @@ export const analyticsService = {
           id: 'mock-5',
           type: 'INVITE_SENT',
           actorName: 'Sarah Jenkins',
-          actionText: 'sent invite to "engineer@vocaply.com"',
+          actionText: 'sent invite to "engineer@rapto.cloud"',
           occurredAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
         },
       ];

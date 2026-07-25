@@ -10,7 +10,7 @@ export const mockNotionTokenExchange = {
     token_type: 'bearer',
     bot_id: 'bot-notion-001',
     workspace_id: 'ws-notion-888',
-    workspace_name: 'Vocaply Engineering Workspace',
+    workspace_name: 'Rapto Engineering Workspace',
     workspace_icon: 'https://notion.so/images/page-cover/met_murasaki_shikibu.jpg',
     owner: {
         type: 'user',
@@ -21,7 +21,7 @@ export const mockNotionTokenExchange = {
             avatar_url: null,
             type: 'person',
             person: {
-                email: 'admin@vocaply.dev',
+                email: 'admin@rapto.dev',
             },
         },
     },
@@ -95,7 +95,7 @@ export const mockNotionUsersList = {
             name: 'Bob Jones',
             avatar_url: 'https://notion.so/avatars/bob.png',
             type: 'person',
-            person: { email: 'bob@vocaply.dev' },
+            person: { email: 'bob@rapto.dev' },
         },
         {
             object: 'user',
@@ -103,7 +103,7 @@ export const mockNotionUsersList = {
             name: 'Alice Smith',
             avatar_url: 'https://notion.so/avatars/alice.png',
             type: 'person',
-            person: { email: 'alice@vocaply.dev' },
+            person: { email: 'alice@rapto.dev' },
         },
     ],
     next_cursor: null,

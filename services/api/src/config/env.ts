@@ -33,8 +33,17 @@ const envSchema = z.object({
     GITHUB_CLIENT_ID: z.string().optional(),
     GITHUB_CLIENT_SECRET: z.string().optional(),
 
-    STRIPE_SECRET_KEY: z.string().optional(),
-    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    // Paddle Billing
+    PADDLE_API_KEY: z.string().optional(),
+    PADDLE_CLIENT_TOKEN: z.string().optional(),
+    PADDLE_WEBHOOK_SECRET: z.string().optional(),
+    PADDLE_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
+    PADDLE_PRICE_STARTER_M: z.string().optional(),
+    PADDLE_PRICE_STARTER_Y: z.string().optional(),
+    PADDLE_PRICE_GROWTH_M: z.string().optional(),
+    PADDLE_PRICE_GROWTH_Y: z.string().optional(),
+    PADDLE_PRICE_BUSINESS_M: z.string().optional(),
+    PADDLE_PRICE_BUSINESS_Y: z.string().optional(),
 
     RECALL_API_KEY: z.string().optional(),
     RECALL_WEBHOOK_SECRET: z.string().optional(),

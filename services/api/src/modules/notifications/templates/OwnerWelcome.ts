@@ -27,7 +27,7 @@ const DEFAULT_CHECKLIST: OnboardingStep[] = [
   {
     step: 1,
     title: 'Connect Google or Outlook Calendar',
-    description: 'Sync your calendar so Vocaply can automatically join and record your scheduled team meetings.',
+    description: 'Sync your calendar so Rapto can automatically join and record your scheduled team meetings.',
     actionLabel: 'Connect Calendar',
   },
   {
@@ -39,7 +39,7 @@ const DEFAULT_CHECKLIST: OnboardingStep[] = [
   {
     step: 3,
     title: 'Record or Upload Your First Meeting',
-    description: 'Run your first meeting with Vocaply to generate AI summaries, action items, and decision logs.',
+    description: 'Run your first meeting with Rapto to generate AI summaries, action items, and decision logs.',
     actionLabel: 'Start First Meeting',
   },
 ]
@@ -54,7 +54,7 @@ export function renderOwnerWelcomeHtml(props: OwnerWelcomeProps): string {
     dashboardUrl,
     checklist = DEFAULT_CHECKLIST,
     unsubscribeToken,
-    supportEmail = 'support@vocaply.com',
+    supportEmail = 'support@rapto.cloud',
   } = props
 
   const checklistItemsHtml = checklist
@@ -99,10 +99,10 @@ export function renderOwnerWelcomeHtml(props: OwnerWelcomeProps): string {
 
   const content = `
 <h2 class="email-headline-text" style="margin: 0 0 8px 0; font-size: 22px; font-weight: 700; color: ${EmailColors.textHeadline}; letter-spacing: -0.5px;">
-  Welcome to Vocaply, ${ownerName}! 👋
+  Welcome to Rapto, ${ownerName}! 👋
 </h2>
 <p style="margin: 0 0 20px 0; font-size: 15px; color: ${EmailColors.textBody}; line-height: 1.5;">
-  Your workspace <strong>${workspaceName}</strong> is fully set up and ready to go. Vocaply automatically transforms raw team meeting conversations into actionable summaries, commitments, and tracked deliverables.
+  Your workspace <strong>${workspaceName}</strong> is fully set up and ready to go. Rapto automatically transforms raw team meeting conversations into actionable summaries, commitments, and tracked deliverables.
 </p>
 
 ${renderEmailCard({ contentHtml: cardHtml, variant: 'neutral' })}
@@ -124,8 +124,8 @@ ${renderEmailButton({ href: dashboardUrl, label: 'Go to Dashboard →', variant:
   })
 
   return renderEmailLayout({
-    title: `Welcome to Vocaply - ${workspaceName} is ready!`,
-    previewText: `Hi ${ownerName}, welcome to Vocaply! Your workspace ${workspaceName} is ready.`,
+    title: `Welcome to Rapto - ${workspaceName} is ready!`,
+    previewText: `Hi ${ownerName}, welcome to Rapto! Your workspace ${workspaceName} is ready.`,
     childrenHtml: content,
     footerHtml: footer,
   })
@@ -135,7 +135,7 @@ ${renderEmailButton({ href: dashboardUrl, label: 'Go to Dashboard →', variant:
  * Render Plain Text Fallback version of Owner Welcome Email
  */
 export function renderOwnerWelcomeText(props: OwnerWelcomeProps): string {
-  const { ownerName, workspaceName, dashboardUrl, checklist = DEFAULT_CHECKLIST, supportEmail = 'support@vocaply.com' } = props
+  const { ownerName, workspaceName, dashboardUrl, checklist = DEFAULT_CHECKLIST, supportEmail = 'support@rapto.cloud' } = props
 
   const checklistText = checklist
     .map((item) => `  [Step ${item.step}] ${item.title}\n  ${item.description}\n`)
@@ -143,12 +143,12 @@ export function renderOwnerWelcomeText(props: OwnerWelcomeProps): string {
 
   return `
 ===================================================================
-WELCOME TO VOCAPLY, ${ownerName.toUpperCase()}!
+WELCOME TO RAPTO, ${ownerName.toUpperCase()}!
 ===================================================================
 
 Hi ${ownerName},
 
-Your workspace "${workspaceName}" is fully set up and ready to go! Vocaply automatically transforms raw team meeting conversations into actionable summaries, commitments, and tracked deliverables.
+Your workspace "${workspaceName}" is fully set up and ready to go! Rapto automatically transforms raw team meeting conversations into actionable summaries, commitments, and tracked deliverables.
 
 -------------------------------------------------------------------
 QUICK SETUP CHECKLIST
@@ -167,7 +167,7 @@ NEED HELP?
 Our customer success and engineering teams are here to help. Reply directly to this email or contact us at ${supportEmail}.
 
 -------------------------------------------------------------------
-Vocaply Inc. | 100 Enterprise Way, Suite 400
+Rapto Inc. | 100 Enterprise Way, Suite 400
 Unsubscribe / Preferences: ${dashboardUrl}/settings/notifications
 ===================================================================
 `.trim()

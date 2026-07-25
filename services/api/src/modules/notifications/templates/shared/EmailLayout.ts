@@ -8,7 +8,7 @@ export interface EmailLayoutProps {
 }
 
 /**
- * Outer wrapper for all Vocaply transactional emails.
+ * Outer wrapper for all Rapto transactional emails.
  * Table-based 580px responsive layout with full Dark Mode support and email client compatibility.
  */
 export function renderEmailLayout(props: EmailLayoutProps): string {
@@ -130,7 +130,7 @@ export function renderEmailLayout(props: EmailLayoutProps): string {
                 <tr>
                   <td>
                     <span class="email-headline-text" style="font-size: 18px; font-weight: ${EmailTypography.fontWeightBold}; color: ${EmailColors.textHeadline}; letter-spacing: -0.5px; font-family: ${EmailTypography.fontFamily};">
-                      ⚡ Vocaply
+                      ⚡ Rapto
                     </span>
                   </td>
                 </tr>

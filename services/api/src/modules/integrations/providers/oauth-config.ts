@@ -33,7 +33,7 @@ export const OAUTH_CONFIGS: Partial<Record<ProviderType, OAuthConfig>> = {
     // ─────────────────────────────────────────────────────────────────────────
     // Slack — Bot token flow (oauth.v2.access)
     // Scope strategy: minimum viable — chat:write, channels:read, users:read.email, im:write
-    // NO admin scopes. NO channels:manage. Vocaply only posts into pre-configured channels.
+    // NO admin scopes. NO channels:manage. Rapto only posts into pre-configured channels.
     // refreshAccessToken() is a documented NO-OP for Slack bot tokens — they do not expire.
     // ─────────────────────────────────────────────────────────────────────────
     SLACK: {

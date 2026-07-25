@@ -18,8 +18,8 @@ export function generateAccessToken(user: { id: string; teamId: string | null; r
     {
       expiresIn: '15m',
       algorithm: 'HS256',
-      issuer: 'vocaply.com',
-      audience: 'vocaply-api',
+      issuer: 'rapto.cloud',
+      audience: 'rapto-api',
     }
   )
 }

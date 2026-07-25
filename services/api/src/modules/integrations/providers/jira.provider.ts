@@ -88,7 +88,7 @@ function buildIssueDescription(
         content: [
             {
                 type: 'text',
-                text: '— Created automatically by Vocaply',
+                text: '— Created automatically by Rapto',
                 marks: [{ type: 'em' }],
             },
             
@@ -379,7 +379,7 @@ export class JiraProvider implements IntegrationProvider {
             input.context.transcriptExcerpt
         )
 
-        // Priority: mapped from Vocaply enum to Jira's label
+        // Priority: mapped from Rapto enum to Jira's label
         const priorityName = JIRA_PRIORITY_MAP[input.priority] || 'Medium'
 
         // Assignee: resolved via Redis-cached email→accountId lookup
@@ -411,7 +411,7 @@ export class JiraProvider implements IntegrationProvider {
                 description,
                 issuetype: { name: defaultIssueType },
                 priority: { name: priorityName },
-                labels: ['vocaply', 'meeting-action-item'],
+                labels: ['rapto', 'meeting-action-item'],
                 ...(assigneeField ? { assignee: assigneeField } : {}),
                 ...(dueDateField ? { duedate: dueDateField } : {}),
             },
@@ -626,7 +626,7 @@ export class JiraProvider implements IntegrationProvider {
         cloudId:      string
         projectKey:   string
         teamId:       string
-        callbackBase: string  // e.g. https://api.vocaply.com/webhooks/jira
+        callbackBase: string  // e.g. https://api.rapto.cloud/webhooks/jira
     }): Promise<{ webhookId: string; secret: string }> {
         const { accessToken, cloudId, projectKey, teamId, callbackBase } = params
 
