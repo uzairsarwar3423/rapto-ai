@@ -12,24 +12,42 @@ interface UseCheckoutReturn {
 }
 
 /**
- * useCheckout — creates a Paddle Checkout session and opens overlay.
+ * Enterprise Production-Grade Paddle Checkout Hook
+ *
+ * Handles both overlay modal checkout and hosted checkout fallback.
+ * Dynamically resolves environment (sandbox vs production) based on token prefix
+ * or NEXT_PUBLIC_PADDLE_ENVIRONMENT to prevent environment mismatch CORS crashes.
  */
 export function useCheckout(): UseCheckoutReturn {
   const [checkoutState, setCheckoutState] = useState<CheckoutState>("idle");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [paddle, setPaddle] = useState<Paddle>();
 
-  // Initialize Paddle on mount
+  // Initialize Paddle JS SDK safely on mount
   useEffect(() => {
+    const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim() || "";
+    const envSetting = process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT?.trim().toLowerCase();
+
+    // Auto-detect sandbox if token starts with 'test_' or env is explicitly sandbox
+    const isSandbox = envSetting === "sandbox" || clientToken.startsWith("test_");
+
+    if (!clientToken) {
+      console.warn("⚠️ NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is not set — Paddle overlay checkout disabled.");
+      return;
+    }
+
     initializePaddle({
-      environment:
-        process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === "sandbox"
-          ? "sandbox"
-          : "production",
-      token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
-    }).then((paddleInstance) => {
-      if (paddleInstance) setPaddle(paddleInstance);
-    });
+      environment: isSandbox ? "sandbox" : "production",
+      token: clientToken,
+    })
+      .then((paddleInstance) => {
+        if (paddleInstance) {
+          setPaddle(paddleInstance);
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Failed to initialize Paddle JS SDK:", err);
+      });
   }, []);
 
   const mutation = useMutation({
@@ -45,17 +63,25 @@ export function useCheckout(): UseCheckoutReturn {
       setCheckoutError(null);
     },
     onSuccess: (data) => {
+      // 1. Try Paddle Overlay Modal if SDK initialized successfully
       if (paddle && data.transactionId) {
-        paddle.Checkout.open({
-          transactionId: data.transactionId,
-        });
-        setCheckoutState("idle"); // reset state since overlay opened
-      } else if (data.checkoutUrl) {
-        // Fallback to hosted checkout if paddle JS failed to load
+        try {
+          paddle.Checkout.open({
+            transactionId: data.transactionId,
+          });
+          setCheckoutState("idle");
+          return;
+        } catch (err) {
+          console.warn("⚠️ Paddle overlay open failed — redirecting to hosted checkout URL:", err);
+        }
+      }
+
+      // 2. Fallback to hosted Paddle checkout URL if overlay unavailable or fails
+      if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
         setCheckoutState("error");
-        setCheckoutError("No checkout URL or transaction ID returned.");
+        setCheckoutError("No checkout URL or transaction ID returned from server.");
       }
     },
     onError: (err: any) => {
@@ -65,7 +91,7 @@ export function useCheckout(): UseCheckoutReturn {
           err?.response?.data?.error ||
           "Couldn't start checkout — please try again."
       );
-      setTimeout(() => setCheckoutState("idle"), 2000);
+      setTimeout(() => setCheckoutState("idle"), 4000);
     },
   });
 
