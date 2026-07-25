@@ -82,6 +82,9 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: read   # allows GITHUB_TOKEN to pull from GHCR
 
     steps:
       - name: 📥 Checkout Code
@@ -99,15 +102,14 @@ jobs:
           target: "/opt/rapto-system"
 
       # ── Step 2: Create a scoped GHCR deploy token and pass it explicitly ─────
-      # NOTE: GITHUB_TOKEN cannot be used inside SSH sessions — it is a runner
-      # environment variable that is NOT forwarded to the remote shell.
-      # We use a PAT stored as GHCR_PAT secret for docker login on the VPS.
+      # NOTE: GITHUB_TOKEN evaluated here in YAML context — arrives as a real
+      # value on the remote shell via the envs: list. No PAT needed.
       - name: 📡 Merge Secrets, Pull Image & Deploy
         uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           REPO_NAME: ${{ github.repository }}
-          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           PROD_DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
