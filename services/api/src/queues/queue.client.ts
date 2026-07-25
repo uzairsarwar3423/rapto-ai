@@ -2,10 +2,33 @@ import { Queue, QueueEvents } from 'bullmq'
 import { redis } from '../config/redis'
 import { logger } from '../config/logger'
 
+let redisHost = process.env.REDIS_HOST
+let redisPort = parseInt(process.env.REDIS_PORT ?? '6379', 10)
+let redisPassword = process.env.REDIS_PASSWORD
+
+if ((!redisHost || redisHost === 'localhost') && process.env.REDIS_URL) {
+  try {
+    const u = new URL(process.env.REDIS_URL)
+    if (u.hostname && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
+      redisHost = u.hostname
+    }
+    if (u.port) {
+      redisPort = parseInt(u.port, 10)
+    }
+    if (u.password) {
+      redisPassword = u.password
+    }
+  } catch {}
+}
+
+if (!redisHost || (process.env.NODE_ENV === 'production' && redisHost === 'localhost')) {
+  redisHost = 'rapto-redis'
+}
+
 const connection = {
-  host: process.env.REDIS_HOST ?? 'localhost',
-  port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
-  password: process.env.REDIS_PASSWORD,
+  host: redisHost,
+  port: redisPort,
+  password: redisPassword,
 }
 
 // transcribe: Recall.ai webhook → /transcripts/cleanup → extract queue
