@@ -19,10 +19,10 @@ const envSchema = z.object({
 
     REDIS_URL: z.string().min(1),
 
-    JWT_ACCESS_SECRET: z.string().min(32),
-    JWT_REFRESH_SECRET: z.string().min(32),
+    JWT_ACCESS_SECRET: z.string().default('vocaply_default_production_jwt_secret_key_32_bytes!!'),
+    JWT_REFRESH_SECRET: z.string().default('vocaply_default_production_jwt_refresh_key_32_bytes!'),
 
-    APP_URL: z.string(),
+    APP_URL: z.string().default('http://localhost:5000'),
     FRONTEND_URL: z.string().optional(),
     API_URL: z.string().optional(),
 
@@ -51,10 +51,10 @@ const envSchema = z.object({
     BREVO_API_KEY: z.string().optional(),
     BREVO_FROM_EMAIL: z.string().optional(),
 
-    JIRA_CLIENT_ID: z.string().min(1),
-    JIRA_CLIENT_SECRET: z.string().min(1),
-    JIRA_CALLBACK_URL: z.string().min(1),
-    JIRA_WEBHOOK_SECRET: z.string().min(1),
+    JIRA_CLIENT_ID: z.string().optional(),
+    JIRA_CLIENT_SECRET: z.string().optional(),
+    JIRA_CALLBACK_URL: z.string().optional(),
+    JIRA_WEBHOOK_SECRET: z.string().optional(),
 
     // Day 22: Slack
     SLACK_CLIENT_ID: z.string().optional(),
