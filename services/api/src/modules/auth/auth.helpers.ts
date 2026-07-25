@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import { env } from '../../config/env'
-import { AuthUser } from './auth.types'
 
 /**
  * Generates a stateless JWT access token valid for 15 minutes.
@@ -33,33 +32,29 @@ export function generateRefreshToken(): string {
 
 /**
  * Hashes a token using SHA-256 before storing it in the database.
- * This prevents session hijacking in case of a database compromise.
  */
 export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex')
 }
 
 /**
- * Secure HTTP-only cookie configuration for the refresh token.
+ * Production-grade HTTP-only cookie configuration for the refresh token.
  *
- * path: '/'  — Must be '/' so the browser sends this cookie on ANY request
- *              to the API domain. '/api/v1/auth/refresh' was wrong — it
- *              prevented the cookie from being readable by the refresh endpoint
- *              when called via the BFF proxy at /api/v1/auth/refresh, and also
- *              blocked the cookie from being sent after cross-origin redirects.
+ * domain: '.rapto.cloud' in production — CRITICAL for cross-subdomain auth.
+ *         Allows both api.rapto.cloud (Express Backend) and rapto.cloud/www.rapto.cloud (Next.js Frontend)
+ *         to share and transmit the HttpOnly refresh token seamlessly on page refresh (F5).
  *
- * sameSite: 'lax' — Required for OAuth flows. 'strict' blocks the cookie on
- *              the very first GET request after Google redirects back to the app
- *              (cross-site navigation triggers the 'strict' block). 'lax' allows
- *              the cookie on top-level cross-site GET navigations (safe — refresh
- *              tokens are only used on POST /auth/refresh, not GETs).
- *
- * secure: true in production — cookie only sent over HTTPS.
+ * sameSite: 'none' in production (requires secure: true) — allows browser to send cookie on cross-site XHR.
+ * sameSite: 'lax' in development.
  */
+const isProd = env.NODE_ENV === 'production'
+const cookieDomain = process.env.COOKIE_DOMAIN || (isProd ? '.rapto.cloud' : undefined)
+
 export const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  secure: isProd,
+  sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+  domain: cookieDomain,
   path: '/',
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
 }
