@@ -166,6 +166,14 @@ def main() -> None:
     existing["REDIS_PORT"] = DOCKER_REDIS_PORT
     logger.info(f"✅ REDIS_HOST={DOCKER_REDIS_HOST}, REDIS_PORT={DOCKER_REDIS_PORT} written")
 
+    # Enforce safe connection limits for PgBouncer pooler (max 15 clients in session mode)
+    for db_key in ["DATABASE_URL", "DIRECT_URL"]:
+        val = existing.get(db_key, "")
+        if val and "connection_limit=" not in val:
+            delimiter = "&" if "?" in val else "?"
+            existing[db_key] = f"{val}{delimiter}connection_limit=3"
+            logger.info(f"⚡ Appended connection_limit=3 to {db_key} for PgBouncer stability.")
+
     # 5. Atomic write operation
     try:
         with open(temp_path, "w", encoding="utf-8") as f:

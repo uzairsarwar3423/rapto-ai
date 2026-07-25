@@ -26,13 +26,39 @@ docker compose pull api worker nginx
 
 # 3. Execute Database Migrations in isolated non-disruptive container
 echo "🗄️ Executing Prisma Database Migrations..."
-MIGRATION_LOGS=$(docker compose run --rm -e NODE_ENV=production api npx prisma migrate deploy 2>&1) \
-    && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
+
+run_migration() {
+    docker compose run --rm \
+        -e NODE_ENV=production \
+        api npx prisma migrate deploy 2>&1
+}
+
+MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
 
 echo "${MIGRATION_LOGS}"
 
 if [ "${MIGRATION_SUCCESS}" = "false" ]; then
-    if echo "${MIGRATION_LOGS}" | grep -q "P3009"; then
+    # Handle PgBouncer EMAXCONNSESSION (max clients reached in session mode)
+    if echo "${MIGRATION_LOGS}" | grep -qE "EMAXCONNSESSION|max clients|pool_size"; then
+        echo "⚠️ PgBouncer connection pool limit reached (EMAXCONNSESSION). Retrying migration in 5s with connection_limit=1..."
+        sleep 5
+        
+        # Override DIRECT_URL with connection_limit=1 to force single-client migration
+        RAW_DIRECT=$(grep "^DIRECT_URL=" .env | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        if [ -n "${RAW_DIRECT}" ]; then
+            if echo "${RAW_DIRECT}" | grep -q "\?"; then
+                CLEAN_DIRECT="${RAW_DIRECT}&connection_limit=1"
+            else
+                CLEAN_DIRECT="${RAW_DIRECT}?connection_limit=1"
+            fi
+            MIGRATION_LOGS=$(docker compose run --rm -e NODE_ENV=production -e DIRECT_URL="${CLEAN_DIRECT}" api npx prisma migrate deploy 2>&1) \
+                && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
+            echo "${MIGRATION_LOGS}"
+        fi
+    fi
+
+    # Handle Prisma P3009 (failed migration previously recorded)
+    if [ "${MIGRATION_SUCCESS}" = "false" ] && echo "${MIGRATION_LOGS}" | grep -q "P3009"; then
         echo "⚠️ Prisma P3009 error detected. Triggering self-healing recovery..."
 
         FAILED_MIGRATION=$(echo "${MIGRATION_LOGS}" | grep -oE '[0-9]{14}_[a-zA-Z0-9_]+' | head -n 1 || true)
@@ -43,13 +69,13 @@ if [ "${MIGRATION_SUCCESS}" = "false" ]; then
         fi
 
         echo "🔄 Retrying Prisma migrations after self-healing..."
-        if docker compose run --rm -e NODE_ENV=production api npx prisma migrate deploy; then
+        if run_migration; then
+            MIGRATION_SUCCESS=true
             echo "✅ Database migrations applied successfully after auto-recovery!"
-        else
-            echo "❌ Database migration retry failed! Aborting deployment."
-            exit 1
         fi
-    else
+    fi
+
+    if [ "${MIGRATION_SUCCESS}" = "false" ]; then
         echo "❌ Database migration failed! Aborting deployment."
         exit 1
     fi
@@ -58,18 +84,10 @@ else
 fi
 
 # 4. Zero-Downtime Container Update
-# NOTE: docker compose up waits for 'condition: service_healthy' before starting
-# nginx (see depends_on in docker-compose.yml). This means the command only
-# returns success when rapto-api has ALREADY passed its healthcheck.
-# We do NOT need to re-verify with an external HTTP probe after this succeeds.
 echo "🔄 Updating running services (API, Worker, NGINX)..."
 docker compose up -d --no-deps --remove-orphans api worker nginx
 
-# 5. Post-deploy verification using docker inspect (not HTTP probe)
-# WHY: The VPS runs other apps with their own nginx on port 80.
-#      curl/wget to http://localhost/health hits the HOST nginx, not Docker's.
-#      docker inspect reads the actual container health state — same source
-#      of truth that docker compose up already verified above.
+# 5. Post-deploy verification using docker inspect
 echo "⏳ Verifying deployment via Docker health state..."
 HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "${CONTAINER_NAME}" 2>/dev/null || echo "unknown")
 echo "🩺 Container health: ${HEALTH_STATUS}"
@@ -82,7 +100,7 @@ if [ "${HEALTH_STATUS}" = "healthy" ]; then
     exit 0
 fi
 
-# If docker compose up succeeded but inspect shows not-healthy, run the probe
+# Fallback extended probe
 echo "⚠️ Unexpected health state '${HEALTH_STATUS}' — running extended probe..."
 if CONTAINER_NAME="${CONTAINER_NAME}" ./scripts/health-check.sh; then
     echo "🎉 Deployment PASSED Health & Readiness Checks!"
