@@ -45,6 +45,18 @@ app.get('/health', (_req, res) => {
 
 // /ready — deep readiness: Redis + MongoDB must be reachable
 app.get('/ready', async (_req, res) => {
+    // Import serverReady flag — set by server.ts after all DB connections succeed
+    // This avoids doing live pings on every probe (cheaper, more accurate)
+    const { serverReady } = await import('./server').catch(() => ({ serverReady: false }))
+
+    if (!serverReady) {
+        return res.status(503).json({
+            status: 'not_ready',
+            reason: 'Database connections still initializing',
+            timestamp: new Date().toISOString(),
+        })
+    }
+
     const checks: Record<string, boolean> = {}
     let healthy = true
 
@@ -64,8 +76,6 @@ app.get('/ready', async (_req, res) => {
         checks.mongodb = true
     } catch {
         checks.mongodb = false
-        // MongoDB failure makes API not_ready only in strict mode
-        // Comment the line below if MongoDB is non-critical for your readiness SLO
         healthy = false
     }
 
@@ -73,7 +83,7 @@ app.get('/ready', async (_req, res) => {
         const { aipipelineClient } = await import('./services/ai-pipeline/ai-pipeline.client')
         const r = await aipipelineClient.ready({ timeoutMs: 2000 })
         checks.ai_pipeline = r.status === 'ready'
-        // AI pipeline being down does NOT block API readiness
+        // AI pipeline down does NOT block readiness
     } catch {
         checks.ai_pipeline = false
     }

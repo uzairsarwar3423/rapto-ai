@@ -1,58 +1,70 @@
 import Redis from 'ioredis'
 
 /**
- * Parse REDIS_URL into explicit ioredis options so the resolved hostname
- * is visible in logs and `REDIS_HOST` env var from docker-compose can
- * override it without needing a full URL rewrite.
+ * Resolve Redis connection options with strict Docker-aware priority:
  *
- * Priority order:
- *   1. REDIS_HOST + REDIS_PORT env vars (injected by docker-compose)
- *   2. Hostname parsed from REDIS_URL
- *   3. Hard default 'rapto-redis' (Docker Compose service name)
+ *  1. REDIS_HOST env var (explicitly injected by docker-compose — most reliable)
+ *  2. Hostname parsed from REDIS_URL, BUT only if it is NOT localhost/127.0.0.1
+ *  3. Hard fallback → 'rapto-redis'  (Docker Compose service name, always reachable)
+ *
+ * Never passes REDIS_URL raw to ioredis — raw URL silently resolves 'localhost'
+ * inside the container to the container's own loopback, not the Redis service.
  */
-function buildRedisOptions() {
-    // Prefer explicit host/port from docker-compose environment section
-    const envHost = process.env.REDIS_HOST
-    const envPort = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : undefined
-    const envPassword = process.env.REDIS_PASSWORD || undefined
+function buildRedisOptions(): {
+    host: string
+    port: number
+    password?: string
+    lazyConnect: true
+    maxRetriesPerRequest: number
+    retryStrategy: (times: number) => number
+} {
+    const base = {
+        lazyConnect: true as const,
+        maxRetriesPerRequest: 3,
+        retryStrategy: (times: number) => Math.min(times * 100, 3000),
+    }
 
-    if (envHost) {
+    // ── Priority 1: explicit REDIS_HOST from docker-compose ──────────────────
+    if (process.env.REDIS_HOST && !isLocalhost(process.env.REDIS_HOST)) {
         return {
-            host: envHost,
-            port: envPort ?? 6379,
-            password: envPassword,
+            ...base,
+            host: process.env.REDIS_HOST,
+            port: parseInt(process.env.REDIS_PORT || '6379', 10),
+            password: process.env.REDIS_PASSWORD || undefined,
         }
     }
 
-    // Parse from REDIS_URL
+    // ── Priority 2: parse REDIS_URL, reject localhost ─────────────────────────
     const url = process.env.REDIS_URL
     if (url) {
         try {
             const u = new URL(url)
-            const host = u.hostname || 'rapto-redis'
-            const port = u.port ? parseInt(u.port, 10) : 6379
-            const password = u.password || undefined
-            return { host, port, password }
-        } catch (e) {
-            console.warn('⚠️ Failed to parse REDIS_URL, falling back to rapto-redis:', e)
-        }
+            if (!isLocalhost(u.hostname)) {
+                return {
+                    ...base,
+                    host: u.hostname,
+                    port: u.port ? parseInt(u.port, 10) : 6379,
+                    password: decodeURIComponent(u.password) || undefined,
+                }
+            }
+        } catch {}
     }
 
-    // Ultimate fallback — Docker Compose service name
-    return { host: 'rapto-redis', port: 6379, password: undefined }
+    // ── Priority 3: hard fallback — always correct inside Docker ─────────────
+    return { ...base, host: 'rapto-redis', port: 6379 }
+}
+
+function isLocalhost(h: string): boolean {
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === ''
 }
 
 const opts = buildRedisOptions()
 
-console.log(`🔧 Redis config resolved → host: ${opts.host}, port: ${opts.port}`)
+console.log(`🔧 Redis resolved → ${opts.host}:${opts.port} (lazyConnect — no TCP until .connect())`)
 
-export const redis = new Redis({
-    ...opts,
-    lazyConnect: true,
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times) => Math.min(times * 50, 2000),
-})
+export const redis = new Redis(opts)
 
 redis.on('error', (err) => {
-    console.error(`Redis error (${opts.host}:${opts.port}):`, err.message)
+    // Non-fatal — retryStrategy will reconnect automatically
+    console.error(`⚠️  Redis error [${opts.host}:${opts.port}]:`, err.message)
 })

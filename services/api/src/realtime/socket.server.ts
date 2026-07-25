@@ -21,6 +21,45 @@ import { logger } from '../config/logger'
 import { teamRoom, userRoom, handleJoinMeeting, handleLeaveMeeting } from './rooms.manager'
 import { CLIENT_EVENTS } from './socket.events'
 
+/**
+ * Create a Redis client using the same Docker-aware host resolution as redis.ts:
+ * REDIS_HOST env var → parsed REDIS_URL (rejecting localhost) → 'rapto-redis' fallback.
+ * Does NOT use lazyConnect so the adapter can subscribe immediately.
+ */
+function makeAdapterRedisClient(): Redis {
+    const isLocalhost = (h: string) =>
+        h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === ''
+
+    const retryStrategy = (times: number) => Math.min(times * 100, 3000)
+
+    if (process.env.REDIS_HOST && !isLocalhost(process.env.REDIS_HOST)) {
+        return new Redis({
+            host: process.env.REDIS_HOST,
+            port: parseInt(process.env.REDIS_PORT || '6379', 10),
+            password: process.env.REDIS_PASSWORD || undefined,
+            retryStrategy,
+        })
+    }
+
+    const url = process.env.REDIS_URL
+    if (url) {
+        try {
+            const u = new URL(url)
+            if (!isLocalhost(u.hostname)) {
+                return new Redis({
+                    host: u.hostname,
+                    port: u.port ? parseInt(u.port, 10) : 6379,
+                    password: decodeURIComponent(u.password) || undefined,
+                    retryStrategy,
+                })
+            }
+        } catch {}
+    }
+
+    logger.warn('socket.server: falling back to rapto-redis (REDIS_URL not set or is localhost)')
+    return new Redis({ host: 'rapto-redis', port: 6379, retryStrategy })
+}
+
 // ── Singleton ─────────────────────────────────────────────────────────────────
 
 let _io: Server | null = null
@@ -74,14 +113,8 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
   // cannot issue normal commands on the same connection.
   // This is the single most important line for horizontal scalability:
   // any event emitted on Server A immediately reaches clients on Server B.
-  const redisPubClient = new Redis(env.REDIS_URL, {
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times) => Math.min(times * 50, 2000),
-  })
-  const redisSubClient = new Redis(env.REDIS_URL, {
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times) => Math.min(times * 50, 2000),
-  })
+  const redisPubClient = makeAdapterRedisClient()
+  const redisSubClient = makeAdapterRedisClient()
 
   redisPubClient.on('error', (err) => logger.error({ err }, 'socket.server: Redis pub client error'))
   redisSubClient.on('error', (err) => logger.error({ err }, 'socket.server: Redis sub client error'))
