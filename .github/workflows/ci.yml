@@ -72,7 +72,7 @@ jobs:
           DIRECT_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
 
       - name: Execute Automated Integration & E2E Test Suite
-        run: npm test --prefix services/api -- --testPathPattern=tests/integration
+        run: npm test --prefix services/api -- --testPathPattern=tests/integration --runInBand --forceExit
         env:
           NODE_ENV: test
           DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"

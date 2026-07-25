@@ -18,6 +18,8 @@ describe('Weekly Snapshot Cron Integration Tests', () => {
     const userB = await seedTestUser(team.id)
     const meeting = await seedTestMeeting(team.id)
 
+    const dueDate = new Date()
+
     // User A: 1 FULFILLED commitment
     await seedTestCommitment(team.id, userA.id, meeting.id, {
       status: 'FULFILLED',

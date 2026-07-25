@@ -4,6 +4,8 @@ module.exports = {
     testEnvironment: 'node',
     roots: ['<rootDir>/src', '<rootDir>/tests'],
     testMatch: ['**/*.test.ts'],
+    forceExit: true,
+    detectOpenHandles: true,
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
             tsconfig: {

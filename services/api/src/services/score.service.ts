@@ -88,7 +88,7 @@ export async function calculateCommitmentScore(
     (c) => c.status === 'FULFILLED' && c.resolvedAt && c.dueDate && c.resolvedAt <= c.dueDate
   ).length
   const onTimeRate = fulfilled === 0 ? 100 : Math.round((onTimeFulfilled / fulfilled) * 100)
-  const onTimeBonus = (onTimeRate / 100) * 10
+  const onTimeBonus = fulfilled === 0 ? 0 : (onTimeRate / 100) * 10
 
   // 4. Final score composition: clamped to [0, 100]
   const rawScore = weightedRate + onTimeBonus

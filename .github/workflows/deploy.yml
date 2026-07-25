@@ -71,7 +71,7 @@ jobs:
         run: npm run build --prefix services/api
 
       - name: 🧪 Execute Test Suite
-        run: npm test --prefix services/api -- --passWithNoTests
+        run: npm test --prefix services/api -- --passWithNoTests --runInBand --forceExit
         env:
           NODE_ENV: test
           DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
