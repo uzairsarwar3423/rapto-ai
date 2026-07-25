@@ -117,5 +117,13 @@ export const dedupService = {
       platformMeetingId,
       reason: 'creation_failed'
     }, 'Claim released due to failure')
+  },
+
+  /**
+   * Helper query to check if active meeting exists in DB.
+   */
+  isDuplicateMeeting: async (teamId: string, platform: string, platformMeetingId: string): Promise<boolean> => {
+    const existing = await repo.findActiveByPlatformId(teamId, platform, platformMeetingId)
+    return !!existing
   }
 }

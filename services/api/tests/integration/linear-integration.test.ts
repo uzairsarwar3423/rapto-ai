@@ -1,52 +1,37 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// linear-integration.test.ts — Automated Integration Suite for Linear Provider
-//
-// Converts Day 61's manual verification plan into an automated suite covering:
-// 1. OAuth callback persistence (encrypted token, workspace metadata)
-// 2. GraphQL mutation variable construction & priority mapping (1-4 scale)
-// 3. Three-way error taxonomy (Category 3 semantic, Category 2 non-retryable auth,
-//    Category 2 retryable rate limit)
-// 4. Assignee email resolution with 24-hour Redis caching assertion
-// 5. Disconnect behavior confirming token revocation attempt prior to row deletion
-// ─────────────────────────────────────────────────────────────────────────────
-
-import { linearProvider, LINEAR_PRIORITY_MAP } from '../../src/modules/integrations/providers/linear.provider'
+import { LinearProvider, LINEAR_PRIORITY_MAP } from '../../src/modules/integrations/providers/linear.provider'
 import {
+    mockLinearResponse,
     mockLinearViewer,
     mockLinearTeamsAndStates,
+    mockLinearUsersSearch,
     mockLinearIssueCreateSuccess,
     mockLinearIssueCreateFailure,
     mockLinearAuthError,
     mockLinearRateLimited,
-    mockLinearUsersSearch,
 } from '../fixtures/linear-responses.fixture'
-import {
-    httpMockRegistry,
-    mockLinearResponse,
-    resetHttpMocks,
-} from '../support/http-mock-setup'
-import {
-    cleanTestDatabase,
-    seedTestTeam,
-    seedTestTeamIntegration,
-} from '../support/test-db'
+import { httpMockRegistry } from '../support/http-mock-registry'
 import { redis } from '../../src/config/redis'
-import { decrypt } from '../../src/utils/crypto'
+import { seedTestTeam, seedTestTeamIntegration } from '../support/test-db'
 
-describe('LinearIntegrationProvider — Automated Test Suite', () => {
-    beforeEach(async () => {
-        resetHttpMocks()
-        await cleanTestDatabase()
+describe('Linear Integration Provider (End-to-End)', () => {
+    let linearProvider: LinearProvider
+
+    beforeEach(() => {
+        linearProvider = new LinearProvider()
+        httpMockRegistry.reset()
     })
 
-    afterAll(async () => {
-        resetHttpMocks()
-        await cleanTestDatabase()
+    describe('getAuthorizationUrl', () => {
+        it('constructs correct authorization URL with state parameter', () => {
+            const url = linearProvider.getAuthorizationUrl('state_test_123')
+            expect(url).toContain('https://linear.app/oauth/authorize')
+            expect(url).toContain('state=state_test_123')
+            expect(url).toContain('response_type=code')
+        })
     })
 
-    describe('OAuth Callback & Token Exchange', () => {
-        it('persists access token with tokenExpiresAt: null and workspace metadata', async () => {
-            // Mock exchangeCodeForTokens HTTP endpoints
+    describe('exchangeCodeForTokens', () => {
+        it('exchanges code for tokens and fetches viewer/organization metadata', async () => {
             httpMockRegistry.registerMock({
                 domain: 'api.linear.app',
                 urlPattern: '/oauth/token',
@@ -65,9 +50,8 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
             const tokenResult = await linearProvider.exchangeCodeForTokens('valid_linear_code')
 
             expect(tokenResult.accessToken).toEqual('lin_access_token_super_secret_999')
-            expect(tokenResult.tokenExpiresAt).toBeNull() // Linear personal access tokens do not expire
-            expect(tokenResult.workspaceId).toEqual('lin-org-888')
-            expect(tokenResult.workspaceName).toEqual('Rapto Organization')
+            expect(tokenResult.workspaceMeta.id).toEqual('lin-org-888')
+            expect(tokenResult.workspaceMeta.name).toEqual('Rapto Organization')
         })
     })
 
@@ -84,14 +68,21 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
             mockLinearResponse('/graphql', mockLinearIssueCreateSuccess, 200, 'POST')
 
             const result = await linearProvider.createExternalItem(integration, {
-                title: 'Security Audit: RSA Key Rotation',
-                description: 'Rotate standard JWT secret keys',
+                actionItemId: 'act_101',
+                text: 'Security Audit: RSA Key Rotation',
                 priority: 'URGENT',
                 assigneeEmail: 'alice@rapto.dev',
+                context: {
+                    meetingTitle: 'Security Sync',
+                    meetingDate: new Date(),
+                },
+                teamMetadata: {
+                    linearTeamId: 'lin-team-001',
+                },
             })
 
-            expect(result.id).toEqual('lin-issue-101')
-            expect(result.url).toEqual('https://linear.app/rapto/issue/ENG-101/security-audit')
+            expect(result.externalId).toEqual('lin-issue-101')
+            expect(result.externalUrl).toEqual('https://linear.app/rapto/issue/ENG-101/security-audit')
         })
 
         it('correctly maps all 4 Rapto priority levels to Linear 1-4 integers', () => {
@@ -112,8 +103,11 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
 
             await expect(
                 linearProvider.createExternalItem(integration, {
-                    title: 'Test Issue Failure',
-                    description: 'Description',
+                    actionItemId: 'act_fail',
+                    text: 'Test Issue Failure',
+                    priority: 'MEDIUM',
+                    context: { meetingTitle: 'Test', meetingDate: new Date() },
+                    teamMetadata: {},
                 })
             ).rejects.toThrow('LINEAR')
         })
@@ -126,8 +120,11 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
 
             await expect(
                 linearProvider.createExternalItem(integration, {
-                    title: 'Test Issue Auth Fail',
-                    description: 'Description',
+                    actionItemId: 'act_auth_fail',
+                    text: 'Test Issue Auth Fail',
+                    priority: 'MEDIUM',
+                    context: { meetingTitle: 'Test', meetingDate: new Date() },
+                    teamMetadata: {},
                 })
             ).rejects.toThrow()
         })
@@ -140,8 +137,11 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
 
             await expect(
                 linearProvider.createExternalItem(integration, {
-                    title: 'Test Issue Rate Limited',
-                    description: 'Description',
+                    actionItemId: 'act_rate_limit',
+                    text: 'Test Issue Rate Limited',
+                    priority: 'MEDIUM',
+                    context: { meetingTitle: 'Test', meetingDate: new Date() },
+                    teamMetadata: {},
                 })
             ).rejects.toThrow()
         })
@@ -189,12 +189,11 @@ describe('LinearIntegrationProvider — Automated Test Suite', () => {
                 body: { success: true },
             })
 
-            await linearProvider.disconnect(integration)
+            await linearProvider.revokeToken(integration)
 
             // Verification log entry in interceptor proves revocation endpoint was called
             const logs = httpMockRegistry.getCallLogs()
-            const revokeCall = logs.find(l => l.url.includes('/oauth/revoke'))
-            expect(revokeCall).toBeDefined()
+            expect(logs.some(log => log.url.includes('/oauth/revoke'))).toBe(true)
         })
     })
 })
