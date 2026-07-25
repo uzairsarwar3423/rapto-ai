@@ -17,6 +17,23 @@ logging.basicConfig(
 logger = logging.getLogger("merge-env")
 
 
+def clean_val(v: str) -> str:
+    """Sanitize environment variable value by stripping outer/dangling quotes and backslashes."""
+    v = v.strip()
+    if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+        v = v[1:-1].strip()
+    return v.rstrip('\\').strip('"').strip("'")
+
+
+def format_env_line(key: str, val: str) -> str:
+    """Format key-value pair for Docker Compose .env file compatibility."""
+    val = clean_val(val)
+    if any(c in val for c in [" ", "#", "$", '"', "'", "\t"]):
+        safe_val = val.replace('"', '\\"')
+        return f'{key}="{safe_val}"\n'
+    return f"{key}={val}\n"
+
+
 def main() -> None:
     deploy_dir = os.environ.get("DEPLOY_DIR", "/opt/rapto-system")
     env_path = os.path.join(deploy_dir, ".env")
@@ -35,7 +52,7 @@ def main() -> None:
                     line_str = line.strip()
                     if line_str and not line_str.startswith("#") and "=" in line_str:
                         key, val = line_str.split("=", 1)
-                        existing[key.strip()] = val.strip()
+                        existing[key.strip()] = clean_val(val)
         except Exception as e:
             logger.error(f"Failed to read existing .env file: {e}")
             sys.exit(1)
@@ -91,7 +108,7 @@ def main() -> None:
     for env_var, target_key in secret_map.items():
         val = os.environ.get(env_var, "").strip()
         if val:
-            existing[target_key] = val
+            existing[target_key] = clean_val(val)
             updated_count += 1
         elif target_key in existing:
             preserved_count += 1
@@ -100,7 +117,7 @@ def main() -> None:
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
             for k, v in existing.items():
-                f.write(f"{k}={v}\n")
+                f.write(format_env_line(k, v))
 
         # POSIX atomic replace
         os.replace(temp_path, env_path)
