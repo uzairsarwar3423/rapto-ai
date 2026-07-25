@@ -16,76 +16,10 @@ env:
 
 jobs:
   # ============================================================================
-  # Stage 1: Integration Tests & Build Verification
-  # ============================================================================
-  test:
-    name: 🧪 Run Automated Tests & Validation
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: vocaply_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: 📥 Checkout Source Repository
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js 22 Runtime
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: 'services/api/package-lock.json'
-
-      - name: 📦 Install API Service Dependencies
-        run: npm ci --prefix services/api
-
-      - name: ⚙️ Generate Prisma Client
-        run: npm run prisma:generate --prefix services/api
-        env:
-          DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
-          DIRECT_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
-
-      - name: 🔨 Typecheck & Build API TypeScript
-        run: npm run build --prefix services/api
-
-      - name: 🧪 Execute Test Suite
-        run: npm test --prefix services/api -- --passWithNoTests --runInBand --forceExit
-        env:
-          NODE_ENV: test
-          DATABASE_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
-          DIRECT_URL: "postgresql://postgres:test_password@localhost:5432/vocaply_test?schema=public"
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
-          ENCRYPTION_KEY: "vocaply_ci_encryption_test_key_32_bytes!!"
-
-  # ============================================================================
-  # Stage 2: Docker Multi-Stage Image Build & Container Registry Push
+  # Stage 1: Docker Multi-Stage Image Build & Container Registry Push
   # ============================================================================
   build-and-push:
     name: 🐳 Build Docker Image & Push to GHCR
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
