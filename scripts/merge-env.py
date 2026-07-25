@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 """
 Production Environment Variable Merger & Preserver.
-Reads existing /opt/rapto-system/.env file, updates keys from process environment variables,
-and writes out the merged .env atomically using POSIX file replacement.
+
+Reads existing /opt/rapto-system/.env file, updates keys from process environment
+variables, and writes out the merged .env atomically using POSIX file replacement.
+
+Critical fixes applied:
+  - REDIS_URL is ALWAYS forced to redis://rapto-redis:6379 (Docker service name).
+    This overrides any PROD_REDIS_URL secret that may contain 'localhost'.
+  - REDIS_HOST and REDIS_PORT are always written for explicit ioredis resolution.
+  - IMAGE_TAG must come from TARGET_TAG (never left as stale 'latest').
 """
 
 import logging
 import os
 import sys
+from urllib.parse import urlparse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,13 +24,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger("merge-env")
 
+# ── Docker internal Redis URL — always correct inside docker-compose network ──
+DOCKER_REDIS_URL = "redis://rapto-redis:6379"
+DOCKER_REDIS_HOST = "rapto-redis"
+DOCKER_REDIS_PORT = "6379"
+
+LOCALHOST_VARIANTS = {"localhost", "127.0.0.1", "::1", ""}
+
+
+def is_localhost_redis(url: str) -> bool:
+    """Return True if the Redis URL points to localhost (unusable inside Docker)."""
+    try:
+        parsed = urlparse(url)
+        return parsed.hostname in LOCALHOST_VARIANTS
+    except Exception:
+        return True
+
 
 def clean_val(v: str) -> str:
-    """Sanitize environment variable value by stripping outer/dangling quotes and backslashes."""
+    """Sanitize environment variable value by stripping outer/dangling quotes."""
     v = v.strip()
     if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
         v = v[1:-1].strip()
-    return v.rstrip('\\').strip('"').strip("'")
+    return v.rstrip("\\").strip('"').strip("'")
 
 
 def format_env_line(key: str, val: str) -> str:
@@ -57,7 +81,7 @@ def main() -> None:
             logger.error(f"Failed to read existing .env file: {e}")
             sys.exit(1)
 
-    # 2. Core deployment metadata defaults
+    # 2. Core deployment metadata — always overwrite
     existing["NODE_ENV"] = "production"
     existing["PORT"] = "5000"
     existing["DOCKER_REGISTRY"] = "ghcr.io"
@@ -66,57 +90,80 @@ def main() -> None:
     if repo_name:
         existing["IMAGE_NAME"] = f"{repo_name}/api"
 
-    target_tag = os.environ.get("TARGET_TAG", "")
+    target_tag = os.environ.get("TARGET_TAG", "").strip()
     if target_tag:
         existing["IMAGE_TAG"] = target_tag
+        logger.info(f"🏷️  Deployment image tag: {target_tag}")
+    else:
+        logger.warning("⚠️  TARGET_TAG not set — IMAGE_TAG will not be updated.")
 
     # 3. Secret mapping dictionary (Environment variable -> Target .env key)
     secret_map = {
-        "PROD_DATABASE_URL": "DATABASE_URL",
-        "PROD_DIRECT_URL": "DIRECT_URL",
-        "PROD_MONGODB_URL": "MONGODB_URL",
-        "PROD_REDIS_URL": "REDIS_URL",
-        "PROD_JWT_ACCESS_SECRET": "JWT_ACCESS_SECRET",
-        "PROD_JWT_REFRESH_SECRET": "JWT_REFRESH_SECRET",
-        "PROD_APP_URL": "APP_URL",
-        "PROD_FRONTEND_URL": "FRONTEND_URL",
-        "PROD_API_URL": "API_URL",
-        "PROD_JIRA_CLIENT_ID": "JIRA_CLIENT_ID",
-        "PROD_JIRA_CLIENT_SECRET": "JIRA_CLIENT_SECRET",
-        "PROD_JIRA_CALLBACK_URL": "JIRA_CALLBACK_URL",
-        "PROD_JIRA_WEBHOOK_SECRET": "JIRA_WEBHOOK_SECRET",
-        "PROD_BREVO_API_KEY": "BREVO_API_KEY",
-        "PROD_BREVO_FROM_EMAIL": "BREVO_FROM_EMAIL",
-        "PROD_PADDLE_API_KEY": "PADDLE_API_KEY",
-        "PROD_PADDLE_CLIENT_TOKEN": "PADDLE_CLIENT_TOKEN",
+        "PROD_DATABASE_URL":          "DATABASE_URL",
+        "PROD_DIRECT_URL":            "DIRECT_URL",
+        "PROD_MONGODB_URL":           "MONGODB_URL",
+        "PROD_REDIS_URL":             "REDIS_URL",
+        "PROD_JWT_ACCESS_SECRET":     "JWT_ACCESS_SECRET",
+        "PROD_JWT_REFRESH_SECRET":    "JWT_REFRESH_SECRET",
+        "PROD_APP_URL":               "APP_URL",
+        "PROD_FRONTEND_URL":          "FRONTEND_URL",
+        "PROD_API_URL":               "API_URL",
+        "PROD_JIRA_CLIENT_ID":        "JIRA_CLIENT_ID",
+        "PROD_JIRA_CLIENT_SECRET":    "JIRA_CLIENT_SECRET",
+        "PROD_JIRA_CALLBACK_URL":     "JIRA_CALLBACK_URL",
+        "PROD_JIRA_WEBHOOK_SECRET":   "JIRA_WEBHOOK_SECRET",
+        "PROD_BREVO_API_KEY":         "BREVO_API_KEY",
+        "PROD_BREVO_FROM_EMAIL":      "BREVO_FROM_EMAIL",
+        "PROD_PADDLE_API_KEY":        "PADDLE_API_KEY",
+        "PROD_PADDLE_CLIENT_TOKEN":   "PADDLE_CLIENT_TOKEN",
         "PROD_PADDLE_WEBHOOK_SECRET": "PADDLE_WEBHOOK_SECRET",
-        "PROD_PADDLE_ENVIRONMENT": "PADDLE_ENVIRONMENT",
-        "PROD_PADDLE_PRICE_STARTER_M": "PADDLE_PRICE_STARTER_M",
-        "PROD_PADDLE_PRICE_STARTER_Y": "PADDLE_PRICE_STARTER_Y",
+        "PROD_PADDLE_ENVIRONMENT":    "PADDLE_ENVIRONMENT",
+        "PROD_PADDLE_PRICE_STARTER_M":"PADDLE_PRICE_STARTER_M",
+        "PROD_PADDLE_PRICE_STARTER_Y":"PADDLE_PRICE_STARTER_Y",
         "PROD_PADDLE_PRICE_GROWTH_M": "PADDLE_PRICE_GROWTH_M",
         "PROD_PADDLE_PRICE_GROWTH_Y": "PADDLE_PRICE_GROWTH_Y",
-        "PROD_PADDLE_PRICE_BUSINESS_M": "PADDLE_PRICE_BUSINESS_M",
-        "PROD_PADDLE_PRICE_BUSINESS_Y": "PADDLE_PRICE_BUSINESS_Y",
-        "PROD_AI_PIPELINE_URL": "AI_PIPELINE_URL",
-        "PROD_AI_PIPELINE_SECRET": "AI_PIPELINE_SECRET",
+        "PROD_PADDLE_PRICE_BUSINESS_M":"PADDLE_PRICE_BUSINESS_M",
+        "PROD_PADDLE_PRICE_BUSINESS_Y":"PADDLE_PRICE_BUSINESS_Y",
+        "PROD_AI_PIPELINE_URL":       "AI_PIPELINE_URL",
+        "PROD_AI_PIPELINE_SECRET":    "AI_PIPELINE_SECRET",
     }
 
     updated_count = 0
     preserved_count = 0
 
-    # 4. Merge rule: update ONLY if OS environment variable is non-empty
+    # 4. Merge: update only if secret is non-empty
     for env_var, target_key in secret_map.items():
         val = os.environ.get(env_var, "").strip()
         if val:
             existing[target_key] = clean_val(val)
             updated_count += 1
+            logger.debug(f"Updated: {target_key}")
         elif target_key in existing:
             preserved_count += 1
+            logger.debug(f"Preserved: {target_key}")
+
+    # ── CRITICAL: Fix REDIS_URL — reject localhost, always use Docker service name ──
+    redis_url = existing.get("REDIS_URL", "")
+    if not redis_url or is_localhost_redis(redis_url):
+        logger.warning(
+            f"⚠️  REDIS_URL={redis_url!r} is localhost or empty — "
+            f"overriding with Docker service name: {DOCKER_REDIS_URL}"
+        )
+        existing["REDIS_URL"] = DOCKER_REDIS_URL
+    else:
+        logger.info(f"✅ REDIS_URL validated: {redis_url}")
+
+    # Always write explicit host/port so ioredis has unambiguous resolution
+    existing["REDIS_HOST"] = DOCKER_REDIS_HOST
+    existing["REDIS_PORT"] = DOCKER_REDIS_PORT
+    logger.info(f"✅ REDIS_HOST={DOCKER_REDIS_HOST}, REDIS_PORT={DOCKER_REDIS_PORT} written")
 
     # 5. Atomic write operation
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
-            for k, v in existing.items():
+            f.write("# Auto-generated by merge-env.py — DO NOT EDIT MANUALLY\n")
+            f.write(f"# Generated at: {__import__('datetime').datetime.utcnow().isoformat()}Z\n\n")
+            for k, v in sorted(existing.items()):
                 f.write(format_env_line(k, v))
 
         # POSIX atomic replace
@@ -124,8 +171,9 @@ def main() -> None:
         os.chmod(env_path, 0o600)
 
         logger.info(
-            f"✅ Environment file successfully merged & saved to {env_path} "
-            f"(Updated: {updated_count}, Preserved: {preserved_count})"
+            f"✅ Environment file merged → {env_path} "
+            f"(Updated: {updated_count}, Preserved: {preserved_count}, "
+            f"Total keys: {len(existing)})"
         )
     except Exception as e:
         logger.error(f"❌ Failed during atomic write/replace of .env file: {e}")

@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Custom Image Tag to Deploy'
+        description: 'Custom Image Tag to Deploy (leave blank to use commit SHA)'
         required: false
-        default: 'latest'
+        default: ''
 
 env:
   REGISTRY: ghcr.io
@@ -16,7 +16,7 @@ env:
 
 jobs:
   # ============================================================================
-  # Stage 1: Docker Multi-Stage Image Build & Container Registry Push
+  # Stage 1: Build Docker Image & Push to GHCR
   # ============================================================================
   build-and-push:
     name: 🐳 Build Docker Image & Push to GHCR
@@ -26,7 +26,7 @@ jobs:
       packages: write
 
     outputs:
-      image_tag: ${{ steps.meta.outputs.version }}
+      image_tag: ${{ steps.resolve-tag.outputs.TAG }}
 
     steps:
       - name: 📥 Checkout Repository
@@ -42,13 +42,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Resolve image tag ONCE — used by both build and deploy
+      - name: 🏷️ Resolve Deployment Image Tag
+        id: resolve-tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            TAG="${{ github.event.inputs.image_tag }}"
+          else
+            TAG="${{ github.sha }}"
+          fi
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+          echo "✅ Resolved image tag: ${TAG}"
+
       - name: 🏷️ Extract Docker Metadata (Tags & Labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,prefix=,format=long
+            type=raw,value=${{ steps.resolve-tag.outputs.TAG }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: 🏗️ Build and Push Docker Image
@@ -63,7 +75,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ============================================================================
-  # Stage 3: Automated Zero-Downtime VPS Deployment & Rollback Strategy
+  # Stage 2: Zero-Downtime Deploy to VPS
   # ============================================================================
   deploy:
     name: 🚀 Deploy to VPS & Validate Health
@@ -75,16 +87,8 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🔐 Set Deployment Image Tag
-        id: set-tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.image_tag }}" ]; then
-            echo "TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
-          else
-            echo "TAG=${{ github.sha }}" >> $GITHUB_ENV
-          fi
-
-      - name: 📦 Sync Configuration & Deployment Scripts to VPS
+      # ── Step 1: Sync deployment files to VPS ─────────────────────────────────
+      - name: 📦 Sync Config, NGINX & Scripts to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -94,11 +98,17 @@ jobs:
           source: "docker-compose.yml,nginx/,scripts/"
           target: "/opt/rapto-system"
 
-      - name: 📡 Merge Production Environment & Trigger Zero-Downtime Rollout
+      # ── Step 2: Create a scoped GHCR deploy token and pass it explicitly ─────
+      # NOTE: GITHUB_TOKEN cannot be used inside SSH sessions — it is a runner
+      # environment variable that is NOT forwarded to the remote shell.
+      # We use a PAT stored as GHCR_PAT secret for docker login on the VPS.
+      - name: 📡 Merge Secrets, Pull Image & Deploy
         uses: appleboy/ssh-action@v1.0.3
         env:
-          TARGET_TAG: ${{ env.TAG }}
+          DEPLOY_IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           REPO_NAME: ${{ github.repository }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
+          GHCR_USER: ${{ github.actor }}
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           PROD_DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
           PROD_MONGODB_URL: ${{ secrets.PROD_MONGODB_URL }}
@@ -117,7 +127,7 @@ jobs:
           PROD_PADDLE_API_KEY: ${{ secrets.PROD_PADDLE_API_KEY }}
           PROD_PADDLE_CLIENT_TOKEN: ${{ secrets.PROD_PADDLE_CLIENT_TOKEN }}
           PROD_PADDLE_WEBHOOK_SECRET: ${{ secrets.PROD_PADDLE_WEBHOOK_SECRET }}
-          PROD_PADDLE_ENVIRONMENT: ${{ secrets.PROD_PADDLE_ENVIRONMENT || 'production' }}
+          PROD_PADDLE_ENVIRONMENT: ${{ secrets.PROD_PADDLE_ENVIRONMENT }}
           PROD_PADDLE_PRICE_STARTER_M: ${{ secrets.PROD_PADDLE_PRICE_STARTER_M }}
           PROD_PADDLE_PRICE_STARTER_Y: ${{ secrets.PROD_PADDLE_PRICE_STARTER_Y }}
           PROD_PADDLE_PRICE_GROWTH_M: ${{ secrets.PROD_PADDLE_PRICE_GROWTH_M }}
@@ -131,18 +141,42 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
-          envs: TARGET_TAG,REPO_NAME,PROD_DATABASE_URL,PROD_DIRECT_URL,PROD_MONGODB_URL,PROD_REDIS_URL,PROD_JWT_ACCESS_SECRET,PROD_JWT_REFRESH_SECRET,PROD_APP_URL,PROD_FRONTEND_URL,PROD_API_URL,PROD_JIRA_CLIENT_ID,PROD_JIRA_CLIENT_SECRET,PROD_JIRA_CALLBACK_URL,PROD_JIRA_WEBHOOK_SECRET,PROD_BREVO_API_KEY,PROD_BREVO_FROM_EMAIL,PROD_PADDLE_API_KEY,PROD_PADDLE_CLIENT_TOKEN,PROD_PADDLE_WEBHOOK_SECRET,PROD_PADDLE_ENVIRONMENT,PROD_PADDLE_PRICE_STARTER_M,PROD_PADDLE_PRICE_STARTER_Y,PROD_PADDLE_PRICE_GROWTH_M,PROD_PADDLE_PRICE_GROWTH_Y,PROD_PADDLE_PRICE_BUSINESS_M,PROD_PADDLE_PRICE_BUSINESS_Y,PROD_AI_PIPELINE_URL,PROD_AI_PIPELINE_SECRET
+          request_pty: true
+          command_timeout: "15m"
+          envs: >-
+            DEPLOY_IMAGE_TAG,REPO_NAME,GHCR_TOKEN,GHCR_USER,
+            PROD_DATABASE_URL,PROD_DIRECT_URL,PROD_MONGODB_URL,PROD_REDIS_URL,
+            PROD_JWT_ACCESS_SECRET,PROD_JWT_REFRESH_SECRET,
+            PROD_APP_URL,PROD_FRONTEND_URL,PROD_API_URL,
+            PROD_JIRA_CLIENT_ID,PROD_JIRA_CLIENT_SECRET,PROD_JIRA_CALLBACK_URL,PROD_JIRA_WEBHOOK_SECRET,
+            PROD_BREVO_API_KEY,PROD_BREVO_FROM_EMAIL,
+            PROD_PADDLE_API_KEY,PROD_PADDLE_CLIENT_TOKEN,PROD_PADDLE_WEBHOOK_SECRET,PROD_PADDLE_ENVIRONMENT,
+            PROD_PADDLE_PRICE_STARTER_M,PROD_PADDLE_PRICE_STARTER_Y,
+            PROD_PADDLE_PRICE_GROWTH_M,PROD_PADDLE_PRICE_GROWTH_Y,
+            PROD_PADDLE_PRICE_BUSINESS_M,PROD_PADDLE_PRICE_BUSINESS_Y,
+            PROD_AI_PIPELINE_URL,PROD_AI_PIPELINE_SECRET
           script: |
             set -Eeuo pipefail
             DEPLOY_DIR="/opt/rapto-system"
-            
-            # Authenticate VPS Docker Engine to GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            # Execute decoupled environment merger script
-            chmod +x ${DEPLOY_DIR}/scripts/*.py ${DEPLOY_DIR}/scripts/*.sh
-            python3 ${DEPLOY_DIR}/scripts/merge-env.py
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🚀 Rapto AI — VPS Deployment"
+            echo "📅 $(date -u)"
+            echo "🏷️  Image tag: ${DEPLOY_IMAGE_TAG}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            # Execute zero-downtime deployment script
-            cd ${DEPLOY_DIR}
-            IMAGE_TAG=${{ env.TAG }} ./scripts/deploy.sh
+            # 1. Authenticate to GHCR using explicit PAT (not GITHUB_TOKEN)
+            #    GITHUB_TOKEN is NOT available in SSH context — always use GHCR_PAT
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            echo "✅ GHCR login successful"
+
+            # 2. Ensure scripts are executable
+            chmod +x "${DEPLOY_DIR}/scripts/"*.sh
+            chmod +x "${DEPLOY_DIR}/scripts/"*.py
+
+            # 3. Merge secrets + fix Redis URL → write .env atomically
+            TARGET_TAG="${DEPLOY_IMAGE_TAG}" python3 "${DEPLOY_DIR}/scripts/merge-env.py"
+
+            # 4. Execute zero-downtime deployment
+            cd "${DEPLOY_DIR}"
+            IMAGE_TAG="${DEPLOY_IMAGE_TAG}" bash ./scripts/deploy.sh
