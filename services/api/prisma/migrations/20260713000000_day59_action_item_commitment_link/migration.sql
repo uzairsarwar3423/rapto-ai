@@ -22,21 +22,29 @@
 
 -- Step 1: add the nullable FK column
 ALTER TABLE "action_items"
-  ADD COLUMN "linkedCommitmentId" TEXT;
+  ADD COLUMN IF NOT EXISTS "linkedCommitmentId" TEXT;
 
 -- Step 2: add the FK constraint (deferred to avoid ordering issues)
-ALTER TABLE "action_items"
-  ADD CONSTRAINT "action_items_linkedCommitmentId_fkey"
-  FOREIGN KEY ("linkedCommitmentId")
-  REFERENCES "commitments"("id")
-  ON DELETE SET NULL
-  ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'action_items_linkedCommitmentId_fkey'
+  ) THEN
+    ALTER TABLE "action_items"
+      ADD CONSTRAINT "action_items_linkedCommitmentId_fkey"
+      FOREIGN KEY ("linkedCommitmentId")
+      REFERENCES "commitments"("id")
+      ON DELETE SET NULL
+      ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- Step 3: unique partial index on jiraIssueId (WHERE NOT NULL)
 --   Mirrors the idx_ai_jira_issue described in Day 59 §5 and §11.
 --   Prisma @@unique([jiraIssueId]) maps to "action_items_jiraIssueId_key"
 --   but the partial version gives us EXACTLY what the plan specified:
 --   fast, unique lookups without polluting the index with NULL rows.
-CREATE UNIQUE INDEX "action_items_jiraIssueId_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "action_items_jiraIssueId_key"
   ON "action_items" ("jiraIssueId")
   WHERE "jiraIssueId" IS NOT NULL;
