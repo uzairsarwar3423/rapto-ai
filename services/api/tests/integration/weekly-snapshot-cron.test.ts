@@ -18,17 +18,6 @@ describe('Weekly Snapshot Cron Integration Tests', () => {
     const userB = await seedTestUser(team.id)
     const meeting = await seedTestMeeting(team.id)
 
-    // Connect users to team in TeamMember table if required
-    await prisma.teamMember.createMany({
-      data: [
-        { userId: userA.id, teamId: team.id, role: 'MEMBER' },
-        { userId: userB.id, teamId: team.id, role: 'MEMBER' },
-      ],
-    })
-
-    const now = new Date()
-    const dueDate = subDays(now, 1)
-
     // User A: 1 FULFILLED commitment
     await seedTestCommitment(team.id, userA.id, meeting.id, {
       status: 'FULFILLED',
@@ -75,10 +64,6 @@ describe('Weekly Snapshot Cron Integration Tests', () => {
     const team = await seedTestTeam()
     const user = await seedTestUser(team.id)
     const meeting = await seedTestMeeting(team.id)
-
-    await prisma.teamMember.create({
-      data: { userId: user.id, teamId: team.id, role: 'MEMBER' },
-    })
 
     await seedTestCommitment(team.id, user.id, meeting.id, {
       status: 'FULFILLED',

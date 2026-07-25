@@ -26,7 +26,6 @@ export async function cleanTestDatabase() {
     await prisma.subscription.deleteMany().catch(() => {})
     await prisma.invoice.deleteMany().catch(() => {})
     await prisma.usageEvent.deleteMany().catch(() => {})
-    await prisma.teamMember.deleteMany().catch(() => {})
     await prisma.user.deleteMany()
     await prisma.team.deleteMany()
 }

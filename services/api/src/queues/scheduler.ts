@@ -85,8 +85,9 @@ export async function runWeeklyScoreSnapshotCron(): Promise<void> {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 })
     const isoWeekStr = `${getISOWeekYear(now)}-W${String(getISOWeek(now)).padStart(2, '0')}`
 
-    const teamMembers = await prisma.teamMember.findMany({
-        select: { userId: true, teamId: true },
+    const teamMembers = await prisma.user.findMany({
+        where: { teamId: { not: null } },
+        select: { id: true, teamId: true },
     })
 
     logger.info({ count: teamMembers.length, isoWeek: isoWeekStr }, 'weekly-snapshot cron: starting score recalculation & snapshot write')
@@ -97,7 +98,8 @@ export async function runWeeklyScoreSnapshotCron(): Promise<void> {
     for (let i = 0; i < teamMembers.length; i += BATCH_SIZE) {
         const batch = teamMembers.slice(i, i + BATCH_SIZE)
         await Promise.all(
-            batch.map(async ({ userId, teamId }) => {
+            batch.map(async ({ id: userId, teamId }) => {
+                if (!teamId) return
                 try {
                     const scoreResult = await calculateCommitmentScore(userId, teamId)
                     const deferredCount = await prisma.commitment.count({
