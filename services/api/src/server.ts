@@ -20,14 +20,18 @@ async function startServer() {
             await connectMongoDB()
             console.log('✅ MongoDB connected')
         } catch (err) {
-            console.warn('⚠️ MongoDB connection failed (non-blocking in dev):', err)
+            console.error('❌ MongoDB connection failed:', err)
             if (env.NODE_ENV === 'production') {
                 throw err
             }
         }
 
-        await redis.connect()
-        console.log('✅ Redis connected')
+        // ioredis with lazyConnect:true starts in 'wait' state.
+        // Guard against double-connect if module is imported multiple times.
+        if (redis.status === 'wait') {
+            await redis.connect()
+        }
+        console.log(`✅ Redis connected (host: ${(redis as any).options?.host ?? 'from URL'})`)
 
         // ----------------------
         // HTTP + Socket.io Server

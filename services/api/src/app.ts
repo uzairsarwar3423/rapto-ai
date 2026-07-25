@@ -22,52 +22,30 @@ import { setupBullBoard } from './config/bull-board'
 
 const app = express()
 
-// ----------------------
-// Security & Utility Middleware
-// ----------------------
-app.use(
-    cors({
-        origin: env.APP_URL,
-        credentials: true,
-    })
-)
-app.use(helmet())
-app.use(express.json({
-    limit: '10mb',
-    verify: (req: any, res, buf) => {
-        req.rawBody = buf
-    }
-}))
-app.use(express.urlencoded({ extended: true, limit: '10mb' }))
-app.use(cookieParser())
-
-// ----------------------
-// Custom Request Logging & Rate Limiting
-// ----------------------
-app.use(requestLogger())
-app.use(ipRateLimiter)
-
-// ── X-Request-ID — required by Day 17 checklist ──────────────────────────────
-app.use((_req, res, next) => {
-    const reqId = crypto.randomUUID()
-    res.setHeader('X-Request-ID', reqId)
-    next()
-})
-
-// ----------------------
-// Health & Root Status Route
-// ----------------------
-app.get(['/', '/health'], (req, res) => {
+// ──────────────────────────────────────────────────────────────────────────────
+// HEALTH PROBES — registered FIRST, before ALL middleware.
+//
+// WHY: Docker healthcheck and NGINX upstream checks must NEVER be blocked by:
+//   - Rate limiter   (Redis call → fails if Redis not yet connected)
+//   - Request logger (unnecessary for internal probes)
+//   - CORS / Helmet  (internal probes don't send Origin headers)
+//   - Body parsers   (probes send no body)
+//
+// Placing /health after ipRateLimiter was causing Docker to mark the container
+// unhealthy on the VERY FIRST probe because the rate limiter called redis.ping()
+// before redis.connect() completed, throwing ECONNREFUSED.
+// ──────────────────────────────────────────────────────────────────────────────
+app.get('/health', (_req, res) => {
     res.status(200).json({
-        success: true,
-        message: 'Rapto API is running 🚀',
+        status: 'ok',
+        service: 'rapto-api',
         timestamp: new Date().toISOString(),
     })
 })
 
-// ── /ready — checks Redis + MongoDB (Day 18 requirement) ─────────────────────
-app.get('/ready', async (req, res) => {
-    const checks: Record<string, string | boolean> = {}
+// /ready — deep readiness: Redis + MongoDB must be reachable
+app.get('/ready', async (_req, res) => {
+    const checks: Record<string, boolean> = {}
     let healthy = true
 
     try {
@@ -82,23 +60,22 @@ app.get('/ready', async (req, res) => {
     try {
         const { getMongoDB } = await import('./db/mongo.client')
         const db = getMongoDB()
-        if (db) {
-            await db.command({ ping: 1 })
-            checks.mongodb = true
-        } else {
-            checks.mongodb = false
-        }
+        await db.command({ ping: 1 })
+        checks.mongodb = true
     } catch {
         checks.mongodb = false
+        // MongoDB failure makes API not_ready only in strict mode
+        // Comment the line below if MongoDB is non-critical for your readiness SLO
+        healthy = false
     }
 
     try {
         const { aipipelineClient } = await import('./services/ai-pipeline/ai-pipeline.client')
-        const readyResponse = await aipipelineClient.ready({ timeoutMs: 2000 })
-        checks.ai_pipeline = readyResponse.status === 'ready'
+        const r = await aipipelineClient.ready({ timeoutMs: 2000 })
+        checks.ai_pipeline = r.status === 'ready'
+        // AI pipeline being down does NOT block API readiness
     } catch {
         checks.ai_pipeline = false
-        // Note: AI pipeline down does NOT make Node.js API "not_ready"
     }
 
     res.status(healthy ? 200 : 503).json({
@@ -108,10 +85,39 @@ app.get('/ready', async (req, res) => {
     })
 })
 
-// ----------------------
+// ──────────────────────────────────────────────────────────────────────────────
+// Security & Utility Middleware
+// ──────────────────────────────────────────────────────────────────────────────
+app.use(
+    cors({
+        origin: env.APP_URL,
+        credentials: true,
+    })
+)
+app.use(helmet())
+app.use(express.json({
+    limit: '10mb',
+    verify: (req: any, _res, buf) => {
+        req.rawBody = buf
+    },
+}))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use(cookieParser())
+
+// Custom Request Logging & Rate Limiting
+app.use(requestLogger())
+app.use(ipRateLimiter)
+
+// ── X-Request-ID ──────────────────────────────────────────────────────────────
+app.use((_req, res, next) => {
+    res.setHeader('X-Request-ID', crypto.randomUUID())
+    next()
+})
+
+// ──────────────────────────────────────────────────────────────────────────────
 // API Routes
-// ----------------------
-// Google Console redirects directly to /auth/google/callback, so we redirect it to our versioned API endpoint
+// ──────────────────────────────────────────────────────────────────────────────
+// Google Console redirects directly to /auth/google/callback
 app.get('/auth/google/callback', (req, res) => {
     const query = req.url.split('?')[1]
     res.redirect(`/api/v1/auth/google/callback${query ? '?' + query : ''}`)
@@ -128,20 +134,15 @@ app.use('/api/v1/analytics', analyticsRouter)
 app.use('/api/v1/billing', billingRouter)
 app.use('/api/webhooks', webhookRoutes)
 
-// ── BullBoard (job monitoring — non-prod only) ────────────────────────────────
-// Must be mounted BEFORE the 404 catch-all so /admin/queues is matched
+// BullBoard — must be mounted BEFORE the 404 catch-all
 setupBullBoard(app)
 
-// ----------------------
-// Catch-All / 404 Route
-// ----------------------
-app.use((req, res, next) => {
+// 404 catch-all
+app.use((req, _res, next) => {
     next(new NotFoundError(`Route ${req.method} ${req.path}`))
 })
 
-// ----------------------
 // Global Error Handler (MUST BE LAST)
-// ----------------------
 app.use(errorMiddleware)
 
 export default app
