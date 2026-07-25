@@ -8,6 +8,8 @@ export interface TeamSettings {
   weeklyDigestEnabled: boolean;
   weeklyDigestDay: "MONDAY" | "FRIDAY" | "SUNDAY";
   customBotName?: string;
+  autoSyncEnabled?: boolean;
+  autoSyncProviders?: string[];
 }
 
 export interface TeamUsage {

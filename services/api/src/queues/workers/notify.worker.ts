@@ -474,54 +474,178 @@ export const notifyWorker = new Worker<NotifyJobData>(
     // ─────────────────────────────────────────────────────────────────────────
     // CASE 5: VERIFICATION_EMAIL
     // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 5: VERIFICATION_EMAIL
+    // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'VERIFICATION_EMAIL' && job.data.emailPayload) {
-      await emailService.sendVerificationEmail(job.data.emailPayload)
+      try {
+        await emailService.sendVerificationEmail(job.data.emailPayload)
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: VERIFICATION_EMAIL')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CASE 6: PASSWORD_RESET_EMAIL
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'PASSWORD_RESET_EMAIL' && job.data.emailPayload) {
-      await emailService.sendPasswordResetEmail(job.data.emailPayload)
+      try {
+        await emailService.sendPasswordResetEmail(job.data.emailPayload)
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: PASSWORD_RESET_EMAIL')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CASE 7: TEAM_INVITE_EMAIL
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'TEAM_INVITE_EMAIL' && job.data.emailPayload) {
-      await emailService.sendTeamInviteEmail(job.data.emailPayload)
+      try {
+        await emailService.sendTeamInviteEmail(job.data.emailPayload)
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: TEAM_INVITE_EMAIL')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CASE 8: EMAIL_MEETING_SUMMARY
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'EMAIL_MEETING_SUMMARY' && job.data.emailPayload) {
-      await emailService.sendMeetingSummary(job.data.emailPayload)
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_MEETING_SUMMARY')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_MEETING_SUMMARY' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendMeetingSummary(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_MEETING_SUMMARY')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CASE 9: EMAIL_COMMITMENT_MISSED
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'EMAIL_COMMITMENT_MISSED' && job.data.emailPayload) {
-      await emailService.sendCommitmentMissed(job.data.emailPayload)
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_COMMITMENT_MISSED')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_COMMITMENT_MISSED' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendCommitmentMissed(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_COMMITMENT_MISSED')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CASE 10: EMAIL_MANAGER_ALERT
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'EMAIL_MANAGER_ALERT' && job.data.emailPayload) {
-      await emailService.sendManagerAlert(job.data.emailPayload)
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_MANAGER_ALERT')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_MANAGER_ALERT' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendManagerAlert(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_MANAGER_ALERT')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // CASE 11: EMAIL_DEADLINE_REMINDER
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'EMAIL_DEADLINE_REMINDER' && job.data.emailPayload) {
-      await emailService.sendDeadlineReminder(job.data.emailPayload)
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_DEADLINE_REMINDER')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_DEADLINE_REMINDER' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendDeadlineReminder(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_DEADLINE_REMINDER')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CASE 12: INTEGRATION_AUTO_DISABLED (Team Integration)
+    // CASE 12: EMAIL_PAYMENT_FAILED
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_PAYMENT_FAILED' && job.data.emailPayload) {
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_PAYMENT_FAILED')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_PAYMENT_FAILED' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendPaymentFailedEmail(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_PAYMENT_FAILED')
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13: EMAIL_PLAN_LIMIT
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_PLAN_LIMIT' && job.data.emailPayload) {
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_PLAN_LIMIT')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_PLAN_LIMIT' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendPlanLimitEmail(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_PLAN_LIMIT')
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13B: EMAIL_OWNER_WELCOME
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_OWNER_WELCOME' && job.data.emailPayload) {
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_OWNER_WELCOME')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_OWNER_WELCOME' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendOwnerWelcomeEmail(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_OWNER_WELCOME')
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13C: EMAIL_TEAM_MEMBER_WELCOME
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_TEAM_MEMBER_WELCOME' && job.data.emailPayload) {
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_TEAM_MEMBER_WELCOME')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_TEAM_MEMBER_WELCOME' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendTeamMemberWelcomeEmail(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_TEAM_MEMBER_WELCOME')
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 14: INTEGRATION_AUTO_DISABLED (Team Integration)
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'INTEGRATION_AUTO_DISABLED' && teamId) {
       const provider = job.data.metadata?.provider || 'Integration'
@@ -548,7 +672,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CASE 13: CALENDAR_SYNC_FAILED (User Calendar Integration)
+    // CASE 15: CALENDAR_SYNC_FAILED (User Calendar Integration)
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'CALENDAR_SYNC_FAILED' && ownerId) {
       const user = await prisma.user.findUnique({ where: { id: ownerId } })
@@ -568,14 +692,18 @@ export const notifyWorker = new Worker<NotifyJobData>(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CASE 14: EMAIL_INTEGRATION_DISABLED
+    // CASE 16: EMAIL_INTEGRATION_DISABLED
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'EMAIL_INTEGRATION_DISABLED' && job.data.emailPayload) {
-      await emailService.sendIntegrationDisabledEmail(job.data.emailPayload)
+      try {
+        await emailService.sendIntegrationDisabledEmail(job.data.emailPayload)
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_INTEGRATION_DISABLED')
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CASE 15: INTEGRATION_WARNING & INTEGRATION_DEACTIVATED
+    // CASE 17: INTEGRATION_WARNING & INTEGRATION_DEACTIVATED
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'INTEGRATION_WARNING' || type === 'INTEGRATION_DEACTIVATED') {
       const { metadata, teamId, ownerId } = job.data
@@ -600,21 +728,107 @@ export const notifyWorker = new Worker<NotifyJobData>(
       }
 
       for (const recipient of recipients) {
-        if (type === 'INTEGRATION_WARNING') {
-          await emailService.sendIntegrationWarningEmail({
-            to: recipient.email,
-            name: recipient.name,
-            providerName,
-            settingsUrl,
-          })
-        } else {
-          await emailService.sendIntegrationDeactivatedEmail({
-            to: recipient.email,
-            name: recipient.name,
-            providerName,
-            settingsUrl,
-          })
+        try {
+          if (type === 'INTEGRATION_WARNING') {
+            await emailService.sendIntegrationWarningEmail({
+              to: recipient.email,
+              name: recipient.name,
+              providerName,
+              settingsUrl,
+            })
+          } else {
+            await emailService.sendIntegrationDeactivatedEmail({
+              to: recipient.email,
+              name: recipient.name,
+              providerName,
+              settingsUrl,
+            })
+          }
+        } catch (err: any) {
+          logger.error({ err: err.message, to: recipient.email }, 'notify.worker.email.failed: INTEGRATION_ALERT')
         }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 18: WEEKLY_DIGEST
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'WEEKLY_DIGEST' && teamId) {
+      // 1. Check deduplication key (7-day TTL)
+      const dedupKey = `notif:dedup:WEEKLY_DIGEST:${teamId}`
+      const isFresh = await notificationsService.checkAndSetDedup(dedupKey, 7 * 86400)
+
+      if (!isFresh) {
+        logger.info({ teamId }, 'notify.worker: skipped WEEKLY_DIGEST dispatch (dedup key active)')
+        return
+      }
+
+      // 2. Fetch team & plan check
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { plan: true, name: true }
+      })
+
+      if (!team || !['GROWTH', 'BUSINESS', 'ENTERPRISE'].includes(team.plan)) {
+        logger.info({ teamId, plan: team?.plan }, 'notify.worker: skipped WEEKLY_DIGEST dispatch (plan gating)')
+        return
+      }
+
+      // 3. Assemble digest data
+      const { teamHealthService } = await import('../../modules/teams/team-health.service')
+      const digestData = await teamHealthService.buildWeeklyDigestData(teamId)
+      const dashboardUrl = `${frontendUrl}/dashboard`
+
+      // 4. Email Branch: Manager & Admin recipients
+      const managers = await notificationsService.getManagersToNotify(teamId)
+
+      for (const manager of managers) {
+        try {
+          const emailAllowed = await notificationsService.shouldSendEmail(manager.id, 'WEEKLY_DIGEST')
+          if (emailAllowed) {
+            await emailService.sendWeeklyDigestEmail({
+              to: manager.email,
+              name: manager.name,
+              teamName: digestData.teamName,
+              healthScore: digestData.healthScore,
+              healthScoreChange: digestData.healthScoreChange,
+              fulfilledCount: digestData.fulfilledCount,
+              missedCount: digestData.missedCount,
+              mostImproved: digestData.mostImproved,
+              mostDeclined: digestData.mostDeclined,
+              upcomingDeadlines: digestData.upcomingDeadlines,
+              dashboardUrl,
+              userId: manager.id,
+            })
+          }
+        } catch (err: any) {
+          logger.error({ err: err.message, managerId: manager.id, teamId }, 'notify.worker.email.failed: WEEKLY_DIGEST')
+        }
+      }
+
+      // 5. Slack Branch (Isolated try/catch)
+      try {
+        const slackIntegration = await prisma.teamIntegration.findUnique({
+          where: { teamId_provider: { teamId, provider: 'SLACK' } }
+        })
+
+        if (slackIntegration && slackIntegration.isActive) {
+          const res = await slackNotifyService.sendWeeklyDigestChannel(slackIntegration, {
+            teamName: digestData.teamName,
+            healthScore: digestData.healthScore,
+            healthScoreChange: digestData.healthScoreChange,
+            fulfilledCount: digestData.fulfilledCount,
+            missedCount: digestData.missedCount,
+            dashboardUrl,
+          })
+          if (res.ok) {
+            logger.info({ teamId, notificationType: 'WEEKLY_DIGEST', channel: 'slack_channel' }, 'notify.worker.slack.sent')
+          } else {
+            logger.warn({ teamId, notificationType: 'WEEKLY_DIGEST', err: res.error }, 'notify.worker.slack.send_failed')
+          }
+        }
+      } catch (err: any) {
+        logger.error({ teamId, notificationType: 'WEEKLY_DIGEST_SLACK', err: err.message }, 'notify.worker.slack.send_failed')
       }
     }
   },

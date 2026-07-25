@@ -1,0 +1,1177 @@
+"filename", "language", "Markdown", "JSON", "YAML", "XML", "JavaScript", "Python", "TypeScript", "pip requirements", "Ignore", "Docker", "TypeScript JSX", "PostCSS", "JSON with Comments", "MS SQL", "comment", "blank", "total"
+"/home/uzair/vocaply-system/.github/workflows/ci.yml", "YAML", 0, 0, 77, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 89
+"/home/uzair/vocaply-system/Day 20 Action Items API.md", "Markdown", 866, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 70, 936
+"/home/uzair/vocaply-system/docs/Vocaply 100 Day Build.md", "Markdown", 1578, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 158, 1736
+"/home/uzair/vocaply-system/docs/Vocaply Full Frontend.md", "Markdown", 2765, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 577, 3342
+"/home/uzair/vocaply-system/docs/Vocaply Full Scalable APi.md", "Markdown", 1251, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 1300
+"/home/uzair/vocaply-system/docs/Vocaply Full Scalable Database.md", "Markdown", 3318, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 830, 4148
+"/home/uzair/vocaply-system/docs/Vocaply Full Scalable.md", "Markdown", 2091, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 425, 2516
+"/home/uzair/vocaply-system/docs/Vocaply High Level System2.md", "Markdown", 2288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 485, 2773
+"/home/uzair/vocaply-system/docs/Vocaply Low Level System.md", "Markdown", 2183, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 476, 2659
+"/home/uzair/vocaply-system/docs/Vocaply Production Grade.md", "Markdown", 2443, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 426, 2869
+"/home/uzair/vocaply-system/docs/pricing.md", "Markdown", 1277, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 288, 1565
+"/home/uzair/vocaply-system/services/ai-pipeline/.dockerignore", "Ignore", 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 9, 9, 42
+"/home/uzair/vocaply-system/services/ai-pipeline/Dockerfile", "Docker", 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 25, 17, 68
+"/home/uzair/vocaply-system/services/ai-pipeline/README.md", "Markdown", 115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 164
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline API integrations.md", "Markdown", 1120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 236, 1356
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Day 50.md", "Markdown", 606, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 98, 704
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Day 52.md", "Markdown", 673, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 129, 802
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Day 53.md", "Markdown", 750, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 165, 915
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Day 55.md", "Markdown", 856, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 182, 1038
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Day48.md", "Markdown", 417, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 68, 485
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Day49.md", "Markdown", 644, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104, 748
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Day51 deep plan .md", "Markdown", 695, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 149, 844
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Day54.md", "Markdown", 897, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 184, 1081
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply AI Pipeline Model shift.md", "Markdown", 718, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 143, 861
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply Specialized Extraction.md", "Markdown", 862, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 182, 1044
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply_AI_Pipeline_Day46_Deep_Plan.md", "Markdown", 392, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 459
+"/home/uzair/vocaply-system/services/ai-pipeline/Vocaply_AI_Pipeline_Day47_Deep_Plan.md", "Markdown", 425, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 490
+"/home/uzair/vocaply-system/services/ai-pipeline/fix_final_final.py", "Python", 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 13
+"/home/uzair/vocaply-system/services/ai-pipeline/fix_final_tests.py", "Python", 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 0, 2, 9, 39
+"/home/uzair/vocaply-system/services/ai-pipeline/fix_prompts.py", "Python", 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 19
+"/home/uzair/vocaply-system/services/ai-pipeline/fix_remaining.py", "Python", 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 28
+"/home/uzair/vocaply-system/services/ai-pipeline/replace_script.py", "Python", 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 33
+"/home/uzair/vocaply-system/services/ai-pipeline/requirements.txt", "pip requirements", 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 19, 11, 46
+"/home/uzair/vocaply-system/services/ai-pipeline/scratch-test.py", "Python", 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 23
+"/home/uzair/vocaply-system/services/ai-pipeline/scratch_fix.py", "Python", 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 0, 8, 14, 51
+"/home/uzair/vocaply-system/services/ai-pipeline/src/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/api/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/api/deps.py", "Python", 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0, 0, 41, 29, 104
+"/home/uzair/vocaply-system/services/ai-pipeline/src/api/main.py", "Python", 0, 0, 0, 0, 0, 85, 0, 0, 0, 0, 0, 0, 0, 0, 87, 32, 204
+"/home/uzair/vocaply-system/services/ai-pipeline/src/api/routes/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/api/routes/cleanup.py", "Python", 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 28, 7, 65
+"/home/uzair/vocaply-system/services/ai-pipeline/src/api/routes/extract.py", "Python", 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 4, 10, 79
+"/home/uzair/vocaply-system/services/ai-pipeline/src/api/routes/health.py", "Python", 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 32, 23, 126
+"/home/uzair/vocaply-system/services/ai-pipeline/src/api/routes/resolve.py", "Python", 0, 0, 0, 0, 0, 116, 0, 0, 0, 0, 0, 0, 0, 0, 77, 16, 209
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/cleanup_config.py", "Python", 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 0, 103, 21, 153
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/date_config.py", "Python", 0, 0, 0, 0, 0, 125, 0, 0, 0, 0, 0, 0, 0, 0, 7, 14, 146
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/extraction_config.py", "Python", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 10
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/logging.py", "Python", 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 0, 0, 0, 53, 24, 130
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/model_routing.py", "Python", 0, 0, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 0, 64, 23, 156
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/resolution_config.py", "Python", 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 0, 194, 23, 321
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/settings.py", "Python", 0, 0, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 0, 64, 29, 162
+"/home/uzair/vocaply-system/services/ai-pipeline/src/config/similarity_config.py", "Python", 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 114, 18, 147
+"/home/uzair/vocaply-system/services/ai-pipeline/src/db/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/db/mongo_client.py", "Python", 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 35, 18, 113
+"/home/uzair/vocaply-system/services/ai-pipeline/src/db/redis_client.py", "Python", 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 29, 17, 95
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/eval_report.py", "Python", 0, 0, 0, 0, 0, 173, 0, 0, 0, 0, 0, 0, 0, 0, 30, 49, 252
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/eval_schema.py", "Python", 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 31
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/golden_dataset/ambiguous_cases_cleaned.json", "JSON", 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/golden_dataset/resolution_fixture_03.json", "JSON", 0, 229, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 235
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/golden_dataset/sprint_review_01_cleaned.json", "JSON", 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/golden_dataset/sprint_review_01_expected.json", "JSON", 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 17
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/golden_dataset/standup_01_cleaned.json", "JSON", 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/golden_dataset/standup_01_expected.json", "JSON", 0, 38, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 39
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/golden_dataset/standup_02_cleaned.json", "JSON", 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/golden_dataset/standup_02_expected.json", "JSON", 0, 53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 54
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/run_extraction_eval.py", "Python", 0, 0, 0, 0, 0, 300, 0, 0, 0, 0, 0, 0, 0, 0, 97, 71, 468
+"/home/uzair/vocaply-system/services/ai-pipeline/src/eval/run_resolution_eval.py", "Python", 0, 0, 0, 0, 0, 361, 0, 0, 0, 0, 0, 0, 0, 0, 70, 80, 511
+"/home/uzair/vocaply-system/services/ai-pipeline/src/middleware/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/middleware/error_handler.py", "Python", 0, 0, 0, 0, 0, 83, 0, 0, 0, 0, 0, 0, 0, 0, 29, 26, 138
+"/home/uzair/vocaply-system/services/ai-pipeline/src/middleware/request_id.py", "Python", 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 26, 12, 59
+"/home/uzair/vocaply-system/services/ai-pipeline/src/middleware/request_logger.py", "Python", 0, 0, 0, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 14, 15, 60
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/chunk_models.py", "Python", 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 7, 19, 58
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/cleanup_models.py", "Python", 0, 0, 0, 0, 0, 118, 0, 0, 0, 0, 0, 0, 0, 0, 104, 57, 279
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/common.py", "Python", 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 50, 30, 129
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/date_models.py", "Python", 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 73
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/exceptions.py", "Python", 0, 0, 0, 0, 0, 139, 0, 0, 0, 0, 0, 0, 0, 0, 78, 51, 268
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/extraction_models.py", "Python", 0, 0, 0, 0, 0, 215, 0, 0, 0, 0, 0, 0, 0, 0, 1, 35, 251
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/resolution_models.py", "Python", 0, 0, 0, 0, 0, 626, 0, 0, 0, 0, 0, 0, 0, 0, 291, 103, 1020
+"/home/uzair/vocaply-system/services/ai-pipeline/src/models/similarity_models.py", "Python", 0, 0, 0, 0, 0, 152, 0, 0, 0, 0, 0, 0, 0, 0, 91, 25, 268
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/chunker.py", "Python", 0, 0, 0, 0, 0, 209, 0, 0, 0, 0, 0, 0, 0, 0, 43, 54, 306
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/cleanup/__init__.py", "Python", 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 7, 3, 12
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/cleanup/confidence_flagger.py", "Python", 0, 0, 0, 0, 0, 83, 0, 0, 0, 0, 0, 0, 0, 0, 31, 20, 134
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/cleanup/filler_word_remover.py", "Python", 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 70, 26, 146
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/cleanup/grammar_normalizer.py", "Python", 0, 0, 0, 0, 0, 214, 0, 0, 0, 0, 0, 0, 0, 0, 129, 77, 420
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/cleanup/speaker_formatter.py", "Python", 0, 0, 0, 0, 0, 117, 0, 0, 0, 0, 0, 0, 0, 0, 93, 33, 243
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/cleanup/transcript_cleaner.py", "Python", 0, 0, 0, 0, 0, 131, 0, 0, 0, 0, 0, 0, 0, 0, 74, 35, 240
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/date_parser.py", "Python", 0, 0, 0, 0, 0, 308, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 346
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/extraction/action_item_parser.py", "Python", 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 0, 41, 13, 87
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/extraction/blocker_parser.py", "Python", 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 31
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/extraction/commitment_parser.py", "Python", 0, 0, 0, 0, 0, 92, 0, 0, 0, 0, 0, 0, 0, 0, 103, 24, 219
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/extraction/decision_parser.py", "Python", 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 10
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/extraction/deduplicator.py", "Python", 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 75, 21, 146
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/extraction/extractor.py", "Python", 0, 0, 0, 0, 0, 505, 0, 0, 0, 0, 0, 0, 0, 0, 100, 77, 682
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/extraction/risk_parser.py", "Python", 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 29
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/openai_client.py", "Python", 0, 0, 0, 0, 0, 538, 0, 0, 0, 0, 0, 0, 0, 0, 52, 74, 664
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/resolution/__init__.py", "Python", 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 16, 3, 31
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/resolution/commitment_resolver.py", "Python", 0, 0, 0, 0, 0, 229, 0, 0, 0, 0, 0, 0, 0, 0, 38, 50, 317
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/resolution/resolution_detector.py", "Python", 0, 0, 0, 0, 0, 345, 0, 0, 0, 0, 0, 0, 0, 0, 265, 69, 679
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/resolution/resolver_pipeline.py", "Python", 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 122, 51, 428
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/similarity.py", "Python", 0, 0, 0, 0, 0, 249, 0, 0, 0, 0, 0, 0, 0, 0, 259, 56, 564
+"/home/uzair/vocaply-system/services/ai-pipeline/src/services/tokenization.py", "Python", 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 24, 11, 53
+"/home/uzair/vocaply-system/services/ai-pipeline/test_api.py", "Python", 0, 0, 0, 0, 0, 59, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 64
+"/home/uzair/vocaply-system/services/ai-pipeline/test_conn.py", "Python", 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 23
+"/home/uzair/vocaply-system/services/ai-pipeline/test_extraction.py", "Python", 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 9, 18, 87
+"/home/uzair/vocaply-system/services/ai-pipeline/test_hang.py", "Python", 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 26
+"/home/uzair/vocaply-system/services/ai-pipeline/test_import.py", "Python", 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 44
+"/home/uzair/vocaply-system/services/ai-pipeline/test_import_extractor.py", "Python", 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 8
+"/home/uzair/vocaply-system/services/ai-pipeline/test_out.json", "JSON", 0, 160, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 160
+"/home/uzair/vocaply-system/services/ai-pipeline/test_route_extract.py", "Python", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 7
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/__init__.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/conftest.py", "Python", 0, 0, 0, 0, 0, 89, 0, 0, 0, 0, 0, 0, 0, 0, 32, 37, 158
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/date_edge_cases.json", "JSON", 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 33
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/date_resolution_cases.json", "JSON", 0, 111, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 112
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/golden_dataset/resolution_fixture_01.json", "JSON", 0, 268, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 269
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/golden_dataset/resolver_fixture_01.json", "JSON", 0, 198, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 207
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/golden_dataset/resolver_fixture_02.json", "JSON", 0, 57, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 58
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/golden_dataset/resolver_fixture_03.json", "JSON", 0, 72, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 73
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/participant_map_standup.json", "JSON", 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 15
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/raw_transcript_edge_cases.json", "JSON", 0, 72, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 73
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/raw_transcript_standup_fragmented.json", "JSON", 0, 135, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 136
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/fixtures/similarity_known_pairs.json", "JSON", 0, 359, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 364
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_action_item_parser.py", "Python", 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 24
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_blocker_parser.py", "Python", 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 20
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_cleanup_endpoint.py", "Python", 0, 0, 0, 0, 0, 139, 0, 0, 0, 0, 0, 0, 0, 0, 29, 37, 205
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_commitment_parser.py", "Python", 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 2, 5, 25
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_commitment_resolver.py", "Python", 0, 0, 0, 0, 0, 302, 0, 0, 0, 0, 0, 0, 0, 0, 35, 57, 394
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_date_parser.py", "Python", 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 0, 0, 0, 2, 18, 93
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_decision_parser.py", "Python", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 8
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_deduplicator.py", "Python", 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 0, 8, 14, 78
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_extract_endpoint.py", "Python", 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 50
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_extraction_models.py", "Python", 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 33
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_extractor.py", "Python", 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 54
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_filler_word_remover.py", "Python", 0, 0, 0, 0, 0, 107, 0, 0, 0, 0, 0, 0, 0, 0, 45, 61, 213
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_grammar_normalizer.py", "Python", 0, 0, 0, 0, 0, 251, 0, 0, 0, 0, 0, 0, 0, 0, 57, 77, 385
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_health.py", "Python", 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 0, 0, 0, 25, 28, 176
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_middleware.py", "Python", 0, 0, 0, 0, 0, 98, 0, 0, 0, 0, 0, 0, 0, 0, 24, 27, 149
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_openai_client.py", "Python", 0, 0, 0, 0, 0, 193, 0, 0, 0, 0, 0, 0, 0, 0, 40, 70, 303
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_resolution_detector.py", "Python", 0, 0, 0, 0, 0, 275, 0, 0, 0, 0, 0, 0, 0, 0, 46, 81, 402
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_resolve_endpoint.py", "Python", 0, 0, 0, 0, 0, 216, 0, 0, 0, 0, 0, 0, 0, 0, 41, 58, 315
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_resolver_pipeline.py", "Python", 0, 0, 0, 0, 0, 457, 0, 0, 0, 0, 0, 0, 0, 0, 63, 90, 610
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_settings.py", "Python", 0, 0, 0, 0, 0, 127, 0, 0, 0, 0, 0, 0, 0, 0, 28, 37, 192
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_similarity.py", "Python", 0, 0, 0, 0, 0, 232, 0, 0, 0, 0, 0, 0, 0, 0, 75, 82, 389
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_speaker_formatter.py", "Python", 0, 0, 0, 0, 0, 151, 0, 0, 0, 0, 0, 0, 0, 0, 48, 68, 267
+"/home/uzair/vocaply-system/services/ai-pipeline/tests/test_transcript_cleaner.py", "Python", 0, 0, 0, 0, 0, 198, 0, 0, 0, 0, 0, 0, 0, 0, 31, 49, 278
+"/home/uzair/vocaply-system/services/api/.dockerignore", "Ignore", 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 1, 7
+"/home/uzair/vocaply-system/services/api/Day 14 Auth API Part 2.md", "Markdown", 631, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 183, 814
+"/home/uzair/vocaply-system/services/api/Day 19 Commitments Accountability.md", "Markdown", 243, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 82, 325
+"/home/uzair/vocaply-system/services/api/Day 29 Meeting Detail.md", "Markdown", 494, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 106, 600
+"/home/uzair/vocaply-system/services/api/Dockerfile", "Docker", 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 14, 17, 49
+"/home/uzair/vocaply-system/services/api/Rapto Day 63 Outlook.md", "Markdown", 1277, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 292, 1569
+"/home/uzair/vocaply-system/services/api/Rapto Day 64 Token Refresh.md", "Markdown", 1181, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 245, 1426
+"/home/uzair/vocaply-system/services/api/Rapto Day 65 Integration.md", "Markdown", 995, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 209, 1204
+"/home/uzair/vocaply-system/services/api/Rapto Day 66 integrate.md", "Markdown", 925, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 211, 1136
+"/home/uzair/vocaply-system/services/api/Rapto Day 67 Slack Notifications.md", "Markdown", 799, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 186, 985
+"/home/uzair/vocaply-system/services/api/Rapto Day 68 Email Notifications.md", "Markdown", 923, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 215, 1138
+"/home/uzair/vocaply-system/services/api/Vocaply Day 16 Teams API.md", "Markdown", 890, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 1130
+"/home/uzair/vocaply-system/services/api/Vocaply Day 17 Meetings.md", "Markdown", 834, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 379, 1213
+"/home/uzair/vocaply-system/services/api/Vocaply Day 18 Full Scalable.md", "Markdown", 328, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104, 432
+"/home/uzair/vocaply-system/services/api/Vocaply Day 22 Integrations.md", "Markdown", 1060, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 213, 1273
+"/home/uzair/vocaply-system/services/api/Vocaply Day 23 Billing.md", "Markdown", 915, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 210, 1125
+"/home/uzair/vocaply-system/services/api/Vocaply Day 24 Notifications.md", "Markdown", 1030, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 207, 1237
+"/home/uzair/vocaply-system/services/api/Vocaply Day 60 Slack Integration.md", "Markdown", 1509, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 269, 1778
+"/home/uzair/vocaply-system/services/api/Vocaply Day 61 Linear.md", "Markdown", 965, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 263, 1228
+"/home/uzair/vocaply-system/services/api/Vocaply_Day56_Google_Calendar_Sync_Plan.md", "Markdown", 1354, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 289, 1643
+"/home/uzair/vocaply-system/services/api/Vocaply_Day57_Bot_Deduplication_Plan.md", "Markdown", 1055, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 207, 1262
+"/home/uzair/vocaply-system/services/api/Vocaply_Day58_Jira_Integration_Plan.md", "Markdown", 1449, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 288, 1737
+"/home/uzair/vocaply-system/services/api/Vocaply_Day59_Jira_Webhook_Plan (2).md", "Markdown", 1363, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 1603
+"/home/uzair/vocaply-system/services/api/Vocaply_Day_21_Integrations_Jira_Plan.md", "Markdown", 942, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 234, 1176
+"/home/uzair/vocaply-system/services/api/check-db-billing.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 2, 11
+"/home/uzair/vocaply-system/services/api/check-plan.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 2, 10
+"/home/uzair/vocaply-system/services/api/check-redis-ttl.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 2, 11
+"/home/uzair/vocaply-system/services/api/check-redis.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 2, 9
+"/home/uzair/vocaply-system/services/api/check_bullmq.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 1, 17
+"/home/uzair/vocaply-system/services/api/check_mongo.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10
+"/home/uzair/vocaply-system/services/api/check_participants.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11
+"/home/uzair/vocaply-system/services/api/check_speaker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 1, 9
+"/home/uzair/vocaply-system/services/api/check_speaker_keys.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10
+"/home/uzair/vocaply-system/services/api/clean_env.js", "JavaScript", 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 24
+"/home/uzair/vocaply-system/services/api/day13-auth-plan.md", "Markdown", 514, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 164, 678
+"/home/uzair/vocaply-system/services/api/deleteUser.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10
+"/home/uzair/vocaply-system/services/api/docker-compose.yml", "YAML", 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 23
+"/home/uzair/vocaply-system/services/api/fix_participants.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 0, 0, 0, 9, 60
+"/home/uzair/vocaply-system/services/api/jest.config.js", "JavaScript", 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 35
+"/home/uzair/vocaply-system/services/api/manual-sig-test.js", "JavaScript", 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 23
+"/home/uzair/vocaply-system/services/api/package-lock.json", "JSON", 0, 8492, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 8493
+"/home/uzair/vocaply-system/services/api/package.json", "JSON", 0, 79, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 80
+"/home/uzair/vocaply-system/services/api/prisma/migrations/20260611135304_init/migration.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 541, 153, 177, 871
+"/home/uzair/vocaply-system/services/api/prisma/migrations/20260706091213_add_extraction_metadata_and_new_statuses/migration.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 8, 5, 36
+"/home/uzair/vocaply-system/services/api/prisma/migrations/20260713000000_day59_action_item_commitment_link/migration.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 28, 4, 43
+"/home/uzair/vocaply-system/services/api/prisma/seed.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 209, 0, 0, 0, 0, 0, 0, 0, 7, 21, 237
+"/home/uzair/vocaply-system/services/api/prisma/tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 1, 8
+"/home/uzair/vocaply-system/services/api/scratch-bot-check.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 4, 12
+"/home/uzair/vocaply-system/services/api/scratch-bot-status.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 4, 16
+"/home/uzair/vocaply-system/services/api/scratch-bot.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 2, 8, 43
+"/home/uzair/vocaply-system/services/api/scratch-check.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11
+"/home/uzair/vocaply-system/services/api/scratch-custom-extract.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 274, 0, 0, 0, 0, 0, 0, 0, 0, 6, 280
+"/home/uzair/vocaply-system/services/api/scratch-db-check.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 6, 24
+"/home/uzair/vocaply-system/services/api/scratch-db.js", "JavaScript", 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 12
+"/home/uzair/vocaply-system/services/api/scratch-delete-keys.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 4, 18
+"/home/uzair/vocaply-system/services/api/scratch-fix-last-meeting.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 0, 7, 44
+"/home/uzair/vocaply-system/services/api/scratch-http.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 9, 74
+"/home/uzair/vocaply-system/services/api/scratch-meeting-dates.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 5, 18
+"/home/uzair/vocaply-system/services/api/scratch-meetings-3.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 5, 17
+"/home/uzair/vocaply-system/services/api/scratch-msal.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 4, 21
+"/home/uzair/vocaply-system/services/api/scratch-payload.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 5, 20
+"/home/uzair/vocaply-system/services/api/scratch-redis-keys.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 4, 12
+"/home/uzair/vocaply-system/services/api/scratch-reprocess.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 7, 29
+"/home/uzair/vocaply-system/services/api/scratch-seed.js", "JavaScript", 0, 0, 0, 0, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 9, 69
+"/home/uzair/vocaply-system/services/api/scratch-team-data.js", "JavaScript", 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 16
+"/home/uzair/vocaply-system/services/api/scratch-test-ai-pipeline.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 0, 4, 37
+"/home/uzair/vocaply-system/services/api/scratch-test-analytics.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 7, 37
+"/home/uzair/vocaply-system/services/api/scratch-test-keys.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 4, 17
+"/home/uzair/vocaply-system/services/api/scratch-test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 1, 12
+"/home/uzair/vocaply-system/services/api/scratch-transcript.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 2, 17
+"/home/uzair/vocaply-system/services/api/scratch-uzair.js", "JavaScript", 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 14
+"/home/uzair/vocaply-system/services/api/scratch.js", "JavaScript", 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 7, 33
+"/home/uzair/vocaply-system/services/api/scratch.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3
+"/home/uzair/vocaply-system/services/api/scratch_check_meeting_participants.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 1, 7, 31
+"/home/uzair/vocaply-system/services/api/server.js", "JavaScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/home/uzair/vocaply-system/services/api/src/app.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 106, 0, 0, 0, 0, 0, 0, 0, 24, 17, 147
+"/home/uzair/vocaply-system/services/api/src/config/bull-board.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 0, 5, 33
+"/home/uzair/vocaply-system/services/api/src/config/cors.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 2, 14, 66
+"/home/uzair/vocaply-system/services/api/src/config/env.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 0, 0, 0, 0, 10, 24, 101
+"/home/uzair/vocaply-system/services/api/src/config/logger.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 10, 6, 52
+"/home/uzair/vocaply-system/services/api/src/config/metrics.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 7, 3, 21
+"/home/uzair/vocaply-system/services/api/src/config/notification-dedup.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 3, 3, 13
+"/home/uzair/vocaply-system/services/api/src/config/oauth-providers.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 2, 3, 48
+"/home/uzair/vocaply-system/services/api/src/config/plans.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 150, 0, 0, 0, 0, 0, 0, 0, 41, 26, 217
+"/home/uzair/vocaply-system/services/api/src/config/redis.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 2, 11
+"/home/uzair/vocaply-system/services/api/src/config/team-settings.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 4, 6, 31
+"/home/uzair/vocaply-system/services/api/src/db/client.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 3, 13
+"/home/uzair/vocaply-system/services/api/src/db/mongo.client.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/services/api/src/get-token.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 1, 7, 32
+"/home/uzair/vocaply-system/services/api/src/middleware/auth.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 4, 7, 51
+"/home/uzair/vocaply-system/services/api/src/middleware/error.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 91, 0, 0, 0, 0, 0, 0, 0, 29, 17, 137
+"/home/uzair/vocaply-system/services/api/src/middleware/plan-limits.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 95, 0, 0, 0, 0, 0, 0, 0, 46, 22, 163
+"/home/uzair/vocaply-system/services/api/src/middleware/rate-limit.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 162, 0, 0, 0, 0, 0, 0, 0, 14, 34, 210
+"/home/uzair/vocaply-system/services/api/src/middleware/request-logger.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 1, 17, 59
+"/home/uzair/vocaply-system/services/api/src/middleware/role.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 4, 6, 31
+"/home/uzair/vocaply-system/services/api/src/middleware/tenant.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 3, 2, 14
+"/home/uzair/vocaply-system/services/api/src/middleware/validate.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 0, 0, 0, 3, 19, 94
+"/home/uzair/vocaply-system/services/api/src/modules/action-items/action-items.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 0, 0, 0, 24, 17, 120
+"/home/uzair/vocaply-system/services/api/src/modules/action-items/action-items.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 152, 0, 0, 0, 0, 0, 0, 0, 41, 23, 216
+"/home/uzair/vocaply-system/services/api/src/modules/action-items/action-items.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 25, 13, 59
+"/home/uzair/vocaply-system/services/api/src/modules/action-items/action-items.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 268, 0, 0, 0, 0, 0, 0, 0, 24, 46, 338
+"/home/uzair/vocaply-system/services/api/src/modules/action-items/action-items.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 7, 38
+"/home/uzair/vocaply-system/services/api/src/modules/action-items/action-items.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 0, 6, 47
+"/home/uzair/vocaply-system/services/api/src/modules/action-items/index.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2
+"/home/uzair/vocaply-system/services/api/src/modules/action-items/jira-sync.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 152, 0, 0, 0, 0, 0, 0, 0, 119, 27, 298
+"/home/uzair/vocaply-system/services/api/src/modules/analytics/analytics.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 16, 18, 77
+"/home/uzair/vocaply-system/services/api/src/modules/analytics/analytics.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 186, 0, 0, 0, 0, 0, 0, 0, 25, 11, 222
+"/home/uzair/vocaply-system/services/api/src/modules/analytics/analytics.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0, 16, 6, 56
+"/home/uzair/vocaply-system/services/api/src/modules/analytics/analytics.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 51, 37, 343
+"/home/uzair/vocaply-system/services/api/src/modules/analytics/analytics.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0, 0, 0, 0, 24, 12, 114
+"/home/uzair/vocaply-system/services/api/src/modules/analytics/analytics.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0, 2, 7, 43
+"/home/uzair/vocaply-system/services/api/src/modules/auth/auth.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 0, 53, 19, 149
+"/home/uzair/vocaply-system/services/api/src/modules/auth/auth.helpers.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0, 27, 5, 66
+"/home/uzair/vocaply-system/services/api/src/modules/auth/auth.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 163, 0, 0, 0, 0, 0, 0, 0, 60, 22, 245
+"/home/uzair/vocaply-system/services/api/src/modules/auth/auth.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 84, 0, 0, 0, 0, 0, 0, 0, 58, 27, 169
+"/home/uzair/vocaply-system/services/api/src/modules/auth/auth.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 784, 0, 0, 0, 0, 0, 0, 0, 155, 153, 1092
+"/home/uzair/vocaply-system/services/api/src/modules/auth/auth.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 5, 30
+"/home/uzair/vocaply-system/services/api/src/modules/auth/auth.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 1, 10, 57
+"/home/uzair/vocaply-system/services/api/src/modules/billing/billing.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 89, 0, 0, 0, 0, 0, 0, 0, 15, 16, 120
+"/home/uzair/vocaply-system/services/api/src/modules/billing/billing.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 175, 0, 0, 0, 0, 0, 0, 0, 50, 17, 242
+"/home/uzair/vocaply-system/services/api/src/modules/billing/billing.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 23, 10, 93
+"/home/uzair/vocaply-system/services/api/src/modules/billing/billing.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 166, 0, 0, 0, 0, 0, 0, 0, 53, 34, 253
+"/home/uzair/vocaply-system/services/api/src/modules/billing/billing.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 85, 0, 0, 0, 0, 0, 0, 0, 14, 18, 117
+"/home/uzair/vocaply-system/services/api/src/modules/billing/billing.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 8, 5, 29
+"/home/uzair/vocaply-system/services/api/src/modules/commitments/commitments.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 0, 0, 8, 85
+"/home/uzair/vocaply-system/services/api/src/modules/commitments/commitments.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 147, 0, 0, 0, 0, 0, 0, 0, 16, 25, 188
+"/home/uzair/vocaply-system/services/api/src/modules/commitments/commitments.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 0, 0, 21, 9, 69
+"/home/uzair/vocaply-system/services/api/src/modules/commitments/commitments.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 144, 0, 0, 0, 0, 0, 0, 0, 10, 29, 183
+"/home/uzair/vocaply-system/services/api/src/modules/commitments/commitments.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 3, 26
+"/home/uzair/vocaply-system/services/api/src/modules/commitments/commitments.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 4, 54
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/integrations.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 403, 0, 0, 0, 0, 0, 0, 0, 43, 76, 522
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/integrations.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 188, 0, 0, 0, 0, 0, 0, 0, 12, 16, 216
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/integrations.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 233, 0, 0, 0, 0, 0, 0, 0, 40, 36, 309
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/integrations.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 537, 0, 0, 0, 0, 0, 0, 0, 85, 87, 709
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/integrations.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 97, 0, 0, 0, 0, 0, 0, 0, 38, 22, 157
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/integrations.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 86, 0, 0, 0, 0, 0, 0, 0, 35, 16, 137
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/calendar-provider.interface.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 6, 30
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/calendar-provider.registry.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 5, 26
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/google-calendar.provider.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 269, 0, 0, 0, 0, 0, 0, 0, 1, 36, 306
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/jira.provider.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 514, 0, 0, 0, 0, 0, 0, 0, 177, 78, 769
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/linear.provider.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 328, 0, 0, 0, 0, 0, 0, 0, 35, 44, 407
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/notion.provider.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 246, 0, 0, 0, 0, 0, 0, 0, 47, 34, 327
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/oauth-config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 18, 8, 90
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/oauth-state.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 0, 0, 0, 0, 1, 11, 50
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/outlook-calendar.provider.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 340, 0, 0, 0, 0, 0, 0, 0, 10, 25, 375
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/provider.interface.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 68, 13, 121
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/provider.registry.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 0, 0, 0, 31, 4, 62
+"/home/uzair/vocaply-system/services/api/src/modules/integrations/providers/slack.provider.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 376, 0, 0, 0, 0, 0, 0, 0, 57, 60, 493
+"/home/uzair/vocaply-system/services/api/src/modules/meetings/meetings.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 142, 0, 0, 0, 0, 0, 0, 0, 22, 42, 206
+"/home/uzair/vocaply-system/services/api/src/modules/meetings/meetings.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 226, 0, 0, 0, 0, 0, 0, 0, 65, 44, 335
+"/home/uzair/vocaply-system/services/api/src/modules/meetings/meetings.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 153, 0, 0, 0, 0, 0, 0, 0, 41, 22, 216
+"/home/uzair/vocaply-system/services/api/src/modules/meetings/meetings.service.state.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 57, 0, 0, 0, 0, 0, 0, 0, 63, 13, 133
+"/home/uzair/vocaply-system/services/api/src/modules/meetings/meetings.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 337, 0, 0, 0, 0, 0, 0, 0, 91, 87, 515
+"/home/uzair/vocaply-system/services/api/src/modules/meetings/meetings.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 146, 0, 0, 0, 0, 0, 0, 0, 49, 29, 224
+"/home/uzair/vocaply-system/services/api/src/modules/meetings/meetings.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 158, 0, 0, 0, 0, 0, 0, 0, 36, 35, 229
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/email.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 459, 0, 0, 0, 0, 0, 0, 0, 45, 40, 544
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/notifications.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 125, 0, 0, 0, 0, 0, 0, 0, 38, 23, 186
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/notifications.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 14, 7, 46
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/notifications.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 61, 0, 0, 0, 0, 0, 0, 0, 38, 12, 111
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/notifications.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 176, 0, 0, 0, 0, 0, 0, 0, 63, 29, 268
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/notifications.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 0, 0, 0, 16, 10, 105
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/notifications.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 82, 0, 0, 0, 0, 0, 0, 0, 12, 18, 112
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/slack-notify.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 250, 0, 0, 0, 0, 0, 0, 0, 51, 26, 327
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/CommitmentMissed.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 7, 55
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/DeadlineReminder.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 7, 59
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/IntegrationDeactivated.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 7, 51
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/IntegrationWarning.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 7, 51
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/ManagerAlert.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 7, 56
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/MeetingSummary.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 59, 0, 0, 0, 0, 0, 0, 0, 0, 8, 67
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/OwnerWelcome.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 155, 0, 0, 0, 0, 0, 0, 0, 6, 14, 175
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/PasswordReset.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 0, 6, 42
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/PaymentFailed.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 7, 51
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/PlanLimit.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 6, 51
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/TeamInvite.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 7, 59
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/TeamMemberWelcome.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 166, 0, 0, 0, 0, 0, 0, 0, 6, 14, 186
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/VerifyEmail.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 0, 6, 42
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/shared/EmailButton.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 0, 0, 0, 4, 6, 37
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/shared/EmailCard.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 3, 6, 37
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/shared/EmailDivider.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 2, 6
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/shared/EmailFooter.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 0, 6, 42
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/shared/EmailLayout.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 134, 0, 0, 0, 0, 0, 0, 0, 6, 9, 149
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/shared/EmailStatCallout.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 3, 5, 32
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/templates/shared/email-tokens.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 8, 9, 64
+"/home/uzair/vocaply-system/services/api/src/modules/notifications/unsubscribe.utils.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 6, 31
+"/home/uzair/vocaply-system/services/api/src/modules/teams/team-health.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 134, 0, 0, 0, 0, 0, 0, 0, 51, 32, 217
+"/home/uzair/vocaply-system/services/api/src/modules/teams/teams.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 57, 0, 0, 0, 0, 0, 0, 0, 48, 12, 117
+"/home/uzair/vocaply-system/services/api/src/modules/teams/teams.repository.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 290, 0, 0, 0, 0, 0, 0, 0, 81, 36, 407
+"/home/uzair/vocaply-system/services/api/src/modules/teams/teams.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 88, 0, 0, 0, 0, 0, 0, 0, 57, 18, 163
+"/home/uzair/vocaply-system/services/api/src/modules/teams/teams.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 639, 0, 0, 0, 0, 0, 0, 0, 124, 116, 879
+"/home/uzair/vocaply-system/services/api/src/modules/teams/teams.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 150, 0, 0, 0, 0, 0, 0, 0, 8, 31, 189
+"/home/uzair/vocaply-system/services/api/src/modules/teams/teams.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 119, 0, 0, 0, 0, 0, 0, 0, 38, 15, 172
+"/home/uzair/vocaply-system/services/api/src/modules/webhooks/jira.webhook.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 135, 0, 0, 0, 0, 0, 0, 0, 112, 25, 272
+"/home/uzair/vocaply-system/services/api/src/modules/webhooks/paddle.webhook.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 300, 0, 0, 0, 0, 0, 0, 0, 91, 64, 455
+"/home/uzair/vocaply-system/services/api/src/modules/webhooks/recall.webhook.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 251, 0, 0, 0, 0, 0, 0, 0, 19, 41, 311
+"/home/uzair/vocaply-system/services/api/src/modules/webhooks/slack.webhook.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 129, 0, 0, 0, 0, 0, 0, 0, 50, 28, 207
+"/home/uzair/vocaply-system/services/api/src/modules/webhooks/stripe.webhook.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 92, 0, 0, 0, 0, 0, 0, 0, 1, 17, 110
+"/home/uzair/vocaply-system/services/api/src/modules/webhooks/webhooks.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 5, 6, 36
+"/home/uzair/vocaply-system/services/api/src/modules/webhooks/webhooks.validator.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 115, 0, 0, 0, 0, 0, 0, 0, 90, 40, 245
+"/home/uzair/vocaply-system/services/api/src/queues/jobs/calendar-sync.job.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4
+"/home/uzair/vocaply-system/services/api/src/queues/jobs/deadline.job.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4
+"/home/uzair/vocaply-system/services/api/src/queues/jobs/extract.job.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6
+"/home/uzair/vocaply-system/services/api/src/queues/jobs/integrate.job.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 27, 2, 37
+"/home/uzair/vocaply-system/services/api/src/queues/jobs/notify.job.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 2, 37
+"/home/uzair/vocaply-system/services/api/src/queues/jobs/resolve.job.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6
+"/home/uzair/vocaply-system/services/api/src/queues/jobs/token-refresh.job.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 1, 5
+"/home/uzair/vocaply-system/services/api/src/queues/jobs/transcribe.job.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6
+"/home/uzair/vocaply-system/services/api/src/queues/queue.client.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 91, 0, 0, 0, 0, 0, 0, 0, 20, 12, 123
+"/home/uzair/vocaply-system/services/api/src/queues/scheduler.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 0, 0, 0, 0, 14, 15, 128
+"/home/uzair/vocaply-system/services/api/src/queues/workers/calendar-sync.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 0, 0, 1, 7, 47
+"/home/uzair/vocaply-system/services/api/src/queues/workers/calendar.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 26, 18, 119
+"/home/uzair/vocaply-system/services/api/src/queues/workers/deadline.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 112, 0, 0, 0, 0, 0, 0, 0, 8, 15, 135
+"/home/uzair/vocaply-system/services/api/src/queues/workers/extract.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 365, 0, 0, 0, 0, 0, 0, 0, 63, 46, 474
+"/home/uzair/vocaply-system/services/api/src/queues/workers/integrate.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 245, 0, 0, 0, 0, 0, 0, 0, 76, 37, 358
+"/home/uzair/vocaply-system/services/api/src/queues/workers/notify.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 617, 0, 0, 0, 0, 0, 0, 0, 76, 69, 762
+"/home/uzair/vocaply-system/services/api/src/queues/workers/resolve.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 350, 0, 0, 0, 0, 0, 0, 0, 89, 46, 485
+"/home/uzair/vocaply-system/services/api/src/queues/workers/token-refresh.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 0, 11, 10, 98
+"/home/uzair/vocaply-system/services/api/src/queues/workers/transcribe.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 204, 0, 0, 0, 0, 0, 0, 0, 46, 34, 284
+"/home/uzair/vocaply-system/services/api/src/realtime/rooms.manager.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 25, 13, 93
+"/home/uzair/vocaply-system/services/api/src/realtime/socket.emitter.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 4, 14
+"/home/uzair/vocaply-system/services/api/src/realtime/socket.events.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 33, 17, 91
+"/home/uzair/vocaply-system/services/api/src/realtime/socket.server.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 88, 0, 0, 0, 0, 0, 0, 0, 44, 25, 157
+"/home/uzair/vocaply-system/services/api/src/scratch/backfill.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 1, 8, 41
+"/home/uzair/vocaply-system/services/api/src/scratch/bot.json", "JSON", 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/services/api/src/scratch/check_bot.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 4, 21
+"/home/uzair/vocaply-system/services/api/src/scratch/check_meeting_status.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 3, 13
+"/home/uzair/vocaply-system/services/api/src/scratch/check_meetings.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 1, 12
+"/home/uzair/vocaply-system/services/api/src/scratch/check_mongo.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/services/api/src/scratch/check_transcript.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 5, 24
+"/home/uzair/vocaply-system/services/api/src/scratch/kill_sessions.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 1, 5, 41
+"/home/uzair/vocaply-system/services/api/src/scratch/reprocess_all_transcripts.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 95, 0, 0, 0, 0, 0, 0, 0, 5, 18, 118
+"/home/uzair/vocaply-system/services/api/src/scratch/requeue_and_clear.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 5, 10, 64
+"/home/uzair/vocaply-system/services/api/src/scratch/requeue_meeting.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 9, 35
+"/home/uzair/vocaply-system/services/api/src/scripts/requeue.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 9, 40
+"/home/uzair/vocaply-system/services/api/src/seed-demo-commitments.js", "JavaScript", 0, 0, 0, 0, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 19, 153
+"/home/uzair/vocaply-system/services/api/src/server.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 17, 14, 79
+"/home/uzair/vocaply-system/services/api/src/services/ai-pipeline/ai-pipeline.circuit-breaker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 131, 0, 0, 0, 0, 0, 0, 0, 47, 25, 203
+"/home/uzair/vocaply-system/services/api/src/services/ai-pipeline/ai-pipeline.client.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 297, 0, 0, 0, 0, 0, 0, 0, 109, 53, 459
+"/home/uzair/vocaply-system/services/api/src/services/ai-pipeline/ai-pipeline.errors.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 111, 24, 239
+"/home/uzair/vocaply-system/services/api/src/services/ai-pipeline/ai-pipeline.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 231, 0, 0, 0, 0, 0, 0, 0, 169, 37, 437
+"/home/uzair/vocaply-system/services/api/src/services/calendar-sync.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 194, 0, 0, 0, 0, 0, 0, 0, 21, 40, 255
+"/home/uzair/vocaply-system/services/api/src/services/commitment-resolver.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 257, 0, 0, 0, 0, 0, 0, 0, 66, 66, 389
+"/home/uzair/vocaply-system/services/api/src/services/dedup.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 0, 0, 0, 22, 21, 122
+"/home/uzair/vocaply-system/services/api/src/services/integration-health.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 203, 0, 0, 0, 0, 0, 0, 0, 36, 29, 268
+"/home/uzair/vocaply-system/services/api/src/services/mongo.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 0, 8, 44
+"/home/uzair/vocaply-system/services/api/src/services/owner-resolver.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 10, 10, 62
+"/home/uzair/vocaply-system/services/api/src/services/paddle.client.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 124, 0, 0, 0, 0, 0, 0, 0, 54, 36, 214
+"/home/uzair/vocaply-system/services/api/src/services/recall.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 219, 0, 0, 0, 0, 0, 0, 0, 52, 49, 320
+"/home/uzair/vocaply-system/services/api/src/services/score.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 0, 0, 0, 5, 16, 92
+"/home/uzair/vocaply-system/services/api/src/services/token-refresh.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 178, 0, 0, 0, 0, 0, 0, 0, 31, 31, 240
+"/home/uzair/vocaply-system/services/api/src/test-day17-meetings.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 407, 0, 0, 0, 0, 0, 0, 0, 58, 85, 550
+"/home/uzair/vocaply-system/services/api/src/test-day21-integrations.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 202, 0, 0, 0, 0, 0, 0, 0, 13, 44, 259
+"/home/uzair/vocaply-system/services/api/src/test-day22-integrations.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 121, 0, 0, 0, 0, 0, 0, 0, 19, 17, 157
+"/home/uzair/vocaply-system/services/api/src/test-db-connection.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 6, 41
+"/home/uzair/vocaply-system/services/api/src/test-onboarding-email-trigger.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 0, 0, 0, 6, 13, 91
+"/home/uzair/vocaply-system/services/api/src/test-teams-api.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 139, 0, 0, 0, 0, 0, 0, 0, 15, 22, 176
+"/home/uzair/vocaply-system/services/api/src/test-welcome-emails.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 101, 0, 0, 0, 0, 0, 0, 0, 4, 16, 121
+"/home/uzair/vocaply-system/services/api/src/tests/unit/dedup.service.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 0, 0, 0, 0, 1, 16, 84
+"/home/uzair/vocaply-system/services/api/src/tests/unit/integration-health.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 146, 0, 0, 0, 0, 0, 0, 0, 0, 23, 169
+"/home/uzair/vocaply-system/services/api/src/tests/unit/token-refresh-service.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 0, 0, 0, 9, 60
+"/home/uzair/vocaply-system/services/api/src/types/express.d.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 2, 18
+"/home/uzair/vocaply-system/services/api/src/utils/async-handler.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 14, 3, 28
+"/home/uzair/vocaply-system/services/api/src/utils/crypto.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 2, 4, 31
+"/home/uzair/vocaply-system/services/api/src/utils/date.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 15, 9, 59
+"/home/uzair/vocaply-system/services/api/src/utils/errors.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 15, 10, 115
+"/home/uzair/vocaply-system/services/api/src/utils/graphql-client.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 8, 10, 88
+"/home/uzair/vocaply-system/services/api/src/utils/pagination.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 29, 15, 134
+"/home/uzair/vocaply-system/services/api/src/utils/participant-matcher.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 0, 0, 16, 15, 82
+"/home/uzair/vocaply-system/services/api/src/utils/period-hash.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 18, 3, 26
+"/home/uzair/vocaply-system/services/api/src/utils/platform-detect.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0, 0, 0, 0, 18, 14, 110
+"/home/uzair/vocaply-system/services/api/src/utils/response.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 8, 6, 49
+"/home/uzair/vocaply-system/services/api/src/worker.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 4, 10, 56
+"/home/uzair/vocaply-system/services/api/test-compile.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4
+"/home/uzair/vocaply-system/services/api/test-day18-webhooks.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 116, 0, 0, 0, 0, 0, 0, 0, 10, 23, 149
+"/home/uzair/vocaply-system/services/api/test-email.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 4, 23
+"/home/uzair/vocaply-system/services/api/test-http-validation.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 2, 8, 46
+"/home/uzair/vocaply-system/services/api/test-paddle-sdk.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3
+"/home/uzair/vocaply-system/services/api/test-paddle-unmarshal.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 2, 6
+"/home/uzair/vocaply-system/services/api/test-paddle.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 2, 24
+"/home/uzair/vocaply-system/services/api/test-paddle2.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 2, 21
+"/home/uzair/vocaply-system/services/api/test-prisma.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 2, 10
+"/home/uzair/vocaply-system/services/api/test/contracts/ai-pipeline-contract.json", "JSON", 0, 283, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 284
+"/home/uzair/vocaply-system/services/api/test/services/ai-pipeline/ai-pipeline.circuit-breaker.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 170, 0, 0, 0, 0, 0, 0, 0, 54, 59, 283
+"/home/uzair/vocaply-system/services/api/test/services/ai-pipeline/ai-pipeline.client.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 328, 0, 0, 0, 0, 0, 0, 0, 40, 51, 419
+"/home/uzair/vocaply-system/services/api/tests/fixtures/jira-responses.fixture.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 5, 6, 41
+"/home/uzair/vocaply-system/services/api/tests/fixtures/linear-responses.fixture.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 111, 0, 0, 0, 0, 0, 0, 0, 9, 8, 128
+"/home/uzair/vocaply-system/services/api/tests/fixtures/notion-responses.fixture.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 6, 6, 112
+"/home/uzair/vocaply-system/services/api/tests/fixtures/outlook-events.fixture.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 108, 0, 0, 0, 0, 0, 0, 0, 7, 7, 122
+"/home/uzair/vocaply-system/services/api/tests/fixtures/slack-responses.fixture.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 5, 4, 46
+"/home/uzair/vocaply-system/services/api/tests/integration/auto-sync-parity.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 102, 0, 0, 0, 0, 0, 0, 0, 8, 21, 131
+"/home/uzair/vocaply-system/services/api/tests/integration/cross-channel-isolation.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 105, 0, 0, 0, 0, 0, 0, 0, 4, 17, 126
+"/home/uzair/vocaply-system/services/api/tests/integration/email-notifications.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 7, 72
+"/home/uzair/vocaply-system/services/api/tests/integration/email-rate-limit.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 3, 8, 43
+"/home/uzair/vocaply-system/services/api/tests/integration/integrations-e2e.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 313, 0, 0, 0, 0, 0, 0, 0, 62, 54, 429
+"/home/uzair/vocaply-system/services/api/tests/integration/linear-integration.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 152, 0, 0, 0, 0, 0, 0, 0, 18, 31, 201
+"/home/uzair/vocaply-system/services/api/tests/integration/notion-integration.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 93, 0, 0, 0, 0, 0, 0, 0, 12, 19, 124
+"/home/uzair/vocaply-system/services/api/tests/integration/outlook-calendar.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 87, 0, 0, 0, 0, 0, 0, 0, 17, 21, 125
+"/home/uzair/vocaply-system/services/api/tests/integration/slack-notifications.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 124, 0, 0, 0, 0, 0, 0, 0, 6, 24, 154
+"/home/uzair/vocaply-system/services/api/tests/integration/token-refresh.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 98, 0, 0, 0, 0, 0, 0, 0, 19, 24, 141
+"/home/uzair/vocaply-system/services/api/tests/integration/unsubscribe-header.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 11, 75
+"/home/uzair/vocaply-system/services/api/tests/modules/integrations/outlook-datetime-timezone.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 81, 0, 0, 0, 0, 0, 0, 0, 2, 13, 96
+"/home/uzair/vocaply-system/services/api/tests/support/http-mock-setup.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 212, 0, 0, 0, 0, 0, 0, 0, 20, 41, 273
+"/home/uzair/vocaply-system/services/api/tests/support/queue-test-harness.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 0, 0, 15, 14, 102
+"/home/uzair/vocaply-system/services/api/tests/support/test-db.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 152, 0, 0, 0, 0, 0, 0, 0, 7, 13, 172
+"/home/uzair/vocaply-system/services/api/tests/unit/auto-sync-eligibility.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 105, 0, 0, 0, 0, 0, 0, 0, 4, 27, 136
+"/home/uzair/vocaply-system/services/api/tests/unit/email-shared-primitives.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 89, 0, 0, 0, 0, 0, 0, 0, 0, 17, 106
+"/home/uzair/vocaply-system/services/api/tests/unit/email-templates.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 145, 0, 0, 0, 0, 0, 0, 0, 0, 21, 166
+"/home/uzair/vocaply-system/services/api/tests/unit/manager-fanout-resolution.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 3, 13, 81
+"/home/uzair/vocaply-system/services/api/tests/unit/slack-block-builders.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 111, 0, 0, 0, 0, 0, 0, 0, 0, 24, 135
+"/home/uzair/vocaply-system/services/api/tests/unit/team-settings-validation.test.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 12, 76
+"/home/uzair/vocaply-system/services/api/tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 1, 17
+"/home/uzair/vocaply-system/services/api/verifyUser.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11
+"/home/uzair/vocaply-system/web/Day 26 Dashboard Shell.md", "Markdown", 526, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 110, 636
+"/home/uzair/vocaply-system/web/Day 27 Dashboard Home.md", "Markdown", 548, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 98, 646
+"/home/uzair/vocaply-system/web/Day-28-Meetings-List-Plan.md", "Markdown", 492, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 91, 583
+"/home/uzair/vocaply-system/web/Day_30_Transcript_Tab_Plan.md", "Markdown", 198, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 258
+"/home/uzair/vocaply-system/web/README.md", "Markdown", 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 37
+"/home/uzair/vocaply-system/web/Vocaply Day 32 Deep Build.md", "Markdown", 335, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 400
+"/home/uzair/vocaply-system/web/Vocaply Day 33 Deep Build.md", "Markdown", 339, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 404
+"/home/uzair/vocaply-system/web/Vocaply Day 34 Deep Build.md", "Markdown", 341, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 404
+"/home/uzair/vocaply-system/web/Vocaply Day 35 Deep Build.md", "Markdown", 357, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 61, 418
+"/home/uzair/vocaply-system/web/Vocaply Day 36 Deep Build.md", "Markdown", 485, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 564
+"/home/uzair/vocaply-system/web/Vocaply Day 37 Deep Build.md", "Markdown", 431, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 502
+"/home/uzair/vocaply-system/web/Vocaply Day 39 Deep Build.md", "Markdown", 423, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 75, 498
+"/home/uzair/vocaply-system/web/Vocaply Day 40 Deep Build.md", "Markdown", 465, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 539
+"/home/uzair/vocaply-system/web/Vocaply Day 44 Master.md", "Markdown", 455, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 527
+"/home/uzair/vocaply-system/web/Vocaply Day 45 Master.md", "Markdown", 421, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 493
+"/home/uzair/vocaply-system/web/Vocaply Integrations Page.md", "Markdown", 1577, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 382, 1959
+"/home/uzair/vocaply-system/web/Vocaply Landing day 5.md", "Markdown", 1611, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 392, 2003
+"/home/uzair/vocaply-system/web/Vocaply_Day41_Integrations_Master_Plan.md", "Markdown", 378, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 81, 459
+"/home/uzair/vocaply-system/web/Vocaply_Day42_Billing_Master_Plan.md", "Markdown", 425, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 84, 509
+"/home/uzair/vocaply-system/web/Vocaply_Day43_Notifications_Master_Plan.md", "Markdown", 478, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 82, 560
+"/home/uzair/vocaply-system/web/Vocaply_Day_31_Deep_Plan.md", "Markdown", 313, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 387
+"/home/uzair/vocaply-system/web/Vocaply_Day_38_Deep_Plan.md", "Markdown", 490, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 88, 578
+"/home/uzair/vocaply-system/web/components.json", "JSON", 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 26
+"/home/uzair/vocaply-system/web/day15-auth-frontend-plan.md", "Markdown", 611, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 166, 777
+"/home/uzair/vocaply-system/web/eslint.config.mjs", "JavaScript", 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 19
+"/home/uzair/vocaply-system/web/next.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 4, 3, 18
+"/home/uzair/vocaply-system/web/package-lock.json", "JSON", 0, 12539, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 12540
+"/home/uzair/vocaply-system/web/package.json", "JSON", 0, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 59
+"/home/uzair/vocaply-system/web/postcss.config.mjs", "JavaScript", 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 8
+"/home/uzair/vocaply-system/web/public/file.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/globe.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/icons/app/rapto.svg", "XML", 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 41
+"/home/uzair/vocaply-system/web/public/icons/asana.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/icons/clickup.svg", "XML", 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34
+"/home/uzair/vocaply-system/web/public/icons/github.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/icons/google-calender.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/icons/google-meet.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/icons/jira.svg", "XML", 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 7
+"/home/uzair/vocaply-system/web/public/icons/linear.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/icons/notion.svg", "XML", 0, 0, 0, 508, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 509
+"/home/uzair/vocaply-system/web/public/icons/outlook.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/icons/slack.svg", "XML", 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 12
+"/home/uzair/vocaply-system/web/public/icons/teams.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/icons/webex.svg", "XML", 0, 0, 0, 167, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 167
+"/home/uzair/vocaply-system/web/public/icons/zapier.svg", "XML", 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 9
+"/home/uzair/vocaply-system/web/public/icons/zoom.svg", "XML", 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 8
+"/home/uzair/vocaply-system/web/public/icons/zoom1.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/next.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/vercel.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/public/window.svg", "XML", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/uzair/vocaply-system/web/src/app/(auth)/forgot-password/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/web/src/app/(auth)/layout.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 3, 15
+"/home/uzair/vocaply-system/web/src/app/(auth)/login/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 1, 3, 31
+"/home/uzair/vocaply-system/web/src/app/(auth)/register/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 1, 3, 31
+"/home/uzair/vocaply-system/web/src/app/(auth)/reset-password/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 3, 22
+"/home/uzair/vocaply-system/web/src/app/(auth)/verify-email/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 3, 22
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/AppShellClientWrapper.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 3, 8, 47
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/action-items/[actionItemId]/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 5, 18
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/action-items/[actionItemId]/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 3, 14
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/action-items/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 6, 19
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/action-items/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 2, 21
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/action-items/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 85, 0, 0, 0, 5, 13, 103
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/analytics/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 5, 18
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/analytics/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 15, 6, 70
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/analytics/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 5, 2, 25
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/commitments/[commitmentId]/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 6, 47
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/commitments/[commitmentId]/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 10, 12, 85
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/commitments/[commitmentId]/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 2, 5, 38
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/commitments/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 5, 49
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/commitments/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 2, 12
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/commitments/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 1, 8, 43
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/dashboard/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 6, 19
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/dashboard/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 2, 26
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/dashboard/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 10, 49
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/intelligence/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 5, 18
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/intelligence/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 2, 28
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/intelligence/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 5, 2, 25
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/layout.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 4, 5, 31
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/action-items/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 2, 16
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/action-items/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 2, 6, 30
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/commitments/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 2, 16
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/commitments/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 2, 6, 30
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 4, 39
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/layout.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 3, 28
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 3, 2, 33
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/not-found.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 2, 27
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 3, 16
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/transcript/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 5, 5, 45
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/[meetingId]/transcript/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 2, 7, 44
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 6, 19
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 3, 4, 33
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/meetings/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 1, 8, 47
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/billing/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 5, 18
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/billing/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 15, 7, 85
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/billing/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 9, 4, 32
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/integrations/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 5, 18
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/integrations/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 8, 45
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/layout.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 2, 13
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/members/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 3, 24
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/notifications/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 5, 18
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/notifications/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 4, 37
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/notifications/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 4, 28
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 2, 6
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/profile/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 3, 24
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/security/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 4, 9, 88
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/settings/team/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 3, 24
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/team/[memberId]/error.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 5, 18
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/team/[memberId]/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 7, 7, 81
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/team/[memberId]/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 5, 21
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/team/loading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 4, 5, 31
+"/home/uzair/vocaply-system/web/src/app/(dashboard)/team/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 1, 4, 16
+"/home/uzair/vocaply-system/web/src/app/(marketing)/about/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 5, 8, 47
+"/home/uzair/vocaply-system/web/src/app/(marketing)/case-study/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 5, 8, 47
+"/home/uzair/vocaply-system/web/src/app/(marketing)/changelog/ChangelogClientPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 9, 12, 71
+"/home/uzair/vocaply-system/web/src/app/(marketing)/changelog/feed.xml/route.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 0, 0, 0, 0, 0, 5, 43
+"/home/uzair/vocaply-system/web/src/app/(marketing)/changelog/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 3, 27
+"/home/uzair/vocaply-system/web/src/app/(marketing)/compare/fathom/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 6, 9, 51
+"/home/uzair/vocaply-system/web/src/app/(marketing)/compare/fireflies/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 6, 9, 51
+"/home/uzair/vocaply-system/web/src/app/(marketing)/compare/otter-ai/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 6, 9, 51
+"/home/uzair/vocaply-system/web/src/app/(marketing)/contact/ContactClientPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 887, 0, 0, 0, 54, 91, 1032
+"/home/uzair/vocaply-system/web/src/app/(marketing)/contact/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 3, 13
+"/home/uzair/vocaply-system/web/src/app/(marketing)/integrations/IntegrationsClientPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 132, 0, 0, 0, 18, 21, 171
+"/home/uzair/vocaply-system/web/src/app/(marketing)/integrations/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 3, 28
+"/home/uzair/vocaply-system/web/src/app/(marketing)/layout.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 5, 3, 24
+"/home/uzair/vocaply-system/web/src/app/(marketing)/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 189, 0, 0, 0, 29, 17, 235
+"/home/uzair/vocaply-system/web/src/app/(marketing)/pricing/PricingClientPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1252, 0, 0, 0, 57, 88, 1397
+"/home/uzair/vocaply-system/web/src/app/(marketing)/pricing/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 3, 13
+"/home/uzair/vocaply-system/web/src/app/(marketing)/privacy/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 11, 90
+"/home/uzair/vocaply-system/web/src/app/(marketing)/refunds/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 12, 84
+"/home/uzair/vocaply-system/web/src/app/(marketing)/roadmap/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 5, 8, 47
+"/home/uzair/vocaply-system/web/src/app/(marketing)/terms/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 13, 84
+"/home/uzair/vocaply-system/web/src/app/(marketing)/waitlist/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 383, 0, 0, 0, 16, 17, 416
+"/home/uzair/vocaply-system/web/src/app/api/auth/refresh/route.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 0, 7, 14, 98
+"/home/uzair/vocaply-system/web/src/app/api/v1/auth/refresh/route.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 0, 0, 8, 23, 154
+"/home/uzair/vocaply-system/web/src/app/api/waitlist/route.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 6, 10, 62
+"/home/uzair/vocaply-system/web/src/app/auth/callback/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 81, 0, 0, 0, 38, 14, 133
+"/home/uzair/vocaply-system/web/src/app/fonts.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 5, 29
+"/home/uzair/vocaply-system/web/src/app/globals.css", "PostCSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 305, 0, 0, 44, 57, 406
+"/home/uzair/vocaply-system/web/src/app/invite/[token]/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 122, 0, 0, 0, 9, 17, 148
+"/home/uzair/vocaply-system/web/src/app/layout.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 111, 0, 0, 0, 4, 7, 122
+"/home/uzair/vocaply-system/web/src/app/not-found.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 6, 7, 90
+"/home/uzair/vocaply-system/web/src/app/onboarding/complete/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 15, 94
+"/home/uzair/vocaply-system/web/src/app/onboarding/connect-calendar/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 114, 0, 0, 0, 1, 10, 125
+"/home/uzair/vocaply-system/web/src/app/onboarding/create-team/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 126, 0, 0, 0, 1, 9, 136
+"/home/uzair/vocaply-system/web/src/app/onboarding/invite-team/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 230, 0, 0, 0, 2, 16, 248
+"/home/uzair/vocaply-system/web/src/app/onboarding/layout.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 5, 6, 45
+"/home/uzair/vocaply-system/web/src/app/onboarding/page.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 58, 0, 0, 0, 0, 7, 65
+"/home/uzair/vocaply-system/web/src/app/robots.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 6, 2, 20
+"/home/uzair/vocaply-system/web/src/app/sitemap.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 9, 3, 55
+"/home/uzair/vocaply-system/web/src/components/marketing/layout/AnnouncementBar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 89, 0, 0, 0, 7, 5, 101
+"/home/uzair/vocaply-system/web/src/components/marketing/layout/MarketingFooter.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 538, 0, 0, 0, 31, 34, 603
+"/home/uzair/vocaply-system/web/src/components/marketing/layout/MarketingNav.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 146, 0, 0, 0, 11, 10, 167
+"/home/uzair/vocaply-system/web/src/components/marketing/layout/MobileCTABar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 13, 7, 92
+"/home/uzair/vocaply-system/web/src/components/marketing/layout/MobileMenuDrawer.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 146, 0, 0, 0, 10, 9, 165
+"/home/uzair/vocaply-system/web/src/components/marketing/mock/MockAppSidebar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 158, 0, 0, 0, 2, 6, 166
+"/home/uzair/vocaply-system/web/src/components/marketing/mock/MockBrowserFrame.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 153, 0, 0, 0, 11, 8, 172
+"/home/uzair/vocaply-system/web/src/components/marketing/mock/MockCommitmentsView.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 162, 0, 0, 0, 9, 7, 178
+"/home/uzair/vocaply-system/web/src/components/marketing/mock/MockMeetingView.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 214, 0, 0, 0, 5, 7, 226
+"/home/uzair/vocaply-system/web/src/components/marketing/mock/MockTeamHealthView.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 254, 0, 0, 0, 11, 9, 274
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/AICapabilities.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 379, 0, 0, 0, 21, 27, 427
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/AboutHero.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 1, 6, 51
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/AboutTeam.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 173, 0, 0, 0, 2, 8, 183
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/AboutValues.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 5, 85
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/BenefitsByRole.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 7, 10, 97
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/CaseStudy.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 191, 0, 0, 0, 16, 11, 218
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/CaseStudyCTA.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 2, 8, 49
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/CaseStudyContent.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 76, 0, 0, 0, 0, 7, 83
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/CaseStudyHero.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 2, 11, 86
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/ChangelogFeed.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 4, 8, 61
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/ChangelogFilterBar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 3, 11, 113
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/ChangelogHero.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 0, 0, 0, 5, 10, 98
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/CompareFeatures.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 3, 6, 108
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/CompareHero.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 1, 7, 68
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/CompareTable.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 124, 0, 0, 0, 2, 7, 133
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/CustomerLogos.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 102, 0, 0, 0, 10, 7, 119
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FAQSection.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 13, 8, 100
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FathomCompareFeatures.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 2, 6, 107
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FathomCompareHero.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 59, 0, 0, 0, 0, 7, 66
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FathomCompareTable.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 2, 7, 132
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FeaturesGrid.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 3, 8, 76
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FinalCTA.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 0, 0, 19, 13, 224
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FirefliesCompareFeatures.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 2, 6, 107
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FirefliesCompareHero.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 7, 67
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/FirefliesCompareTable.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 2, 7, 132
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/HeroSection.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 318, 0, 0, 0, 20, 14, 352
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/HowItWorks.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 115, 0, 0, 0, 7, 9, 131
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/IntegrationDeepDive.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 7, 11, 117
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/IntegrationRequestForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 5, 11, 95
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/IntegrationsAPISection.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 0, 0, 0, 4, 16, 147
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/IntegrationsGrid.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 0, 0, 0, 1, 6, 54
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/IntegrationsHero.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 113, 0, 0, 0, 11, 10, 134
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/IntegrationsHowItWorks.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 59, 0, 0, 0, 4, 7, 70
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/IntegrationsSection.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 202, 0, 0, 0, 21, 16, 239
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/IntegrationsTabFilter.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 3, 9, 89
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/PricingPreview.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 260, 0, 0, 0, 21, 16, 297
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/ProblemStatement.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 264, 0, 0, 0, 13, 13, 290
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/ProductShowcase.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 247, 0, 0, 0, 12, 11, 270
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/RoadmapBoard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 148, 0, 0, 0, 3, 9, 160
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/RoadmapCTA.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 1, 7, 46
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/RoadmapHero.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 59, 0, 0, 0, 1, 7, 67
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/SecuritySection.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 8, 10, 118
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/SocialProofBar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 9, 6, 94
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/Testimonials.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 137, 0, 0, 0, 8, 12, 157
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/UseCases.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 89, 0, 0, 0, 7, 11, 107
+"/home/uzair/vocaply-system/web/src/components/marketing/sections/WorkflowTimeline.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 269, 0, 0, 0, 21, 19, 309
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/AccordionItem.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 119, 0, 0, 0, 12, 8, 139
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/AnimatedNumber.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 8, 6, 70
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/ChangelogCodeDiff.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 2, 7, 43
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/ChangelogEntry.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 111, 0, 0, 0, 12, 19, 142
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/ChangelogMocks.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 357, 0, 0, 0, 21, 29, 407
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/ChangelogScreenshot.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 87, 0, 0, 0, 7, 9, 103
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/CommitmentRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 118, 0, 0, 0, 4, 9, 131
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/FeatureCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 57, 0, 0, 0, 4, 10, 71
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/IntegrationBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 107, 0, 0, 0, 10, 8, 125
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/IntegrationCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 6, 12, 97
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/IntegrationCategoryBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 3, 24
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/IntegrationPill.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 66, 0, 0, 0, 5, 5, 76
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/LiveStatusBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 4, 31
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/MarketingButton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 81, 0, 0, 0, 1, 13, 95
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/MockCalendarEvent.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 0, 0, 10, 10, 91
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/MockJiraTicket.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 112, 0, 0, 0, 12, 11, 135
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/MockSlackMessage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 138, 0, 0, 0, 9, 12, 159
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/PricingCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 245, 0, 0, 0, 18, 13, 276
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/RoleCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 186, 0, 0, 0, 12, 12, 210
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/SectionHeading.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 0, 0, 0, 8, 6, 61
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/SectionLabel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 0, 0, 0, 20, 4, 98
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/SecurityCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 82, 0, 0, 0, 9, 9, 100
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/SkipLink.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 5, 5, 40
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/StatusBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 0, 0, 0, 5, 6, 94
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/StepCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 97, 0, 0, 0, 9, 9, 115
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/TestimonialCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 129, 0, 0, 0, 12, 10, 151
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/TimelineNode.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 177, 0, 0, 0, 19, 11, 207
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/UseCaseTile.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 106, 0, 0, 0, 10, 10, 126
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/WaitlistForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 419, 0, 0, 0, 24, 27, 470
+"/home/uzair/vocaply-system/web/src/components/marketing/ui/WaitlistModal.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 207, 0, 0, 0, 18, 13, 238
+"/home/uzair/vocaply-system/web/src/components/shared/feedback/ConnectionStatusDot.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 7, 43
+"/home/uzair/vocaply-system/web/src/components/shared/feedback/FullPageSpinner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 3, 23
+"/home/uzair/vocaply-system/web/src/components/shared/feedback/OfflineBanner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 6, 30
+"/home/uzair/vocaply-system/web/src/components/shared/feedback/RealtimeToast.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 1, 4, 45
+"/home/uzair/vocaply-system/web/src/components/shared/layout/AppShell.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 66, 0, 0, 0, 23, 15, 104
+"/home/uzair/vocaply-system/web/src/components/shared/layout/CommandMenu/CommandMenu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 109, 0, 0, 0, 1, 14, 124
+"/home/uzair/vocaply-system/web/src/components/shared/layout/CommandMenu/CommandMenuItem.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 4, 30
+"/home/uzair/vocaply-system/web/src/components/shared/layout/CommandMenu/commandMenu.registry.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 82, 0, 0, 0, 0, 0, 0, 0, 0, 4, 86
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Kbd.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 1, 7, 56
+"/home/uzair/vocaply-system/web/src/components/shared/layout/MobileDrawer.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 166, 0, 0, 0, 33, 27, 226
+"/home/uzair/vocaply-system/web/src/components/shared/layout/MobileDrawerHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 16, 6, 65
+"/home/uzair/vocaply-system/web/src/components/shared/layout/MobileNav.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 23, 8, 87
+"/home/uzair/vocaply-system/web/src/components/shared/layout/MobileNavItem.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 19, 7, 98
+"/home/uzair/vocaply-system/web/src/components/shared/layout/PageContainer.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/web/src/components/shared/layout/PageHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 3, 29
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Sidebar/Sidebar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 94, 0, 0, 0, 0, 11, 105
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Sidebar/SidebarCollapseButton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 1, 6, 63
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Sidebar/SidebarNav.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Sidebar/SidebarNavGroup.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 3, 30
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Sidebar/SidebarNavItem.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 192, 0, 0, 0, 6, 14, 212
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Sidebar/SidebarProvider.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 2, 6, 23
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Sidebar/SidebarTeamSwitcher.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 125, 0, 0, 0, 0, 9, 134
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Sidebar/SidebarUser.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 112, 0, 0, 0, 0, 9, 121
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Topbar/Breadcrumb.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 0, 0, 5, 11, 87
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Topbar/HamburgerIcon.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 11, 4, 40
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Topbar/NotificationBell.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 3, 8
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Topbar/PresenceAvatars.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 68, 0, 0, 0, 1, 9, 78
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Topbar/SearchTrigger.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 4, 26
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Topbar/Topbar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 23, 11, 104
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Topbar/TopbarActions.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 1, 1, 5
+"/home/uzair/vocaply-system/web/src/components/shared/layout/Topbar/TopbarOverflowMenu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 84, 0, 0, 0, 25, 8, 117
+"/home/uzair/vocaply-system/web/src/components/shared/providers/AuthProvider.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 59, 0, 0, 0, 2, 14, 75
+"/home/uzair/vocaply-system/web/src/components/shared/providers/Providers.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 6, 4, 31
+"/home/uzair/vocaply-system/web/src/components/shared/providers/QueryProvider.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 4, 26
+"/home/uzair/vocaply-system/web/src/components/ui/LogoIcon.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 7, 4, 44
+"/home/uzair/vocaply-system/web/src/components/ui/accordion.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 0, 0, 0, 0, 8, 82
+"/home/uzair/vocaply-system/web/src/components/ui/alert-dialog.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 180, 0, 0, 0, 0, 16, 196
+"/home/uzair/vocaply-system/web/src/components/ui/alert.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 69, 0, 0, 0, 0, 8, 77
+"/home/uzair/vocaply-system/web/src/components/ui/aspect-ratio.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 4, 12
+"/home/uzair/vocaply-system/web/src/components/ui/avatar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 103, 0, 0, 0, 0, 10, 113
+"/home/uzair/vocaply-system/web/src/components/ui/badge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 5, 39
+"/home/uzair/vocaply-system/web/src/components/ui/breadcrumb.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 112, 0, 0, 0, 0, 11, 123
+"/home/uzair/vocaply-system/web/src/components/ui/button-group.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 76, 0, 0, 0, 0, 8, 84
+"/home/uzair/vocaply-system/web/src/components/ui/button.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 2, 6, 80
+"/home/uzair/vocaply-system/web/src/components/ui/calendar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 220, 0, 0, 0, 8, 11, 239
+"/home/uzair/vocaply-system/web/src/components/ui/card.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 7, 50
+"/home/uzair/vocaply-system/web/src/components/ui/carousel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 215, 0, 0, 0, 0, 28, 243
+"/home/uzair/vocaply-system/web/src/components/ui/chart.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 335, 0, 0, 0, 1, 38, 374
+"/home/uzair/vocaply-system/web/src/components/ui/checkbox.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 5, 34
+"/home/uzair/vocaply-system/web/src/components/ui/collapsible.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 6, 34
+"/home/uzair/vocaply-system/web/src/components/ui/combobox.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 279, 0, 0, 0, 0, 21, 300
+"/home/uzair/vocaply-system/web/src/components/ui/command.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 183, 0, 0, 0, 0, 13, 196
+"/home/uzair/vocaply-system/web/src/components/ui/context-menu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 245, 0, 0, 0, 0, 19, 264
+"/home/uzair/vocaply-system/web/src/components/ui/dialog.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 155, 0, 0, 0, 0, 14, 169
+"/home/uzair/vocaply-system/web/src/components/ui/direction.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 5, 23
+"/home/uzair/vocaply-system/web/src/components/ui/drawer.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 121, 0, 0, 0, 0, 14, 135
+"/home/uzair/vocaply-system/web/src/components/ui/dropdown-menu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 251, 0, 0, 0, 0, 19, 270
+"/home/uzair/vocaply-system/web/src/components/ui/empty.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 95, 0, 0, 0, 0, 10, 105
+"/home/uzair/vocaply-system/web/src/components/ui/field.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 218, 0, 0, 0, 0, 21, 239
+"/home/uzair/vocaply-system/web/src/components/ui/hover-card.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 0, 7, 45
+"/home/uzair/vocaply-system/web/src/components/ui/input-group.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 145, 0, 0, 0, 0, 12, 157
+"/home/uzair/vocaply-system/web/src/components/ui/input-otp.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 9, 88
+"/home/uzair/vocaply-system/web/src/components/ui/input.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 5, 48
+"/home/uzair/vocaply-system/web/src/components/ui/item.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 182, 0, 0, 0, 0, 15, 197
+"/home/uzair/vocaply-system/web/src/components/ui/kbd.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 4, 27
+"/home/uzair/vocaply-system/web/src/components/ui/label.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 5, 25
+"/home/uzair/vocaply-system/web/src/components/ui/menubar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 261, 0, 0, 0, 0, 20, 281
+"/home/uzair/vocaply-system/web/src/components/ui/native-select.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 7, 62
+"/home/uzair/vocaply-system/web/src/components/ui/navigation-menu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 153, 0, 0, 0, 0, 12, 165
+"/home/uzair/vocaply-system/web/src/components/ui/pagination.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 119, 0, 0, 0, 0, 11, 130
+"/home/uzair/vocaply-system/web/src/components/ui/popover.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 90, 0, 0, 0, 0, 14, 104
+"/home/uzair/vocaply-system/web/src/components/ui/progress.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 5, 32
+"/home/uzair/vocaply-system/web/src/components/ui/radio-group.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 6, 45
+"/home/uzair/vocaply-system/web/src/components/ui/resizable.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 7, 51
+"/home/uzair/vocaply-system/web/src/components/ui/scroll-area.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 7, 62
+"/home/uzair/vocaply-system/web/src/components/ui/select.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 179, 0, 0, 0, 0, 14, 193
+"/home/uzair/vocaply-system/web/src/components/ui/separator.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 5, 29
+"/home/uzair/vocaply-system/web/src/components/ui/sheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 134, 0, 0, 0, 0, 14, 148
+"/home/uzair/vocaply-system/web/src/components/ui/sidebar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 638, 0, 0, 0, 10, 55, 703
+"/home/uzair/vocaply-system/web/src/components/ui/skeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 5, 28
+"/home/uzair/vocaply-system/web/src/components/ui/slider.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 0, 6, 60
+"/home/uzair/vocaply-system/web/src/components/ui/sonner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 5, 50
+"/home/uzair/vocaply-system/web/src/components/ui/spinner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 3, 11
+"/home/uzair/vocaply-system/web/src/components/ui/switch.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 5, 34
+"/home/uzair/vocaply-system/web/src/components/ui/table.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 105, 0, 0, 0, 0, 12, 117
+"/home/uzair/vocaply-system/web/src/components/ui/tabs.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 82, 0, 0, 0, 0, 9, 91
+"/home/uzair/vocaply-system/web/src/components/ui/textarea.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 4, 19
+"/home/uzair/vocaply-system/web/src/components/ui/toggle-group.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 82, 0, 0, 0, 0, 8, 90
+"/home/uzair/vocaply-system/web/src/components/ui/toggle.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 6, 48
+"/home/uzair/vocaply-system/web/src/components/ui/tooltip.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 8, 58
+"/home/uzair/vocaply-system/web/src/config/env.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 1, 5, 30
+"/home/uzair/vocaply-system/web/src/features/action-items/api/action-items.mutations.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 4, 6, 55
+"/home/uzair/vocaply-system/web/src/features/action-items/api/action-items.queries.server.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 4, 18
+"/home/uzair/vocaply-system/web/src/features/action-items/api/action-items.queries.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 58, 0, 0, 0, 0, 0, 0, 0, 4, 10, 72
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemAssigneeAvatar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 5, 39
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemAssigneePopover.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 58, 0, 0, 0, 0, 5, 63
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemBulkAssigneeMenu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 6, 83
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemBulkBar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 14, 85
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemBulkPriorityMenu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 5, 44
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemCompletedCheckbox.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 4, 34
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemDetailClientPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 235, 0, 0, 0, 12, 18, 265
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemDetailHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 94, 0, 0, 0, 0, 10, 104
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemEmptyState.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemFilters.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 216, 0, 0, 0, 8, 15, 239
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemList/ActionItemList.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 97, 0, 0, 0, 1, 10, 108
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemList/ActionItemListHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 4, 25
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemList/ActionItemListSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 2, 3, 22
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemPriorityBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 7, 56
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 126, 0, 0, 0, 9, 13, 148
+"/home/uzair/vocaply-system/web/src/features/action-items/components/ActionItemRowSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 5, 4, 41
+"/home/uzair/vocaply-system/web/src/features/action-items/components/AutoSyncIndicator.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 5, 29
+"/home/uzair/vocaply-system/web/src/features/action-items/components/SyncStatusBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 9, 54
+"/home/uzair/vocaply-system/web/src/features/action-items/components/SyncToJiraButton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 90, 0, 0, 0, 1, 9, 100
+"/home/uzair/vocaply-system/web/src/features/action-items/hooks/useActionItems.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 4, 19
+"/home/uzair/vocaply-system/web/src/features/action-items/hooks/useBulkUpdateActionItems.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 0, 0, 0, 9, 19, 107
+"/home/uzair/vocaply-system/web/src/features/action-items/hooks/useMeetingActionItems.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 2, 14
+"/home/uzair/vocaply-system/web/src/features/action-items/hooks/useRealtimeActionItems.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 2, 8, 47
+"/home/uzair/vocaply-system/web/src/features/action-items/hooks/useSyncToJira.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 6, 11, 57
+"/home/uzair/vocaply-system/web/src/features/action-items/hooks/useToggleActionItemComplete.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 10, 54
+"/home/uzair/vocaply-system/web/src/features/action-items/types/index.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0, 0, 4, 38
+"/home/uzair/vocaply-system/web/src/features/analytics/components/AnalyticsDashboardSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 21, 7, 100
+"/home/uzair/vocaply-system/web/src/features/auth/api/auth.api.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 33, 12, 101
+"/home/uzair/vocaply-system/web/src/features/auth/components/AuthCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 3, 7, 56
+"/home/uzair/vocaply-system/web/src/features/auth/components/AuthGuard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 4, 10, 62
+"/home/uzair/vocaply-system/web/src/features/auth/components/ChangePasswordForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 169, 0, 0, 0, 4, 15, 188
+"/home/uzair/vocaply-system/web/src/features/auth/components/ForgotPasswordForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 120, 0, 0, 0, 0, 14, 134
+"/home/uzair/vocaply-system/web/src/features/auth/components/LoginForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 226, 0, 0, 0, 11, 20, 257
+"/home/uzair/vocaply-system/web/src/features/auth/components/MfaSetupSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 107, 0, 0, 0, 3, 10, 120
+"/home/uzair/vocaply-system/web/src/features/auth/components/OAuthButton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 2, 5, 45
+"/home/uzair/vocaply-system/web/src/features/auth/components/PasswordStrengthBar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 1, 9, 73
+"/home/uzair/vocaply-system/web/src/features/auth/components/ProfileForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 248, 0, 0, 0, 6, 22, 276
+"/home/uzair/vocaply-system/web/src/features/auth/components/RegisterForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 207, 0, 0, 0, 10, 19, 236
+"/home/uzair/vocaply-system/web/src/features/auth/components/ResetPasswordForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 219, 0, 0, 0, 4, 19, 242
+"/home/uzair/vocaply-system/web/src/features/auth/components/RevokeSessionButton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 1, 6, 80
+"/home/uzair/vocaply-system/web/src/features/auth/components/SessionExpiredModal.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 8, 60
+"/home/uzair/vocaply-system/web/src/features/auth/components/SessionList.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 61, 0, 0, 0, 0, 7, 68
+"/home/uzair/vocaply-system/web/src/features/auth/components/SessionRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 3, 13, 83
+"/home/uzair/vocaply-system/web/src/features/auth/components/VerifyEmailPrompt.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 185, 0, 0, 0, 4, 19, 208
+"/home/uzair/vocaply-system/web/src/features/auth/hooks/useAuth.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 3, 14
+"/home/uzair/vocaply-system/web/src/features/auth/hooks/useChangePassword.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 2, 9
+"/home/uzair/vocaply-system/web/src/features/auth/hooks/useLogin.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 5, 31
+"/home/uzair/vocaply-system/web/src/features/auth/hooks/useLogout.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 3, 20
+"/home/uzair/vocaply-system/web/src/features/auth/hooks/useRegister.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 2, 10
+"/home/uzair/vocaply-system/web/src/features/auth/hooks/useRevokeSession.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 3, 14
+"/home/uzair/vocaply-system/web/src/features/auth/hooks/useSessions.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 2, 11
+"/home/uzair/vocaply-system/web/src/features/auth/hooks/useUpdateProfile.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 2, 4, 21
+"/home/uzair/vocaply-system/web/src/features/auth/store/auth.store.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 9, 57
+"/home/uzair/vocaply-system/web/src/features/auth/types/auth.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 7, 51
+"/home/uzair/vocaply-system/web/src/features/billing/api/billing.api.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 10, 15, 67
+"/home/uzair/vocaply-system/web/src/features/billing/components/BillingPortalButton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 52, 0, 0, 0, 7, 6, 65
+"/home/uzair/vocaply-system/web/src/features/billing/components/BillingView.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 197, 0, 0, 0, 24, 20, 241
+"/home/uzair/vocaply-system/web/src/features/billing/components/CancelPlanAlert.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 66, 0, 0, 0, 10, 6, 82
+"/home/uzair/vocaply-system/web/src/features/billing/components/CurrentPlanCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 85, 0, 0, 0, 10, 9, 104
+"/home/uzair/vocaply-system/web/src/features/billing/components/InvoiceDownloadButton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 58, 0, 0, 0, 7, 8, 73
+"/home/uzair/vocaply-system/web/src/features/billing/components/InvoiceRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 102, 0, 0, 0, 18, 12, 132
+"/home/uzair/vocaply-system/web/src/features/billing/components/InvoiceRowDetail.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 91, 0, 0, 0, 8, 7, 106
+"/home/uzair/vocaply-system/web/src/features/billing/components/InvoiceStatusBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 4, 5, 32
+"/home/uzair/vocaply-system/web/src/features/billing/components/InvoiceTable.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 76, 0, 0, 0, 8, 9, 93
+"/home/uzair/vocaply-system/web/src/features/billing/components/InvoiceTableHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 6, 3, 28
+"/home/uzair/vocaply-system/web/src/features/billing/components/InvoiceTableSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 21, 8, 66
+"/home/uzair/vocaply-system/web/src/features/billing/components/PaymentFailedBanner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 10, 6, 55
+"/home/uzair/vocaply-system/web/src/features/billing/components/PlanComparisonColumn.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 126, 0, 0, 0, 14, 9, 149
+"/home/uzair/vocaply-system/web/src/features/billing/components/PlanComparisonSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 363, 0, 0, 0, 32, 24, 419
+"/home/uzair/vocaply-system/web/src/features/billing/components/PlanComparisonTable.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 108, 0, 0, 0, 20, 10, 138
+"/home/uzair/vocaply-system/web/src/features/billing/components/PlanStatusBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 2, 8, 45
+"/home/uzair/vocaply-system/web/src/features/billing/components/UsageBreakdown.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 5, 4, 32
+"/home/uzair/vocaply-system/web/src/features/billing/components/UsageProgressRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 90, 0, 0, 0, 22, 14, 126
+"/home/uzair/vocaply-system/web/src/features/billing/components/UsageThresholdLink.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 8, 4, 36
+"/home/uzair/vocaply-system/web/src/features/billing/data/plan-features.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 237, 0, 0, 0, 0, 0, 0, 0, 30, 17, 284
+"/home/uzair/vocaply-system/web/src/features/billing/hooks/useBilling.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 4, 6, 46
+"/home/uzair/vocaply-system/web/src/features/billing/hooks/useBillingPortal.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 11, 7, 59
+"/home/uzair/vocaply-system/web/src/features/billing/hooks/useCancelSubscription.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 6, 3, 25
+"/home/uzair/vocaply-system/web/src/features/billing/hooks/useCheckout.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 5, 8, 82
+"/home/uzair/vocaply-system/web/src/features/billing/hooks/useDownloadInvoice.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 9, 9, 78
+"/home/uzair/vocaply-system/web/src/features/billing/hooks/useInvoices.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 6, 3, 27
+"/home/uzair/vocaply-system/web/src/features/billing/hooks/usePlans.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 5, 2, 17
+"/home/uzair/vocaply-system/web/src/features/billing/types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 83, 0, 0, 0, 0, 0, 0, 0, 7, 16, 106
+"/home/uzair/vocaply-system/web/src/features/commitments/api/commitments.queries.server.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 106, 0, 0, 0, 0, 0, 0, 0, 6, 15, 127
+"/home/uzair/vocaply-system/web/src/features/commitments/api/commitments.queries.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 97, 0, 0, 0, 0, 0, 0, 0, 0, 11, 108
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CancelCommitmentSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 153, 0, 0, 0, 4, 15, 172
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentActionsMenu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 96, 0, 0, 0, 9, 13, 118
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentConfidenceDim.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 4, 40
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentDetailClientPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 153, 0, 0, 0, 12, 23, 188
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentDetailHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 0, 0, 0, 3, 6, 92
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentEmptyState.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentFilters.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 9, 18, 126
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentFilters/ConfidenceFilterSelect.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 6, 56
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentFilters/DateRangeFilterPopover.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 212, 0, 0, 0, 7, 24, 243
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentFilters/OwnerFilterPopover.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 118, 0, 0, 0, 2, 9, 129
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentList/CommitmentList.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 90, 0, 0, 0, 1, 8, 99
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentList/CommitmentListHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 2, 17
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 9, 12, 144
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentRowQuickActions.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 2, 9, 81
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentRowSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 4, 4, 39
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentScore/CommitmentScore.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 89, 0, 0, 0, 11, 13, 113
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentScore/CommitmentScore.utils.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 18, 4, 50
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentScore/CommitmentScoreLegend.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 0, 0, 0, 0, 7, 69
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentStats.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 81, 0, 0, 0, 1, 6, 88
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentStatusBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 4, 36
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentStatusTabs.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 1, 6, 39
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentTimeline/CommitmentTimeline.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 8, 58
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentTimeline/CommitmentTimelineEvent.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 0, 0, 0, 8, 10, 92
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentTimeline/CommitmentTimelineEventIcon.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 59, 0, 0, 0, 4, 4, 67
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentTracker/CommitmentTracker.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 133, 0, 0, 0, 19, 27, 179
+"/home/uzair/vocaply-system/web/src/features/commitments/components/CommitmentTracker/CommitmentTrackerSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 6, 7, 58
+"/home/uzair/vocaply-system/web/src/features/commitments/components/DeferSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 132, 0, 0, 0, 5, 16, 153
+"/home/uzair/vocaply-system/web/src/features/commitments/components/MarkFulfilledSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 122, 0, 0, 0, 6, 14, 142
+"/home/uzair/vocaply-system/web/src/features/commitments/components/OverdueAlert.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 5, 39
+"/home/uzair/vocaply-system/web/src/features/commitments/components/TrendIndicator.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 57, 0, 0, 0, 0, 8, 65
+"/home/uzair/vocaply-system/web/src/features/commitments/components/commitment-actions.permissions.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 4, 6, 38
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useCancelCommitment.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 1, 4, 37
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useCommitment.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 0, 0, 0, 10, 13, 102
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useCommitmentCounts.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useCommitmentFilters.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 9, 16, 95
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useCommitmentMutationCache.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 154, 0, 0, 0, 0, 0, 0, 0, 12, 26, 192
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useCommitmentStats.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 5, 24
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useCommitments.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 2, 6, 51
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useDeferCommitment.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 68, 0, 0, 0, 0, 0, 0, 0, 2, 6, 76
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useMarkFulfilled.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 3, 4, 39
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useMeetingCommitments.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 2, 14
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useRealtimeCommitments.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 103, 0, 0, 0, 0, 0, 0, 0, 5, 14, 122
+"/home/uzair/vocaply-system/web/src/features/commitments/hooks/useTeamMembers.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 4, 28
+"/home/uzair/vocaply-system/web/src/features/commitments/types/index.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 3, 38
+"/home/uzair/vocaply-system/web/src/features/dashboard/api/dashboard.queries.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 105, 0, 0, 0, 0, 0, 0, 0, 13, 15, 133
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/DashboardGrid.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 3, 10
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/QuickActionsRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 4, 37
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/StatPill.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 3, 24
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/MyCommitmentsWidget.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 1, 4, 56
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/MyCommitmentsWidgetSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 2, 24
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/RecentActivityFeed.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 103, 0, 0, 0, 0, 10, 113
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/RecentActivityFeedSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 2, 27
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/TeamPulseWidget.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 8, 80
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/TeamPulseWidgetSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 2, 27
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/UpcomingMeetingsWidget.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 0, 5, 68
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/UpcomingMeetingsWidgetSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 2, 25
+"/home/uzair/vocaply-system/web/src/features/dashboard/components/widgets/WidgetHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 3, 25
+"/home/uzair/vocaply-system/web/src/features/dashboard/hooks/useDashboardOverview.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 3, 20
+"/home/uzair/vocaply-system/web/src/features/integrations/api/integrations.api.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 119, 0, 0, 0, 0, 0, 0, 0, 14, 30, 163
+"/home/uzair/vocaply-system/web/src/features/integrations/components/AutoSyncSettings.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 138, 0, 0, 0, 0, 15, 153
+"/home/uzair/vocaply-system/web/src/features/integrations/components/CalendarEventPreviewRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 76, 0, 0, 0, 0, 10, 86
+"/home/uzair/vocaply-system/web/src/features/integrations/components/CalendarEventsPreviewSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 0, 0, 0, 0, 8, 94
+"/home/uzair/vocaply-system/web/src/features/integrations/components/ConnectIntegrationSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 1, 11, 111
+"/home/uzair/vocaply-system/web/src/features/integrations/components/DisconnectIntegrationAlert.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 0, 4, 67
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationConfigForm/GoogleCalendarConfigForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 110, 0, 0, 0, 3, 11, 124
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationConfigForm/JiraConfigForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 7, 71
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationConfigForm/NotionConfigForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 7, 71
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationConfigForm/SlackConfigForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 7, 71
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationConfigSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 0, 0, 0, 2, 9, 94
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationEmptyDescription.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 4, 17
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationHealthBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 6, 56
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationIcon.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 6, 43
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 151, 0, 0, 0, 6, 12, 169
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationRowMenu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 0, 10, 109
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationSection.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 4, 22
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationStatusBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 6, 29
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationsGrid.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 484, 0, 0, 0, 27, 58, 569
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationsGridHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 8, 52
+"/home/uzair/vocaply-system/web/src/features/integrations/components/IntegrationsGridSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 17, 7, 73
+"/home/uzair/vocaply-system/web/src/features/integrations/components/JiraIntegration.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 344, 0, 0, 0, 22, 25, 391
+"/home/uzair/vocaply-system/web/src/features/integrations/components/JiraProjectConfigForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 233, 0, 0, 0, 26, 21, 280
+"/home/uzair/vocaply-system/web/src/features/integrations/components/LinearConfigForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 199, 0, 0, 0, 6, 18, 223
+"/home/uzair/vocaply-system/web/src/features/integrations/components/LinearIntegration.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 336, 0, 0, 0, 0, 23, 359
+"/home/uzair/vocaply-system/web/src/features/integrations/components/SearchableChannelPicker.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 0, 9, 108
+"/home/uzair/vocaply-system/web/src/features/integrations/components/SlackChannelPicker.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 6, 55
+"/home/uzair/vocaply-system/web/src/features/integrations/components/SlackConfigForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 98, 0, 0, 0, 1, 13, 112
+"/home/uzair/vocaply-system/web/src/features/integrations/components/SlackIntegration.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 335, 0, 0, 0, 0, 23, 358
+"/home/uzair/vocaply-system/web/src/features/integrations/components/TestConnectionInlineButton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 0, 10, 77
+"/home/uzair/vocaply-system/web/src/features/integrations/data/providers.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 2, 82
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useCalendarEvents.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 3, 16
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useConfigureJira.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 9, 8, 54
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useConfigureSlack.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 3, 19
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useConnectGoogleCalendar.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 3, 10
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useConnectJira.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 14, 5, 40
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useConnectSlack.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 2, 16
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useDisconnectIntegration.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 3, 28
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useIntegrationConfig.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 5, 50
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useIntegrationHealth.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 9, 58
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useIntegrations.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 3, 16
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useJiraProjects.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 9, 11, 66
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useLinearConfig.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 16, 96
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useOAuthConnect.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 4, 30
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useSlackChannels.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 2, 12
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useSyncGoogleCalendar.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 3, 29
+"/home/uzair/vocaply-system/web/src/features/integrations/hooks/useTestConnection.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 0, 3, 72
+"/home/uzair/vocaply-system/web/src/features/integrations/types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 0, 6, 47
+"/home/uzair/vocaply-system/web/src/features/meetings/api/meetings.queries.server.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 5, 7, 55
+"/home/uzair/vocaply-system/web/src/features/meetings/api/meetings.queries.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 7, 5, 42
+"/home/uzair/vocaply-system/web/src/features/meetings/components/AddMeetingForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 239, 0, 0, 0, 1, 21, 261
+"/home/uzair/vocaply-system/web/src/features/meetings/components/AddMeetingFormFields/MeetingUrlField.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 57, 0, 0, 0, 2, 7, 66
+"/home/uzair/vocaply-system/web/src/features/meetings/components/AddMeetingFormFields/PlatformField.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 5, 57
+"/home/uzair/vocaply-system/web/src/features/meetings/components/AddMeetingFormFields/ScheduledAtField.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 347, 0, 0, 0, 25, 51, 423
+"/home/uzair/vocaply-system/web/src/features/meetings/components/AddMeetingFormFields/TitleField.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 5, 37
+"/home/uzair/vocaply-system/web/src/features/meetings/components/AddMeetingModal.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 10, 61
+"/home/uzair/vocaply-system/web/src/features/meetings/components/AddMeetingTooltip.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 314, 0, 0, 0, 20, 18, 352
+"/home/uzair/vocaply-system/web/src/features/meetings/components/DuplicateUrlError.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 4, 25
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/BotStatusBanner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 4, 20
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingActionItemsTab.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 6, 55
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingCommitmentsTab.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 5, 49
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingDecisionsBlock.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 4, 68
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingDetailActionsMenu.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 0, 0, 0, 0, 10, 84
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingDetailHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 3, 28
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingDetailTabSection.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 0, 0, 0, 0, 3, 50
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingDetailTabs.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 0, 5, 43
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingOverviewTab.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 2, 28
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingParticipantsList.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 58, 0, 0, 0, 0, 5, 63
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingSummaryBlock.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 5, 55
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingDetail/MeetingTimeline.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 0, 7, 74
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingEmptyState.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 0, 0, 0, 0, 5, 79
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingFilters.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 205, 0, 0, 0, 12, 16, 233
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingFiltersPopover.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 93, 0, 0, 0, 0, 7, 100
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingList/MeetingList.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 109, 0, 0, 0, 7, 14, 130
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingList/MeetingListHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 3, 17
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingList/MeetingListRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 171, 0, 0, 0, 7, 14, 192
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingList/MeetingListSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 2, 4, 50
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingPlatformIcon.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 94, 0, 0, 0, 0, 8, 102
+"/home/uzair/vocaply-system/web/src/features/meetings/components/MeetingStatusBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 6, 62
+"/home/uzair/vocaply-system/web/src/features/meetings/components/PlanLimitBanner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 1, 7, 56
+"/home/uzair/vocaply-system/web/src/features/meetings/components/PlatformDetectBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 1, 6, 45
+"/home/uzair/vocaply-system/web/src/features/meetings/components/TranscriptViewer/TranscriptEmptyState.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 6, 42
+"/home/uzair/vocaply-system/web/src/features/meetings/components/TranscriptViewer/TranscriptSearch.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 2, 14, 144
+"/home/uzair/vocaply-system/web/src/features/meetings/components/TranscriptViewer/TranscriptSearchHighlight.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 8, 57
+"/home/uzair/vocaply-system/web/src/features/meetings/components/TranscriptViewer/TranscriptSpeakerFilter.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 0, 0, 0, 0, 6, 68
+"/home/uzair/vocaply-system/web/src/features/meetings/components/TranscriptViewer/TranscriptToolbar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 66, 0, 0, 0, 0, 9, 75
+"/home/uzair/vocaply-system/web/src/features/meetings/components/TranscriptViewer/TranscriptTurn.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0, 9, 87
+"/home/uzair/vocaply-system/web/src/features/meetings/components/TranscriptViewer/TranscriptViewer.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 237, 0, 0, 0, 18, 29, 284
+"/home/uzair/vocaply-system/web/src/features/meetings/components/TranscriptViewer/useTranscriptSearch.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 0, 0, 2, 13, 66
+"/home/uzair/vocaply-system/web/src/features/meetings/hooks/useCreateMeeting.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 3, 7, 54
+"/home/uzair/vocaply-system/web/src/features/meetings/hooks/useMeetingFilters.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 1, 11, 54
+"/home/uzair/vocaply-system/web/src/features/meetings/hooks/useMeetings.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 0, 0, 6, 5, 62
+"/home/uzair/vocaply-system/web/src/features/meetings/hooks/usePlatformDetect.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0, 0, 0, 0, 10, 15, 103
+"/home/uzair/vocaply-system/web/src/features/meetings/hooks/useRealtimeMeeting.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 0, 0, 2, 13, 66
+"/home/uzair/vocaply-system/web/src/features/meetings/hooks/useTranscript.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 3, 14
+"/home/uzair/vocaply-system/web/src/features/meetings/hooks/useTranscriptScroll.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 0, 0, 1, 12, 64
+"/home/uzair/vocaply-system/web/src/features/meetings/types/index.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 62, 0, 0, 0, 0, 0, 0, 0, 0, 8, 70
+"/home/uzair/vocaply-system/web/src/features/notifications/components/NotificationBellDropdown.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 152, 0, 0, 0, 8, 15, 175
+"/home/uzair/vocaply-system/web/src/features/notifications/components/NotificationPreferencesForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 188, 0, 0, 0, 8, 17, 213
+"/home/uzair/vocaply-system/web/src/features/notifications/components/NotificationPreferencesFormSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 21, 6, 83
+"/home/uzair/vocaply-system/web/src/features/notifications/data/notification-types.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0, 0, 0, 0, 0, 4, 82
+"/home/uzair/vocaply-system/web/src/features/notifications/hooks/useInAppNotifications.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 172, 0, 0, 0, 0, 0, 0, 0, 3, 23, 198
+"/home/uzair/vocaply-system/web/src/features/notifications/hooks/useNotificationPrefs.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 59, 0, 0, 0, 0, 0, 0, 0, 1, 9, 69
+"/home/uzair/vocaply-system/web/src/features/notifications/hooks/useUnreadCount.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 4, 24
+"/home/uzair/vocaply-system/web/src/features/notifications/types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 5, 55
+"/home/uzair/vocaply-system/web/src/features/onboarding/components/OnboardingProgress.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 5, 35
+"/home/uzair/vocaply-system/web/src/features/onboarding/components/OnboardingSkipConfirm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 9, 74
+"/home/uzair/vocaply-system/web/src/features/onboarding/components/OnboardingStepFooter.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 3, 14
+"/home/uzair/vocaply-system/web/src/features/onboarding/components/OnboardingStepShell.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 4, 46
+"/home/uzair/vocaply-system/web/src/features/onboarding/data/onboarding-steps.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 2, 14
+"/home/uzair/vocaply-system/web/src/features/onboarding/hooks/useConnectCalendarStep.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 0, 0, 0, 0, 3, 11, 77
+"/home/uzair/vocaply-system/web/src/features/onboarding/hooks/useCreateTeamStep.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 120, 0, 0, 0, 0, 0, 0, 0, 4, 19, 143
+"/home/uzair/vocaply-system/web/src/features/onboarding/hooks/useInviteTeamStep.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 92, 0, 0, 0, 0, 0, 0, 0, 0, 16, 108
+"/home/uzair/vocaply-system/web/src/features/onboarding/hooks/useOnboarding.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 121, 0, 0, 0, 0, 0, 0, 0, 12, 11, 144
+"/home/uzair/vocaply-system/web/src/features/onboarding/hooks/useOnboardingStepGuard.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 2, 8, 35
+"/home/uzair/vocaply-system/web/src/features/team/api/team.api.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0, 0, 0, 0, 31, 15, 124
+"/home/uzair/vocaply-system/web/src/features/team/components/ChangeMemberRoleSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 160, 0, 0, 0, 4, 15, 179
+"/home/uzair/vocaply-system/web/src/features/team/components/CommitmentRateBar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 2, 5, 26
+"/home/uzair/vocaply-system/web/src/features/team/components/InviteMemberSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 460, 0, 0, 0, 15, 36, 511
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberProfile/MemberCommitmentHistory.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 89, 0, 0, 0, 1, 13, 103
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberProfile/MemberProfile.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 4, 13, 84
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberProfile/MemberProfileHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 103, 0, 0, 0, 2, 10, 115
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberProfile/MemberScoreBreakdown.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 0, 0, 0, 2, 5, 36
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberProfile/MemberSectionNav.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 6, 41
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberProfile/MemberTrendChart.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 1, 9, 66
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberTable/MemberRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 256, 0, 0, 0, 13, 30, 299
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberTable/MemberTable.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 0, 0, 0, 7, 10, 96
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberTable/MemberTableHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 1, 4, 75
+"/home/uzair/vocaply-system/web/src/features/team/components/MemberTable/MemberTableSkeleton.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 0, 0, 0, 10, 10, 67
+"/home/uzair/vocaply-system/web/src/features/team/components/MembersSettingsTable.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 5, 23
+"/home/uzair/vocaply-system/web/src/features/team/components/RemoveMemberSheet.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 91, 0, 0, 0, 0, 10, 101
+"/home/uzair/vocaply-system/web/src/features/team/components/RoleBadge.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 2, 5, 24
+"/home/uzair/vocaply-system/web/src/features/team/components/TeamHealthDashboard/TeamHealthDashboard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 0, 0, 0, 5, 8, 60
+"/home/uzair/vocaply-system/web/src/features/team/components/TeamHealthDashboard/TeamHealthStats.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 1, 8, 44
+"/home/uzair/vocaply-system/web/src/features/team/components/TeamSettingsForm.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 280, 0, 0, 0, 8, 25, 313
+"/home/uzair/vocaply-system/web/src/features/team/components/TeamSlugField.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 3, 23
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useInviteMembers.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 2, 4, 32
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useMemberCommitments.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 2, 10
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useMemberProfile.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 3, 16
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useMemberTrend.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 3, 16
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useRealtimeTeam.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 97, 0, 0, 0, 0, 0, 0, 0, 10, 16, 123
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useTeam.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 1, 4, 19
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useTeamHealth.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 1, 4, 19
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useTeamMembers.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 3, 6, 30
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useUpdateTeam.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 1, 3, 21
+"/home/uzair/vocaply-system/web/src/features/team/hooks/useUpdateTeamSettings.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 4, 16
+"/home/uzair/vocaply-system/web/src/features/team/lib/sparkline-path.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 1, 8, 38
+"/home/uzair/vocaply-system/web/src/features/team/types/team.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 1, 8, 73
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useAccordion.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 5, 8, 31
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useAnnouncementBar.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 9, 8, 47
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useChangelogFilter.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 6, 15, 85
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useCountUp.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 0, 0, 0, 0, 9, 18, 94
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useIntegrationFilter.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 3, 9, 49
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useMobileCTABar.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 6, 8, 28
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useMobileMenu.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 0, 0, 7, 10, 56
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useNavScroll.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 5, 8, 30
+"/home/uzair/vocaply-system/web/src/hooks/marketing/usePricingToggle.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 5, 6, 25
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useProductShowcaseTabs.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 4, 5, 21
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useScrollReveal.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 10, 9, 52
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useWaitlistForm.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 125, 0, 0, 0, 0, 0, 0, 0, 8, 28, 161
+"/home/uzair/vocaply-system/web/src/hooks/marketing/useWaitlistModal.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 27, 0, 0, 0, 0, 0, 0, 0, 9, 12, 48
+"/home/uzair/vocaply-system/web/src/hooks/shared/useDebounce.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 7, 6, 27
+"/home/uzair/vocaply-system/web/src/hooks/shared/useFocusListNavigation.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 3, 9, 61
+"/home/uzair/vocaply-system/web/src/hooks/shared/useKeyboardShortcut.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 85, 0, 0, 0, 0, 0, 0, 0, 20, 20, 125
+"/home/uzair/vocaply-system/web/src/hooks/shared/useMediaQuery.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 11, 8, 32
+"/home/uzair/vocaply-system/web/src/hooks/use-mobile.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 5, 20
+"/home/uzair/vocaply-system/web/src/lib/analytics.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 21, 13, 67
+"/home/uzair/vocaply-system/web/src/lib/api/client.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 74, 0, 0, 0, 0, 0, 0, 0, 14, 16, 104
+"/home/uzair/vocaply-system/web/src/lib/api/server-client.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 10, 18, 108
+"/home/uzair/vocaply-system/web/src/lib/cn.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 11, 2, 18
+"/home/uzair/vocaply-system/web/src/lib/marketing/animations.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 113, 0, 0, 0, 0, 0, 0, 0, 17, 11, 141
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/ai-capabilities.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 4, 4, 45
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/benefits.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 5, 3, 54
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/casestudy.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 4, 3, 27
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/changelog.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 4, 6, 114
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/faq.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 4, 3, 53
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/features.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 4, 3, 50
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/hero.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 6, 7, 33
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/how-it-works.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 5, 4, 42
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/integrations-page.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 161, 0, 0, 0, 0, 0, 0, 0, 7, 6, 174
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/integrations.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 5, 5, 35
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/navigation.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 2, 16
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/pricing.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 106, 0, 0, 0, 0, 0, 0, 0, 4, 3, 113
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/problem.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 0, 0, 0, 0, 5, 5, 73
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/product-tabs.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 6, 4, 34
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/security.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 0, 0, 5, 4, 48
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/social-proof.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 5, 4, 52
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/testimonials.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 5, 3, 45
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/usecases.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 5, 3, 40
+"/home/uzair/vocaply-system/web/src/lib/marketing/content/workflow.content.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 5, 4, 64
+"/home/uzair/vocaply-system/web/src/lib/prisma.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 6, 16
+"/home/uzair/vocaply-system/web/src/lib/tokens/colors.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 4, 1, 46
+"/home/uzair/vocaply-system/web/src/lib/tokens/index.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 2, 9
+"/home/uzair/vocaply-system/web/src/lib/tokens/spacing.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 3, 3, 23
+"/home/uzair/vocaply-system/web/src/lib/tokens/typography.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 3, 2, 19
+"/home/uzair/vocaply-system/web/src/lib/utils.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 4, 1, 9
+"/home/uzair/vocaply-system/web/src/lib/utils/cn.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 3, 2, 10
+"/home/uzair/vocaply-system/web/src/lib/utils/format-date.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 9, 10, 54
+"/home/uzair/vocaply-system/web/src/lib/utils/index.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 1, 5
+"/home/uzair/vocaply-system/web/src/lib/utils/platform-detect.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 4, 4, 20
+"/home/uzair/vocaply-system/web/src/lib/utils/slugify.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 6, 1, 18
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/CursorPagination.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 5, 30
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/DataTable/DataTableRowCheckbox.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 2, 4, 32
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/DataTable/DataTableSelectAllCheckbox.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 5, 39
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/DataTableEmptyRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 7, 4, 35
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/FilterPill.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 4, 26
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/HydrationSafeTime.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 2, 9, 49
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/RelativeTime.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0, 1, 9, 48
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/ResponsiveRow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 97, 0, 0, 0, 79, 16, 192
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/SegmentedTabs.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 149, 0, 0, 0, 23, 22, 194
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/SortableColumnHeader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 1, 5, 51
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/StatusDot.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 5, 33
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/VirtualList.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 0, 0, 0, 0, 7, 74
+"/home/uzair/vocaply-system/web/src/shared/components/data-display/index.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 3, 7
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/BulkActionBar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 93, 0, 0, 0, 6, 14, 113
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/ConfirmModal.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 6, 78
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/InlineFieldHint.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 3, 14
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/PlanLimitBanner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 12, 5, 77
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/RouteErrorFallback.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 111, 0, 0, 0, 24, 12, 147
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/RowEmptyState.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 3, 27
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/SaveStateIndicator.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 6, 35
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/TopBanner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 58, 0, 0, 0, 9, 5, 72
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/UpgradeModalStub.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 0, 0, 0, 1, 6, 69
+"/home/uzair/vocaply-system/web/src/shared/components/feedback/WidgetErrorFallback.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 58, 0, 0, 0, 17, 7, 82
+"/home/uzair/vocaply-system/web/src/shared/components/layout/SettingsPlaceholder.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 5, 38
+"/home/uzair/vocaply-system/web/src/shared/components/layout/SettingsSidebar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 6, 78
+"/home/uzair/vocaply-system/web/src/shared/hooks/usePresenceHeartbeat.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 4, 14, 61
+"/home/uzair/vocaply-system/web/src/shared/hooks/useSaveState.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 5, 27
+"/home/uzair/vocaply-system/web/src/shared/hooks/useScrollSpy.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 0, 0, 0, 0, 0, 13, 67
+"/home/uzair/vocaply-system/web/src/shared/hooks/useSelection.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 4, 11, 85
+"/home/uzair/vocaply-system/web/src/shared/hooks/useSocketReconnectToast.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 3, 6, 51
+"/home/uzair/vocaply-system/web/src/shared/hooks/useSortableColumns.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 59, 0, 0, 0, 0, 0, 0, 0, 3, 14, 76
+"/home/uzair/vocaply-system/web/src/shared/lib/cache/query-keys.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 0, 0, 0, 0, 0, 1, 55
+"/home/uzair/vocaply-system/web/src/shared/lib/websocket/socket.cache-patchers.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 98, 0, 0, 0, 0, 0, 0, 0, 2, 9, 109
+"/home/uzair/vocaply-system/web/src/shared/lib/websocket/socket.events.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 8, 10, 53
+"/home/uzair/vocaply-system/web/src/shared/lib/websocket/socket.handlers.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 0, 0, 5, 6, 84
+"/home/uzair/vocaply-system/web/src/shared/lib/websocket/socket.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 3, 10, 53
+"/home/uzair/vocaply-system/web/src/shared/providers/WebSocketProvider.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 81, 0, 0, 0, 4, 16, 101
+"/home/uzair/vocaply-system/web/src/store/realtime.store.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 2, 10, 59
+"/home/uzair/vocaply-system/web/src/store/ui.store.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 1, 7, 33
+"/home/uzair/vocaply-system/web/src/types/marketing.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 122, 0, 0, 0, 0, 0, 0, 0, 18, 35, 175
+"/home/uzair/vocaply-system/web/tailwind.config.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 89, 0, 0, 0, 0, 0, 0, 0, 1, 3, 93
+"/home/uzair/vocaply-system/web/tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 1, 35
+"/home/uzair/vocaply-system/web/vocaply-landing-day6-10-plan.md", "Markdown", 1894, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 491, 2385
+"Total", "-", 64522, 23311, 95, 787, 340, 10490, 34440, 16, 30, 44, 43497, 305, 57, 575, 12710, 27109, 218328

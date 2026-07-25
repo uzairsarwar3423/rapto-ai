@@ -2,22 +2,36 @@ import { env } from '../../config/env'
 import { logger } from '../../config/logger'
 import axios from 'axios'
 import https from 'https'
-// Check if Brevo is configured
+
+import { renderVerifyEmailHtml } from './templates/VerifyEmail'
+import { renderPasswordResetHtml } from './templates/PasswordReset'
+import { renderTeamInviteHtml } from './templates/TeamInvite'
+import { renderMeetingSummaryHtml } from './templates/MeetingSummary'
+import { renderCommitmentMissedHtml } from './templates/CommitmentMissed'
+import { renderManagerAlertHtml } from './templates/ManagerAlert'
+import { renderDeadlineReminderHtml } from './templates/DeadlineReminder'
+import { renderIntegrationWarningHtml } from './templates/IntegrationWarning'
+import { renderIntegrationDeactivatedHtml } from './templates/IntegrationDeactivated'
+import { renderPaymentFailedHtml } from './templates/PaymentFailed'
+import { renderPlanLimitHtml } from './templates/PlanLimit'
+import { renderOwnerWelcomeHtml } from './templates/OwnerWelcome'
+import { renderTeamMemberWelcomeHtml } from './templates/TeamMemberWelcome'
+import { renderWeeklyDigestHtml } from './templates/WeeklyDigest'
+import { generateUnsubscribeToken } from './unsubscribe.utils'
+
 const isBrevoConfigured =
   env.BREVO_API_KEY &&
   env.BREVO_API_KEY !== 'xkeysib-your_brevo_api_key_here'
 
+const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
+
 /**
- * Helper to fetch from Brevo API.
- * Note: The inline while-loop retry mechanism has been removed.
- * Retries and exponential backoff are now delegated to BullMQ (notifyQueue)
- * to prevent blocking the worker event loop and to provide scalable, industry-level resilience.
+ * Helper to fetch from Brevo API with timeout and error classification.
  */
 async function fetchWithRetry(
   url: string,
-  options: RequestInit,
-  _retries?: number,
-  _backoff?: number
+  options: RequestInit
 ): Promise<{ ok: boolean; status: number; text: () => Promise<string> }> {
   try {
     const response = await axios({
@@ -27,170 +41,152 @@ async function fetchWithRetry(
       data: options.body ? JSON.parse(options.body as string) : undefined,
       timeout: 30000,
       httpsAgent: new https.Agent({ keepAlive: false }),
-      validateStatus: () => true, // resolve promise for all HTTP status codes
-    });
+      validateStatus: () => true,
+    })
 
     if (response.status >= 500) {
-      throw new Error(`Brevo Server error: ${response.status}`);
+      throw new Error(`Brevo Server error: ${response.status}`)
     }
 
     return {
       ok: response.status >= 200 && response.status < 300,
       status: response.status,
-      text: async () => typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
-    };
+      text: async () => (typeof response.data === 'string' ? response.data : JSON.stringify(response.data)),
+    }
   } catch (error: any) {
-    logger.warn({ error: error.message || error }, 'Email API request failed. Delegating retry to BullMQ...');
-    throw error;
+    logger.warn({ error: error.message || error }, 'Email API request failed. Delegating retry to BullMQ...')
+    throw error
+  }
+}
+
+async function sendBrevoEmail(payload: {
+  to: { email: string; name?: string }[]
+  subject: string
+  htmlContent: string
+  notificationType: string
+  userId?: string
+}): Promise<void> {
+  const recipientEmail = payload.to[0]?.email || ''
+  const token = generateUnsubscribeToken(payload.userId || recipientEmail, payload.notificationType)
+  const unsubscribeUrl = `${frontendUrl}/unsubscribe?token=${encodeURIComponent(token)}`
+
+  console.log('\n===================================================================')
+  console.log(`📧 EMAIL DISPATCH INITIATED`)
+  console.log(` - Type:         ${payload.notificationType}`)
+  console.log(` - Recipient:    ${recipientEmail}`)
+  console.log(` - Subject:      ${payload.subject}`)
+  console.log(` - Sender Email: ${fromEmail}`)
+  console.log('===================================================================\n')
+
+  if (!isBrevoConfigured) {
+    logger.warn(
+      { to: recipientEmail, subject: payload.subject, notificationType: payload.notificationType },
+      'BREVO_API_KEY is not configured. Email payload logged to console.'
+    )
+    console.log('⚠️ BREVO_API_KEY missing or default placeholder. Email simulated.')
+    return
+  }
+
+  try {
+    const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'api-key': env.BREVO_API_KEY!,
+      },
+      body: JSON.stringify({
+        sender: { name: 'Vocaply', email: fromEmail },
+        to: payload.to,
+        subject: payload.subject,
+        htmlContent: payload.htmlContent,
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      }),
+    })
+
+    const responseText = await response.text()
+
+    if (!response.ok) {
+      console.error('\n❌ BREVO API DISPATCH FAILED!')
+      console.error(` - Status: ${response.status}`)
+      console.error(` - Response: ${responseText}`)
+      console.error('===================================================================\n')
+      throw new Error(`Brevo API returned status ${response.status}: ${responseText}`)
+    }
+
+    console.log('\n===================================================================')
+    console.log(`✅ EMAIL DELIVERED TO BREVO API SUCCESSFULLY!`)
+    console.log(` - Status:     ${response.status}`)
+    console.log(` - Recipient:  ${recipientEmail}`)
+    console.log(` - Payload:    ${responseText}`)
+    console.log('===================================================================\n')
+  } catch (error: any) {
+    console.error('\n❌ EMAIL SEND ERROR EXCEPTION:', error.message || error)
+    console.error('===================================================================\n')
+    throw error
   }
 }
 
 export const emailService = {
   /**
-   * Sends a verification email to a newly registered user via Brevo's Transactional Email API.
+   * Sends account verification email.
    */
   async sendVerificationEmail(data: {
     to: string
     name: string
     verificationToken: string
+    userId?: string
   }): Promise<void> {
-    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
     const url = `${frontendUrl}/verify-email?token=${data.verificationToken}`
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
+    const token = generateUnsubscribeToken(data.userId || data.to, 'VERIFICATION_EMAIL')
+    const htmlContent = renderVerifyEmailHtml({
+      name: data.name,
+      url,
+      unsubscribeToken: token,
+    })
 
-    logger.info({ to: data.to }, 'Preparing verification email')
-
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { url, to: data.to },
-        'BREVO_API_KEY is not configured. Verification URL printed to console.'
-      )
-      return
-    }
-
-    try {
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: {
-            name: 'Vocaply',
-            email: fromEmail,
-          },
-          to: [
-            {
-              email: data.to,
-              name: data.name,
-            },
-          ],
-          subject: 'Verify your Vocaply account',
-          htmlContent: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-              <h2>Verify Your Email</h2>
-              <p>Hi ${data.name},</p>
-              <p>Thank you for signing up with Vocaply. Please click the button below to verify your email address:</p>
-              <div style="margin: 24px 0;">
-                <a href="${url}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Verify Email Address</a>
-              </div>
-              <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-              <p><a href="${url}">${url}</a></p>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #666;">This link will expire in 24 hours. If you did not sign up for Vocaply, you can safely ignore this email.</p>
-            </div>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to }, 'Verification email sent successfully via Brevo')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send verification email via Brevo')
-      throw error
-    }
+    logger.info({ to: data.to }, 'email.service: sending verification email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: 'Verify your Vocaply account',
+      htmlContent,
+      notificationType: 'VERIFICATION_EMAIL',
+      userId: data.userId || data.to,
+    })
   },
 
   /**
-   * Sends a password reset email to a user via Brevo's Transactional Email API.
+   * Sends password reset email.
    */
   async sendPasswordResetEmail(data: {
     to: string
     name: string
     token: string
+    userId?: string
   }): Promise<void> {
-    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
     const url = `${frontendUrl}/reset-password?token=${data.token}`
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'PASSWORD_RESET_EMAIL')
+    const htmlContent = renderPasswordResetHtml({
+      name: data.name,
+      url,
+      unsubscribeToken: unsubToken,
+    })
 
-    logger.info({ to: data.to }, 'Preparing password reset email')
-
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { url, to: data.to },
-        'BREVO_API_KEY is not configured. Password reset URL printed to console.'
-      )
-      return
-    }
-
-    try {
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: {
-            name: 'Vocaply',
-            email: fromEmail,
-          },
-          to: [
-            {
-              email: data.to,
-              name: data.name,
-            },
-          ],
-          subject: 'Reset your Vocaply password',
-          htmlContent: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-              <h2>Reset Your Password</h2>
-              <p>Hi ${data.name},</p>
-              <p>We received a request to reset your password for your Vocaply account. Click the button below to choose a new password:</p>
-              <div style="margin: 24px 0;">
-                <a href="${url}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
-              </div>
-              <p>If you did not request a password reset, please ignore this email or contact support if you have questions.</p>
-              <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-              <p><a href="${url}">${url}</a></p>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #666;">This link will expire in 1 hour. For security reasons, please do not share this email or link.</p>
-            </div>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to }, 'Password reset email sent successfully via Brevo')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send password reset email via Brevo')
-      throw error
-    }
+    logger.info({ to: data.to }, 'email.service: sending password reset email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: 'Reset your Vocaply password',
+      htmlContent,
+      notificationType: 'PASSWORD_RESET_EMAIL',
+      userId: data.userId || data.to,
+    })
   },
 
   /**
-   * Sends a team invitation email to an invited user via Brevo.
+   * Sends team invitation email.
    */
   async sendTeamInviteEmail(data: {
     to: string
@@ -199,69 +195,31 @@ export const emailService = {
     joinUrl: string
     role: string
     expiresAt: Date
+    userId?: string
   }): Promise<void> {
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
-    const expiryStr = data.expiresAt.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'TEAM_INVITE_EMAIL')
+    const htmlContent = renderTeamInviteHtml({
+      to: data.to,
+      teamName: data.teamName,
+      inviterName: data.inviterName,
+      joinUrl: data.joinUrl,
+      role: data.role,
+      expiresAt: data.expiresAt,
+      unsubscribeToken: unsubToken,
     })
 
-    logger.info({ to: data.to, teamName: data.teamName }, 'Preparing team invite email')
-
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { joinUrl: data.joinUrl, to: data.to },
-        'BREVO_API_KEY not configured. Team invite URL printed to console.'
-      )
-      return
-    }
-
-    try {
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: { name: 'Vocaply', email: fromEmail },
-          to: [{ email: data.to }],
-          subject: `${data.inviterName} invited you to join ${data.teamName} on Vocaply`,
-          htmlContent: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px;">
-              <h2>You're invited to join <strong>${data.teamName}</strong></h2>
-              <p>${data.inviterName} has invited you to join their team on Vocaply as <strong>${data.role}</strong>.</p>
-              <p>Vocaply helps teams track meeting commitments and accountability automatically.</p>
-              <div style="margin: 24px 0;">
-                <a href="${data.joinUrl}" style="background-color: #6366f1; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                  Accept Invitation
-                </a>
-              </div>
-              <p style="color: #666; font-size: 13px;">This invitation expires on ${expiryStr}. If you did not expect this invite, you can safely ignore this email.</p>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #999;">Or copy this link: <a href="${data.joinUrl}">${data.joinUrl}</a></p>
-            </div>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to, teamName: data.teamName }, 'Team invite email sent via Brevo')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send team invite email via Brevo')
-      throw error
-    }
+    logger.info({ to: data.to, teamName: data.teamName }, 'email.service: sending team invite email')
+    await sendBrevoEmail({
+      to: [{ email: data.to }],
+      subject: `${data.inviterName} invited you to join ${data.teamName} on Vocaply`,
+      htmlContent,
+      notificationType: 'TEAM_INVITE_EMAIL',
+      userId: data.userId || data.to,
+    })
   },
 
-
   /**
-   * Sends a meeting summary notification to a participant/user.
+   * Sends meeting summary notification email.
    */
   async sendMeetingSummary(data: {
     to: string
@@ -271,75 +229,31 @@ export const emailService = {
     commitmentsCount: number
     actionItemsCount: number
     viewUrl: string
+    userId?: string
   }): Promise<void> {
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
-    logger.info({ to: data.to, meetingTitle: data.meetingTitle }, 'Preparing meeting summary email')
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'MEETING_PROCESSED')
+    const htmlContent = renderMeetingSummaryHtml({
+      name: data.name,
+      meetingTitle: data.meetingTitle,
+      summary: data.summary,
+      commitmentsCount: data.commitmentsCount,
+      actionItemsCount: data.actionItemsCount,
+      viewUrl: data.viewUrl,
+      unsubscribeToken: unsubToken,
+    })
 
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { viewUrl: data.viewUrl, to: data.to },
-        'BREVO_API_KEY not configured. Meeting summary URL printed to console.'
-      )
-      return
-    }
-
-    try {
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: { name: 'Vocaply', email: fromEmail },
-          to: [{ email: data.to, name: data.name }],
-          subject: `Meeting Summary: ${data.meetingTitle}`,
-          htmlContent: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; line-height: 1.6;">
-              <h2 style="color: #10b981; margin-bottom: 8px;">Meeting Summary</h2>
-              <h3 style="margin-top: 0; color: #555;">${data.meetingTitle}</h3>
-              <p>Hi ${data.name},</p>
-              <p>Here is a summary and key highlights extracted from your recent meeting:</p>
-              <div style="background-color: #f9fafb; border-left: 4px solid #10b981; padding: 16px; margin: 20px 0; border-radius: 4px;">
-                <p style="margin: 0; font-style: italic; white-space: pre-line;">${data.summary || 'No summary text available.'}</p>
-              </div>
-              <div style="display: flex; gap: 20px; margin-bottom: 24px;">
-                <div style="flex: 1; background-color: #f3f4f6; padding: 12px; border-radius: 6px; text-align: center;">
-                  <strong style="font-size: 20px; color: #10b981;">${data.commitmentsCount}</strong>
-                  <div style="font-size: 12px; color: #666;">Commitments</div>
-                </div>
-                <div style="flex: 1; background-color: #f3f4f6; padding: 12px; border-radius: 6px; text-align: center;">
-                  <strong style="font-size: 20px; color: #10b981;">${data.actionItemsCount}</strong>
-                  <div style="font-size: 12px; color: #666;">Action Items</div>
-                </div>
-              </div>
-              <div style="margin: 24px 0;">
-                <a href="${data.viewUrl}" style="background-color: #10b981; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                  View Meeting Details
-                </a>
-              </div>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #999;">If the button doesn't work, copy this link: <a href="${data.viewUrl}">${data.viewUrl}</a></p>
-            </div>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to }, 'Meeting summary email sent successfully')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send meeting summary email')
-      throw error
-    }
+    logger.info({ to: data.to, meetingTitle: data.meetingTitle }, 'email.service: sending meeting summary email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: `Meeting Summary: ${data.meetingTitle}`,
+      htmlContent,
+      notificationType: 'MEETING_PROCESSED',
+      userId: data.userId || data.to,
+    })
   },
 
   /**
-   * Sends a notification to a user indicating they missed a commitment deadline.
+   * Sends commitment missed notification email to commitment owner.
    */
   async sendCommitmentMissed(data: {
     to: string
@@ -347,71 +261,29 @@ export const emailService = {
     commitmentText: string
     dueDate: Date
     actionUrl: string
+    userId?: string
   }): Promise<void> {
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
-    const dueStr = data.dueDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'COMMITMENT_MISSED')
+    const htmlContent = renderCommitmentMissedHtml({
+      name: data.name,
+      commitmentText: data.commitmentText,
+      dueDate: data.dueDate,
+      actionUrl: data.actionUrl,
+      unsubscribeToken: unsubToken,
     })
-    logger.info({ to: data.to }, 'Preparing commitment missed email')
 
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { actionUrl: data.actionUrl, to: data.to },
-        'BREVO_API_KEY not configured. Commitment missed URL printed to console.'
-      )
-      return
-    }
-
-    try {
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: { name: 'Vocaply', email: fromEmail },
-          to: [{ email: data.to, name: data.name }],
-          subject: `⚠️ Commitment Overdue: Action required`,
-          htmlContent: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; line-height: 1.6;">
-              <h2 style="color: #ef4444; margin-bottom: 8px;">Overdue Commitment Alert</h2>
-              <p>Hi ${data.name},</p>
-              <p>You have missed the deadline for the following commitment:</p>
-              <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 20px 0; border-radius: 4px;">
-                <p style="margin: 0; font-weight: bold; color: #991b1b;">"${data.commitmentText}"</p>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #7f1d1d;">Was due on: ${dueStr}</p>
-              </div>
-              <p>Missing commitments impacts your team's velocity and your personal Accountability Score. Please update the status of this commitment or request an extension.</p>
-              <div style="margin: 24px 0;">
-                <a href="${data.actionUrl}" style="background-color: #ef4444; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                  Resolve Commitment
-                </a>
-              </div>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #999;">If the button doesn't work, copy this link: <a href="${data.actionUrl}">${data.actionUrl}</a></p>
-            </div>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to }, 'Commitment missed email sent successfully')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send commitment missed email')
-      throw error
-    }
+    logger.info({ to: data.to }, 'email.service: sending commitment missed email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: '⚠️ Commitment Overdue: Action required',
+      htmlContent,
+      notificationType: 'COMMITMENT_MISSED',
+      userId: data.userId || data.to,
+    })
   },
 
   /**
-   * Sends a manager alert email when a team member misses a commitment deadline.
+   * Sends manager alert notification email when team member misses deadline.
    */
   async sendManagerAlert(data: {
     to: string
@@ -420,305 +292,322 @@ export const emailService = {
     commitmentText: string
     dueDate: Date
     actionUrl: string
+    userId?: string
   }): Promise<void> {
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
-    const dueStr = data.dueDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'MANAGER_ALERT')
+    const htmlContent = renderManagerAlertHtml({
+      name: data.name,
+      assigneeName: data.assigneeName,
+      commitmentText: data.commitmentText,
+      dueDate: data.dueDate,
+      actionUrl: data.actionUrl,
+      unsubscribeToken: unsubToken,
     })
-    logger.info({ to: data.to }, 'Preparing manager alert email')
 
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { actionUrl: data.actionUrl, to: data.to },
-        'BREVO_API_KEY not configured. Manager alert URL printed to console.'
-      )
-      return
-    }
-
-    try {
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: { name: 'Vocaply', email: fromEmail },
-          to: [{ email: data.to, name: data.name }],
-          subject: `Alert: ${data.assigneeName} missed a commitment deadline`,
-          htmlContent: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; line-height: 1.6;">
-              <h2 style="color: #f59e0b; margin-bottom: 8px;">Manager Accountability Alert</h2>
-              <p>Hi ${data.name},</p>
-              <p>This is an automated alert to notify you that a member of your team has missed their commitment deadline:</p>
-              <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0; border-radius: 4px;">
-                <p style="margin: 0; font-weight: bold; color: #92400e;">Owner: ${data.assigneeName}</p>
-                <p style="margin: 8px 0 0 0; font-weight: 500; color: #78350f;">"${data.commitmentText}"</p>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #78350f;">Was due on: ${dueStr}</p>
-              </div>
-              <p>As their manager, you can follow up on their progress or adjust deadlines in the dashboard.</p>
-              <div style="margin: 24px 0;">
-                <a href="${data.actionUrl}" style="background-color: #f59e0b; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                  View Team Dashboard
-                </a>
-              </div>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #999;">If the button doesn't work, copy this link: <a href="${data.actionUrl}">${data.actionUrl}</a></p>
-            </div>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to }, 'Manager alert email sent successfully')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send manager alert email')
-      throw error
-    }
+    logger.info({ to: data.to }, 'email.service: sending manager alert email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: `Alert: ${data.assigneeName} missed a commitment deadline`,
+      htmlContent,
+      notificationType: 'MANAGER_ALERT',
+      userId: data.userId || data.to,
+    })
   },
 
   /**
-   * Sends a digest of upcoming/today deadlines to a user.
+   * Sends deadline reminder email.
    */
   async sendDeadlineReminder(data: {
     to: string
     name: string
     commitments: Array<{ id: string; text: string; dueDate: Date }>
     actionUrl: string
+    userId?: string
   }): Promise<void> {
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
-    logger.info({ to: data.to }, 'Preparing deadline reminder email')
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'DEADLINE_REMINDER')
+    const htmlContent = renderDeadlineReminderHtml({
+      name: data.name,
+      commitments: data.commitments,
+      actionUrl: data.actionUrl,
+      unsubscribeToken: unsubToken,
+    })
 
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { actionUrl: data.actionUrl, to: data.to },
-        'BREVO_API_KEY not configured. Deadline reminder URL printed to console.'
-      )
-      return
-    }
-
-    const commitmentsListHtml = data.commitments
-      .map(
-        (c) => `
-        <li style="margin-bottom: 12px; padding: 12px; background-color: #f9fafb; border-radius: 6px; list-style-type: none; border-left: 3px solid #10b981;">
-          <strong style="color: #374151;">"${c.text}"</strong><br/>
-          <span style="font-size: 12px; color: #6b7280;">Due date: ${new Date(c.dueDate).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })}</span>
-        </li>
-      `
-      )
-      .join('')
-
-    try {
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: { name: 'Vocaply', email: fromEmail },
-          to: [{ email: data.to, name: data.name }],
-          subject: `Reminder: You have ${data.commitments.length} commitments due soon`,
-          htmlContent: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; line-height: 1.6;">
-              <h2 style="color: #10b981; margin-bottom: 8px;">Upcoming Commitment Deadlines</h2>
-              <p>Hi ${data.name},</p>
-              <p>This is a reminder that you have the following commitments due today or tomorrow. Completing them on time preserves your high Accountability Score!</p>
-              <ul style="padding: 0; margin: 20px 0;">
-                ${commitmentsListHtml}
-              </ul>
-              <div style="margin: 24px 0;">
-                <a href="${data.actionUrl}" style="background-color: #10b981; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                  View My Commitments
-                </a>
-              </div>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #999;">If the button doesn't work, copy this link: <a href="${data.actionUrl}">${data.actionUrl}</a></p>
-            </div>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to }, 'Deadline reminder email sent successfully')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send deadline reminder email')
-      throw error
-    }
+    logger.info({ to: data.to }, 'email.service: sending deadline reminder email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: `Reminder: You have ${data.commitments.length} commitments due soon`,
+      htmlContent,
+      notificationType: 'DEADLINE_REMINDER',
+      userId: data.userId || data.to,
+    })
   },
 
   /**
-   * Sends a notification email when an integration is disabled due to failures.
+   * Sends integration disabled notification email.
    */
   async sendIntegrationDisabledEmail(data: {
     to: string
     name: string
     providerName: string
     reconnectUrl: string
+    userId?: string
   }): Promise<void> {
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
-    logger.info({ to: data.to }, 'Preparing integration disabled email')
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'INTEGRATION_DEACTIVATED')
+    const htmlContent = renderIntegrationDeactivatedHtml({
+      providerName: data.providerName,
+      settingsUrl: data.reconnectUrl,
+      unsubscribeToken: unsubToken,
+    })
 
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { reconnectUrl: data.reconnectUrl, to: data.to },
-        'BREVO_API_KEY not configured. Integration disabled URL printed to console.'
-      )
-      return
-    }
-
-    try {
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: { name: 'Vocaply', email: fromEmail },
-          to: [{ email: data.to, name: data.name }],
-          subject: `Action Required: Your ${data.providerName} integration has been disconnected`,
-          htmlContent: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; line-height: 1.6;">
-              <h2 style="color: #ef4444; margin-bottom: 8px;">Integration Disconnected</h2>
-              <p>Hi ${data.name},</p>
-              <p>We encountered multiple consecutive errors while attempting to sync with your <strong>${data.providerName}</strong> account. For your security and to prevent rate limits, we have temporarily deactivated this integration.</p>
-              <p>To resume syncing, please reconnect your account:</p>
-              <div style="margin: 24px 0;">
-                <a href="${data.reconnectUrl}" style="background-color: #ef4444; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                  Reconnect Integration
-                </a>
-              </div>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #999;">If the button doesn't work, copy this link: <a href="${data.reconnectUrl}">${data.reconnectUrl}</a></p>
-            </div>
-          `,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to }, 'Integration disabled email sent successfully')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send integration disabled email')
-      throw error
-    }
+    logger.info({ to: data.to }, 'email.service: sending integration disabled email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: `Action Required: Your ${data.providerName} integration has been disconnected`,
+      htmlContent,
+      notificationType: 'INTEGRATION_DEACTIVATED',
+      userId: data.userId || data.to,
+    })
   },
 
+  /**
+   * Sends integration warning email.
+   */
   async sendIntegrationWarningEmail(data: {
     to: string
     name: string
     providerName: string
     workspaceName?: string
     settingsUrl: string
+    userId?: string
   }): Promise<void> {
-    const { renderIntegrationWarningHtml } = await import('./templates/IntegrationWarning')
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
-    logger.info({ to: data.to, providerName: data.providerName }, 'Preparing integration warning email')
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'INTEGRATION_WARNING')
+    const htmlContent = renderIntegrationWarningHtml({
+      providerName: data.providerName,
+      workspaceName: data.workspaceName,
+      settingsUrl: data.settingsUrl,
+      unsubscribeToken: unsubToken,
+    })
 
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { settingsUrl: data.settingsUrl, to: data.to },
-        'BREVO_API_KEY not configured. Integration warning URL printed to console.'
-      )
-      return
-    }
-
-    try {
-      const htmlContent = renderIntegrationWarningHtml(data)
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: { name: 'Vocaply', email: fromEmail },
-          to: [{ email: data.to, name: data.name }],
-          subject: `⚠️ Connection Warning: Issue syncing with ${data.providerName}`,
-          htmlContent,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
-
-      logger.info({ to: data.to, providerName: data.providerName }, 'Integration warning email sent successfully')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send integration warning email')
-      throw error
-    }
+    logger.info({ to: data.to, providerName: data.providerName }, 'email.service: sending integration warning email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: `⚠️ Connection Warning: Issue syncing with ${data.providerName}`,
+      htmlContent,
+      notificationType: 'INTEGRATION_WARNING',
+      userId: data.userId || data.to,
+    })
   },
 
+  /**
+   * Sends integration deactivated email.
+   */
   async sendIntegrationDeactivatedEmail(data: {
     to: string
     name: string
     providerName: string
     workspaceName?: string
     settingsUrl: string
+    userId?: string
   }): Promise<void> {
-    const { renderIntegrationDeactivatedHtml } = await import('./templates/IntegrationDeactivated')
-    const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@vocaply.com'
-    logger.info({ to: data.to, providerName: data.providerName }, 'Preparing integration deactivated email')
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'INTEGRATION_DEACTIVATED')
+    const htmlContent = renderIntegrationDeactivatedHtml({
+      providerName: data.providerName,
+      workspaceName: data.workspaceName,
+      settingsUrl: data.settingsUrl,
+      unsubscribeToken: unsubToken,
+    })
 
-    if (!isBrevoConfigured) {
-      logger.warn(
-        { settingsUrl: data.settingsUrl, to: data.to },
-        'BREVO_API_KEY not configured. Integration deactivated URL printed to console.'
-      )
-      return
-    }
+    logger.info({ to: data.to, providerName: data.providerName }, 'email.service: sending integration deactivated email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: `🚨 Action Required: ${data.providerName} integration has been disconnected`,
+      htmlContent,
+      notificationType: 'INTEGRATION_DEACTIVATED',
+      userId: data.userId || data.to,
+    })
+  },
 
-    try {
-      const htmlContent = renderIntegrationDeactivatedHtml(data)
-      const response = await fetchWithRetry('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'content-type': 'application/json',
-          'api-key': env.BREVO_API_KEY!,
-        },
-        body: JSON.stringify({
-          sender: { name: 'Vocaply', email: fromEmail },
-          to: [{ email: data.to, name: data.name }],
-          subject: `🚨 Action Required: ${data.providerName} integration has been disconnected`,
-          htmlContent,
-        }),
-      })
+  /**
+   * Sends billing payment failed email.
+   */
+  async sendPaymentFailedEmail(data: {
+    to: string
+    teamName: string
+    amountDue: string
+    retryUrl: string
+    reason?: string
+    userId?: string
+  }): Promise<void> {
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'PAYMENT_FAILED')
+    const htmlContent = renderPaymentFailedHtml({
+      teamName: data.teamName,
+      amountDue: data.amountDue,
+      retryUrl: data.retryUrl,
+      reason: data.reason,
+      unsubscribeToken: unsubToken,
+    })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Brevo API returned status ${response.status}: ${errorText}`)
-      }
+    logger.info({ to: data.to, teamName: data.teamName }, 'email.service: sending payment failed email')
+    await sendBrevoEmail({
+      to: [{ email: data.to }],
+      subject: `Action Required: Payment failed for ${data.teamName}`,
+      htmlContent,
+      notificationType: 'PAYMENT_FAILED',
+      userId: data.userId || data.to,
+    })
+  },
 
-      logger.info({ to: data.to, providerName: data.providerName }, 'Integration deactivated email sent successfully')
-    } catch (error) {
-      logger.error({ error, to: data.to }, 'Failed to send integration deactivated email')
-      throw error
-    }
+  /**
+   * Sends plan usage limit reached email.
+   */
+  async sendPlanLimitEmail(data: {
+    to: string
+    teamName: string
+    resource: string
+    used: number
+    limit: number
+    upgradeUrl: string
+    userId?: string
+  }): Promise<void> {
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'PLAN_LIMIT')
+    const htmlContent = renderPlanLimitHtml({
+      teamName: data.teamName,
+      resource: data.resource,
+      used: data.used,
+      limit: data.limit,
+      upgradeUrl: data.upgradeUrl,
+      unsubscribeToken: unsubToken,
+    })
+
+    logger.info({ to: data.to, teamName: data.teamName }, 'email.service: sending plan limit email')
+    await sendBrevoEmail({
+      to: [{ email: data.to }],
+      subject: `Action Required: ${data.teamName} reached its ${data.resource} limit`,
+      htmlContent,
+      notificationType: 'PLAN_LIMIT',
+      userId: data.userId || data.to,
+    })
+  },
+
+  /**
+   * Sends owner welcome email after account setup & onboarding.
+   */
+  async sendOwnerWelcomeEmail(data: {
+    to: string
+    ownerName: string
+    workspaceName: string
+    dashboardUrl?: string
+    checklist?: Array<{
+      step: number
+      title: string
+      description: string
+      completed?: boolean
+      actionUrl?: string
+      actionLabel?: string
+    }>
+    userId?: string
+  }): Promise<void> {
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'OWNER_WELCOME_EMAIL')
+    const dashUrl = data.dashboardUrl || `${frontendUrl}/dashboard`
+    const htmlContent = renderOwnerWelcomeHtml({
+      ownerName: data.ownerName,
+      ownerEmail: data.to,
+      workspaceName: data.workspaceName,
+      dashboardUrl: dashUrl,
+      checklist: data.checklist,
+      unsubscribeToken: unsubToken,
+    })
+
+    logger.info({ to: data.to, workspaceName: data.workspaceName }, 'email.service: sending owner welcome email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.ownerName }],
+      subject: `Welcome to Vocaply! ${data.workspaceName} is ready 🚀`,
+      htmlContent,
+      notificationType: 'OWNER_WELCOME_EMAIL',
+      userId: data.userId || data.to,
+    })
+  },
+
+  /**
+   * Sends team member welcome email after accepting invite.
+   */
+  async sendTeamMemberWelcomeEmail(data: {
+    to: string
+    memberName: string
+    workspaceName: string
+    inviterName: string
+    role: string
+    dashboardUrl?: string
+    capabilities?: Array<{
+      icon: string
+      title: string
+      description: string
+    }>
+    userId?: string
+  }): Promise<void> {
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'TEAM_MEMBER_WELCOME_EMAIL')
+    const dashUrl = data.dashboardUrl || `${frontendUrl}/dashboard`
+    const htmlContent = renderTeamMemberWelcomeHtml({
+      memberName: data.memberName,
+      memberEmail: data.to,
+      workspaceName: data.workspaceName,
+      inviterName: data.inviterName,
+      role: data.role,
+      dashboardUrl: dashUrl,
+      capabilities: data.capabilities,
+      unsubscribeToken: unsubToken,
+    })
+
+    logger.info({ to: data.to, workspaceName: data.workspaceName }, 'email.service: sending team member welcome email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.memberName }],
+      subject: `Welcome to ${data.workspaceName} on Vocaply 🎉`,
+      htmlContent,
+      notificationType: 'TEAM_MEMBER_WELCOME_EMAIL',
+      userId: data.userId || data.to,
+    })
+  },
+
+  /**
+   * Sends weekly team health digest email.
+   */
+  async sendWeeklyDigestEmail(data: {
+    to: string
+    name: string
+    teamName: string
+    healthScore: number
+    healthScoreChange: number
+    fulfilledCount: number
+    missedCount: number
+    mostImproved: Array<{ name: string; change: number; currentScore: number }>
+    mostDeclined: Array<{ name: string; change: number; currentScore: number }>
+    upcomingDeadlines: Array<{ text: string; ownerName: string; dueDate: string }>
+    dashboardUrl: string
+    userId?: string
+  }): Promise<void> {
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'WEEKLY_DIGEST')
+    const htmlContent = renderWeeklyDigestHtml({
+      recipientName: data.name,
+      teamName: data.teamName,
+      healthScore: data.healthScore,
+      healthScoreChange: data.healthScoreChange,
+      fulfilledCount: data.fulfilledCount,
+      missedCount: data.missedCount,
+      mostImproved: data.mostImproved,
+      mostDeclined: data.mostDeclined,
+      upcomingDeadlines: data.upcomingDeadlines,
+      dashboardUrl: data.dashboardUrl,
+      unsubscribeToken: unsubToken,
+    })
+
+    logger.info({ to: data.to, teamName: data.teamName }, 'email.service: sending weekly digest email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.name }],
+      subject: `Weekly Team Health Digest: ${data.teamName}`,
+      htmlContent,
+      notificationType: 'WEEKLY_DIGEST',
+      userId: data.userId || data.to,
+    })
   },
 }
 

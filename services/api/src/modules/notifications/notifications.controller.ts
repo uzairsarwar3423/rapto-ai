@@ -145,4 +145,41 @@ export const notificationsController = {
 
     return res.json({ success: true, data: { results } })
   }),
+
+  /**
+   * POST /api/v1/notifications/email/owner-welcome
+   * Triggers owner welcome email after account setup & onboarding.
+   */
+  sendOwnerWelcome: asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+    const { to, ownerName, workspaceName, dashboardUrl, checklist, userId } = req.body
+    await emailService.sendOwnerWelcomeEmail({
+      to,
+      ownerName,
+      workspaceName,
+      dashboardUrl,
+      checklist,
+      userId: userId || req.user?.id,
+    })
+    return res.json({ success: true, message: 'Owner welcome email sent successfully' })
+  }),
+
+  /**
+   * POST /api/v1/notifications/email/team-member-welcome
+   * Triggers team member welcome email after accepting invite.
+   */
+  sendTeamMemberWelcome: asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+    const { to, memberName, workspaceName, inviterName, role, dashboardUrl, capabilities, userId } = req.body
+    await emailService.sendTeamMemberWelcomeEmail({
+      to,
+      memberName,
+      workspaceName,
+      inviterName,
+      role,
+      dashboardUrl,
+      capabilities,
+      userId: userId || req.user?.id,
+    })
+    return res.json({ success: true, message: 'Team member welcome email sent successfully' })
+  }),
 }
+

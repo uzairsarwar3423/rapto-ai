@@ -323,4 +323,61 @@ export const slackNotifyService = {
       blocks
     )
   },
+
+  /**
+   * Dispatch weekly digest summary to Slack channel.
+   */
+  async sendWeeklyDigestChannel(
+    integration: TeamIntegration,
+    input: {
+      teamName: string
+      healthScore: number
+      healthScoreChange: number
+      fulfilledCount: number
+      missedCount: number
+      dashboardUrl: string
+    }
+  ): Promise<SlackSendResult> {
+    const deltaText = input.healthScoreChange > 0
+      ? `(+${input.healthScoreChange} pts vs last week)`
+      : input.healthScoreChange < 0
+      ? `(${input.healthScoreChange} pts vs last week)`
+      : `(same as last week)`
+
+    const blocks: SlackBlock[] = [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: `📊  Weekly Team Health Digest: ${input.teamName}`, emoji: true },
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Team Health Score:* *${input.healthScore}%* ${deltaText}\n*Fulfilled this week:* ${input.fulfilledCount}  |  *Missed:* ${input.missedCount}`,
+        },
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: 'View Team Dashboard', emoji: true },
+            url: input.dashboardUrl,
+            action_id: 'view_team_dashboard',
+            style: 'primary',
+          },
+        ],
+      },
+    ]
+
+    const meta = (integration.metadata as any) || {}
+    const channelId = meta.defaultChannelId || meta.channelId || 'general'
+
+    return slackProvider.sendChannelMessage(
+      integration,
+      channelId,
+      `📊 Weekly Team Health Digest: ${input.teamName} — ${input.healthScore}%`,
+      blocks
+    )
+  },
 }

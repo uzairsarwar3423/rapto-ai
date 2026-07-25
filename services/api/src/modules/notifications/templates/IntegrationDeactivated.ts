@@ -1,38 +1,50 @@
+import { renderEmailLayout } from './shared/EmailLayout'
+import { renderEmailButton } from './shared/EmailButton'
+import { renderEmailCard } from './shared/EmailCard'
+import { renderEmailFooter } from './shared/EmailFooter'
+import { EmailColors } from './shared/email-tokens'
+
 export interface IntegrationDeactivatedEmailProps {
-    providerName: string
-    workspaceName?: string
-    settingsUrl: string
+  providerName: string
+  workspaceName?: string
+  settingsUrl: string
+  unsubscribeToken?: string
 }
 
 export function renderIntegrationDeactivatedHtml(props: IntegrationDeactivatedEmailProps): string {
-    return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Integration Deactivated</title>
-      </head>
-      <body style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 32px 16px; margin: 0;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; padding: 32px; border: 1px solid #ef4444;">
-          <div style="font-size: 24px; font-weight: bold; color: #ef4444; margin-bottom: 16px;">
-            🚨 Integration Deactivated: ${props.providerName}
-          </div>
-          <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1;">
-            Your <strong>${props.providerName}</strong> integration${props.workspaceName ? ` (${props.workspaceName})` : ''} has been disconnected after 5 consecutive failed connection attempts.
-          </p>
-          <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1;">
-            Automatic background syncing for this integration is currently paused to protect your rate limits and service stability. Please reconnect your account to resume syncing.
-          </p>
-          <div style="margin: 32px 0; text-align: center;">
-            <a href="${props.settingsUrl}" style="display: inline-block; background-color: #ef4444; color: #ffffff; font-weight: 600; padding: 12px 24px; border-radius: 8px; text-decoration: none;">
-              Reconnect Integration Now
-            </a>
-          </div>
-          <p style="font-size: 13px; color: #64748b; margin-top: 32px; border-top: 1px solid #334155; padding-top: 16px;">
-            Vocaply Integration Health Service • Automated Administrative Alert
-          </p>
-        </div>
-      </body>
-    </html>
-    `
+  const { providerName, workspaceName, settingsUrl, unsubscribeToken } = props
+
+  const cardHtml = `
+<p style="margin: 0; font-weight: 600; color: ${EmailColors.stateDangerText};">
+  🚨 Disconnected Integration: ${providerName}
+</p>
+<p style="margin: 4px 0 0 0; font-size: 13px; color: ${EmailColors.stateDangerText};">
+  Target Workspace: ${workspaceName || 'Connected Workspace'}
+</p>`
+
+  const content = `
+<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">Integration Deactivated</h2>
+<p>We encountered multiple consecutive errors while attempting to sync with your <strong>${providerName}</strong> account. To protect your security and rate limits, this integration has been deactivated.</p>
+
+${renderEmailCard({ contentHtml: cardHtml, variant: 'danger' })}
+
+<p>To resume automatic syncing, please reconnect your account in settings:</p>
+
+${renderEmailButton({ href: settingsUrl, label: 'Reconnect Integration', variant: 'danger' })}
+
+<p style="font-size: 13px; color: ${EmailColors.textMuted}; margin-top: 24px;">
+  Direct link: <a href="${settingsUrl}" style="color: ${EmailColors.brandPrimary}; word-break: break-all;">${settingsUrl}</a>
+</p>`
+
+  const footer = renderEmailFooter({
+    notificationType: 'INTEGRATION_DEACTIVATED',
+    unsubscribeToken,
+  })
+
+  return renderEmailLayout({
+    title: `🚨 Action Required: ${providerName} integration has been disconnected`,
+    previewText: `${providerName} integration was disconnected due to sync errors`,
+    childrenHtml: content,
+    footerHtml: footer,
+  })
 }

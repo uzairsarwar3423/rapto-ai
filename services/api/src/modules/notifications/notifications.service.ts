@@ -142,6 +142,48 @@ export const notificationsService = {
   },
 
   /**
+   * Check and increment daily email rate limit counter (max 3 per user per day).
+   * MeetingSummary & Digest types are explicitly EXEMPT from the cap.
+   * @returns true if send is within cap or exempt, false if cap exceeded.
+   */
+  async checkAndIncrementEmailRateLimit(userId: string, notificationType: string): Promise<boolean> {
+    if (
+      notificationType === 'MEETING_PROCESSED' ||
+      notificationType === 'EMAIL_MEETING_SUMMARY' ||
+      notificationType === 'EMAIL_OWNER_WELCOME' ||
+      notificationType === 'EMAIL_TEAM_MEMBER_WELCOME' ||
+      notificationType === 'OWNER_WELCOME_EMAIL' ||
+      notificationType === 'TEAM_MEMBER_WELCOME_EMAIL'
+    ) {
+      return true
+    }
+    const dateStr = new Date().toISOString().split('T')[0]
+    const key = `ratelimit:email:${userId}:${dateStr}`
+    try {
+      const count = await redis.incr(key)
+      if (count === 1) {
+        await redis.expire(key, 86400)
+      }
+      return count <= 3
+    } catch (err) {
+      logger.warn({ err, userId }, 'notifications.service: email rate limit check failed (defaulting to proceed)')
+      return true
+    }
+  },
+
+  /**
+   * Unsubscribe a user from a specific notification type (type-scoped).
+   */
+  async unsubscribeType(userId: string, notificationType: string): Promise<NotificationPreferences> {
+    const mappedKey = NOTIFICATION_TYPE_TO_EMAIL_PREF_KEY[notificationType] || 'deadlineReminder'
+    return notificationsService.updatePreferences(userId, {
+      email: {
+        [mappedKey]: false,
+      },
+    })
+  },
+
+  /**
    * Check and set an atomic Redis deduplication slot.
    * @returns true if slot WAS claimed (fresh send), false if slot WAS ALREADY set (duplicate, skip).
    */

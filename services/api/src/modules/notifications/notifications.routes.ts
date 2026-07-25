@@ -3,7 +3,12 @@ import { requireAuth } from '../../middleware/auth.middleware'
 import { injectTenant } from '../../middleware/tenant.middleware'
 import { validate } from '../../middleware/validate.middleware'
 import { notificationsController } from './notifications.controller'
-import { updatePreferencesSchema, listInAppNotificationsSchema } from './notifications.validator'
+import {
+  updatePreferencesSchema,
+  listInAppNotificationsSchema,
+  ownerWelcomeSchema,
+  teamMemberWelcomeSchema,
+} from './notifications.validator'
 
 export const notificationsRouter = Router()
 
@@ -80,3 +85,26 @@ notificationsRouter.post(
   requireAuth,
   notificationsController.testNotification
 )
+
+/**
+ * POST /api/v1/notifications/email/owner-welcome
+ * Dispatch owner welcome email
+ */
+notificationsRouter.post(
+  '/email/owner-welcome',
+  requireAuth,
+  validate({ body: ownerWelcomeSchema }),
+  notificationsController.sendOwnerWelcome
+)
+
+/**
+ * POST /api/v1/notifications/email/team-member-welcome
+ * Dispatch team member welcome email
+ */
+notificationsRouter.post(
+  '/email/team-member-welcome',
+  requireAuth,
+  validate({ body: teamMemberWelcomeSchema }),
+  notificationsController.sendTeamMemberWelcome
+)
+

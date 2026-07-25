@@ -13,6 +13,7 @@ import crypto from 'crypto'
 import { PlanType, UserRole } from '@prisma/client'
 import { teamsRepository } from './teams.repository'
 import { notifyQueue } from '../../queues/queue.client'
+import { emailService } from '../notifications/email.service'
 import { prisma } from '../../db/client'
 import { redis } from '../../config/redis'
 import { logger } from '../../config/logger'
@@ -603,12 +604,71 @@ async function acceptInvitation(token: string, userId: string) {
     'Member joined team via invitation'
   )
 
+  // Dispatch Team Member Welcome Email
+  try {
+    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+    const dashboardUrl = `${frontendUrl}/dashboard`
+    const inviter = invitation.invitedById
+      ? await prisma.user
+          .findUnique({
+            where: { id: invitation.invitedById },
+            select: { name: true },
+          })
+          .catch(() => null)
+      : null
+
+    const inviterName = inviter?.name || 'Workspace Administrator'
+
+    console.log('\n===================================================================')
+    console.log(`🎉 TEAM MEMBER ACCEPTED INVITE! TRIGGERING WELCOME EMAIL...`)
+    console.log(` - Member Email: ${updatedUser.email}`)
+    console.log(` - Member Name:  ${updatedUser.name}`)
+    console.log(` - Workspace:    ${invitation.team.name}`)
+    console.log(` - Inviter:      ${inviterName}`)
+    console.log(` - Role:         ${updatedUser.role}`)
+    console.log('===================================================================\n')
+
+    // Direct immediate send (non-blocking)
+    emailService
+      .sendTeamMemberWelcomeEmail({
+        to: updatedUser.email,
+        memberName: updatedUser.name,
+        workspaceName: invitation.team.name,
+        inviterName,
+        role: updatedUser.role,
+        dashboardUrl,
+        userId: updatedUser.id,
+      })
+      .catch((err) => {
+        logger.error({ err, userId: updatedUser.id }, 'Direct sendTeamMemberWelcomeEmail failed in acceptInvitation')
+      })
+
+    // Also push to BullMQ queue for auditing/worker redundancy if active
+    notifyQueue
+      .add('EMAIL_TEAM_MEMBER_WELCOME', {
+        type: 'EMAIL_TEAM_MEMBER_WELCOME',
+        emailPayload: {
+          to: updatedUser.email,
+          memberName: updatedUser.name,
+          workspaceName: invitation.team.name,
+          inviterName,
+          role: updatedUser.role,
+          dashboardUrl,
+          userId: updatedUser.id,
+        },
+      })
+      .catch(() => {})
+  } catch (err: any) {
+    logger.error({ err, userId: updatedUser.id }, 'Failed to trigger team member welcome email')
+  }
+
   return {
     teamId: invitation.teamId,
     teamName: invitation.team.name,
     role: invitation.invitedRole,
     message: "You've joined the team!",
   }
+
 }
 
 /**

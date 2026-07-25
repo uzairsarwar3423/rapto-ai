@@ -22,6 +22,7 @@ import { redis } from '../../config/redis'
 import { env } from '../../config/env'
 import { logger } from '../../config/logger'
 import { teamsService } from '../teams/teams.service'
+import { emailService } from '../notifications/email.service'
 
 // Redis TTL for pending invite token (must outlive email verification window)
 const PENDING_INVITE_TTL = 24 * 60 * 60 // 24 hours
@@ -751,11 +752,100 @@ export const authService = {
     userId: string,
     data: { name?: string; timezone?: string; avatarUrl?: string | null; onboardingCompleted?: boolean }
   ) {
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { onboardingCompleted: true },
+    })
+
+    const wasOnboardingCompleted = existingUser?.onboardingCompleted ?? false
+
+    console.log('\n===================================================================')
+    console.log(`👤 USER PROFILE UPDATE (PATCH /api/v1/auth/me)`)
+    console.log(` - User ID:                 ${userId}`)
+    console.log(` - onboardingCompleted (DB): ${wasOnboardingCompleted}`)
+    console.log(` - onboardingCompleted (in): ${data.onboardingCompleted}`)
+    console.log('===================================================================\n')
+
     const updated = await prisma.user.update({
       where: { id: userId },
       data,
       include: { team: true },
     })
+
+    // Auto-trigger welcome email when onboarding completes (including skipped steps flow)
+    if (data.onboardingCompleted === true) {
+      const workspaceName = updated.team?.name || `${updated.name}'s Workspace`
+      const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+      const dashboardUrl = `${frontendUrl}/dashboard`
+
+      console.log('\n===================================================================')
+      console.log(`🎉 ONBOARDING FINISHED! TRIGGERING WELCOME EMAIL NOW...`)
+      console.log(` - Email:     ${updated.email}`)
+      console.log(` - Name:      ${updated.name}`)
+      console.log(` - Role:      ${updated.role}`)
+      console.log(` - Workspace: ${workspaceName}`)
+      console.log('===================================================================\n')
+
+      if (updated.role === 'OWNER' || updated.role === 'ADMIN' || !updated.teamId) {
+        // Direct immediate send (non-blocking)
+        emailService
+          .sendOwnerWelcomeEmail({
+            to: updated.email,
+            ownerName: updated.name,
+            workspaceName,
+            dashboardUrl,
+            userId: updated.id,
+          })
+          .catch((err) => {
+            logger.error({ err, userId: updated.id }, 'Direct sendOwnerWelcomeEmail failed')
+          })
+
+        // Also push to BullMQ queue for auditing/worker redundancy if active
+        notifyQueue
+          .add('EMAIL_OWNER_WELCOME', {
+            type: 'EMAIL_OWNER_WELCOME',
+            emailPayload: {
+              to: updated.email,
+              ownerName: updated.name,
+              workspaceName,
+              dashboardUrl,
+              userId: updated.id,
+            },
+          })
+          .catch(() => {})
+      } else {
+        // Direct immediate send (non-blocking)
+        emailService
+          .sendTeamMemberWelcomeEmail({
+            to: updated.email,
+            memberName: updated.name,
+            workspaceName,
+            inviterName: 'Your Workspace Administrator',
+            role: updated.role,
+            dashboardUrl,
+            userId: updated.id,
+          })
+          .catch((err) => {
+            logger.error({ err, userId: updated.id }, 'Direct sendTeamMemberWelcomeEmail failed')
+          })
+
+        // Also push to BullMQ queue for auditing/worker redundancy if active
+        notifyQueue
+          .add('EMAIL_TEAM_MEMBER_WELCOME', {
+            type: 'EMAIL_TEAM_MEMBER_WELCOME',
+            emailPayload: {
+              to: updated.email,
+              memberName: updated.name,
+              workspaceName,
+              inviterName: 'Your Workspace Administrator',
+              role: updated.role,
+              dashboardUrl,
+              userId: updated.id,
+            },
+          })
+          .catch(() => {})
+      }
+    }
 
     return {
       user: {
@@ -772,6 +862,7 @@ export const authService = {
       },
     }
   },
+
 
   /**
    * Retrieve active refresh token sessions.

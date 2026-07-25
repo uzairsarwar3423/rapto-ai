@@ -63,3 +63,49 @@ export const listInAppNotificationsSchema = z.object({
 
 export type ListInAppNotificationsInput = z.infer<typeof listInAppNotificationsSchema>
 
+// ── Welcome Email Schemas ───────────────────────────────────────────────────
+
+export const ownerWelcomeSchema = z.object({
+  to: z.string().email(),
+  ownerName: z.string().min(1),
+  workspaceName: z.string().min(1),
+  dashboardUrl: z.string().url().optional(),
+  checklist: z
+    .array(
+      z.object({
+        step: z.number(),
+        title: z.string(),
+        description: z.string(),
+        completed: z.boolean().optional(),
+        actionUrl: z.string().optional(),
+        actionLabel: z.string().optional(),
+      })
+    )
+    .optional(),
+  userId: z.string().optional(),
+})
+
+export type OwnerWelcomeInput = z.infer<typeof ownerWelcomeSchema>
+
+export const teamMemberWelcomeSchema = z.object({
+  to: z.string().email(),
+  memberName: z.string().min(1),
+  workspaceName: z.string().min(1),
+  inviterName: z.string().min(1),
+  role: z.string().min(1),
+  dashboardUrl: z.string().url().optional(),
+  capabilities: z
+    .array(
+      z.object({
+        icon: z.string(),
+        title: z.string(),
+        description: z.string(),
+      })
+    )
+    .optional(),
+  userId: z.string().optional(),
+})
+
+export type TeamMemberWelcomeInput = z.infer<typeof teamMemberWelcomeSchema>
+
+

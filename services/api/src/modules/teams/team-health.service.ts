@@ -1,30 +1,9 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// team-health.service.ts — Team Health Score Algorithm
-//
-// Computes a single 0–100 score representing team accountability health.
-// Used on: team dashboard, analytics page, weekly digest email.
-//
-// Formula:
-//   score = (fulfillmentRate × 0.6) + (avgMemberScore × 0.3) + (onTimeRate × 0.1)
-//
-// Weights rationale:
-//   60% fulfillment  — Primary: are people keeping promises?
-//   30% avg score    — Individual accountability
-//   10% on-time rate — Quality: fulfilled on time > fulfilled late
-//
-// Caching:
-//   Key: cache:team:health:{teamId}
-//   TTL: 300s (5 minutes)
-//   Invalidated: when any commitment changes status in this team
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { CommitmentStatus } from '@prisma/client'
 import { prisma } from '../../db/client'
 import { redis } from '../../config/redis'
 import { logger } from '../../config/logger'
+import { subDays, startOfWeek, addDays } from 'date-fns'
 import type { TeamHealthScore, HealthTrend } from './teams.types'
-
-// ── Constants ─────────────────────────────────────────────────────────────────
 
 const HEALTH_CACHE_TTL = 300 // 5 minutes
 const ANALYSIS_WINDOW_DAYS = 30
@@ -36,21 +15,47 @@ function healthCacheKey(teamId: string): string {
   return `cache:team:health:${teamId}`
 }
 
-// ── Score Computation ─────────────────────────────────────────────────────────
+export interface MemberDelta {
+  userId: string
+  name: string
+  previousScore: number
+  currentScore: number
+  change: number
+}
+
+export interface UpcomingDeadline {
+  commitmentId: string
+  text: string
+  ownerName: string
+  dueDate: string
+}
+
+export interface WeeklyDigestData {
+  teamId: string
+  teamName: string
+  healthScore: number
+  healthScoreChange: number
+  mostImproved: MemberDelta[]
+  mostDeclined: MemberDelta[]
+  fulfilledCount: number
+  missedCount: number
+  upcomingDeadlines: UpcomingDeadline[]
+}
 
 /**
  * Calculate fulfillment rate for a given date range.
  * Only counts commitments with confidence >= MIN_CONFIDENCE_SCORE.
+ * Defaults to rate = 100, onTimeRate = 100 if zero decided commitments exist.
  */
 async function computeFulfillmentRate(
   teamId: string,
   fromDate: Date,
   toDate: Date
-): Promise<{ rate: number; fulfilled: number; missed: number; onTimeRate: number }> {
+): Promise<{ rate: number; fulfilled: number; missed: number; onTimeRate: number; totalDecided: number }> {
   const commitments = await prisma.commitment.findMany({
     where: {
       teamId,
-      createdAt: { gte: fromDate, lt: toDate },
+      createdAt: { gte: fromDate, lte: toDate },
       confidenceScore: { gte: MIN_CONFIDENCE_SCORE },
       status: { in: [CommitmentStatus.FULFILLED, CommitmentStatus.MISSED] },
     },
@@ -62,14 +67,14 @@ async function computeFulfillmentRate(
   })
 
   if (commitments.length === 0) {
-    return { rate: 0, fulfilled: 0, missed: 0, onTimeRate: 0 }
+    return { rate: 100, fulfilled: 0, missed: 0, onTimeRate: 100, totalDecided: 0 }
   }
 
   const fulfilled = commitments.filter((c) => c.status === CommitmentStatus.FULFILLED)
   const missed = commitments.filter((c) => c.status === CommitmentStatus.MISSED)
+  const totalDecided = fulfilled.length + missed.length
 
-  const fulfillmentRate =
-    Math.round((fulfilled.length / (fulfilled.length + missed.length)) * 100)
+  const fulfillmentRate = totalDecided === 0 ? 100 : Math.round((fulfilled.length / totalDecided) * 100)
 
   // On-time: fulfilled before or on the due date
   const fulfilledOnTime = fulfilled.filter((c) => {
@@ -78,15 +83,14 @@ async function computeFulfillmentRate(
   })
 
   const onTimeRate =
-    fulfilled.length > 0
-      ? Math.round((fulfilledOnTime.length / fulfilled.length) * 100)
-      : 0
+    fulfilled.length > 0 ? Math.round((fulfilledOnTime.length / fulfilled.length) * 100) : 100
 
   return {
     rate: fulfillmentRate,
     fulfilled: fulfilled.length,
     missed: missed.length,
     onTimeRate,
+    totalDecided,
   }
 }
 
@@ -100,22 +104,26 @@ async function computeAvgMemberScore(teamId: string): Promise<number> {
     _avg: { commitmentScore: true },
   })
 
-  return Math.round(result._avg.commitmentScore ?? 0)
+  return Math.round(result._avg.commitmentScore ?? 100)
 }
 
 /**
  * Determine trend by comparing the last 14 days vs the prior 14 days.
+ * Returns 'stable' if either window has zero decided commitments or diff is within ±5 points.
  */
 async function computeTrend(teamId: string): Promise<HealthTrend> {
   const now = new Date()
-
-  const recentFrom = new Date(now.getTime() - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000)
-  const priorFrom = new Date(now.getTime() - TREND_WINDOW_DAYS * 2 * 24 * 60 * 60 * 1000)
+  const recentFrom = subDays(now, TREND_WINDOW_DAYS)
+  const priorFrom = subDays(now, TREND_WINDOW_DAYS * 2)
 
   const [recent, prior] = await Promise.all([
     computeFulfillmentRate(teamId, recentFrom, now),
     computeFulfillmentRate(teamId, priorFrom, recentFrom),
   ])
+
+  if (recent.totalDecided === 0 || prior.totalDecided === 0) {
+    return 'stable'
+  }
 
   const diff = recent.rate - prior.rate
 
@@ -124,13 +132,12 @@ async function computeTrend(teamId: string): Promise<HealthTrend> {
   return 'stable'
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
 /**
- * Calculate team health score. Returns a sensible default (score=0) for new teams with no data.
+ * Calculate team health score.
+ * Formula: fulfillmentRate * 0.6 + avgMemberScore * 0.3 + onTimeRate * 0.1
  * Result is cached for 5 minutes.
  */
-async function calculateTeamHealthScore(teamId: string): Promise<TeamHealthScore> {
+export async function calculateTeamHealthScore(teamId: string): Promise<TeamHealthScore> {
   // 1. Cache check
   try {
     const cached = await redis.get(healthCacheKey(teamId))
@@ -143,10 +150,10 @@ async function calculateTeamHealthScore(teamId: string): Promise<TeamHealthScore
 
   // 2. Compute all metrics in parallel
   const now = new Date()
-  const fromDate = new Date(now.getTime() - ANALYSIS_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const fromDate = subDays(now, ANALYSIS_WINDOW_DAYS)
 
-  let fulfillmentData = { rate: 0, fulfilled: 0, missed: 0, onTimeRate: 0 }
-  let avgMemberScore = 0
+  let fulfillmentData = { rate: 100, fulfilled: 0, missed: 0, onTimeRate: 100, totalDecided: 0 }
+  let avgMemberScore = 100
   let trend: HealthTrend = 'stable'
 
   try {
@@ -157,13 +164,12 @@ async function calculateTeamHealthScore(teamId: string): Promise<TeamHealthScore
     ])
   } catch (error) {
     logger.error({ error, teamId }, 'Error computing team health metrics')
-    // Return default score instead of crashing
     return {
-      score: 0,
+      score: 100,
       trend: 'stable',
-      fulfillmentRate: 0,
-      avgMemberScore: 0,
-      onTimeRate: 0,
+      fulfillmentRate: 100,
+      avgMemberScore: 100,
+      onTimeRate: 100,
       computedAt: new Date(),
       basedOnDays: ANALYSIS_WINDOW_DAYS,
     }
@@ -200,7 +206,7 @@ async function calculateTeamHealthScore(teamId: string): Promise<TeamHealthScore
  * Invalidate the health score cache for a team.
  * Called after any commitment status change.
  */
-async function invalidateHealthCache(teamId: string): Promise<void> {
+export async function invalidateHealthCache(teamId: string): Promise<void> {
   try {
     await redis.del(healthCacheKey(teamId))
   } catch {
@@ -208,9 +214,131 @@ async function invalidateHealthCache(teamId: string): Promise<void> {
   }
 }
 
-// ── Export ────────────────────────────────────────────────────────────────────
+/**
+ * Assembles the content data payload for the Weekly Digest email/Slack dispatch.
+ */
+export async function buildWeeklyDigestData(teamId: string): Promise<WeeklyDigestData> {
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: { name: true },
+  })
+
+  const teamName = team?.name || 'Your Team'
+  const currentHealth = await calculateTeamHealthScore(teamId)
+
+  const now = new Date()
+  const thisWeekStart = startOfWeek(now, { weekStartsOn: 1 })
+  const lastWeekStart = subDays(thisWeekStart, 7)
+
+  // Query member snapshots for current week vs prior week to derive most-improved / most-declined
+  const snapshots = await prisma.commitmentScoreSnapshot.findMany({
+    where: {
+      teamId,
+      weekStart: { in: [thisWeekStart, lastWeekStart] },
+    },
+    include: {
+      user: { select: { id: true, name: true } },
+    },
+  })
+
+  const memberSnapshotsMap = new Map<string, { current?: number; prior?: number; name: string }>()
+
+  for (const s of snapshots) {
+    const existing = memberSnapshotsMap.get(s.userId) || { name: s.user?.name || 'Team Member' }
+    if (s.weekStart.getTime() === thisWeekStart.getTime()) {
+      existing.current = s.commitmentScore
+    } else {
+      existing.prior = s.commitmentScore
+    }
+    memberSnapshotsMap.set(s.userId, existing)
+  }
+
+  const memberDeltas: MemberDelta[] = []
+  memberSnapshotsMap.forEach((val, userId) => {
+    if (val.current !== undefined && val.prior !== undefined) {
+      memberDeltas.push({
+        userId,
+        name: val.name,
+        previousScore: val.prior,
+        currentScore: val.current,
+        change: val.current - val.prior,
+      })
+    }
+  })
+
+  const mostImproved = memberDeltas
+    .filter((d) => d.change > 0)
+    .sort((a, b) => b.change - a.change)
+    .slice(0, 3)
+
+  const mostDeclined = memberDeltas
+    .filter((d) => d.change < 0)
+    .sort((a, b) => a.change - b.change)
+    .slice(0, 3)
+
+  // Weekly fulfilled and missed counts (trailing 7 days)
+  const trailing7Days = subDays(now, 7)
+  const weeklyCommitments = await prisma.commitment.findMany({
+    where: {
+      teamId,
+      createdAt: { gte: trailing7Days },
+      status: { in: [CommitmentStatus.FULFILLED, CommitmentStatus.MISSED] },
+    },
+    select: { status: true },
+  })
+
+  const fulfilledCount = weeklyCommitments.filter((c) => c.status === CommitmentStatus.FULFILLED).length
+  const missedCount = weeklyCommitments.filter((c) => c.status === CommitmentStatus.MISSED).length
+
+  // Upcoming deadlines in next 7 days
+  const next7Days = addDays(now, 7)
+  const pendingUpcoming = await prisma.commitment.findMany({
+    where: {
+      teamId,
+      status: CommitmentStatus.PENDING,
+      dueDate: { gte: now, lte: next7Days },
+    },
+    include: {
+      owner: { select: { name: true } },
+    },
+    orderBy: { dueDate: 'asc' },
+    take: 5,
+  })
+
+  const upcomingDeadlines: UpcomingDeadline[] = pendingUpcoming.map((c) => ({
+    commitmentId: c.id,
+    text: c.text,
+    ownerName: c.owner?.name || 'Member',
+    dueDate: c.dueDate ? c.dueDate.toISOString() : '',
+  }))
+
+  // Estimate health score change from previous week if snapshot exists
+  const previousTeamSnapshots = await prisma.commitmentScoreSnapshot.findMany({
+    where: { teamId, weekStart: lastWeekStart },
+    select: { commitmentScore: true },
+  })
+  const prevAvgScore = previousTeamSnapshots.length > 0
+    ? Math.round(previousTeamSnapshots.reduce((acc, s) => acc + s.commitmentScore, 0) / previousTeamSnapshots.length)
+    : currentHealth.score
+
+  const healthScoreChange = currentHealth.score - prevAvgScore
+
+  return {
+    teamId,
+    teamName,
+    healthScore: currentHealth.score,
+    healthScoreChange,
+    mostImproved,
+    mostDeclined,
+    fulfilledCount,
+    missedCount,
+    upcomingDeadlines,
+  }
+}
 
 export const teamHealthService = {
   calculateTeamHealthScore,
   invalidateHealthCache,
+  buildWeeklyDigestData,
 }
+

@@ -19,6 +19,10 @@ export type NotifyJobType =
   | 'EMAIL_INTEGRATION_DISABLED'
   | 'INTEGRATION_WARNING'
   | 'INTEGRATION_DEACTIVATED'
+  | 'EMAIL_PAYMENT_FAILED'
+  | 'EMAIL_PLAN_LIMIT'
+  | 'EMAIL_OWNER_WELCOME'
+  | 'EMAIL_TEAM_MEMBER_WELCOME'
 
 export interface NotifyJobData {
   type:          NotifyJobType

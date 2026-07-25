@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { prisma } from '../../src/db/client'
-import { TeamProvider, CalendarProvider, PriorityLevel, PlatformType, MeetingStatus } from '@prisma/client'
+import { TeamProvider, CalendarProvider, PriorityLevel, PlatformType, MeetingStatus, PlanType } from '@prisma/client'
 import { encrypt } from '../../src/utils/crypto'
 
 export async function cleanTestDatabase() {
@@ -31,19 +31,19 @@ export async function cleanTestDatabase() {
 }
 
 
-export async function seedTestTeam(override: { name?: string; slug?: string; settings?: any } = {}) {
+export async function seedTestTeam(override: { name?: string; slug?: string; plan?: PlanType | string; settings?: any } = {}) {
     const uniqueId = Math.random().toString(36).substring(2, 9)
     return prisma.team.create({
         data: {
             name: override.name || `Test Team ${uniqueId}`,
             slug: override.slug || `test-team-${uniqueId}`,
-            plan: 'STARTER',
+            plan: (override.plan as PlanType) || 'STARTER',
             settings: override.settings !== undefined ? override.settings : undefined,
         },
     })
 }
 
-export async function seedTestUser(teamId: string, override: { email?: string; name?: string; role?: any } = {}) {
+export async function seedTestUser(teamId: string, override: { email?: string; name?: string; role?: any; commitmentScore?: number } = {}) {
     const uniqueId = Math.random().toString(36).substring(2, 9)
     return prisma.user.create({
         data: {
@@ -51,6 +51,7 @@ export async function seedTestUser(teamId: string, override: { email?: string; n
             name: override.name || `Test User ${uniqueId}`,
             teamId,
             role: override.role || 'MEMBER',
+            commitmentScore: override.commitmentScore !== undefined ? override.commitmentScore : 100,
         },
     })
 }

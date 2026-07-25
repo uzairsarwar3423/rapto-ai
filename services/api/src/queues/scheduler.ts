@@ -153,6 +153,41 @@ export async function runWeeklyScoreSnapshotCron(): Promise<void> {
     }
 
     logger.info('weekly-snapshot cron: finished processing all active team members')
+
+    // Pre-compute & cache team health scores for all teams
+    const uniqueTeamIds = [...new Set(teamMembers.map((m) => m.teamId).filter((t): t is string => Boolean(t)))]
+    const { teamHealthService } = await import('../modules/teams/team-health.service')
+    for (const teamId of uniqueTeamIds) {
+        try {
+            await teamHealthService.calculateTeamHealthScore(teamId)
+        } catch (err) {
+            logger.error({ err, teamId }, 'weekly-snapshot cron: failed pre-computing team health score')
+        }
+    }
+}
+
+export async function runWeeklyDigestDispatchCron(): Promise<void> {
+    const teams = await prisma.team.findMany({
+        where: {
+            plan: { in: ['GROWTH', 'BUSINESS', 'ENTERPRISE'] },
+        },
+        select: { id: true, name: true, plan: true },
+    })
+
+    logger.info({ count: teams.length }, 'weekly-digest cron: enqueueing per-team digest dispatch jobs')
+
+    const { notifyQueue } = await import('./queue.client')
+
+    for (const team of teams) {
+        try {
+            await notifyQueue.add('weekly-digest', {
+                type: 'WEEKLY_DIGEST',
+                teamId: team.id,
+            })
+        } catch (err: any) {
+            logger.error({ err: err.message, teamId: team.id }, 'weekly-digest cron: failed enqueueing job for team')
+        }
+    }
 }
 
 export function startScheduler(): void {
@@ -176,9 +211,14 @@ export function startScheduler(): void {
         }
     })
 
-    // ── Day 19: Weekly digest (Monday 9 AM UTC) ───────────────────────────────
+    // ── Day 70: Weekly digest dispatch (Monday 9 AM UTC) ─────────────────────
     cron.schedule('0 9 * * 1', async () => {
-        logger.info('Cron: sending weekly digest')
+        logger.info('Cron: running weekly digest dispatch')
+        try {
+            await runWeeklyDigestDispatchCron()
+        } catch (err) {
+            logger.error({ err }, 'Cron: weekly digest dispatch failed')
+        }
     })
 
     // ── Day 69: Weekly commitment score snapshot (Sunday midnight UTC) ───────

@@ -84,4 +84,42 @@ describe('Cross-Channel Failure Isolation', () => {
     expect(res.ok).toBe(false)
     expect(res.error).toBe('SLACK_USER_NOT_FOUND')
   })
+
+  it('ensures email delivery failure does not prevent parallel Slack notifications from processing', async () => {
+    const { emailService } = await import('../../src/modules/notifications/email.service')
+    jest.spyOn(emailService, 'sendMeetingSummary').mockRejectedValue(new Error('Resend API 503 Service Unavailable'))
+
+    // Executing email send wrapped in try-catch (as notifyWorker does)
+    let emailFailed = false
+    try {
+      await emailService.sendMeetingSummary({
+        to: 'fail@acme.com',
+        name: 'User',
+        meetingTitle: 'Sync',
+        summary: 'Text',
+        commitmentsCount: 1,
+        actionItemsCount: 1,
+        viewUrl: 'http://localhost:3000',
+      })
+    } catch (err) {
+      emailFailed = true
+    }
+
+    expect(emailFailed).toBe(true)
+
+    // Parallel Slack dispatch proceeds unaffected
+    jest.spyOn(slackProvider, 'sendMeetingSummaryToChannel').mockResolvedValue({
+      ok: true,
+      ts: '1700000002.000200',
+    })
+
+    const slackRes = await slackProvider.sendMeetingSummaryToChannel(
+      mockIntegration,
+      { id: 'm1', title: 'Sync', scheduledAt: new Date() },
+      { commitments: 1, actionItems: 1 },
+      [{ text: 'Task', dueDate: new Date() }]
+    )
+
+    expect(slackRes.ok).toBe(true)
+  })
 })

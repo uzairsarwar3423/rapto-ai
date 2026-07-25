@@ -24,8 +24,8 @@ const PROVIDERS: ProviderOption[] = [
 ];
 
 export function AutoSyncSettings() {
-  const { team, isLoading: isTeamLoading } = useTeam();
-  const { integrations, isLoading: isIntegrationsLoading } = useIntegrations();
+  const { data: team, isPending: isTeamLoading } = useTeam();
+  const { data: integrationsData, isPending: isIntegrationsLoading } = useIntegrations();
   const { updateSettings, isUpdating } = useUpdateTeamSettings();
 
   const settings = team?.settings || {
@@ -33,8 +33,9 @@ export function AutoSyncSettings() {
     autoSyncProviders: [],
   };
 
+  const rawIntegrations: any[] = (integrationsData as any)?.integrations || (integrationsData as any)?.data || (Array.isArray(integrationsData) ? integrationsData : []);
   const activeProvidersSet = new Set(
-    (integrations || []).filter((i) => i.isActive).map((i) => i.provider)
+    rawIntegrations.filter((i: any) => i.isActive).map((i: any) => i.provider)
   );
 
   const handleMasterToggle = (enabled: boolean) => {
@@ -116,7 +117,7 @@ export function AutoSyncSettings() {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge variant="secondary" className="text-[10px] gap-1 px-1.5 py-0">
+                              <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0">
                                 <Lock className="size-3" /> Not Connected
                               </Badge>
                             </TooltipTrigger>
