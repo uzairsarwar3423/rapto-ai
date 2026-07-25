@@ -27,13 +27,13 @@ import { prisma } from './db/client'
 import { redis } from './config/redis'
 import { connectMongoDB } from './db/mongo.client'
 import { initializeSocketServer, setIO } from './realtime/socket.server'
+import { setServerReady } from './config/server-state'
 
 const PORT = env.PORT || 5000
 const MAX_CONNECT_RETRIES = 10
 const RETRY_DELAY_MS = 3000
 
-// ── Global readiness state — exported so /ready in app.ts can read it ─────────
-export let serverReady = false
+// ── Global readiness state — via server-state.ts (no circular exports) ────────
 
 // ── Utility: sleep ──────────────────────────────────────────────────────────────
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -107,10 +107,8 @@ async function startServer() {
         console.log('🔌 Socket.io initialized with Redis adapter')
 
         // ──────────────────────────────────────────────────────────────────────
-        // STEP 4: Mark server as ready — /ready now returns 200
-        // NGINX will start routing traffic here.
-        // ──────────────────────────────────────────────────────────────────────
-        serverReady = true
+        // ── STEP 4: Mark server as ready — /ready now returns 200 ────────────────
+        setServerReady(true)
         console.log('✅ All systems connected — server is READY to serve traffic')
 
         // ──────────────────────────────────────────────────────────────────────
@@ -118,7 +116,7 @@ async function startServer() {
         // ──────────────────────────────────────────────────────────────────────
         const shutdown = async (signal: string) => {
             console.log(`🛑 ${signal} received — starting graceful shutdown...`)
-            serverReady = false
+            setServerReady(false)
 
             io.close()
 

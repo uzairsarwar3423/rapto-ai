@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 
 import { env } from './config/env'
+import { isServerReady } from './config/server-state'
 import { requestLogger } from './middleware/request-logger.middleware'
 import { ipRateLimiter } from './middleware/rate-limit.middleware'
 import { errorMiddleware } from './middleware/error.middleware'
@@ -43,13 +44,11 @@ app.get('/health', (_req, res) => {
     })
 })
 
-// /ready — deep readiness: Redis + MongoDB must be reachable
+// /ready — deep readiness: all DBs must be connected
 app.get('/ready', async (_req, res) => {
-    // Import serverReady flag — set by server.ts after all DB connections succeed
-    // This avoids doing live pings on every probe (cheaper, more accurate)
-    const { serverReady } = await import('./server').catch(() => ({ serverReady: false }))
-
-    if (!serverReady) {
+    // isServerReady() reads from server-state.ts — set by server.ts after all
+    // DB connections succeed. No circular import (app → state ← server).
+    if (!isServerReady()) {
         return res.status(503).json({
             status: 'not_ready',
             reason: 'Database connections still initializing',
