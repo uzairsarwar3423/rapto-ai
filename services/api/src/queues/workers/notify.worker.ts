@@ -14,7 +14,7 @@ import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { notifyQueue } from '../queue.client'
 import { slackProvider } from '../../modules/integrations/providers/slack.provider'
 
-const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+const frontendUrl = getFrontendUrl()
 
 async function createInAppNotification(data: {
   userId: string
