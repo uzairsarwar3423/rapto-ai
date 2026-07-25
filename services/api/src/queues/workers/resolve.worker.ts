@@ -432,8 +432,26 @@ export const resolveWorker = new Worker<ResolveJobData>(
         }
       }
 
+      // Recalculate and persist score for all unique owners whose commitments were resolved via AI
+      const resolvedOwnerIds = [
+        ...new Set(
+          result.resolved_updates
+            .map((update) => historicalById.get(update.historical_commitment_id)?.ownerId)
+            .filter((ownerId): ownerId is string => Boolean(ownerId))
+        ),
+      ]
+
+      for (const ownerId of resolvedOwnerIds) {
+        try {
+          const { calculateCommitmentScore, persistScore } = await import('../../services/score.service')
+          const scoreResult = await calculateCommitmentScore(ownerId, teamId)
+          await persistScore(ownerId, teamId, scoreResult, 'ai_resolution')
+        } catch (err) {
+          logger.error({ err, ownerId, teamId }, 'resolve.worker: score recalculation failed (non-fatal)')
+        }
+      }
     } catch (e) {
-      logger.warn({ err: e, meetingId }, 'resolve.worker: socket emit failed (non-fatal)')
+      logger.warn({ err: e, meetingId }, 'resolve.worker: post-resolution event/score processing failed (non-fatal)')
     }
 
     logger.info(

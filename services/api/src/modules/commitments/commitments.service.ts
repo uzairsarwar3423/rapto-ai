@@ -1,6 +1,6 @@
 import { prisma } from '../../db/client'
 import { commitmentsRepository } from './commitments.repository'
-import { calculateCommitmentScore } from '../../services/score.service'
+import { calculateCommitmentScore, persistScore } from '../../services/score.service'
 import { notifyQueue, integrateQueue } from '../../queues/queue.client'
 import type { ListCommitmentsQuery, UpdateCommitmentStatusDto, TeamStatsQuery } from './commitments.types'
 import { getIO } from '../../realtime/socket.server'
@@ -138,25 +138,21 @@ export async function updateCommitmentStatus(
     })
   })
 
-  // Recalculate score
-  const newScore = await calculateCommitmentScore(commitment.ownerId, teamId)
-  await prisma.user.update({
-    where: { id: commitment.ownerId },
-    data: { commitmentScore: newScore.score }
-  })
+  // Recalculate and persist score for FULFILLED or DEFERRED transitions
+  // Note: CANCELLED transition explicitly skips score recalculation (Section 13 exclusion rule)
+  if (data.status === 'FULFILLED' || data.status === 'DEFERRED') {
+    const scoreResult = await calculateCommitmentScore(commitment.ownerId, teamId)
+    await persistScore(commitment.ownerId, teamId, scoreResult, 'manual_status_change')
+  }
 
   // Events — wrapped in try/catch so a Socket.io-layer failure
-  // NEVER propagates to the DB write caller (realtime is a nice-to-have
-  // layered ON TOP of the source-of-truth write, never a dependency of it)
+  // NEVER propagates to the DB write caller
   try {
     const io = getIO()
     if (data.status === 'FULFILLED') {
       io.to(teamRoom(teamId)).emit(SERVER_EVENTS.COMMITMENT_FULFILLED, { commitmentId: id })
     } else if (data.status === 'DEFERRED') {
       io.to(teamRoom(teamId)).emit(SERVER_EVENTS.COMMITMENT_DEFERRED, { commitmentId: id })
-    }
-    if (commitment.owner.commitmentScore !== newScore.score) {
-      io.to(userRoom(commitment.ownerId)).emit(SERVER_EVENTS.MY_SCORE_UPDATED, { newScore: newScore.score })
     }
   } catch (err) {
     // Non-fatal: Socket.io failure must not affect the committed DB transaction

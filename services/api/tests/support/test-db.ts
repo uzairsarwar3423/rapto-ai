@@ -12,6 +12,7 @@ import { encrypt } from '../../src/utils/crypto'
 export async function cleanTestDatabase() {
     // Delete in reverse FK dependency order
     await prisma.actionItem.deleteMany()
+    await prisma.commitmentScoreSnapshot.deleteMany().catch(() => {})
     await prisma.commitment.deleteMany()
     await prisma.decision.deleteMany()
     await prisma.blocker.deleteMany()
@@ -23,7 +24,9 @@ export async function cleanTestDatabase() {
     await prisma.teamInvitation.deleteMany()
     await prisma.notificationPreference.deleteMany()
     await prisma.subscription.deleteMany().catch(() => {})
+    await prisma.invoice.deleteMany().catch(() => {})
     await prisma.usageEvent.deleteMany().catch(() => {})
+    await prisma.teamMember.deleteMany().catch(() => {})
     await prisma.user.deleteMany()
     await prisma.team.deleteMany()
 }
@@ -165,6 +168,34 @@ export async function seedTestActionItem(
             notionPageId: override.notionPageId || null,
             notionPageUrl: override.notionPageUrl || null,
             confidenceScore: override.confidenceScore !== undefined ? override.confidenceScore : 1.0,
+        },
+    })
+}
+
+export async function seedTestCommitment(
+    teamId: string,
+    ownerId: string,
+    meetingId: string,
+    override: {
+        text?: string
+        status?: 'PENDING' | 'FULFILLED' | 'MISSED' | 'DEFERRED' | 'CANCELLED'
+        dueDate?: Date | null
+        resolvedAt?: Date | null
+        createdAt?: Date
+        confidenceScore?: number
+    } = {}
+) {
+    return prisma.commitment.create({
+        data: {
+            teamId,
+            ownerId,
+            meetingId,
+            text: override.text || 'Complete API architecture documentation',
+            status: override.status || 'PENDING',
+            dueDate: override.dueDate !== undefined ? override.dueDate : new Date(Date.now() + 86400_000),
+            resolvedAt: override.resolvedAt || null,
+            createdAt: override.createdAt || new Date(),
+            confidenceScore: override.confidenceScore !== undefined ? override.confidenceScore : 0.9,
         },
     })
 }

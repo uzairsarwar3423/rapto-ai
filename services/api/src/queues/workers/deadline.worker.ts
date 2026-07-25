@@ -89,7 +89,7 @@ export async function markMissedCommitments(): Promise<void> {
     data: { status: 'MISSED', missedAlertSentAt: new Date() },
   })
 
-  // Per-commitment: emit Socket.io + queue notification + recalculate score
+  // Per-commitment: emit Socket.io + queue notification
   for (const c of overdue) {
     // Socket.io — try/catch so realtime failure never blocks the batch DB update
     try {
@@ -113,22 +113,20 @@ export async function markMissedCommitments(): Promise<void> {
       ownerId: c.ownerId,
       managerIds: c.team.members.map((m) => m.id),
     })
+  }
 
-    // Recalculate score
-    const newScore = await calculateCommitmentScore(c.ownerId, c.teamId)
-    await prisma.user.update({
-      where: { id: c.ownerId },
-      data: { commitmentScore: newScore.score },
-    })
-    
+  // Deduplicate score recalculation per unique owner
+  const uniqueOwnerPairs = Array.from(
+    new Map(overdue.map((c) => [`${c.ownerId}:${c.teamId}`, { ownerId: c.ownerId, teamId: c.teamId }])).values()
+  )
+
+  const { calculateCommitmentScore, persistScore } = await import('../../services/score.service')
+  for (const { ownerId, teamId } of uniqueOwnerPairs) {
     try {
-      const { socketEmitter } = await import('../../realtime/socket.emitter')
-      socketEmitter.to(teamRoom(c.teamId)).emit(SERVER_EVENTS.MEMBER_SCORE_UPDATED, {
-        userId: c.ownerId,
-        newScore: newScore.score,
-      })
+      const scoreResult = await calculateCommitmentScore(ownerId, teamId)
+      await persistScore(ownerId, teamId, scoreResult, 'deadline_cron')
     } catch (err) {
-      logger.warn({ err, commitmentId: c.id }, 'deadline.worker: score emit failed (non-fatal)')
+      logger.error({ err, ownerId, teamId }, 'deadline.worker: score recalculation failed (non-fatal)')
     }
   }
 }

@@ -14,6 +14,7 @@ import { runDeadlineReminders, markMissedCommitments } from './workers/deadline.
 import { calendarSyncQueue, tokenRefreshQueue } from './queue.client'
 import { prisma } from '../db/client'
 import { findExpiringIntegrations } from '../services/token-refresh.service'
+import { startOfWeek, getISOWeek, getISOWeekYear, subDays } from 'date-fns'
 
 async function enqueueTokenRefreshJobs(): Promise<void> {
     try {
@@ -79,6 +80,79 @@ async function enqueueCalendarSyncJobs(): Promise<void> {
     }
 }
 
+export async function runWeeklyScoreSnapshotCron(): Promise<void> {
+    const now = new Date()
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 })
+    const isoWeekStr = `${getISOWeekYear(now)}-W${String(getISOWeek(now)).padStart(2, '0')}`
+
+    const teamMembers = await prisma.teamMember.findMany({
+        select: { userId: true, teamId: true },
+    })
+
+    logger.info({ count: teamMembers.length, isoWeek: isoWeekStr }, 'weekly-snapshot cron: starting score recalculation & snapshot write')
+
+    const { calculateCommitmentScore, persistScore } = await import('../services/score.service')
+
+    const BATCH_SIZE = 50
+    for (let i = 0; i < teamMembers.length; i += BATCH_SIZE) {
+        const batch = teamMembers.slice(i, i + BATCH_SIZE)
+        await Promise.all(
+            batch.map(async ({ userId, teamId }) => {
+                try {
+                    const scoreResult = await calculateCommitmentScore(userId, teamId)
+                    const deferredCount = await prisma.commitment.count({
+                        where: {
+                            ownerId: userId,
+                            teamId,
+                            status: 'DEFERRED',
+                            createdAt: { gte: subDays(now, 30) },
+                        },
+                    })
+
+                    await prisma.commitmentScoreSnapshot.upsert({
+                        where: {
+                            userId_weekStart: {
+                                userId,
+                                weekStart,
+                            },
+                        },
+                        create: {
+                            userId,
+                            teamId,
+                            weekStart,
+                            isoWeek: isoWeekStr,
+                            commitmentScore: scoreResult.score,
+                            fulfillmentRate: scoreResult.fulfillmentRate,
+                            onTimeRate: scoreResult.onTimeRate,
+                            totalCommitments: scoreResult.total,
+                            fulfilledCount: scoreResult.fulfilled,
+                            missedCount: scoreResult.missed,
+                            deferredCount,
+                        },
+                        update: {
+                            teamId,
+                            isoWeek: isoWeekStr,
+                            commitmentScore: scoreResult.score,
+                            fulfillmentRate: scoreResult.fulfillmentRate,
+                            onTimeRate: scoreResult.onTimeRate,
+                            totalCommitments: scoreResult.total,
+                            fulfilledCount: scoreResult.fulfilled,
+                            missedCount: scoreResult.missed,
+                            deferredCount,
+                        },
+                    })
+
+                    await persistScore(userId, teamId, scoreResult, 'weekly_snapshot')
+                } catch (err) {
+                    logger.error({ err, userId, teamId }, 'weekly-snapshot cron: failed for member')
+                }
+            })
+        )
+    }
+
+    logger.info('weekly-snapshot cron: finished processing all active team members')
+}
+
 export function startScheduler(): void {
     // ── Day 19: Commitment deadline reminders (9 AM UTC daily) ───────────────
     cron.schedule('0 9 * * *', async () => {
@@ -105,6 +179,16 @@ export function startScheduler(): void {
         logger.info('Cron: sending weekly digest')
     })
 
+    // ── Day 69: Weekly commitment score snapshot (Sunday midnight UTC) ───────
+    cron.schedule('0 0 * * 0', async () => {
+        logger.info('Cron: running weekly commitment score snapshot')
+        try {
+            await runWeeklyScoreSnapshotCron()
+        } catch (err) {
+            logger.error({ err }, 'Cron: weekly snapshot failed')
+        }
+    })
+
     // ── Day 22: Calendar sync fan-out (HOURLY) ────────────────────────────────
     cron.schedule('0 * * * *', async () => {
         logger.info('Cron: enqueueing calendar sync jobs (hourly)')
@@ -122,6 +206,6 @@ export function startScheduler(): void {
     })
 
     logger.info(
-        'Scheduler started: deadline-reminder@9AM, mark-missed@6PM, digest@Mon9AM, calendar-sync@hourly, token-refresh@15min'
+        'Scheduler started: deadline-reminder@9AM, mark-missed@6PM, digest@Mon9AM, snapshot@SunMidnight, calendar-sync@hourly, token-refresh@15min'
     )
 }

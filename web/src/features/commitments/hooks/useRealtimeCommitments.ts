@@ -57,40 +57,48 @@ export function useRealtimeCommitments() {
     };
 
     const handleMemberScoreUpdated = (payload: {
-      memberId: string;
-      teamId: string;
-      score: number;
+      userId?: string;
+      memberId?: string;
+      teamId?: string;
+      score?: number;
+      newScore?: number;
     }) => {
-      // 1. Update team member list query cache
-      queryClient.setQueriesData<any>(
-        { queryKey: ["teams", payload.teamId, "members"] },
-        (oldData: any) => {
-          if (!oldData) return oldData;
-          if (oldData && typeof oldData === "object" && Array.isArray(oldData.members)) {
-            return {
-              ...oldData,
-              members: oldData.members.map((m: any) =>
-                m.id === payload.memberId ? { ...m, commitmentScore: payload.score } : m
-              ),
-            };
-          }
-          if (Array.isArray(oldData)) {
-            return oldData.map((m: any) =>
-              m.id === payload.memberId ? { ...m, commitmentScore: payload.score } : m
-            );
-          }
-          return oldData;
-        }
-      );
+      const targetUserId = payload.userId || payload.memberId;
+      const targetScore = payload.newScore ?? payload.score;
+      if (!targetUserId || targetScore === undefined) return;
 
-      // 2. Update individual member detail query cache
-      queryClient.setQueriesData<any>(
-        { queryKey: ["teams", payload.teamId, "members", payload.memberId] },
-        (oldData: any) => {
-          if (!oldData) return oldData;
-          return { ...oldData, commitmentScore: payload.score };
-        }
-      );
+      // 1. Update team member list query cache
+      if (payload.teamId) {
+        queryClient.setQueriesData<any>(
+          { queryKey: ["teams", payload.teamId, "members"] },
+          (oldData: any) => {
+            if (!oldData) return oldData;
+            if (oldData && typeof oldData === "object" && Array.isArray(oldData.members)) {
+              return {
+                ...oldData,
+                members: oldData.members.map((m: any) =>
+                  m.id === targetUserId ? { ...m, commitmentScore: targetScore } : m
+                ),
+              };
+            }
+            if (Array.isArray(oldData)) {
+              return oldData.map((m: any) =>
+                m.id === targetUserId ? { ...m, commitmentScore: targetScore } : m
+              );
+            }
+            return oldData;
+          }
+        );
+
+        // 2. Update individual member detail query cache
+        queryClient.setQueriesData<any>(
+          { queryKey: ["teams", payload.teamId, "members", targetUserId] },
+          (oldData: any) => {
+            if (!oldData) return oldData;
+            return { ...oldData, commitmentScore: targetScore };
+          }
+        );
+      }
 
       // 3. Update team members flat list query cache
       queryClient.setQueriesData<any[]>(
@@ -98,10 +106,14 @@ export function useRealtimeCommitments() {
         (oldData: any) => {
           if (!oldData) return oldData;
           return oldData.map((m: any) =>
-            m.id === payload.memberId ? { ...m, commitmentScore: payload.score } : m
+            m.id === targetUserId ? { ...m, commitmentScore: targetScore } : m
           );
         }
       );
+
+      // 4. Invalidate stats / user queries
+      queryClient.invalidateQueries({ queryKey: ["commitment-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
     };
 
     socket.on(SERVER_EVENTS.COMMITMENT_CREATED, handleCreated);
