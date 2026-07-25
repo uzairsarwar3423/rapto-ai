@@ -97,6 +97,14 @@ def main() -> None:
     else:
         logger.warning("⚠️  TARGET_TAG not set — IMAGE_TAG will not be updated.")
 
+    # Core production domain defaults
+    if not existing.get("FRONTEND_URL") or "localhost" in existing.get("FRONTEND_URL", ""):
+        existing["FRONTEND_URL"] = "https://rapto.cloud"
+    if not existing.get("APP_URL") or "localhost" in existing.get("APP_URL", ""):
+        existing["APP_URL"] = "https://rapto.cloud"
+    if not existing.get("API_URL") or "localhost" in existing.get("API_URL", ""):
+        existing["API_URL"] = "https://api.rapto.cloud"
+
     # 3. Secret mapping dictionary (Environment variable -> Target .env key)
     secret_map = {
         "PROD_DATABASE_URL":          "DATABASE_URL",
