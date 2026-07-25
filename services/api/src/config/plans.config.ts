@@ -9,6 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { PlanType } from '@prisma/client'
+import { getFrontendUrl } from './env'
 
 // ── Plan Limit Shape ──────────────────────────────────────────────────────────
 
@@ -173,7 +174,7 @@ export function isLimitExceeded(
 }
 
 export function getUpgradeUrl(currentPlan: PlanType): string {
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000'
+  const frontendUrl = getFrontendUrl()
   return `${frontendUrl}/settings/billing?current=${currentPlan}`
 }
 

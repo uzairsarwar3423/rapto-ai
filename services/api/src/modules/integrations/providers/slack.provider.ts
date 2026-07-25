@@ -20,7 +20,7 @@ import type { ProviderTokenResponse, SlackWorkspaceMeta } from '../integrations.
 import { OAUTH_CONFIGS } from './oauth-config'
 import { decrypt } from '../../../utils/crypto'
 import { logger } from '../../../config/logger'
-import { env } from '../../../config/env'
+import { env, getFrontendUrl } from '../../../config/env'
 
 // ── Block Kit type stubs (avoid importing full Slack SDK just for types) ──────
 
@@ -104,7 +104,7 @@ export function buildMeetingSummaryBlocks(
     counts: { commitments: number; actionItems: number },
     commitments: Array<{ text: string; ownerEmail?: string | null; dueDate?: Date | null }>
 ): SlackBlock[] {
-    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+    const frontendUrl = getFrontendUrl()
 
     const commitmentItems = commitments.slice(0, 10).map((c) => {
         const due = c.dueDate ? `  _(due ${c.dueDate.toLocaleDateString()})_` : ''

@@ -20,9 +20,9 @@ import {
   type PartialNotificationPreferences,
 } from './notifications.types'
 import { prisma } from '../../db/client'
-import { env } from '../../config/env'
+import { getFrontendUrl } from '../../config/env'
 
-const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+const frontendUrl = getFrontendUrl()
 
 const NOTIFICATION_TYPE_TO_SLACK_PREF_KEY: Record<string, keyof NotificationPreferences['slack']> = {
   MEETING_PROCESSED: 'meetingSummary',

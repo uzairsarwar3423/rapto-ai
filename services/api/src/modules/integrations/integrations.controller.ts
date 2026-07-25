@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { integrationsService } from './integrations.service'
 import { ProviderType } from './integrations.types'
-import { env } from '../../config/env'
+import { env, getFrontendUrl } from '../../config/env'
 import { redis } from '../../config/redis'
 import { logger } from '../../config/logger'
 

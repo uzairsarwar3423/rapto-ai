@@ -5,11 +5,11 @@ import { actionItemsRepository } from './action-items.repository'
 import { AppError, ForbiddenError, NotFoundError } from '../../utils/errors'
 import { PriorityLevel } from '@prisma/client'
 import type { ListActionItemsQuery, UpdateActionItemDto } from './action-items.types'
-import { env } from '../../config/env'
+import { env, getFrontendUrl } from '../../config/env'
 import { IdentityResolutionService } from '../../services/commitment-resolver.service'
 
 function getReconnectUrl(provider: string): string {
-  const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+  const frontendUrl = getFrontendUrl()
   return `${frontendUrl}/settings/integrations?reconnect=${provider.toLowerCase()}`
 }
 

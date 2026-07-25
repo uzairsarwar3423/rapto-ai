@@ -17,10 +17,10 @@ import type {
   ManagerFanOutResult,
 } from './notifications.types'
 import { NOTIFICATION_DEDUP_TTL } from '../../config/notification-dedup.config'
+import { env, getFrontendUrl } from '../../config/env'
 import { logger } from '../../config/logger'
-import { env } from '../../config/env'
 
-const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+const frontendUrl = getFrontendUrl()
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure Block Kit Builder Functions (Pure Data In -> JSON Array Out)

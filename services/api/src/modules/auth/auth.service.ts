@@ -19,7 +19,7 @@ import {
 } from '../../utils/errors'
 import { prisma } from '../../db/client'
 import { redis } from '../../config/redis'
-import { env } from '../../config/env'
+import { env, getFrontendUrl } from '../../config/env'
 import { logger } from '../../config/logger'
 import { teamsService } from '../teams/teams.service'
 import { emailService } from '../notifications/email.service'
@@ -582,7 +582,7 @@ export const authService = {
     req: Request,
     res: Response
   ) {
-    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+    const frontendUrl = getFrontendUrl()
 
     if (query.state) {
       const calendarUserId = await redis.get(`oauth:state:calendar:${query.state}`)
@@ -775,7 +775,7 @@ export const authService = {
     // Auto-trigger welcome email when onboarding completes (including skipped steps flow)
     if (data.onboardingCompleted === true) {
       const workspaceName = updated.team?.name || `${updated.name}'s Workspace`
-      const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+      const frontendUrl = getFrontendUrl()
       const dashboardUrl = `${frontendUrl}/dashboard`
 
       console.log('\n===================================================================')
@@ -924,7 +924,7 @@ export const authService = {
     res: Response,
     redirectUri?: string
   ) {
-    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+    const frontendUrl = getFrontendUrl()
 
     if (query.error === 'access_denied') {
       return res.redirect(`${frontendUrl}/onboarding/connect-calendar?error=oauth_denied`)

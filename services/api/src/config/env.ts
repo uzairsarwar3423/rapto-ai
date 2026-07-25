@@ -22,9 +22,9 @@ const envSchema = z.object({
     JWT_ACCESS_SECRET: z.string().default('vocaply_default_production_jwt_secret_key_32_bytes!!'),
     JWT_REFRESH_SECRET: z.string().default('vocaply_default_production_jwt_refresh_key_32_bytes!'),
 
-    APP_URL: z.string().default('http://localhost:5000'),
-    FRONTEND_URL: z.string().optional(),
-    API_URL: z.string().optional(),
+    APP_URL: z.string().default('https://rapto.cloud'),
+    FRONTEND_URL: z.string().optional().default('https://rapto.cloud'),
+    API_URL: z.string().optional().default('https://api.rapto.cloud'),
 
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
@@ -72,10 +72,8 @@ const envSchema = z.object({
     NOTION_CLIENT_SECRET: z.string().optional(),
     NOTION_CALLBACK_URL: z.string().optional(),
 
-    // Day 22: Google Calendar (distinct callback from Google login)
+    // Day 22: Google Calendar
     GOOGLE_CALENDAR_CALLBACK_URL: z.string().optional(),
-    // Alias used in auth.service.ts — maps to the same value.
-    // Set either one in .env; GOOGLE_CALENDAR_REDIRECT_URI takes precedence.
     GOOGLE_CALENDAR_REDIRECT_URI: z.string().optional(),
 
     // Day 63: Outlook Calendar
@@ -109,5 +107,16 @@ if (!parsed.success) {
     }
 }
 
-// Trigger tsx watch reload to read updated .env variables
 export const env = parsed.success ? parsed.data : (process.env as any)
+
+/**
+ * Dynamically resolves the Frontend Base URL for redirects (OAuth, email links, invitations).
+ * Priority: FRONTEND_URL -> APP_URL -> Production Default (https://rapto.cloud)
+ */
+export function getFrontendUrl(): string {
+    const raw = env.FRONTEND_URL || env.APP_URL
+    if (raw && raw.trim() !== '' && !raw.includes('localhost')) {
+        return raw.replace(/\/$/, '')
+    }
+    return process.env.NODE_ENV === 'production' ? 'https://rapto.cloud' : (raw || 'https://rapto.cloud')
+}

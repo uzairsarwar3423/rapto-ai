@@ -23,7 +23,19 @@ const isBrevoConfigured =
   env.BREVO_API_KEY &&
   env.BREVO_API_KEY !== 'xkeysib-your_brevo_api_key_here'
 
-const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+/**
+ * Dynamically resolves the Frontend URL for email action links.
+ * Priority: FRONTEND_URL -> APP_URL -> Production Default (https://rapto.cloud)
+ * Prevents links from ever locking to localhost:3000 in production environments.
+ */
+export function getFrontendUrl(): string {
+  const url = env.FRONTEND_URL || env.APP_URL
+  if (url && url.trim() !== '' && !url.includes('localhost')) {
+    return url.replace(/\/$/, '')
+  }
+  return 'https://rapto.cloud'
+}
+
 const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@rapto.cloud'
 
 /**
@@ -68,7 +80,7 @@ async function sendBrevoEmail(payload: {
 }): Promise<void> {
   const recipientEmail = payload.to[0]?.email || ''
   const token = generateUnsubscribeToken(payload.userId || recipientEmail, payload.notificationType)
-  const unsubscribeUrl = `${frontendUrl}/unsubscribe?token=${encodeURIComponent(token)}`
+  const unsubscribeUrl = `${getFrontendUrl()}/unsubscribe?token=${encodeURIComponent(token)}`
 
   console.log('\n===================================================================')
   console.log(`📧 EMAIL DISPATCH INITIATED`)
@@ -140,7 +152,7 @@ export const emailService = {
     verificationToken: string
     userId?: string
   }): Promise<void> {
-    const url = `${frontendUrl}/verify-email?token=${data.verificationToken}`
+    const url = `${getFrontendUrl()}/verify-email?token=${data.verificationToken}`
     const token = generateUnsubscribeToken(data.userId || data.to, 'VERIFICATION_EMAIL')
     const htmlContent = renderVerifyEmailHtml({
       name: data.name,
@@ -167,7 +179,7 @@ export const emailService = {
     token: string
     userId?: string
   }): Promise<void> {
-    const url = `${frontendUrl}/reset-password?token=${data.token}`
+    const url = `${getFrontendUrl()}/reset-password?token=${data.token}`
     const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'PASSWORD_RESET_EMAIL')
     const htmlContent = renderPasswordResetHtml({
       name: data.name,
@@ -508,7 +520,7 @@ export const emailService = {
     userId?: string
   }): Promise<void> {
     const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'OWNER_WELCOME_EMAIL')
-    const dashUrl = data.dashboardUrl || `${frontendUrl}/dashboard`
+    const dashUrl = data.dashboardUrl || `${getFrontendUrl()}/dashboard`
     const htmlContent = renderOwnerWelcomeHtml({
       ownerName: data.ownerName,
       ownerEmail: data.to,
@@ -546,7 +558,7 @@ export const emailService = {
     userId?: string
   }): Promise<void> {
     const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'TEAM_MEMBER_WELCOME_EMAIL')
-    const dashUrl = data.dashboardUrl || `${frontendUrl}/dashboard`
+    const dashUrl = data.dashboardUrl || `${getFrontendUrl()}/dashboard`
     const htmlContent = renderTeamMemberWelcomeHtml({
       memberName: data.memberName,
       memberEmail: data.to,

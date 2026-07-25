@@ -17,7 +17,7 @@ import { emailService } from '../notifications/email.service'
 import { prisma } from '../../db/client'
 import { redis } from '../../config/redis'
 import { logger } from '../../config/logger'
-import { env } from '../../config/env'
+import { env, getFrontendUrl } from '../../config/env'
 import { generateAccessToken } from '../auth/auth.helpers'
 import {
   PLAN_LIMITS,
@@ -443,7 +443,7 @@ async function inviteMembers(
     failed: [] as string[],
   }
 
-  const frontendUrl = env.FRONTEND_URL ?? 'http://localhost:3000'
+  const frontendUrl = getFrontendUrl()
 
   for (const email of emails) {
     try {
@@ -606,7 +606,7 @@ async function acceptInvitation(token: string, userId: string) {
 
   // Dispatch Team Member Welcome Email
   try {
-    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000'
+    const frontendUrl = getFrontendUrl()
     const dashboardUrl = `${frontendUrl}/dashboard`
     const inviter = invitation.invitedById
       ? await prisma.user

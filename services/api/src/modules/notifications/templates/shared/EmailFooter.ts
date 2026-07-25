@@ -1,4 +1,5 @@
 import { EmailColors, EmailTypography } from './email-tokens'
+import { getFrontendUrl } from '../../email.service'
 
 export interface EmailFooterProps {
   notificationType: string
@@ -25,7 +26,7 @@ const REASON_EXPLANATIONS: Record<string, string> = {
 export function renderEmailFooter(props: EmailFooterProps): string {
   const { notificationType, unsubscribeToken } = props
   const explanation = REASON_EXPLANATIONS[notificationType] || 'You are receiving this transactional email from Rapto.'
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+  const frontendUrl = getFrontendUrl()
 
   const unsubscribeUrl = unsubscribeToken
     ? `${frontendUrl}/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`
