@@ -28,9 +28,30 @@ docker compose pull api worker nginx
 echo "🗄️ Executing Prisma Database Migrations..."
 
 run_migration() {
-    docker compose run --rm \
-        -e NODE_ENV=production \
-        api npx prisma migrate deploy 2>&1
+    RAW_DIRECT=$(grep "^DIRECT_URL=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '"' | tr -d "'" || true)
+    if [ -z "${RAW_DIRECT}" ]; then
+        RAW_DIRECT=$(grep "^DATABASE_URL=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '"' | tr -d "'" || true)
+    fi
+
+    if [ -n "${RAW_DIRECT}" ]; then
+        # Strip any pre-existing connection_limit params to force connection_limit=1
+        CLEAN_URL=$(echo "${RAW_DIRECT}" | sed -E 's/([?&])connection_limit=[0-9]+/\1/g' | sed 's/[?&]$//')
+        if echo "${CLEAN_URL}" | grep -q "\?"; then
+            SINGLE_CONN_URL="${CLEAN_URL}&connection_limit=1"
+        else
+            SINGLE_CONN_URL="${CLEAN_URL}?connection_limit=1"
+        fi
+
+        docker compose run --rm \
+            -e NODE_ENV=production \
+            -e DATABASE_URL="${SINGLE_CONN_URL}" \
+            -e DIRECT_URL="${SINGLE_CONN_URL}" \
+            api npx prisma migrate deploy 2>&1
+    else
+        docker compose run --rm \
+            -e NODE_ENV=production \
+            api npx prisma migrate deploy 2>&1
+    fi
 }
 
 MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
@@ -40,21 +61,15 @@ echo "${MIGRATION_LOGS}"
 if [ "${MIGRATION_SUCCESS}" = "false" ]; then
     # Handle PgBouncer EMAXCONNSESSION (max clients reached in session mode)
     if echo "${MIGRATION_LOGS}" | grep -qE "EMAXCONNSESSION|max clients|pool_size"; then
-        echo "⚠️ PgBouncer connection pool limit reached (EMAXCONNSESSION). Retrying migration in 5s with connection_limit=1..."
-        sleep 5
+        echo "⚠️ PgBouncer connection pool limit reached. Temporarily pausing worker to free database connections..."
+        docker compose stop worker 2>/dev/null || true
+        sleep 3
         
-        # Override DIRECT_URL with connection_limit=1 to force single-client migration
-        RAW_DIRECT=$(grep "^DIRECT_URL=" .env | cut -d'=' -f2- | tr -d '"' | tr -d "'")
-        if [ -n "${RAW_DIRECT}" ]; then
-            if echo "${RAW_DIRECT}" | grep -q "\?"; then
-                CLEAN_DIRECT="${RAW_DIRECT}&connection_limit=1"
-            else
-                CLEAN_DIRECT="${RAW_DIRECT}?connection_limit=1"
-            fi
-            MIGRATION_LOGS=$(docker compose run --rm -e NODE_ENV=production -e DIRECT_URL="${CLEAN_DIRECT}" api npx prisma migrate deploy 2>&1) \
-                && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
-            echo "${MIGRATION_LOGS}"
-        fi
+        MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
+        echo "${MIGRATION_LOGS}"
+
+        # Restart worker after migration check
+        docker compose up -d worker 2>/dev/null || true
     fi
 
     # Handle Prisma P3009 (failed migration previously recorded)
