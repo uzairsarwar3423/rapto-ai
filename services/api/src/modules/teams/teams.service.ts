@@ -481,20 +481,40 @@ async function inviteMembers(
         expiresAt,
       })
 
-      // e. Queue invite email (scalable & resilient)
+      // e. Dispatch team invite email (Immediate direct send + BullMQ background queue for redundancy)
       const joinUrl = `${frontendUrl}/invite/${rawToken}`
-      await notifyQueue.add('TEAM_INVITE_EMAIL', {
-        type: 'TEAM_INVITE_EMAIL',
-        teamId,
-        emailPayload: {
+
+      // Direct immediate dispatch (ensures email is sent immediately even if worker process is offline)
+      emailService
+        .sendTeamInviteEmail({
           to: email,
           teamName: team.name,
           inviterName: inviter.name,
           joinUrl,
           role,
           expiresAt,
-        }
-      })
+        })
+        .catch((err) => {
+          logger.error({ err: err?.message || err, email, teamId }, 'Direct sendTeamInviteEmail failed')
+        })
+
+      // Also queue to BullMQ worker queue for async audit & retry redundancy
+      await notifyQueue
+        .add('TEAM_INVITE_EMAIL', {
+          type: 'TEAM_INVITE_EMAIL',
+          teamId,
+          emailPayload: {
+            to: email,
+            teamName: team.name,
+            inviterName: inviter.name,
+            joinUrl,
+            role,
+            expiresAt,
+          },
+        })
+        .catch((err) => {
+          logger.warn({ err: err?.message || err, email }, 'Failed to queue TEAM_INVITE_EMAIL to BullMQ')
+        })
 
       results.invited.push(email)
     } catch (err) {

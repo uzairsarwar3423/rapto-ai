@@ -19,9 +19,18 @@ import { renderTeamMemberWelcomeHtml } from './templates/TeamMemberWelcome'
 import { renderWeeklyDigestHtml } from './templates/WeeklyDigest'
 import { generateUnsubscribeToken } from './unsubscribe.utils'
 
-const isBrevoConfigured =
-  env.BREVO_API_KEY &&
-  env.BREVO_API_KEY !== 'xkeysib-your_brevo_api_key_here'
+function getFromEmail(): string {
+  return env.BREVO_FROM_EMAIL || process.env.BREVO_FROM_EMAIL || 'noreply@rapto.cloud'
+}
+
+function getBrevoApiKey(): string | undefined {
+  return env.BREVO_API_KEY || process.env.BREVO_API_KEY
+}
+
+function checkIsBrevoConfigured(): boolean {
+  const apiKey = getBrevoApiKey()
+  return Boolean(apiKey && apiKey !== 'xkeysib-your_brevo_api_key_here' && apiKey.trim() !== '')
+}
 
 /**
  * Dynamically resolves the Frontend URL for email action links.
@@ -35,8 +44,6 @@ export function getFrontendUrl(): string {
   }
   return 'https://app.rapto.cloud'
 }
-
-const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@rapto.cloud'
 
 /**
  * Helper to fetch from Brevo API with timeout and error classification.
@@ -81,21 +88,27 @@ async function sendBrevoEmail(payload: {
   const recipientEmail = payload.to[0]?.email || ''
   const token = generateUnsubscribeToken(payload.userId || recipientEmail, payload.notificationType)
   const unsubscribeUrl = `${getFrontendUrl()}/unsubscribe?token=${encodeURIComponent(token)}`
+  const fromEmail = getFromEmail()
+  const apiKey = getBrevoApiKey()
+  const isConfigured = checkIsBrevoConfigured()
 
   console.log('\n===================================================================')
-  console.log(`📧 EMAIL DISPATCH INITIATED`)
+  console.log(`📧 [EMAIL DISPATCH INITIATED]`)
   console.log(` - Type:         ${payload.notificationType}`)
   console.log(` - Recipient:    ${recipientEmail}`)
   console.log(` - Subject:      ${payload.subject}`)
   console.log(` - Sender Email: ${fromEmail}`)
+  console.log(` - Brevo API:    ${isConfigured ? 'CONFIGURED ✅' : 'NOT CONFIGURED / SIMULATED MODE ⚠️'}`)
   console.log('===================================================================\n')
 
-  if (!isBrevoConfigured) {
+  if (!isConfigured) {
     logger.warn(
       { to: recipientEmail, subject: payload.subject, notificationType: payload.notificationType },
-      'BREVO_API_KEY is not configured. Email payload logged to console.'
+      'BREVO_API_KEY is missing or placeholder. Email dispatch simulated to console.'
     )
-    console.log('⚠️ BREVO_API_KEY missing or default placeholder. Email simulated.')
+    console.log('\n⚠️ [BREVO API NOT CONFIGURED]')
+    console.log(`   To deliver real emails, set valid BREVO_API_KEY and BREVO_FROM_EMAIL in your .env file.`)
+    console.log(`   Email to <${recipientEmail}> has been SIMULATED on terminal.\n`)
     return
   }
 
@@ -105,7 +118,7 @@ async function sendBrevoEmail(payload: {
       headers: {
         accept: 'application/json',
         'content-type': 'application/json',
-        'api-key': env.BREVO_API_KEY!,
+        'api-key': apiKey!,
       },
       body: JSON.stringify({
         sender: { name: 'Rapto', email: fromEmail },
@@ -122,21 +135,25 @@ async function sendBrevoEmail(payload: {
     const responseText = await response.text()
 
     if (!response.ok) {
-      console.error('\n❌ BREVO API DISPATCH FAILED!')
-      console.error(` - Status: ${response.status}`)
-      console.error(` - Response: ${responseText}`)
+      console.error('\n❌ [BREVO API DISPATCH FAILED]')
+      console.error(` - Recipient: ${recipientEmail}`)
+      console.error(` - Sender:    ${fromEmail}`)
+      console.error(` - Status:    ${response.status}`)
+      console.error(` - Response:  ${responseText}`)
       console.error('===================================================================\n')
       throw new Error(`Brevo API returned status ${response.status}: ${responseText}`)
     }
 
     console.log('\n===================================================================')
-    console.log(`✅ EMAIL DELIVERED TO BREVO API SUCCESSFULLY!`)
+    console.log(`✅ [EMAIL DELIVERED TO BREVO API SUCCESSFULLY]`)
     console.log(` - Status:     ${response.status}`)
     console.log(` - Recipient:  ${recipientEmail}`)
     console.log(` - Payload:    ${responseText}`)
     console.log('===================================================================\n')
   } catch (error: any) {
-    console.error('\n❌ EMAIL SEND ERROR EXCEPTION:', error.message || error)
+    console.error('\n❌ [EMAIL SEND ERROR EXCEPTION]')
+    console.error(` - Recipient: ${recipientEmail}`)
+    console.error(` - Error:     ${error.message || error}`)
     console.error('===================================================================\n')
     throw error
   }
@@ -220,7 +237,17 @@ export const emailService = {
       unsubscribeToken: unsubToken,
     })
 
-    logger.info({ to: data.to, teamName: data.teamName }, 'email.service: sending team invite email')
+    console.log('\n===================================================================')
+    console.log(`📩 [TEAM INVITE EMAIL TRIGGERED]`)
+    console.log(` - Recipient:   ${data.to}`)
+    console.log(` - Team Name:   ${data.teamName}`)
+    console.log(` - Inviter:     ${data.inviterName}`)
+    console.log(` - Role:        ${data.role}`)
+    console.log(` - Join URL:    ${data.joinUrl}`)
+    console.log(` - Expires At:  ${data.expiresAt.toISOString()}`)
+    console.log('===================================================================\n')
+
+    logger.info({ to: data.to, teamName: data.teamName, joinUrl: data.joinUrl }, 'email.service: sending team invite email')
     await sendBrevoEmail({
       to: [{ email: data.to }],
       subject: `${data.inviterName} invited you to join ${data.teamName} on Rapto`,
