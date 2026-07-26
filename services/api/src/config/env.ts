@@ -111,7 +111,7 @@ export const env = parsed.success ? parsed.data : (process.env as any)
 
 /**
  * Dynamically resolves the Frontend Base URL for redirects (OAuth, email links, invitations).
- * Priority: FRONTEND_URL -> APP_URL -> Production Default (https://rapto.cloud)
+ * Priority: FRONTEND_URL -> APP_URL -> Production Default (https://app.rapto.cloud)
  */
 export function getFrontendUrl(): string {
     const raw = env.FRONTEND_URL || env.APP_URL

@@ -160,7 +160,7 @@ To configure the deployment, set the following secrets in your GitHub Repository
 | `PROD_REDIS_URL` | Production Redis connection string | `redis://:pass@redis:6379` |
 | `PROD_JWT_ACCESS_SECRET` | 32+ character JWT Access signing key | `secure_access_secret_32_characters_min` |
 | `PROD_JWT_REFRESH_SECRET` | 32+ character JWT Refresh signing key | `secure_refresh_secret_32_characters_min` |
-| `PROD_APP_URL` | Frontend Application Domain | `https://rapto.cloud` |
+| `PROD_APP_URL` | Frontend Application Domain | `https://app.rapto.cloud` |
 | `PROD_API_URL` | Backend API Domain | `https://api.rapto.cloud` |
 | `PROD_JIRA_CLIENT_ID` | Atlassian Jira OAuth App Client ID | `jira_client_id` |
 | `PROD_JIRA_CLIENT_SECRET` | Atlassian Jira OAuth App Client Secret | `jira_client_secret` |

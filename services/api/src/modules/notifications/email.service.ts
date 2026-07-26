@@ -25,7 +25,7 @@ const isBrevoConfigured =
 
 /**
  * Dynamically resolves the Frontend URL for email action links.
- * Priority: FRONTEND_URL -> APP_URL -> Production Default (https://rapto.cloud)
+ * Priority: FRONTEND_URL -> APP_URL -> Production Default (https://app.rapto.cloud)
  * Prevents links from ever locking to localhost:3000 in production environments.
  */
 export function getFrontendUrl(): string {
@@ -33,7 +33,7 @@ export function getFrontendUrl(): string {
   if (url && url.trim() !== '' && !url.includes('localhost')) {
     return url.replace(/\/$/, '')
   }
-  return 'https://rapto.cloud'
+  return 'https://app.rapto.cloud'
 }
 
 const fromEmail = env.BREVO_FROM_EMAIL || 'noreply@rapto.cloud'

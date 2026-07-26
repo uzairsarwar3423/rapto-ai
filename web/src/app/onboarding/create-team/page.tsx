@@ -74,7 +74,7 @@ export default function CreateTeamPage() {
           </label>
           <div className="flex items-center relative">
             <span className="absolute left-3 text-xs font-mono text-muted-foreground/60 select-none">
-              rapto.ai/teams/
+              app.rapto.cloud/teams/
             </span>
             <input
               id="team-slug"
@@ -83,7 +83,7 @@ export default function CreateTeamPage() {
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               placeholder="acme-corp"
-              className="h-10 w-full rounded-md border border-zinc-200 bg-transparent pl-[118px] pr-3 text-sm font-mono transition-all outline-none placeholder:text-zinc-400 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:placeholder:text-zinc-500"
+              className="h-10 w-full rounded-md border border-zinc-200 bg-transparent pl-[168px] pr-3 text-sm font-mono transition-all outline-none placeholder:text-zinc-400 focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:placeholder:text-zinc-500"
               disabled={isSubmitting}
             />
           </div>

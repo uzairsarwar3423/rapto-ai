@@ -1,7 +1,7 @@
 /**
  * Production Enterprise CORS Policy & Origin Validator
  *
- * Enforces strict, multi-tenant CORS rules allowing https://rapto.cloud,
+ * Enforces strict, multi-tenant CORS rules allowing https://app.rapto.cloud,
  * subdomains (*.rapto.cloud), configured env origins (FRONTEND_URL/APP_URL),
  * and local development origins (http://localhost:3000).
  */
