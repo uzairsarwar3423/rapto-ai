@@ -104,6 +104,8 @@ def main() -> None:
         existing["APP_URL"] = "https://rapto.cloud"
     if not existing.get("API_URL") or "localhost" in existing.get("API_URL", ""):
         existing["API_URL"] = "https://api.rapto.cloud"
+    if not existing.get("GOOGLE_CALENDAR_CALLBACK_URL"):
+        existing["GOOGLE_CALENDAR_CALLBACK_URL"] = "https://api.rapto.cloud/api/v1/auth/google-calendar/callback"
 
     # 3. Secret mapping dictionary (Environment variable -> Target .env key)
     secret_map = {
@@ -134,6 +136,7 @@ def main() -> None:
         "PROD_PADDLE_PRICE_BUSINESS_Y":"PADDLE_PRICE_BUSINESS_Y",
         "PROD_AI_PIPELINE_URL":       "AI_PIPELINE_URL",
         "PROD_AI_PIPELINE_SECRET":    "AI_PIPELINE_SECRET",
+        "PROD_GOOGLE_CALENDAR_CALLBACK_URL": "GOOGLE_CALENDAR_CALLBACK_URL",
     }
 
     updated_count = 0
