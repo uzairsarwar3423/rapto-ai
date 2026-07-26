@@ -140,7 +140,7 @@ describe('Email Templates Roster Rendering', () => {
     expect(html).toContain('Starlight Corp')
     expect(html).toContain('48 / 50')
     expect(html.toUpperCase()).toContain('MEETINGS USED THIS MONTH')
-    expect(html).toContain('Upgrade Plan &amp; Capacity')
+    expect(html).toContain('Upgrade Plan & Capacity')
     expect(html).not.toContain('undefined')
   })
 
