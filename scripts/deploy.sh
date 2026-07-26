@@ -24,98 +24,93 @@ echo "📥 Pulling latest Docker images..."
 export IMAGE_TAG="${IMAGE_TAG}"
 docker compose pull api worker nginx
 
-# 3. Execute Database Migrations in isolated non-disruptive container
-echo "🗄️ Executing Prisma Database Migrations..."
-
-run_migration() {
-    RAW_DIRECT=$(grep "^DIRECT_URL=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '"' | tr -d "'" || true)
-    if [ -z "${RAW_DIRECT}" ]; then
-        RAW_DIRECT=$(grep "^DATABASE_URL=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '"' | tr -d "'" || true)
+# 3. Build single-connection URL from DIRECT_URL or DATABASE_URL (for migrations only)
+build_migration_url() {
+    RAW=$(grep "^DIRECT_URL=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '"' | tr -d "'" || true)
+    if [ -z "${RAW}" ]; then
+        RAW=$(grep "^DATABASE_URL=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '"' | tr -d "'" || true)
     fi
-
-    if [ -n "${RAW_DIRECT}" ]; then
-        # Strip any pre-existing connection_limit params to force connection_limit=1
-        CLEAN_URL=$(echo "${RAW_DIRECT}" | sed -E 's/([?&])connection_limit=[0-9]+/\1/g' | sed 's/[?&]$//')
-        if echo "${CLEAN_URL}" | grep -q "\?"; then
-            SINGLE_CONN_URL="${CLEAN_URL}&connection_limit=1"
-        else
-            SINGLE_CONN_URL="${CLEAN_URL}?connection_limit=1"
-        fi
-
-        docker compose run --rm \
-            -e NODE_ENV=production \
-            -e DATABASE_URL="${SINGLE_CONN_URL}" \
-            -e DIRECT_URL="${SINGLE_CONN_URL}" \
-            api npx prisma migrate deploy 2>&1
+    # Strip pre-existing connection_limit params, then enforce connection_limit=1
+    CLEAN=$(echo "${RAW}" | sed -E 's/[?&]connection_limit=[0-9]+//g' | sed 's/[?&]$//')
+    if echo "${CLEAN}" | grep -q "?"; then
+        echo "${CLEAN}&connection_limit=1"
     else
-        docker compose run --rm \
-            -e NODE_ENV=production \
-            api npx prisma migrate deploy 2>&1
+        echo "${CLEAN}?connection_limit=1"
     fi
 }
 
-MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
+run_migration() {
+    local MIGRATION_URL
+    MIGRATION_URL=$(build_migration_url)
+    docker compose run --rm \
+        -e NODE_ENV=production \
+        -e DATABASE_URL="${MIGRATION_URL}" \
+        -e DIRECT_URL="${MIGRATION_URL}" \
+        api npx prisma migrate deploy 2>&1
+}
 
+# 4. Execute Database Migrations
+echo "🗄️ Executing Prisma Database Migrations..."
+
+MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
 echo "${MIGRATION_LOGS}"
 
 if [ "${MIGRATION_SUCCESS}" = "false" ]; then
-    # Handle PgBouncer EMAXCONNSESSION (max clients reached in session mode)
     if echo "${MIGRATION_LOGS}" | grep -qE "EMAXCONNSESSION|max clients|pool_size"; then
-        echo "⚠️ PgBouncer connection pool limit reached. Temporarily pausing worker to free database connections..."
-        docker compose stop worker 2>/dev/null || true
-        sleep 3
-        
+        echo "⚠️ PgBouncer pool fully saturated — stopping api + worker to free all connections..."
+        docker compose stop api worker 2>/dev/null || true
+        sleep 5
+
+        echo "🔄 Retrying migration with all app connections freed..."
         MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
         echo "${MIGRATION_LOGS}"
-
-        # Restart worker after migration check
-        docker compose up -d worker 2>/dev/null || true
+        # Note: api + worker will be restarted in step 5 below regardless
     fi
 
-    # Handle Prisma P3009 (failed migration previously recorded)
     if [ "${MIGRATION_SUCCESS}" = "false" ] && echo "${MIGRATION_LOGS}" | grep -q "P3009"; then
-        echo "⚠️ Prisma P3009 error detected. Triggering self-healing recovery..."
-
+        echo "⚠️ Prisma P3009 error detected — triggering self-healing recovery..."
         FAILED_MIGRATION=$(echo "${MIGRATION_LOGS}" | grep -oE '[0-9]{14}_[a-zA-Z0-9_]+' | head -n 1 || true)
-
         if [ -n "${FAILED_MIGRATION}" ]; then
             echo "🔧 Auto-resolving failed migration: ${FAILED_MIGRATION}..."
-            docker compose run --rm -e NODE_ENV=production api npx prisma migrate resolve --applied "${FAILED_MIGRATION}" || true
+            MIGRATION_URL=$(build_migration_url)
+            docker compose run --rm \
+                -e NODE_ENV=production \
+                -e DATABASE_URL="${MIGRATION_URL}" \
+                -e DIRECT_URL="${MIGRATION_URL}" \
+                api npx prisma migrate resolve --applied "${FAILED_MIGRATION}" || true
         fi
-
         echo "🔄 Retrying Prisma migrations after self-healing..."
-        if run_migration; then
-            MIGRATION_SUCCESS=true
-            echo "✅ Database migrations applied successfully after auto-recovery!"
-        fi
+        MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
+        echo "${MIGRATION_LOGS}"
     fi
 
     if [ "${MIGRATION_SUCCESS}" = "false" ]; then
         echo "❌ Database migration failed! Aborting deployment."
+        # Restart app containers even on failure so service stays up
+        docker compose up -d --no-deps api worker nginx || true
         exit 1
     fi
-else
-    echo "✅ Database migrations applied successfully."
 fi
 
-# 4. Zero-Downtime Container Update
-echo "🔄 Updating running services (API, Worker, NGINX)..."
+echo "✅ Database migrations applied successfully."
+
+# 5. Zero-Downtime Container Update (start new image for all services)
+echo "🔄 Starting updated services (API, Worker, NGINX)..."
 docker compose up -d --no-deps --remove-orphans api worker nginx
 
-# 5. Post-deploy verification using docker inspect
+# 6. Post-deploy verification
 echo "⏳ Verifying deployment via Docker health state..."
+sleep 10
 HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "${CONTAINER_NAME}" 2>/dev/null || echo "unknown")
 echo "🩺 Container health: ${HEALTH_STATUS}"
 
 if [ "${HEALTH_STATUS}" = "healthy" ]; then
     echo "🎉 Deployment PASSED! Container is healthy."
-    echo "🧹 Cleaning up old Docker images..."
     docker image prune -af --filter "until=24h" || true
     echo "✅ Production Deployment Completed Successfully!"
     exit 0
 fi
 
-# Fallback extended probe
 echo "⚠️ Unexpected health state '${HEALTH_STATUS}' — running extended probe..."
 if CONTAINER_NAME="${CONTAINER_NAME}" ./scripts/health-check.sh; then
     echo "🎉 Deployment PASSED Health & Readiness Checks!"
