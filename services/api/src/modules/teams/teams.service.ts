@@ -481,37 +481,50 @@ async function inviteMembers(
         expiresAt,
       })
 
-      // e. Dispatch team invite email (Immediate direct send + BullMQ background queue for redundancy)
+      // e. Dispatch team invite email (Industry-standard non-blocking direct send + BullMQ worker queue with Redis idempotency lock)
       const joinUrl = `${frontendUrl}/invite/${rawToken}`
+      const dedupKey = `email:sent:invite:${tokenHash}`
 
-      // Direct immediate dispatch (ensures email is sent immediately even if worker process is offline)
-      emailService
-        .sendTeamInviteEmail({
-          to: email,
-          teamName: team.name,
-          inviterName: inviter.name,
-          joinUrl,
-          role,
-          expiresAt,
-        })
-        .catch((err) => {
-          logger.error({ err: err?.message || err, email, teamId }, 'Direct sendTeamInviteEmail failed')
-        })
+      // Acquire Redis idempotency lock to prevent duplicate email dispatches (10 min TTL)
+      const acquiredLock = await redis.set(dedupKey, '1', 'EX', 600, 'NX').catch(() => null)
 
-      // Also queue to BullMQ worker queue for async audit & retry redundancy
-      await notifyQueue
-        .add('TEAM_INVITE_EMAIL', {
-          type: 'TEAM_INVITE_EMAIL',
-          teamId,
-          emailPayload: {
+      if (acquiredLock === 'OK') {
+        // Direct non-blocking immediate send
+        emailService
+          .sendTeamInviteEmail({
             to: email,
             teamName: team.name,
             inviterName: inviter.name,
             joinUrl,
             role,
             expiresAt,
+          })
+          .catch((err) => {
+            logger.error({ err: err?.message || err, email, teamId }, 'Direct sendTeamInviteEmail failed')
+          })
+      }
+
+      // Enqueue to BullMQ for distributed worker processing, retries, and audit log
+      await notifyQueue
+        .add(
+          'TEAM_INVITE_EMAIL',
+          {
+            type: 'TEAM_INVITE_EMAIL',
+            teamId,
+            tokenHash,
+            emailPayload: {
+              to: email,
+              teamName: team.name,
+              inviterName: inviter.name,
+              joinUrl,
+              role,
+              expiresAt,
+            },
           },
-        })
+          {
+            jobId: `team_invite_${tokenHash}`, // BullMQ native job deduplication
+          }
+        )
         .catch((err) => {
           logger.warn({ err: err?.message || err, email }, 'Failed to queue TEAM_INVITE_EMAIL to BullMQ')
         })

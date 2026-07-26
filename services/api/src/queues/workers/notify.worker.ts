@@ -13,6 +13,7 @@ import { userRoom } from '../../realtime/rooms.manager'
 import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { notifyQueue } from '../queue.client'
 import { slackProvider } from '../../modules/integrations/providers/slack.provider'
+import { redis } from '../../config/redis'
 
 const frontendUrl = getFrontendUrl()
 
@@ -501,6 +502,15 @@ export const notifyWorker = new Worker<NotifyJobData>(
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'TEAM_INVITE_EMAIL' && job.data.emailPayload) {
       try {
+        const tokenHash = (job.data as any).tokenHash
+        if (tokenHash) {
+          const dedupKey = `email:sent:invite:${tokenHash}`
+          const acquired = await redis.set(dedupKey, '1', 'EX', 600, 'NX').catch(() => null)
+          if (acquired !== 'OK') {
+            logger.info({ to: job.data.emailPayload.to, tokenHash }, 'notify.worker.email.skipped_duplicate')
+            return
+          }
+        }
         await emailService.sendTeamInviteEmail(job.data.emailPayload)
       } catch (err: any) {
         logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: TEAM_INVITE_EMAIL')
