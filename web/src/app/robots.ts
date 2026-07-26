@@ -1,19 +1,21 @@
 import type { MetadataRoute } from "next";
 
 /**
- * robots.ts — Day 10
+ * robots.ts
  *
  * Next.js App Router robots.txt generator.
  * Accessible at /robots.txt
  */
 export default function robots(): MetadataRoute.Robots {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.rapto.cloud";
   return {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: ["/login", "/register", "/forgot-password"],
+        disallow: ["/dashboard/", "/api/"],
       },
     ],
-    sitemap: "https://rapto.ai/sitemap.xml",
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }

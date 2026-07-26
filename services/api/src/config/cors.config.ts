@@ -9,6 +9,7 @@
 import { env } from './env'
 
 const STATIC_ALLOWED_ORIGINS = [
+    'https://app.rapto.cloud',
     'https://rapto.cloud',
     'https://www.rapto.cloud',
     'http://localhost:3000',

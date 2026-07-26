@@ -52,14 +52,14 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Rapto" }],
   creator: "Rapto",
-  metadataBase: new URL("https://rapto.ai"),
+  metadataBase: new URL("https://app.rapto.cloud"),
   alternates: {
-    canonical: "https://rapto.ai",
+    canonical: "https://app.rapto.cloud",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://rapto.ai",
+    url: "https://app.rapto.cloud",
     title: "Rapto — AI Meeting Accountability for Remote Teams",
     description:
       "Stop chasing your team. Rapto remembers every promise made in your standups — and follows up automatically.",

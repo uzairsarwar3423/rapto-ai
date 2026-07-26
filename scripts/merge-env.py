@@ -99,9 +99,9 @@ def main() -> None:
 
     # Core production domain defaults
     if not existing.get("FRONTEND_URL") or "localhost" in existing.get("FRONTEND_URL", ""):
-        existing["FRONTEND_URL"] = "https://rapto.cloud"
+        existing["FRONTEND_URL"] = "https://app.rapto.cloud"
     if not existing.get("APP_URL") or "localhost" in existing.get("APP_URL", ""):
-        existing["APP_URL"] = "https://rapto.cloud"
+        existing["APP_URL"] = "https://app.rapto.cloud"
     if not existing.get("API_URL") or "localhost" in existing.get("API_URL", ""):
         existing["API_URL"] = "https://api.rapto.cloud"
     if not existing.get("GOOGLE_CALENDAR_CALLBACK_URL"):

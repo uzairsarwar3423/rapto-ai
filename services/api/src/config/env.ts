@@ -22,8 +22,8 @@ const envSchema = z.object({
     JWT_ACCESS_SECRET: z.string().default('vocaply_default_production_jwt_secret_key_32_bytes!!'),
     JWT_REFRESH_SECRET: z.string().default('vocaply_default_production_jwt_refresh_key_32_bytes!'),
 
-    APP_URL: z.string().default('https://rapto.cloud'),
-    FRONTEND_URL: z.string().optional().default('https://rapto.cloud'),
+    APP_URL: z.string().default('https://app.rapto.cloud'),
+    FRONTEND_URL: z.string().optional().default('https://app.rapto.cloud'),
     API_URL: z.string().optional().default('https://api.rapto.cloud'),
 
     GOOGLE_CLIENT_ID: z.string().optional(),
@@ -118,5 +118,5 @@ export function getFrontendUrl(): string {
     if (raw && raw.trim() !== '' && !raw.includes('localhost')) {
         return raw.replace(/\/$/, '')
     }
-    return process.env.NODE_ENV === 'production' ? 'https://rapto.cloud' : (raw || 'https://rapto.cloud')
+    return process.env.NODE_ENV === 'production' ? 'https://app.rapto.cloud' : (raw || 'https://app.rapto.cloud')
 }
