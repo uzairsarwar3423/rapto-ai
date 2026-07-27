@@ -23,6 +23,7 @@ import { billingRouter } from './modules/billing/billing.routes'
 import { setupBullBoard } from './config/bull-board'
 
 const app = express()
+app.set('trust proxy', 1)
 
 // ──────────────────────────────────────────────────────────────────────────────
 // HEALTH PROBES — registered FIRST, before ALL middleware.

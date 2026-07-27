@@ -123,6 +123,97 @@ export async function markSubscriptionCancelled(
   })
 }
 
+// ── Transactions ──────────────────────────────────────────────────────────────
+
+/**
+ * Handle new checkout / renewal (transaction.completed).
+ * Uses a Prisma transaction to guarantee consistency across Subscription, Team, and Invoice.
+ */
+export async function activateSubscriptionTransaction(
+  teamId: string,
+  plan: PlanType,
+  subscriptionData: UpsertSubscriptionData | null,
+  invoiceData: (UpsertInvoiceData & { paddleTransactionId: string }) | null,
+  periodStart: Date,
+  periodEnd: Date
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    if (subscriptionData) {
+      await tx.subscription.upsert({
+        where: { teamId },
+        create: {
+          teamId,
+          ...subscriptionData,
+          cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd ?? false,
+          currency: subscriptionData.currency ?? 'usd',
+        },
+        update: {
+          ...subscriptionData,
+          cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd ?? false,
+          currency: subscriptionData.currency ?? 'usd',
+        },
+      })
+    }
+
+    await tx.team.update({
+      where: { id: teamId },
+      data: {
+        plan,
+        meetingsUsed: 0,
+        billingCycleStart: periodStart,
+        billingCycleEnd: periodEnd,
+      },
+    })
+
+    if (invoiceData) {
+      await tx.invoice.upsert({
+        where: { paddleTransactionId: invoiceData.paddleTransactionId },
+        create: {
+          teamId,
+          ...invoiceData,
+        },
+        update: {
+          amountPaid: invoiceData.amountPaid,
+          status: invoiceData.status,
+          hostedInvoiceUrl: invoiceData.hostedInvoiceUrl,
+          paidAt: invoiceData.paidAt,
+        },
+      })
+    }
+  })
+}
+
+/**
+ * Handle subscription upgrades/downgrades (subscription.updated).
+ */
+export async function updateSubscriptionTransaction(
+  teamId: string,
+  plan: PlanType,
+  subscriptionData: UpsertSubscriptionData
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await tx.subscription.upsert({
+      where: { teamId },
+      create: {
+        teamId,
+        ...subscriptionData,
+        cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd ?? false,
+        currency: subscriptionData.currency ?? 'usd',
+      },
+      update: {
+        ...subscriptionData,
+        cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd ?? false,
+        currency: subscriptionData.currency ?? 'usd',
+      },
+    })
+
+    await tx.team.update({
+      where: { id: teamId },
+      data: { plan },
+    })
+  })
+}
+
 // ── Invoice ────────────────────────────────────────────────────────────────────
 
 /**

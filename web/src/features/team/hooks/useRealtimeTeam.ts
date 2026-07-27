@@ -112,11 +112,24 @@ export function useRealtimeTeam() {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
     };
 
+    const handleBillingUpdated = () => {
+      // Invalidate all billing-related queries
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
+      // Team and user contexts might also change with billing
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      
+      // Update local auth store user plan/status if we had them
+      // Realistically just triggering a refetch of auth.me is good
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+    };
+
     socket.on("member:joined", handleJoined);
     socket.on("member:removed", handleRemoved);
     socket.on("system:removed_from_team", handleSystemRemoved);
     socket.on("my:role_updated", handleRoleUpdated);
     socket.on("team:updated", handleTeamUpdated);
+    socket.on("billing:plan_updated", handleBillingUpdated);
 
     return () => {
       socket.off("member:joined", handleJoined);
@@ -124,6 +137,7 @@ export function useRealtimeTeam() {
       socket.off("system:removed_from_team", handleSystemRemoved);
       socket.off("my:role_updated", handleRoleUpdated);
       socket.off("team:updated", handleTeamUpdated);
+      socket.off("billing:plan_updated", handleBillingUpdated);
     };
   }, [queryClient, user?.teamId]);
 }

@@ -4,7 +4,7 @@ import { handleRecallWebhook } from './recall.webhook'
 import { handleStripeWebhook } from './stripe.webhook'
 import { handleJiraWebhook } from './jira.webhook'
 import { handleSlackWebhook } from './slack.webhook'
-import { handlePaddleWebhook } from './paddle.webhook'
+import { handlePaddleWebhook } from './paddle.webhook.controller'
 
 const router = Router()
 

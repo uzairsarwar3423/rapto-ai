@@ -196,21 +196,24 @@ export function BillingView() {
               >
                 Compare plans →
               </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await syncMutation.mutateAsync();
-                }}
-                disabled={syncMutation.isPending}
-                className={cn(
-                  "text-[13px] font-sans font-medium text-muted-foreground/70",
-                  "hover:text-foreground transition-colors duration-100",
-                  "focus:outline-none flex items-center gap-1.5 ml-auto"
-                )}
-              >
-                <RefreshCw className={cn("w-3.5 h-3.5", syncMutation.isPending && "animate-spin")} />
-                {syncMutation.isPending ? "Syncing..." : "Sync status"}
-              </button>
+              {(user?.role === "OWNER" || user?.role === "ADMIN") && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await syncMutation.mutateAsync();
+                  }}
+                  disabled={syncMutation.isPending}
+                  className={cn(
+                    "text-[13px] font-sans font-medium text-muted-foreground/70",
+                    "hover:text-foreground transition-colors duration-100",
+                    "focus:outline-none flex items-center gap-1.5 ml-auto"
+                  )}
+                  title="Admin recovery tool — manually sync subscription status"
+                >
+                  <RefreshCw className={cn("w-3.5 h-3.5", syncMutation.isPending && "animate-spin")} />
+                  {syncMutation.isPending ? "Syncing..." : "Sync status"}
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>

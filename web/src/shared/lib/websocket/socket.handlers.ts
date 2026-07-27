@@ -80,4 +80,11 @@ export const REALTIME_EVENT_MAP = {
     owner: "useInAppNotifications",
     patches: ["notifications.inApp", "notifications.unreadCount"],
   },
+
+  // Billing
+  "billing:plan_updated": {
+    owner: "useRealtimeTeam",
+    patches: ["billing", "team", "teams", "auth"],
+    effect: "refetch-billing-status",
+  },
 } as const satisfies Record<string, RealtimeEventEntry>;

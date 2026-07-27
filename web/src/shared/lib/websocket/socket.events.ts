@@ -36,6 +36,7 @@ export const SERVER_EVENTS = {
   // System
   SYSTEM_SESSION_EXPIRED: "system:session_expired",
   SYSTEM_PLAN_LIMIT: "system:plan_limit",
+  BILLING_PLAN_UPDATED: "billing:plan_updated",
 
   // Integrations
   INTEGRATION_CONNECTED: "integration:connected",

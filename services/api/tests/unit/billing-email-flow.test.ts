@@ -280,7 +280,9 @@ describe('[RC-4] email.service — pino structured logging', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('paddle.webhook — idempotency architecture', () => {
-  const src = read('modules/webhooks/paddle.webhook.ts')
+  const srcController = read('modules/webhooks/paddle.webhook.controller.ts')
+  const srcService = read('modules/webhooks/paddle.webhook.service.ts')
+  const src = srcController + srcService
 
   it('uses Redis NX to set idempotency key', () => {
     expect(src).toContain("redis.set(idempotencyKey, '1', 'EX', 86400, 'NX')")
@@ -308,7 +310,7 @@ describe('paddle.webhook — idempotency architecture', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('paddle.webhook — deterministic billing jobId', () => {
-  const src = read('modules/webhooks/paddle.webhook.ts')
+  const src = read('modules/webhooks/paddle.webhook.service.ts')
 
   it('billing-confirmation jobId keyed on transactionId', () => {
     expect(src).toContain('`billing-confirmation:${transactionId}`')

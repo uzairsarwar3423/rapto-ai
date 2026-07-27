@@ -47,6 +47,7 @@ export function useCheckout(): UseCheckoutReturn {
           queryClient.invalidateQueries({ queryKey: ["team"] });
           queryClient.invalidateQueries({ queryKey: ["auth"] });
           queryClient.invalidateQueries({ queryKey: ["user"] });
+          queryClient.invalidateQueries({ queryKey: ["billing"] });
         }
       },
     })
