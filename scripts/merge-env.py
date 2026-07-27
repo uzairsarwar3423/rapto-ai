@@ -111,6 +111,9 @@ def main() -> None:
     secret_map = {
         "PROD_DATABASE_URL":          "DATABASE_URL",
         "PROD_DIRECT_URL":            "DIRECT_URL",
+        "PROD_POSTGRES_DB":           "POSTGRES_DB",
+        "PROD_POSTGRES_USER":         "POSTGRES_USER",
+        "PROD_POSTGRES_PASSWORD":     "POSTGRES_PASSWORD",
         "PROD_MONGODB_URL":           "MONGODB_URL",
         "PROD_REDIS_URL":             "REDIS_URL",
         "PROD_JWT_ACCESS_SECRET":     "JWT_ACCESS_SECRET",

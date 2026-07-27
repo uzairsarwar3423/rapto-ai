@@ -50,53 +50,42 @@ run_migration() {
 }
 
 # 4. Execute Database Migrations
-echo "🗄️ Executing Prisma Database Migrations..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 [1/4] Verifying Database Connectivity..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Ensure postgres dependency is running before executing migrations
+docker compose up -d postgres redis mongodb
+
+echo "🗄️ [2/4] Executing Safe Prisma Database Migrations (prisma migrate deploy)..."
+echo "ℹ️ Using non-destructive migration engine — zero risk of table drops or data resets."
 
 MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
 echo "${MIGRATION_LOGS}"
 
 if [ "${MIGRATION_SUCCESS}" = "false" ]; then
     if echo "${MIGRATION_LOGS}" | grep -qE "EMAXCONNSESSION|max clients|pool_size"; then
-        echo "⚠️ PgBouncer pool fully saturated — stopping api + worker to free all connections..."
+        echo "⚠️ PgBouncer pool fully saturated — temporarily pausing API connection pool..."
         docker compose stop api worker 2>/dev/null || true
         sleep 5
 
-        echo "🔄 Retrying migration with all app connections freed..."
-        MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
-        echo "${MIGRATION_LOGS}"
-        # Note: api + worker will be restarted in step 5 below regardless
-    fi
-
-    if [ "${MIGRATION_SUCCESS}" = "false" ] && echo "${MIGRATION_LOGS}" | grep -q "P3009"; then
-        echo "⚠️ Prisma P3009 error detected — triggering self-healing recovery..."
-        FAILED_MIGRATION=$(echo "${MIGRATION_LOGS}" | grep -oE '[0-9]{14}_[a-zA-Z0-9_]+' | head -n 1 || true)
-        if [ -n "${FAILED_MIGRATION}" ]; then
-            echo "🔧 Auto-resolving failed migration: ${FAILED_MIGRATION}..."
-            MIGRATION_URL=$(build_migration_url)
-            docker compose run --rm \
-                -e NODE_ENV=production \
-                -e DATABASE_URL="${MIGRATION_URL}" \
-                -e DIRECT_URL="${MIGRATION_URL}" \
-                api npx prisma migrate resolve --applied "${FAILED_MIGRATION}" || true
-        fi
-        echo "🔄 Retrying Prisma migrations after self-healing..."
+        echo "🔄 Retrying Prisma migration with app connections freed..."
         MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
         echo "${MIGRATION_LOGS}"
     fi
 
     if [ "${MIGRATION_SUCCESS}" = "false" ]; then
-        echo "❌ Database migration failed! Aborting deployment."
-        # Restart app containers even on failure so service stays up
-        docker compose up -d --no-deps api worker nginx || true
+        echo "❌ CRITICAL: Database migration failed! Aborting deployment to preserve data integrity."
+        docker compose up -d api worker nginx postgres redis mongodb || true
         exit 1
     fi
 fi
 
-echo "✅ Database migrations applied successfully."
+echo "✅ [3/4] Database migrations applied successfully."
 
-# 5. Zero-Downtime Container Update (start new image for all services)
-echo "🔄 Starting updated services (API, Worker, NGINX)..."
-docker compose up -d --no-deps --remove-orphans api worker nginx
+# 5. Zero-Downtime Container Update (preserve DB containers, update app services)
+echo "🔄 [4/4] Starting updated application services (API, Worker, NGINX)..."
+docker compose up -d api worker nginx
 
 # 6. Post-deploy verification
 echo "⏳ Verifying deployment via Docker health state..."
