@@ -248,10 +248,13 @@ export const authService = {
 
   /**
    * Refresh the user's access token, rotating the refresh token.
+   * A small clock-skew grace period (30s) is applied to prevent race conditions
+   * where the client calls refresh fractionally before the server clock ticks over.
    */
   async refresh(req: Request, res: Response) {
     const refreshToken = req.cookies.rapto_refresh
     if (!refreshToken) {
+      logger.warn({ ip: req.ip }, 'Refresh attempt with no cookie')
       throw new UnauthorizedError('NO_REFRESH_TOKEN', 'No refresh token provided')
     }
 
@@ -259,20 +262,26 @@ export const authService = {
     const stored = await authRepository.findRefreshToken(tokenHash)
 
     if (!stored) {
+      logger.warn({ ip: req.ip }, 'Refresh attempt with unknown token hash')
       throw new UnauthorizedError('INVALID_REFRESH_TOKEN', 'Invalid refresh token')
     }
 
-    if (stored.expiresAt < new Date()) {
+    // Apply a 30-second grace period to handle clock skew between client/server
+    const CLOCK_SKEW_GRACE_MS = 30 * 1000
+    if (stored.expiresAt < new Date(Date.now() - CLOCK_SKEW_GRACE_MS)) {
       await authRepository.deleteRefreshToken(stored.id)
+      logger.warn({ userId: stored.userId, ip: req.ip }, 'Refresh token expired — session ended')
       throw new UnauthorizedError('REFRESH_TOKEN_EXPIRED', 'Refresh token has expired')
     }
 
     const user = await authRepository.findById(stored.userId)
     if (!user) {
+      await authRepository.deleteRefreshToken(stored.id)
+      logger.warn({ userId: stored.userId }, 'Refresh: user not found — deleting orphaned token')
       throw new UnauthorizedError('USER_NOT_FOUND', 'User not found')
     }
 
-    // ROTATION — delete old token, issue new
+    // ROTATION — atomically delete old token and issue new one
     await authRepository.deleteRefreshToken(stored.id)
 
     const newAccessToken = generateAccessToken(user)
@@ -287,6 +296,8 @@ export const authService = {
     })
 
     res.cookie('rapto_refresh', newRefreshToken, COOKIE_OPTIONS)
+
+    logger.info({ userId: user.id, ip: req.ip }, 'Token refreshed and rotated successfully')
 
     return { accessToken: newAccessToken }
   },
