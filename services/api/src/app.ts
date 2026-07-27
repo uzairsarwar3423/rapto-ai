@@ -139,6 +139,7 @@ app.use('/api/v1/notifications', notificationsRouter)
 app.use('/api/v1/analytics', analyticsRouter)
 app.use('/api/v1/billing', billingRouter)
 app.use('/api/webhooks', webhookRoutes)
+app.use('/api/v1/webhooks', webhookRoutes)
 
 // BullBoard — must be mounted BEFORE the 404 catch-all
 setupBullBoard(app)

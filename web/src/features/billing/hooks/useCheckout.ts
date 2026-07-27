@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createCheckoutSession } from "../api/billing.api";
-import { initializePaddle, Paddle } from "@paddle/paddle-js";
+import { createCheckoutSession, syncSubscription } from "../api/billing.api";
 
 type CheckoutState = "idle" | "redirecting" | "error";
 
@@ -40,14 +39,20 @@ export function useCheckout(): UseCheckoutReturn {
     initializePaddle({
       environment: isSandbox ? "sandbox" : "production",
       token: clientToken,
-      eventCallback: (event) => {
+      eventCallback: async (event) => {
         if (event.name === "checkout.completed") {
-          console.log("🎉 Paddle payment completed successfully — refreshing workspace plan");
+          console.log("🎉 Paddle payment completed successfully — automatically syncing subscription");
+          try {
+            await syncSubscription();
+          } catch (syncErr) {
+            console.warn("⚠️ Auto-sync on checkout completion failed, falling back to query invalidation:", syncErr);
+          }
           // Invalidate team and billing query caches immediately
           queryClient.invalidateQueries({ queryKey: ["team"] });
           queryClient.invalidateQueries({ queryKey: ["auth"] });
           queryClient.invalidateQueries({ queryKey: ["user"] });
           queryClient.invalidateQueries({ queryKey: ["billing"] });
+          queryClient.invalidateQueries({ queryKey: ["subscription"] });
         }
       },
     })

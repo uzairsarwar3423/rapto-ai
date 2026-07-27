@@ -85,6 +85,23 @@ export function BillingView() {
     },
   });
 
+  // Auto-sync fail-safe: if team is listed as FREE but has a paddleCustomerId,
+  // sync automatically in the background to catch any missed or delayed webhooks.
+  React.useEffect(() => {
+    if (team?.paddleCustomerId && team?.plan === "FREE") {
+      syncSubscription()
+        .then((res) => {
+          if (res?.synced) {
+            queryClient.invalidateQueries({ queryKey: ["team"] });
+            queryClient.invalidateQueries({ queryKey: ["subscription"] });
+          }
+        })
+        .catch(() => {
+          // Silent fallback — no error toast on background auto-sync
+        });
+    }
+  }, [team?.paddleCustomerId, team?.plan, queryClient]);
+
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (isLoading) {
     return (
