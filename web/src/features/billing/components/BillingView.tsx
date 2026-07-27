@@ -88,7 +88,7 @@ export function BillingView() {
   // Auto-sync fail-safe: if team is listed as FREE but has a paddleCustomerId,
   // sync automatically in the background to catch any missed or delayed webhooks.
   React.useEffect(() => {
-    if (team?.paddleCustomerId && team?.plan === "FREE") {
+    if ((team as any)?.paddleCustomerId && team?.plan === "FREE") {
       syncSubscription()
         .then((res) => {
           if (res?.synced) {
@@ -100,7 +100,7 @@ export function BillingView() {
           // Silent fallback — no error toast on background auto-sync
         });
     }
-  }, [team?.paddleCustomerId, team?.plan, queryClient]);
+  }, [(team as any)?.paddleCustomerId, team?.plan, queryClient]);
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (isLoading) {
@@ -213,7 +213,7 @@ export function BillingView() {
               >
                 Compare plans →
               </button>
-              {(user?.role === "OWNER" || user?.role === "ADMIN") && (
+              {((user?.role as string) === "OWNER" || (user?.role as string) === "ADMIN") && (
                 <button
                   type="button"
                   onClick={async () => {

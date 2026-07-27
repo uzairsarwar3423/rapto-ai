@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCheckoutSession, syncSubscription } from "../api/billing.api";
+import { initializePaddle, Paddle } from "@paddle/paddle-js";
 
 type CheckoutState = "idle" | "redirecting" | "error";
 
