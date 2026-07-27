@@ -260,18 +260,42 @@ async function handleTransactionCompleted(data: any): Promise<void> {
   // 4. Invalidate all plan & team detail caches
   await invalidatePlanCache(teamId)
 
-  // 5. Queue confirmation email
-  await notifyQueue.add('billing-confirmation', {
-    type: 'BILLING_CONFIRMATION',
-    teamId,
-    planId,
-    metadata: {
-      amountPaid: totals?.total ? `$${(parseInt(totals.total) / 100).toFixed(2)}` : undefined,
-      invoiceId: transactionId,
-      hostedInvoiceUrl: data.payments?.[0]?.method_details?.card ? null : (data.invoice_url ?? null),
-      planId,
-    },
-  })
+  // 5. Queue confirmation email (idempotent — jobId tied to transactionId)
+  try {
+    await notifyQueue.add(
+      'billing-confirmation',
+      {
+        type: 'BILLING_CONFIRMATION',
+        teamId,
+        planId,
+        metadata: {
+          amountPaid: totals?.total ? `$${(parseInt(totals.total) / 100).toFixed(2)}` : undefined,
+          invoiceId: transactionId,
+          hostedInvoiceUrl: data.payments?.[0]?.method_details?.card ? null : (data.invoice_url ?? null),
+          planId,
+        },
+      },
+      {
+        // Deduplication: same transactionId will never produce two email jobs even
+        // if Paddle retries the webhook (the Redis idempotency key above is the
+        // primary guard; this is the BullMQ-layer secondary guard).
+        jobId: `billing-confirmation:${transactionId}`,
+      }
+    )
+    logger.info({ teamId, transactionId }, '[paddle.webhook] billing-confirmation job enqueued')
+  } catch (queueErr: any) {
+    // CRITICAL: queue add failed (Redis blip). Log everything so ops can manually replay.
+    logger.error(
+      {
+        err: queueErr.message,
+        teamId,
+        planId,
+        transactionId,
+        amountPaid: totals?.total ? `$${(parseInt(totals.total) / 100).toFixed(2)}` : undefined,
+      },
+      '[paddle.webhook] CRITICAL: failed to enqueue billing-confirmation email job — manual replay required'
+    )
+  }
 
   logger.info({ teamId, planId, transactionId }, '[paddle.webhook] transaction.completed — team plan activated successfully')
 }

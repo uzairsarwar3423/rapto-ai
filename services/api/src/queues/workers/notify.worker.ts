@@ -657,27 +657,46 @@ export const notifyWorker = new Worker<NotifyJobData>(
     // CASE 13D: BILLING_CONFIRMATION (Payment / Subscription Activated)
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'BILLING_CONFIRMATION' && teamId) {
-      try {
-        const team = await prisma.team.findUnique({
-          where: { id: teamId },
-          select: { name: true, plan: true, billingCycleEnd: true },
-        })
+      // NOTE: Do NOT wrap in a catch that swallows errors.
+      // If sendBrevoEmail throws (e.g. Brevo 4xx/5xx), we must re-throw so
+      // BullMQ marks the job FAILED and retries it (up to 5x with backoff).
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { name: true, plan: true, billingCycleEnd: true },
+      })
 
-        if (team) {
-          const admins = await prisma.user.findMany({
-            where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
-            select: { id: true, email: true, name: true },
-          })
+      if (!team) {
+        logger.error({ teamId, jobId: job.id }, 'notify.worker.BILLING_CONFIRMATION: team not found — aborting')
+        return
+      }
 
-          const planName = (job.data.metadata?.planId || team.plan || 'PRO').toString().toUpperCase()
-          const amountPaid = job.data.metadata?.amountPaid || (planName === 'GROWTH' ? '$99.00' : planName === 'BUSINESS' ? '$199.00' : '$49.00')
-          const paymentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-          const nextBillingDate = team.billingCycleEnd
-            ? new Date(team.billingCycleEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-            : null
+      const admins = await prisma.user.findMany({
+        where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+        select: { id: true, email: true, name: true },
+      })
 
-          for (const admin of admins) {
-            // In-app notification
+      if (admins.length === 0) {
+        logger.warn({ teamId, jobId: job.id }, 'notify.worker.BILLING_CONFIRMATION: no OWNER/ADMIN found for team — no email sent')
+        return
+      }
+
+      const planName = (job.data.metadata?.planId || team.plan || 'PRO').toString().toUpperCase()
+      const amountPaid = job.data.metadata?.amountPaid || (planName === 'GROWTH' ? '$99.00' : planName === 'BUSINESS' ? '$199.00' : '$49.00')
+      const paymentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const nextBillingDate = team.billingCycleEnd
+        ? new Date(team.billingCycleEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : null
+
+      logger.info(
+        { teamId, planName, amountPaid, adminCount: admins.length, jobId: job.id },
+        'notify.worker.BILLING_CONFIRMATION: dispatching payment receipt emails'
+      )
+
+      // Send to each admin independently — one failure should not block others
+      const emailResults = await Promise.allSettled(
+        admins.map(async (admin) => {
+          // In-app notification (non-critical — don't let it block email)
+          try {
             await createInAppNotification({
               userId: admin.id,
               teamId,
@@ -686,24 +705,40 @@ export const notifyWorker = new Worker<NotifyJobData>(
               body: `Your payment of ${amountPaid} for ${team.name} was successfully received.`,
               actionUrl: '/settings/billing',
             })
-
-            // Email notification
-            await emailService.sendPaymentSuccessEmail({
-              to: admin.email,
-              customerName: admin.name,
-              teamName: team.name,
-              planName,
-              amountPaid,
-              paymentDate,
-              nextBillingDate,
-              invoiceId: job.data.metadata?.invoiceId || null,
-              hostedInvoiceUrl: job.data.metadata?.hostedInvoiceUrl || null,
-              userId: admin.id,
-            })
+          } catch (inAppErr: any) {
+            logger.warn({ err: inAppErr.message, userId: admin.id }, 'notify.worker.BILLING_CONFIRMATION: in-app notification failed (non-fatal)')
           }
-        }
-      } catch (err: any) {
-        logger.error({ err: err.message, teamId }, 'notify.worker.failed: BILLING_CONFIRMATION')
+
+          // Transactional email — MUST succeed for job to complete
+          await emailService.sendPaymentSuccessEmail({
+            to: admin.email,
+            customerName: admin.name ?? undefined,
+            teamName: team.name,
+            planName,
+            amountPaid,
+            paymentDate,
+            nextBillingDate,
+            invoiceId: job.data.metadata?.invoiceId ?? null,
+            hostedInvoiceUrl: job.data.metadata?.hostedInvoiceUrl ?? null,
+            userId: admin.id,
+          })
+
+          logger.info(
+            { to: admin.email, teamId, planName, amountPaid },
+            'notify.worker.BILLING_CONFIRMATION: payment receipt email dispatched successfully'
+          )
+        })
+      )
+
+      // If ANY email failed, re-throw to trigger BullMQ retry
+      const failures = emailResults.filter((r) => r.status === 'rejected') as PromiseRejectedResult[]
+      if (failures.length > 0) {
+        const firstErr = failures[0].reason
+        logger.error(
+          { teamId, failureCount: failures.length, totalAdmins: admins.length, err: firstErr?.message },
+          'notify.worker.BILLING_CONFIRMATION: one or more payment emails failed — retrying job'
+        )
+        throw firstErr instanceof Error ? firstErr : new Error(String(firstErr))
       }
     }
 
