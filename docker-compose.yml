@@ -94,8 +94,6 @@ services:
       - AI_PIPELINE_URL=${AI_PIPELINE_URL:-http://ai-pipeline:8000}
       - AI_PIPELINE_SECRET=${AI_PIPELINE_SECRET}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       mongodb:
@@ -151,8 +149,6 @@ services:
       - AI_PIPELINE_URL=${AI_PIPELINE_URL:-http://ai-pipeline:8000}
       - AI_PIPELINE_SECRET=${AI_PIPELINE_SECRET}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       mongodb:

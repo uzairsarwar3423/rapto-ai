@@ -113,9 +113,6 @@ jobs:
           GHCR_USER: ${{ github.actor }}
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           PROD_DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
-          PROD_POSTGRES_DB: ${{ secrets.PROD_POSTGRES_DB }}
-          PROD_POSTGRES_USER: ${{ secrets.PROD_POSTGRES_USER }}
-          PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_MONGODB_URL: ${{ secrets.PROD_MONGODB_URL }}
           PROD_REDIS_URL: ${{ secrets.PROD_REDIS_URL }}
           PROD_JWT_ACCESS_SECRET: ${{ secrets.PROD_JWT_ACCESS_SECRET }}
@@ -150,7 +147,7 @@ jobs:
           command_timeout: "15m"
           envs: >-
             DEPLOY_IMAGE_TAG,REPO_NAME,GHCR_TOKEN,GHCR_USER,
-            PROD_DATABASE_URL,PROD_DIRECT_URL,PROD_POSTGRES_DB,PROD_POSTGRES_USER,PROD_POSTGRES_PASSWORD,
+            PROD_DATABASE_URL,PROD_DIRECT_URL,
             PROD_MONGODB_URL,PROD_REDIS_URL,
             PROD_JWT_ACCESS_SECRET,PROD_JWT_REFRESH_SECRET,
             PROD_APP_URL,PROD_FRONTEND_URL,PROD_API_URL,

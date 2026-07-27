@@ -51,14 +51,14 @@ run_migration() {
 
 # 4. Execute Database Migrations
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 [1/4] Verifying Database Connectivity..."
+echo "🔍 [1/4] Verifying Managed Database (Supabase) Connectivity..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Ensure postgres dependency is running before executing migrations
-docker compose up -d postgres redis mongodb
+# Ensure local Redis and MongoDB containers are active
+docker compose up -d redis mongodb
 
 echo "🗄️ [2/4] Executing Safe Prisma Database Migrations (prisma migrate deploy)..."
-echo "ℹ️ Using non-destructive migration engine — zero risk of table drops or data resets."
+echo "ℹ️ Target: Supabase Managed Postgres — using non-destructive migration engine."
 
 MIGRATION_LOGS=$(run_migration) && MIGRATION_SUCCESS=true || MIGRATION_SUCCESS=false
 echo "${MIGRATION_LOGS}"
@@ -76,7 +76,7 @@ if [ "${MIGRATION_SUCCESS}" = "false" ]; then
 
     if [ "${MIGRATION_SUCCESS}" = "false" ]; then
         echo "❌ CRITICAL: Database migration failed! Aborting deployment to preserve data integrity."
-        docker compose up -d api worker nginx postgres redis mongodb || true
+        docker compose up -d api worker nginx redis mongodb || true
         exit 1
     fi
 fi
