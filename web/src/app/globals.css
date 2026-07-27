@@ -28,6 +28,7 @@
   --color-foreground: hsl(var(--foreground));
   --color-brand: hsl(149 61% 28%);
   /* #1A6B3C — brand green */
+  --color-brand-300: #22c55e;
   --color-brand-subtle: hsl(149 67% 95%);
   /* #E8F5EE — green tint */
   --color-brand-mid: hsl(149 51% 36%);
@@ -123,9 +124,10 @@
    TAILWIND v4 @theme configuration
    ============================================================ */
 @theme {
-  --font-sans: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-inter), var(--font-dm-sans), system-ui, -apple-system, sans-serif;
   --font-heading: var(--font-plus-jakarta), system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-display: var(--font-space-grotesk), var(--font-plus-jakarta), system-ui, sans-serif;
+  --font-mono: var(--font-mono), var(--font-jetbrains-mono), ui-monospace, monospace;
   --font-serif: var(--font-instrument-serif), Georgia, serif;
   --font-plus-jakarta: var(--font-plus-jakarta), system-ui, -apple-system, sans-serif;
 

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { LogoIcon } from "@/components/ui/LogoIcon";
+import { NavLogo } from "@/components/ui/NavLogo";
 
 interface AuthCardProps {
   children: React.ReactNode;
@@ -26,12 +26,7 @@ export function AuthCard({ children, title, subtitle }: AuthCardProps) {
       >
         {/* Brand Logo Header */}
         <div className="flex flex-col items-center mb-8">
-          <Link href="/" className="group flex items-center gap-2">
-            <LogoIcon size={52} className="transition-transform group-hover:scale-105" />
-            <span className="font-sans font-bold text-2xl tracking-tight text-foreground">
-              rapto
-            </span>
-          </Link>
+          <NavLogo className="font-display text-3xl font-bold tracking-tight text-foreground transition-transform hover:scale-105 flex items-center" />
         </div>
 
         {/* Card Body */}

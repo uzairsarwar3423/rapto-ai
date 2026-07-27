@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LogoIcon } from "@/components/ui/LogoIcon";
+import { NavLogo } from "@/components/ui/NavLogo";
 
 export const metadata: Metadata = {
   title: "Page Not Found",
@@ -59,10 +59,8 @@ export default function NotFound() {
           404
         </p>
 
-        {/* Logo icon */}
-        <div style={{ marginBottom: "32px" }}>
-          <LogoIcon size={56} style={{ margin: "0 auto" }} />
-        </div>
+        {/* Brand logo */}
+        <NavLogo className="font-display text-4xl font-bold tracking-tight text-neutral-900 flex items-center justify-center mb-8" />
 
         <h1
           style={{

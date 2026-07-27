@@ -5,6 +5,8 @@ import { AuthGuard } from "@/features/auth/components/AuthGuard";
 import { useOnboardingStepGuard } from "@/features/onboarding/hooks/useOnboardingStepGuard";
 import { OnboardingProgress } from "@/features/onboarding/components/OnboardingProgress";
 
+import { NavLogo } from "@/components/ui/NavLogo";
+
 export default function OnboardingLayout({ children }: { children: ReactNode }) {
   // Enforce step guard to protect access and handle completions
   useOnboardingStepGuard();
@@ -14,12 +16,7 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
       <div className="min-h-screen w-full flex flex-col bg-zinc-50 dark:bg-zinc-950 text-foreground transition-colors duration-300 onboarding-theme">
         {/* Simple Clean Header */}
         <header className="w-full max-w-lg mx-auto px-6 pt-8 pb-4 flex items-center justify-between select-none">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-md bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-zinc-50 dark:text-zinc-950 font-bold text-sm">
-              V
-            </div>
-            <span className="font-semibold text-sm tracking-tight text-foreground">Rapto</span>
-          </div>
+          <NavLogo className="font-display text-xl font-bold tracking-tight text-foreground flex items-center" />
         </header>
 
         {/* Main Content Area */}

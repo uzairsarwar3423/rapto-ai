@@ -1,4 +1,5 @@
 import { EmailColors, EmailTypography, EmailSpacing } from './email-tokens'
+import { getFrontendUrl } from '../../email.service'
 
 export interface EmailLayoutProps {
   title: string
@@ -129,9 +130,11 @@ export function renderEmailLayout(props: EmailLayoutProps): string {
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td>
-                    <span class="email-headline-text" style="font-size: 18px; font-weight: ${EmailTypography.fontWeightBold}; color: ${EmailColors.textHeadline}; letter-spacing: -0.5px; font-family: ${EmailTypography.fontFamily};">
-                      ⚡ Rapto
-                    </span>
+                    <a href="${getFrontendUrl()}" target="_blank" style="text-decoration: none;">
+                      <span class="email-headline-text" style="font-size: 22px; font-weight: ${EmailTypography.fontWeightBold}; color: ${EmailColors.textHeadline}; letter-spacing: -0.5px; font-family: ${EmailTypography.fontFamily}; display: inline-block;">
+                        Rapt<span style="position: relative; display: inline-block;">o<span style="position: absolute; top: 3px; right: -5px; width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px rgba(34,197,94,0.8);"></span></span>
+                      </span>
+                    </a>
                   </td>
                 </tr>
               </table>

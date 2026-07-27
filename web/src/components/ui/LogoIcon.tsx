@@ -1,17 +1,13 @@
-/**
- * LogoIcon — scalable, reusable app logo.
- * Centralized logo icon component that resolves to the chosen asset path:
- * '/icons/app/rapto1.jpeg'.
- */
+"use client";
 
-import Image from "next/image";
+import React from "react";
+import { NavLogo } from "./NavLogo";
 
 interface LogoIconProps {
-  /** Pixel size for both width and height (logo is always square). */
+  /** Size modifier for font size calculation */
   size?: number;
   className?: string;
   style?: React.CSSProperties;
-  /** Set to true when above the fold (Next.js LCP optimization). */
   priority?: boolean;
 }
 
@@ -19,25 +15,10 @@ export function LogoIcon({
   size = 32,
   className,
   style,
-  priority = false,
 }: LogoIconProps) {
   return (
-    <Image
-      src="/icons/app/rapto1.jpeg"
-      alt="Rapto"
-      width={size}
-      height={size}
-      priority={priority}
-      className={className}
-      style={{
-        display: "block",
-        width: `${size}px`,
-        height: `${size}px`,
-        objectFit: "contain",
-        borderRadius: "6px",
-        flexShrink: 0,
-        ...style,
-      }}
-    />
+    <div style={{ display: "inline-flex", alignItems: "center", fontSize: `${Math.max(16, size / 1.25)}px`, ...style }}>
+      <NavLogo href="" className={className} />
+    </div>
   );
 }
