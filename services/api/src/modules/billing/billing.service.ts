@@ -8,7 +8,7 @@
 //   ✅ Only checkout + portal require live Paddle calls (unavoidable — we need URLs)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { PlanType } from '@prisma/client'
+import { PlanType, SubscriptionStatus } from '@prisma/client'
 import { logger } from '../../config/logger'
 import { AppError } from '../../utils/errors'
 import { redis } from '../../config/redis'
