@@ -23,6 +23,7 @@ import {
   getInvoicesController,
   getUsageController,
   syncSubscriptionController,
+  getWebhookStatusController,
 } from './billing.controller'
 import { checkoutSchema, invoicePaginationSchema } from './billing.validator'
 
@@ -98,6 +99,16 @@ router.get(
   requireAuth,
   injectTenant,
   getUsageController
+)
+
+// ── GET /billing/webhook-status ───────────────────────────────────────────────
+// ADMIN only — returns diagnostic info on Paddle webhook connectivity & health
+router.get(
+  '/webhook-status',
+  requireAuth,
+  injectTenant,
+  requireRole('ADMIN'),
+  getWebhookStatusController
 )
 
 export const billingRouter = router

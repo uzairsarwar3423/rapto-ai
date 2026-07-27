@@ -308,6 +308,19 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
         await billingRepo.activateTeamPlan(teamId, resolvedPlan, periodStart, periodEnd)
         await invalidatePlanCache(teamId)
 
+        // Emit real-time socket event to team room
+        try {
+          const { socketEmitter } = await import('../../realtime/socket.emitter')
+          const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+          socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
+            teamId,
+            plan: resolvedPlan,
+            updatedAt: new Date().toISOString(),
+          })
+        } catch (err: any) {
+          logger.warn({ err: err.message, teamId }, '[billing.service] Failed to emit billing socket event on sync')
+        }
+
         // Enqueue confirmation email with deterministic jobId so it never duplicates with Webhook email
         try {
           const { notifyQueue } = await import('../../queues/queue.client')

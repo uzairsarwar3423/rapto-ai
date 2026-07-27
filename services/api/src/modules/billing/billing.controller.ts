@@ -133,3 +133,26 @@ export async function syncSubscriptionController(
     next(err)
   }
 }
+
+// ── GET /billing/webhook-status ───────────────────────────────────────────────
+
+export async function getWebhookStatusController(
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const isConfigured = Boolean(process.env.PADDLE_WEBHOOK_SECRET && process.env.PADDLE_WEBHOOK_SECRET.trim() !== '')
+    const { redis } = await import('../../config/redis')
+    const lastWebhookReceivedAt = await redis.get('paddle:last_webhook_received_at')
+
+    res.status(200).json({
+      configured: isConfigured,
+      webhookEndpoint: 'https://app.rapto.cloud/api/v1/webhooks/paddle',
+      lastWebhookReceivedAt: lastWebhookReceivedAt ? new Date(parseInt(lastWebhookReceivedAt, 10)).toISOString() : null,
+      status: isConfigured ? 'healthy' : 'unconfigured_secret',
+    })
+  } catch (err) {
+    next(err)
+  }
+}

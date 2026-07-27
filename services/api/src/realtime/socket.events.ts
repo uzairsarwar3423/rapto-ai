@@ -81,6 +81,9 @@ export const SERVER_EVENTS = {
   // Frontend reads `source` to decide whether to render the "Synced from Jira" badge.
   ACTION_ITEM_COMPLETED:    'action_item:completed',
 
+  // ── Billing ──────────────────────────────────────────────────────────────
+  BILLING_PLAN_UPDATED: 'billing:plan_updated',
+
   // ── Notifications ────────────────────────────────────────────────────────
   NOTIFICATION_CREATED: 'notification:created',
   NOTIFICATION_READ:    'notification:read',

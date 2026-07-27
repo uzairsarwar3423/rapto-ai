@@ -109,6 +109,8 @@ export async function handlePaddleWebhook(req: Request, res: Response): Promise<
     return
   }
 
+  await redis.set('paddle:last_webhook_received_at', Date.now().toString())
+
   logger.info(
     { eventId, eventType, ip: req.ip },
     '[paddle.webhook] ✅ Signature verified and event accepted — fast-acking Paddle'
@@ -357,6 +359,21 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
   // ── Cache Step 4: Invalidate plan cache ─────────────────────────────────────
   await invalidatePlanCache(teamId)
   step('plan cache invalidated')
+
+  // ── Realtime Step 4b: Emit socket event to team room for real-time frontend update ──
+  try {
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
+      teamId,
+      plan: planId,
+      status: SubscriptionStatus.active,
+      updatedAt: new Date().toISOString(),
+    })
+    step('realtime socket event emitted')
+  } catch (err: any) {
+    logger.warn({ err: err.message, teamId }, '[paddle.webhook] Failed to emit billing socket event')
+  }
 
   // ── Queue Step 5: Enqueue confirmation email (dual-layer idempotency) ───────
   await enqueueBillingJob(
