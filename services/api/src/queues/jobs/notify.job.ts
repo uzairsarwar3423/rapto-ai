@@ -29,6 +29,7 @@ export type NotifyJobType =
   | 'EMAIL_SUBSCRIPTION_UPGRADED'
   | 'SUBSCRIPTION_CANCELLED'
   | 'EMAIL_SUBSCRIPTION_CANCELLED'
+  | 'TRIAL_STARTED'            // Fired by subscription.created when status = 'trialing'
 
 export interface NotifyJobData {
   type:          NotifyJobType
@@ -37,6 +38,9 @@ export interface NotifyJobData {
   commitmentId?: string
   ownerId?:      string
   managerIds?:   string[]
-  emailPayload?: any // For transactional emails
-  metadata?:     any // Optional metadata for generic notification payloads
+  planId?:       string // Billing: the plan that was activated / upgraded
+  trialEndsAt?:  Date   // Billing: trial end date for TRIAL_STARTED
+  emailPayload?: any    // For transactional emails
+  metadata?:     any    // Optional metadata for generic notification payloads
 }
+

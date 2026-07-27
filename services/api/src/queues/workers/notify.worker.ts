@@ -777,23 +777,41 @@ export const notifyWorker = new Worker<NotifyJobData>(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CASE 13G: PAYMENT_FAILED (Team Payment Failure)
+    // CASE 13G: PAYMENT_FAILED
+    // Error strategy: re-throw on email failure → BullMQ retries (5× backoff)
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'PAYMENT_FAILED' && teamId) {
-      try {
-        const team = await prisma.team.findUnique({
-          where: { id: teamId },
-          select: { name: true },
-        })
-        if (team) {
-          const admins = await prisma.user.findMany({
-            where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
-            select: { id: true, email: true, name: true },
-          })
-          const amountDue = job.data.metadata?.amountDue || 'Subscription payment'
-          const retryUrl = `${frontendUrl}/settings/billing`
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { name: true },
+      })
 
-          for (const admin of admins) {
+      if (!team) {
+        logger.error({ teamId, jobId: job.id }, 'notify.worker.PAYMENT_FAILED: team not found — aborting')
+        return
+      }
+
+      const admins = await prisma.user.findMany({
+        where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+        select: { id: true, email: true, name: true },
+      })
+
+      if (admins.length === 0) {
+        logger.warn({ teamId, jobId: job.id }, 'notify.worker.PAYMENT_FAILED: no OWNER/ADMIN found — no alert sent')
+        return
+      }
+
+      const amountDue = job.data.metadata?.amountDue || 'Your subscription payment'
+      const retryUrl  = `${frontendUrl}/settings/billing`
+
+      logger.warn(
+        { teamId, amountDue, adminCount: admins.length, jobId: job.id },
+        'notify.worker.PAYMENT_FAILED: dispatching payment failure alerts'
+      )
+
+      const emailResults = await Promise.allSettled(
+        admins.map(async (admin) => {
+          try {
             await createInAppNotification({
               userId: admin.id,
               teamId,
@@ -802,41 +820,74 @@ export const notifyWorker = new Worker<NotifyJobData>(
               body: `We were unable to process the payment of ${amountDue} for ${team.name}.`,
               actionUrl: '/settings/billing',
             })
-
-            await emailService.sendPaymentFailedEmail({
-              to: admin.email,
-              teamName: team.name,
-              amountDue,
-              retryUrl,
-              userId: admin.id,
-            })
+          } catch (inAppErr: any) {
+            logger.warn({ err: inAppErr.message, userId: admin.id }, 'notify.worker.PAYMENT_FAILED: in-app notification failed (non-fatal)')
           }
-        }
-      } catch (err: any) {
-        logger.error({ err: err.message, teamId }, 'notify.worker.failed: PAYMENT_FAILED')
+
+          await emailService.sendPaymentFailedEmail({
+            to: admin.email,
+            teamName: team.name,
+            amountDue,
+            retryUrl,
+            userId: admin.id,
+          })
+
+          logger.warn(
+            { to: admin.email, teamId, amountDue },
+            'notify.worker.PAYMENT_FAILED: payment failure alert dispatched'
+          )
+        })
+      )
+
+      const failures = emailResults.filter((r) => r.status === 'rejected') as PromiseRejectedResult[]
+      if (failures.length > 0) {
+        const firstErr = failures[0].reason
+        logger.error(
+          { teamId, failureCount: failures.length, err: firstErr?.message },
+          'notify.worker.PAYMENT_FAILED: one or more alerts failed — retrying job'
+        )
+        throw firstErr instanceof Error ? firstErr : new Error(String(firstErr))
       }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CASE 13H: SUBSCRIPTION_UPGRADED (Team Subscription Upgraded)
+    // CASE 13H: SUBSCRIPTION_UPGRADED
+    // Error strategy: re-throw on email failure → BullMQ retries (5× backoff)
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'SUBSCRIPTION_UPGRADED' && teamId) {
-      try {
-        const team = await prisma.team.findUnique({
-          where: { id: teamId },
-          select: { name: true, plan: true },
-        })
-        if (team) {
-          const admins = await prisma.user.findMany({
-            where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
-            select: { id: true, email: true, name: true },
-          })
-          const newPlanName = (job.data.metadata?.newPlanName || team.plan).toString().toUpperCase()
-          const amountPaid = job.data.metadata?.amountPaid || (newPlanName === 'GROWTH' ? '$99.00' : newPlanName === 'BUSINESS' ? '$199.00' : '$49.00')
-          const billingInterval = job.data.metadata?.billingInterval || 'month'
-          const effectiveDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { name: true, plan: true },
+      })
 
-          for (const admin of admins) {
+      if (!team) {
+        logger.error({ teamId, jobId: job.id }, 'notify.worker.SUBSCRIPTION_UPGRADED: team not found — aborting')
+        return
+      }
+
+      const admins = await prisma.user.findMany({
+        where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+        select: { id: true, email: true, name: true },
+      })
+
+      if (admins.length === 0) {
+        logger.warn({ teamId, jobId: job.id }, 'notify.worker.SUBSCRIPTION_UPGRADED: no OWNER/ADMIN found — no email sent')
+        return
+      }
+
+      const newPlanName     = (job.data.metadata?.newPlanName || team.plan).toString().toUpperCase()
+      const amountPaid      = job.data.metadata?.amountPaid || (newPlanName === 'GROWTH' ? '$99.00' : newPlanName === 'BUSINESS' ? '$199.00' : '$49.00')
+      const billingInterval = job.data.metadata?.billingInterval || 'month'
+      const effectiveDate   = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+      logger.info(
+        { teamId, newPlanName, amountPaid, adminCount: admins.length, jobId: job.id },
+        'notify.worker.SUBSCRIPTION_UPGRADED: dispatching upgrade emails'
+      )
+
+      const emailResults = await Promise.allSettled(
+        admins.map(async (admin) => {
+          try {
             await createInAppNotification({
               userId: admin.id,
               teamId,
@@ -845,43 +896,77 @@ export const notifyWorker = new Worker<NotifyJobData>(
               body: `Your workspace ${team.name} has been upgraded to ${newPlanName}.`,
               actionUrl: '/settings/billing',
             })
-
-            await emailService.sendSubscriptionUpgradedEmail({
-              to: admin.email,
-              customerName: admin.name,
-              teamName: team.name,
-              oldPlanName: 'FREE',
-              newPlanName,
-              amountPaid,
-              billingInterval,
-              effectiveDate,
-              dashboardUrl: `${frontendUrl}/dashboard`,
-              userId: admin.id,
-            })
+          } catch (inAppErr: any) {
+            logger.warn({ err: inAppErr.message, userId: admin.id }, 'notify.worker.SUBSCRIPTION_UPGRADED: in-app notification failed (non-fatal)')
           }
-        }
-      } catch (err: any) {
-        logger.error({ err: err.message, teamId }, 'notify.worker.failed: SUBSCRIPTION_UPGRADED')
+
+          await emailService.sendSubscriptionUpgradedEmail({
+            to: admin.email,
+            customerName: admin.name ?? undefined,
+            teamName: team.name,
+            oldPlanName: 'FREE',
+            newPlanName,
+            amountPaid,
+            billingInterval,
+            effectiveDate,
+            dashboardUrl: `${frontendUrl}/dashboard`,
+            userId: admin.id,
+          })
+
+          logger.info(
+            { to: admin.email, teamId, newPlanName },
+            'notify.worker.SUBSCRIPTION_UPGRADED: upgrade email dispatched successfully'
+          )
+        })
+      )
+
+      const failures = emailResults.filter((r) => r.status === 'rejected') as PromiseRejectedResult[]
+      if (failures.length > 0) {
+        const firstErr = failures[0].reason
+        logger.error(
+          { teamId, failureCount: failures.length, err: firstErr?.message },
+          'notify.worker.SUBSCRIPTION_UPGRADED: one or more emails failed — retrying job'
+        )
+        throw firstErr instanceof Error ? firstErr : new Error(String(firstErr))
       }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CASE 13I: SUBSCRIPTION_CANCELLED (Team Subscription Cancelled)
+    // CASE 13I: SUBSCRIPTION_CANCELLED
+    // Error strategy: re-throw on email failure → BullMQ retries (5× backoff)
     // ─────────────────────────────────────────────────────────────────────────
     else if (type === 'SUBSCRIPTION_CANCELLED' && teamId) {
-      try {
-        const team = await prisma.team.findUnique({
-          where: { id: teamId },
-          select: { name: true },
-        })
-        if (team) {
-          const admins = await prisma.user.findMany({
-            where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
-            select: { id: true, email: true, name: true },
-          })
-          const effectiveDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { name: true },
+      })
 
-          for (const admin of admins) {
+      if (!team) {
+        logger.error({ teamId, jobId: job.id }, 'notify.worker.SUBSCRIPTION_CANCELLED: team not found — aborting')
+        return
+      }
+
+      const admins = await prisma.user.findMany({
+        where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+        select: { id: true, email: true, name: true },
+      })
+
+      if (admins.length === 0) {
+        logger.warn({ teamId, jobId: job.id }, 'notify.worker.SUBSCRIPTION_CANCELLED: no OWNER/ADMIN found — no email sent')
+        return
+      }
+
+      const effectiveDate   = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const billingUrl      = `${frontendUrl}/settings/billing`
+
+      logger.info(
+        { teamId, adminCount: admins.length, jobId: job.id },
+        'notify.worker.SUBSCRIPTION_CANCELLED: dispatching cancellation emails'
+      )
+
+      const emailResults = await Promise.allSettled(
+        admins.map(async (admin) => {
+          try {
             await createInAppNotification({
               userId: admin.id,
               teamId,
@@ -890,21 +975,130 @@ export const notifyWorker = new Worker<NotifyJobData>(
               body: `Your paid subscription for ${team.name} has been cancelled and moved to the Free plan.`,
               actionUrl: '/settings/billing',
             })
-
-            await emailService.sendSubscriptionCancelledEmail({
-              to: admin.email,
-              customerName: admin.name,
-              teamName: team.name,
-              effectiveDate,
-              billingUrl: `${frontendUrl}/settings/billing`,
-              userId: admin.id,
-            })
+          } catch (inAppErr: any) {
+            logger.warn({ err: inAppErr.message, userId: admin.id }, 'notify.worker.SUBSCRIPTION_CANCELLED: in-app notification failed (non-fatal)')
           }
-        }
-      } catch (err: any) {
-        logger.error({ err: err.message, teamId }, 'notify.worker.failed: SUBSCRIPTION_CANCELLED')
+
+          await emailService.sendSubscriptionCancelledEmail({
+            to: admin.email,
+            customerName: admin.name ?? undefined,
+            teamName: team.name,
+            effectiveDate,
+            billingUrl,
+            userId: admin.id,
+          })
+
+          logger.info(
+            { to: admin.email, teamId },
+            'notify.worker.SUBSCRIPTION_CANCELLED: cancellation email dispatched successfully'
+          )
+        })
+      )
+
+      const failures = emailResults.filter((r) => r.status === 'rejected') as PromiseRejectedResult[]
+      if (failures.length > 0) {
+        const firstErr = failures[0].reason
+        logger.error(
+          { teamId, failureCount: failures.length, err: firstErr?.message },
+          'notify.worker.SUBSCRIPTION_CANCELLED: one or more emails failed — retrying job'
+        )
+        throw firstErr instanceof Error ? firstErr : new Error(String(firstErr))
       }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13J: TRIAL_STARTED
+    // Fired when a Paddle subscription enters trialing status.
+    // Error strategy: re-throw on email failure → BullMQ retries (5× backoff)
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'TRIAL_STARTED' && teamId) {
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { name: true, plan: true, billingCycleEnd: true },
+      })
+
+      if (!team) {
+        logger.error(
+          { teamId, jobId: job.id },
+          'notify.worker.TRIAL_STARTED: team not found — aborting'
+        )
+        return
+      }
+
+      const admins = await prisma.user.findMany({
+        where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+        select: { id: true, email: true, name: true },
+      })
+
+      if (admins.length === 0) {
+        logger.warn(
+          { teamId, jobId: job.id },
+          'notify.worker.TRIAL_STARTED: no OWNER/ADMIN found — no trial email sent'
+        )
+        return
+      }
+
+      const trialEndsAt = job.data.trialEndsAt
+        ? new Date(job.data.trialEndsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'in 14 days'
+
+      const dashboardUrl = `${frontendUrl}/dashboard`
+      const billingUrl   = `${frontendUrl}/settings/billing`
+
+      logger.info(
+        { teamId, trialEndsAt, adminCount: admins.length, jobId: job.id },
+        'notify.worker.TRIAL_STARTED: dispatching trial started notifications'
+      )
+
+      const emailResults = await Promise.allSettled(
+        admins.map(async (admin) => {
+          try {
+            await createInAppNotification({
+              userId: admin.id,
+              teamId,
+              type: 'SCORE_MILESTONE',
+              title: `🎉 Your free trial has started!`,
+              body: `Your trial for ${team.name} is active and ends on ${trialEndsAt}.`,
+              actionUrl: '/settings/billing',
+            })
+          } catch (inAppErr: any) {
+            logger.warn(
+              { err: inAppErr.message, userId: admin.id },
+              'notify.worker.TRIAL_STARTED: in-app notification failed (non-fatal)'
+            )
+          }
+
+          // Re-use the billing confirmation email template to announce the trial
+          await emailService.sendPaymentSuccessEmail({
+            to: admin.email,
+            customerName: admin.name ?? undefined,
+            teamName: team.name,
+            planName: 'Free Trial',
+            amountPaid: '$0.00',
+            paymentDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            nextBillingDate: trialEndsAt,
+            billingUrl,
+            userId: admin.id,
+          })
+
+          logger.info(
+            { to: admin.email, teamId, trialEndsAt },
+            'notify.worker.TRIAL_STARTED: trial start email dispatched successfully'
+          )
+        })
+      )
+
+      const failures = emailResults.filter((r) => r.status === 'rejected') as PromiseRejectedResult[]
+      if (failures.length > 0) {
+        const firstErr = failures[0].reason
+        logger.error(
+          { teamId, failureCount: failures.length, err: firstErr?.message },
+          'notify.worker.TRIAL_STARTED: one or more trial emails failed — retrying job'
+        )
+        throw firstErr instanceof Error ? firstErr : new Error(String(firstErr))
+      }
+    }
+
 
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1096,11 +1290,77 @@ export const notifyWorker = new Worker<NotifyJobData>(
     }
   },
   {
-    connection: { host: process.env.REDIS_HOST, port: parseInt(process.env.REDIS_PORT ?? '6379') },
+    // Use the same resilient connection config as queue.client.ts — NOT raw env vars.
+    // Raw REDIS_HOST/PORT vars ignore REDIS_URL and the Docker-service fallback logic.
+    connection: (() => {
+      let host = process.env.REDIS_HOST
+      let port = parseInt(process.env.REDIS_PORT ?? '6379', 10)
+      let password = process.env.REDIS_PASSWORD
+
+      // Fallback: parse REDIS_URL if REDIS_HOST is localhost or unset
+      if ((!host || host === 'localhost' || host === '127.0.0.1') && process.env.REDIS_URL) {
+        try {
+          const u = new URL(process.env.REDIS_URL)
+          if (u.hostname && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
+            host = u.hostname
+            if (u.port) port = parseInt(u.port, 10)
+            if (u.password) password = decodeURIComponent(u.password)
+          }
+        } catch {}
+      }
+
+      // Hard fallback — Docker Compose service name, always reachable inside the stack
+      if (!host || host === 'localhost' || host === '127.0.0.1') {
+        host = 'rapto-redis'
+      }
+
+      return { host, port, password }
+    })(),
     concurrency: parseInt(process.env.WORKER_CONCURRENCY_NOTIFY || '5', 10),
   }
 )
 
+// ── Worker Lifecycle Events ───────────────────────────────────────────────────
+
 notifyWorker.on('failed', (job, err) => {
-  logger.error({ jobId: job?.id, err }, 'notify.worker: job failed')
+  // Log with full context for ops debugging.
+  // Billing jobs will appear here on every failed attempt before final exhaustion.
+  logger.error(
+    {
+      jobId:       job?.id,
+      jobName:     job?.name,
+      jobType:     job?.data?.type,
+      teamId:      job?.data?.teamId,
+      attemptsMade: job?.attemptsMade,
+      err:         err?.message,
+      stack:       err?.stack,
+    },
+    'notify.worker: ❌ job FAILED'
+  )
+})
+
+notifyWorker.on('completed', (job) => {
+  // Only log billing jobs at INFO — avoid noise from high-frequency jobs
+  const billingTypes = new Set([
+    'BILLING_CONFIRMATION',
+    'PAYMENT_FAILED',
+    'SUBSCRIPTION_UPGRADED',
+    'SUBSCRIPTION_CANCELLED',
+  ])
+  if (billingTypes.has(job?.data?.type)) {
+    logger.info(
+      {
+        jobId:       job?.id,
+        jobName:     job?.name,
+        jobType:     job?.data?.type,
+        teamId:      job?.data?.teamId,
+        attemptsMade: job?.attemptsMade,
+      },
+      'notify.worker: ✅ billing job COMPLETED'
+    )
+  }
+})
+
+notifyWorker.on('error', (err) => {
+  logger.error({ err: err.message }, 'notify.worker: worker-level error (Redis connection or BullMQ internal)')
 })

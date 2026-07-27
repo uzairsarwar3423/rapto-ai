@@ -95,23 +95,27 @@ async function sendBrevoEmail(payload: {
   const apiKey = getBrevoApiKey()
   const isConfigured = checkIsBrevoConfigured()
 
-  console.log('\n===================================================================')
-  console.log(`📧 [EMAIL DISPATCH INITIATED]`)
-  console.log(` - Type:         ${payload.notificationType}`)
-  console.log(` - Recipient:    ${recipientEmail}`)
-  console.log(` - Subject:      ${payload.subject}`)
-  console.log(` - Sender Email: ${fromEmail}`)
-  console.log(` - Brevo API:    ${isConfigured ? 'CONFIGURED ✅' : 'NOT CONFIGURED / SIMULATED MODE ⚠️'}`)
-  console.log('===================================================================\n')
+  logger.info(
+    {
+      notificationType: payload.notificationType,
+      to: recipientEmail,
+      subject: payload.subject,
+      sender: fromEmail,
+      brevoConfigured: isConfigured,
+    },
+    'email.service: dispatch initiated'
+  )
 
   if (!isConfigured) {
     logger.warn(
-      { to: recipientEmail, subject: payload.subject, notificationType: payload.notificationType },
-      'BREVO_API_KEY is missing or placeholder. Email dispatch simulated to console.'
+      {
+        notificationType: payload.notificationType,
+        to: recipientEmail,
+        subject: payload.subject,
+        hint: 'Set BREVO_API_KEY and BREVO_FROM_EMAIL in .env to enable real delivery',
+      },
+      'email.service: BREVO_API_KEY not configured — email SIMULATED (not delivered)'
     )
-    console.log('\n⚠️ [BREVO API NOT CONFIGURED]')
-    console.log(`   To deliver real emails, set valid BREVO_API_KEY and BREVO_FROM_EMAIL in your .env file.`)
-    console.log(`   Email to <${recipientEmail}> has been SIMULATED on terminal.\n`)
     return
   }
 
@@ -138,26 +142,35 @@ async function sendBrevoEmail(payload: {
     const responseText = await response.text()
 
     if (!response.ok) {
-      console.error('\n❌ [BREVO API DISPATCH FAILED]')
-      console.error(` - Recipient: ${recipientEmail}`)
-      console.error(` - Sender:    ${fromEmail}`)
-      console.error(` - Status:    ${response.status}`)
-      console.error(` - Response:  ${responseText}`)
-      console.error('===================================================================\n')
+      logger.error(
+        {
+          notificationType: payload.notificationType,
+          to: recipientEmail,
+          status: response.status,
+          brevoResponse: responseText,
+        },
+        'email.service: ❌ Brevo API returned non-2xx — will trigger BullMQ retry'
+      )
       throw new Error(`Brevo API returned status ${response.status}: ${responseText}`)
     }
 
-    console.log('\n===================================================================')
-    console.log(`✅ [EMAIL DELIVERED TO BREVO API SUCCESSFULLY]`)
-    console.log(` - Status:     ${response.status}`)
-    console.log(` - Recipient:  ${recipientEmail}`)
-    console.log(` - Payload:    ${responseText}`)
-    console.log('===================================================================\n')
+    logger.info(
+      {
+        notificationType: payload.notificationType,
+        to: recipientEmail,
+        status: response.status,
+      },
+      'email.service: ✅ email delivered to Brevo successfully'
+    )
   } catch (error: any) {
-    console.error('\n❌ [EMAIL SEND ERROR EXCEPTION]')
-    console.error(` - Recipient: ${recipientEmail}`)
-    console.error(` - Error:     ${error.message || error}`)
-    console.error('===================================================================\n')
+    logger.error(
+      {
+        notificationType: payload.notificationType,
+        to: recipientEmail,
+        err: error.message || String(error),
+      },
+      'email.service: ❌ exception during Brevo API call — rethrowing for BullMQ retry'
+    )
     throw error
   }
 }
@@ -240,15 +253,17 @@ export const emailService = {
       unsubscribeToken: unsubToken,
     })
 
-    console.log('\n===================================================================')
-    console.log(`📩 [TEAM INVITE EMAIL TRIGGERED]`)
-    console.log(` - Recipient:   ${data.to}`)
-    console.log(` - Team Name:   ${data.teamName}`)
-    console.log(` - Inviter:     ${data.inviterName}`)
-    console.log(` - Role:        ${data.role}`)
-    console.log(` - Join URL:    ${data.joinUrl}`)
-    console.log(` - Expires At:  ${data.expiresAt.toISOString()}`)
-    console.log('===================================================================\n')
+    logger.info(
+      {
+        to: data.to,
+        teamName: data.teamName,
+        inviterName: data.inviterName,
+        role: data.role,
+        joinUrl: data.joinUrl,
+        expiresAt: data.expiresAt.toISOString(),
+      },
+      'email.service: team invite email triggered'
+    )
 
     logger.info({ to: data.to, teamName: data.teamName, joinUrl: data.joinUrl }, 'email.service: sending team invite email')
     await sendBrevoEmail({

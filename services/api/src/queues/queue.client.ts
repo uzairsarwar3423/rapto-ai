@@ -57,6 +57,11 @@ export const extractQueue = new Queue('extract', {
 })
 
 // notify: Send email / Slack notifications
+// removeOnFail: false — billing confirmation jobs MUST be retained permanently.
+// A failed BILLING_CONFIRMATION that is silently purged means the customer paid
+// but never received an email — unrecoverable without ops intervention.
+// All billing jobs require manual replay capability, matching the policy of
+// transcribeQueue, extractQueue, and resolveQueue.
 export const notifyQueue = new Queue('notify', {
   connection,
   defaultJobOptions: {
@@ -64,7 +69,7 @@ export const notifyQueue = new Queue('notify', {
     backoff:     { type: 'exponential', delay: 5_000 },
     priority:    3,
     removeOnComplete: { count: 200 },
-    removeOnFail:     { count: 50 },
+    removeOnFail:     false,  // CRITICAL: Never auto-remove — billing emails need audit trail + manual replay
   },
 })
 
