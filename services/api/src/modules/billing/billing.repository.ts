@@ -36,6 +36,32 @@ export async function findSubscriptionByTeam(teamId: string) {
 }
 
 /**
+ * Find full subscription details for a team (including paddleSubscriptionId & paddleCustomerId).
+ */
+export async function findFullSubscriptionByTeam(teamId: string) {
+  return prisma.subscription.findUnique({
+    where: { teamId },
+    select: {
+      id: true,
+      teamId: true,
+      paddleSubscriptionId: true,
+      paddleCustomerId: true,
+      paddlePriceId: true,
+      plan: true,
+      status: true,
+      billingInterval: true,
+      currentPeriodStart: true,
+      currentPeriodEnd: true,
+      cancelAtPeriodEnd: true,
+      trialStart: true,
+      trialEnd: true,
+      unitAmount: true,
+      currency: true,
+    },
+  })
+}
+
+/**
  * Upsert the subscription row for a team.
  * Keyed on UNIQUE teamId — zero read-before-write race window.
  * Called by webhook handlers ONLY — never called from user-facing endpoints.

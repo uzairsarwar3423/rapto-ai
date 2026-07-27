@@ -197,17 +197,47 @@ export async function createCustomerPortalSession(
   return session.urls.general.overview
 }
 
-// ── Subscription Fetch (for reconciliation only — not hot path) ───────────────
+// ── Subscription Update (Plan Upgrade / Downgrade) ───────────────────────────
+
+export interface UpdateSubscriptionPlanParams {
+  paddleSubscriptionId: string
+  priceId: string
+  planId: string
+  interval: 'month' | 'year'
+}
 
 /**
- * Fetch a subscription directly from Paddle's API.
- * Used ONLY for admin reconciliation — all user-facing reads go through
- * the local `subscriptions` mirror table (webhook-synced).
+ * Update an existing Paddle subscription plan (e.g. STARTER → GROWTH).
+ * Prorates charges immediately and updates customData for webhook anchoring.
  */
-export async function fetchPaddleSubscription(paddleSubscriptionId: string) {
-  return paddle.subscriptions.get(paddleSubscriptionId)
+export async function updateSubscriptionPlan(
+  params: UpdateSubscriptionPlanParams
+) {
+  const { paddleSubscriptionId, priceId, planId, interval } = params
+
+  const updatedSubscription = await paddle.subscriptions.update(paddleSubscriptionId, {
+    items: [
+      {
+        priceId,
+        quantity: 1,
+      },
+    ],
+    prorationBillingMode: 'prorated_immediately',
+    customData: {
+      planId,
+      interval,
+    },
+  })
+
+  logger.info(
+    { paddleSubscriptionId, planId, priceId, interval },
+    '[paddle.client] Updated Paddle subscription plan'
+  )
+
+  return updatedSubscription
 }
 
 // ── Export the raw client for any edge cases ──────────────────────────────────
 
 export { paddle }
+

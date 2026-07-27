@@ -368,3 +368,31 @@ describe('notify.worker — lifecycle observability', () => {
     expect(failedBlock).toContain('attemptsMade:')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 12 — Single Active Subscription & 409 Conflict Enforcement
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('billing.service — Single Active Subscription Rules', () => {
+  const src = read('modules/billing/billing.service.ts')
+
+  it('checks for existing active/trialing subscription before checkout', () => {
+    expect(src).toContain('findFullSubscriptionByTeam(teamId)')
+    expect(src).toContain('SubscriptionStatus.active')
+    expect(src).toContain('SubscriptionStatus.trialing')
+  })
+
+  it('throws 409 Conflict ACTIVE_SUBSCRIPTION_EXISTS when requesting same active plan', () => {
+    expect(src).toContain("'ACTIVE_SUBSCRIPTION_EXISTS'")
+    expect(src).toContain('409')
+  })
+
+  it('updates existing Paddle subscription instead of creating new checkout when changing plans', () => {
+    expect(src).toContain('paddleClient.updateSubscriptionPlan')
+  })
+
+  it('acquires Redis distributed lock to prevent checkout race conditions', () => {
+    expect(src).toContain("redis.set(lockKey, '1', 'EX', 10, 'NX')")
+  })
+})
+

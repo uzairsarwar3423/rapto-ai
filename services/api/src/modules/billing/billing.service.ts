@@ -104,33 +104,153 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
     throw new AppError('PADDLE_CHECKOUT_FAILED', 502, `Missing Paddle price ID for ${planId}/${interval}`)
   }
 
-  // 3. Get or create Paddle customer (DB-first, zero duplicates)
-  let paddleCustomerId: string
-  try {
-    paddleCustomerId = await paddleClient.getOrCreatePaddleCustomer(teamId, requesterEmail, requesterName)
-  } catch (err) {
-    logger.error({ err, teamId }, '[billing.service] Failed to get/create Paddle customer')
-    throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to initialize billing customer')
+  // 3. Race Condition & Concurrency Defense: Acquire Redis lock for team checkout
+  const lockKey = `lock:checkout:${teamId}`
+  const acquiredLock = await redis.set(lockKey, '1', 'EX', 10, 'NX')
+  if (!acquiredLock) {
+    throw new AppError(
+      'CHECKOUT_IN_PROGRESS',
+      409,
+      'A checkout or subscription operation is already in progress for this team. Please wait a moment.'
+    )
   }
 
-  // 4. Create Paddle transaction (customData carries teamId/planId — the trust anchor)
-  let result: CheckoutResult
   try {
-    result = await paddleClient.createTransaction({
-      priceId,
-      customerId: paddleCustomerId,
-      teamId,
-      planId,
-      interval,
-    })
-  } catch (err: any) {
-    logger.error({ err, teamId, planId, interval }, '[billing.service] Paddle createTransaction failed')
-    const paddleErrorMessage = err?.message || 'Unable to create checkout session'
-    throw new AppError('PADDLE_CHECKOUT_FAILED', 502, `Paddle Error: ${paddleErrorMessage}`)
-  }
+    // 4. Check for existing subscription in local DB mirror
+    const existingSub = await billingRepo.findFullSubscriptionByTeam(teamId)
+    const activeStatuses: SubscriptionStatus[] = [SubscriptionStatus.active, SubscriptionStatus.trialing]
 
-  logger.info({ teamId, planId, interval, transactionId: result.transactionId }, '[billing.service] Checkout session created')
-  return result
+    if (existingSub && activeStatuses.includes(existingSub.status)) {
+      // 4a. If team ALREADY has an active/trialing subscription for the EXACT SAME plan -> 409 Conflict
+      if (existingSub.plan === planId) {
+        logger.warn(
+          { teamId, planId, paddleSubscriptionId: existingSub.paddleSubscriptionId, status: existingSub.status },
+          '[billing.service] Checkout rejected: Team already has an active subscription for requested plan'
+        )
+        throw new AppError(
+          'ACTIVE_SUBSCRIPTION_EXISTS',
+          409,
+          `Team already has an active or trialing subscription for the '${planId}' plan`
+        )
+      }
+
+      // 4b. Plan Change (STARTER -> GROWTH, GROWTH -> BUSINESS): Update existing Paddle subscription
+      logger.info(
+        {
+          teamId,
+          currentPlan: existingSub.plan,
+          newPlan: planId,
+          paddleSubscriptionId: existingSub.paddleSubscriptionId,
+        },
+        '[billing.service] Existing active subscription found for different plan — updating Paddle subscription'
+      )
+
+      try {
+        await paddleClient.updateSubscriptionPlan({
+          paddleSubscriptionId: existingSub.paddleSubscriptionId,
+          priceId,
+          planId,
+          interval,
+        })
+      } catch (err: any) {
+        logger.error(
+          { err: err?.message || err, teamId, paddleSubscriptionId: existingSub.paddleSubscriptionId },
+          '[billing.service] Failed to update Paddle subscription plan'
+        )
+        throw new AppError(
+          'PADDLE_SUBSCRIPTION_UPDATE_FAILED',
+          502,
+          `Paddle Error: ${err?.message || 'Unable to update existing subscription plan'}`
+        )
+      }
+
+      // Sync local DB mirror tables immediately (webhooks will also confirm)
+      await billingRepo.upsertSubscription(teamId, {
+        paddleSubscriptionId: existingSub.paddleSubscriptionId,
+        paddleCustomerId: existingSub.paddleCustomerId,
+        paddlePriceId: priceId,
+        plan: planId,
+        billingInterval: interval,
+        status: existingSub.status,
+      })
+      await billingRepo.updateTeamPlan(teamId, planId)
+      await invalidatePlanCache(teamId)
+
+      // Emit real-time socket event for immediate UI reflection
+      try {
+        const { socketEmitter } = await import('../../realtime/socket.emitter')
+        const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+        socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
+          teamId,
+          plan: planId,
+          updatedAt: new Date().toISOString(),
+        })
+      } catch (err: any) {
+        logger.warn({ err: err.message, teamId }, '[billing.service] Failed to emit socket event on plan update')
+      }
+
+      // Enqueue upgrade notification email
+      try {
+        const { notifyQueue } = await import('../../queues/queue.client')
+        await notifyQueue.add(
+          'subscription-upgraded',
+          {
+            type: 'SUBSCRIPTION_UPGRADED',
+            teamId,
+            planId,
+            metadata: {
+              newPlanName: planId,
+              billingInterval: interval,
+            },
+          },
+          { jobId: `subscription-upgraded:sub:${existingSub.paddleSubscriptionId}:${Date.now()}` }
+        )
+      } catch (queueErr: any) {
+        logger.warn({ err: queueErr.message, teamId }, '[billing.service] Failed to queue upgrade notification email')
+      }
+
+      logger.info(
+        { teamId, oldPlan: existingSub.plan, newPlan: planId, paddleSubscriptionId: existingSub.paddleSubscriptionId },
+        '[billing.service] Paddle subscription updated successfully'
+      )
+
+      return {
+        transactionId: existingSub.paddleSubscriptionId,
+        checkoutUrl: null,
+      }
+    }
+
+    // 5. New Purchase / Renewal (no active or trialing subscription exists; or existing is canceled/expired)
+    let paddleCustomerId: string
+    try {
+      paddleCustomerId = await paddleClient.getOrCreatePaddleCustomer(teamId, requesterEmail, requesterName)
+    } catch (err) {
+      logger.error({ err, teamId }, '[billing.service] Failed to get/create Paddle customer')
+      throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to initialize billing customer')
+    }
+
+    // 6. Create Paddle transaction (customData carries teamId/planId — trust anchor)
+    let result: CheckoutResult
+    try {
+      result = await paddleClient.createTransaction({
+        priceId,
+        customerId: paddleCustomerId,
+        teamId,
+        planId,
+        interval,
+      })
+    } catch (err: any) {
+      logger.error({ err, teamId, planId, interval }, '[billing.service] Paddle createTransaction failed')
+      const paddleErrorMessage = err?.message || 'Unable to create checkout session'
+      throw new AppError('PADDLE_CHECKOUT_FAILED', 502, `Paddle Error: ${paddleErrorMessage}`)
+    }
+
+    logger.info({ teamId, planId, interval, transactionId: result.transactionId }, '[billing.service] Checkout session created')
+    return result
+  } finally {
+    // Release concurrency lock
+    await redis.del(lockKey)
+  }
 }
 
 // ── Portal ─────────────────────────────────────────────────────────────────────
