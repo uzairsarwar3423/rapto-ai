@@ -308,6 +308,28 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
         await billingRepo.activateTeamPlan(teamId, resolvedPlan, periodStart, periodEnd)
         await invalidatePlanCache(teamId)
 
+        // Enqueue confirmation email with deterministic jobId so it never duplicates with Webhook email
+        try {
+          const { notifyQueue } = await import('../../queues/queue.client')
+          await notifyQueue.add(
+            'billing-confirmation',
+            {
+              type: 'BILLING_CONFIRMATION',
+              teamId,
+              planId: resolvedPlan,
+              metadata: {
+                billingInterval: priceMatch?.interval ?? 'month',
+                planId: resolvedPlan,
+                syncedFromApi: true,
+              },
+            },
+            { jobId: `billing-confirmation:sub:${activeSub.id}` }
+          )
+          logger.info({ teamId, plan: resolvedPlan }, '[billing.service] Billing confirmation email queued from sync')
+        } catch (queueErr: any) {
+          logger.error({ err: queueErr.message, teamId }, '[billing.service] Failed to queue confirmation email from sync')
+        }
+
         logger.info({ teamId, plan: resolvedPlan }, '[billing.service] Subscription synced successfully from Paddle API')
         return { synced: true, plan: resolvedPlan }
       }
