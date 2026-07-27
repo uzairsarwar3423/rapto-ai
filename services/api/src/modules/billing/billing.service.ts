@@ -13,6 +13,7 @@ import { logger } from '../../config/logger'
 import { AppError } from '../../utils/errors'
 import { redis } from '../../config/redis'
 import { PLAN_LIMITS, PADDLE_PRICE_MAP } from '../../config/plans.config'
+import { invalidatePlanCache } from '../../middleware/plan-limits.middleware'
 import * as paddleClient from '../../services/paddle.client'
 import * as billingRepo from './billing.repository'
 import type {
@@ -249,4 +250,72 @@ export async function getUsage(teamId: string): Promise<UsageDetail> {
     billingCycleEnd,
     percentUsed,
   }
+}
+
+/**
+ * Direct Paddle Subscription Reconciliation / Manual Sync Endpoint.
+ * Checks Paddle API directly for the team's customer ID and updates local DB state.
+ */
+export async function syncSubscription(teamId: string): Promise<{ synced: boolean; plan: PlanType }> {
+  const { prisma } = await import('../../db/client')
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: { id: true, plan: true, paddleCustomerId: true },
+  })
+
+  if (!team?.paddleCustomerId) {
+    await invalidatePlanCache(teamId)
+    return { synced: false, plan: team?.plan ?? PlanType.FREE }
+  }
+
+  try {
+    const { paddle } = await import('../../services/paddle.client')
+    const { getPlanFromPriceId } = await import('../../config/plans.config')
+    const { SubscriptionStatus } = await import('@prisma/client')
+
+    const collection = paddle.subscriptions.list({
+      customerId: [team.paddleCustomerId],
+      status: ['active', 'trialing'],
+    })
+
+    const activeSubs = await collection.next()
+
+    if (activeSubs && activeSubs.length > 0) {
+      const activeSub = activeSubs[0]
+      const priceId = activeSub.items?.[0]?.price?.id
+      const priceMatch = priceId ? getPlanFromPriceId(priceId) : undefined
+
+      const customPlan = (activeSub.customData || (activeSub as any).custom_data)?.planId as PlanType | undefined
+      const resolvedPlan = customPlan && Object.values(PlanType).includes(customPlan)
+        ? customPlan
+        : priceMatch?.planId
+
+      if (resolvedPlan) {
+        const periodStart = activeSub.currentBillingPeriod?.startsAt ? new Date(activeSub.currentBillingPeriod.startsAt) : new Date()
+        const periodEnd = activeSub.currentBillingPeriod?.endsAt ? new Date(activeSub.currentBillingPeriod.endsAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+        await billingRepo.upsertSubscription(teamId, {
+          paddleSubscriptionId: activeSub.id,
+          paddleCustomerId: team.paddleCustomerId,
+          paddlePriceId: priceId,
+          plan: resolvedPlan,
+          billingInterval: priceMatch?.interval ?? 'month',
+          status: activeSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+        })
+
+        await billingRepo.activateTeamPlan(teamId, resolvedPlan, periodStart, periodEnd)
+        await invalidatePlanCache(teamId)
+
+        logger.info({ teamId, plan: resolvedPlan }, '[billing.service] Subscription synced successfully from Paddle API')
+        return { synced: true, plan: resolvedPlan }
+      }
+    }
+  } catch (err: any) {
+    logger.error({ err: err?.message || err, teamId }, '[billing.service] Failed to sync subscription from Paddle API')
+  }
+
+  await invalidatePlanCache(teamId)
+  return { synced: false, plan: team.plan }
 }

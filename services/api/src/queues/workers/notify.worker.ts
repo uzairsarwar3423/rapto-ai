@@ -653,6 +653,224 @@ export const notifyWorker = new Worker<NotifyJobData>(
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13D: BILLING_CONFIRMATION (Payment / Subscription Activated)
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'BILLING_CONFIRMATION' && teamId) {
+      try {
+        const team = await prisma.team.findUnique({
+          where: { id: teamId },
+          select: { name: true, plan: true, billingCycleEnd: true },
+        })
+
+        if (team) {
+          const admins = await prisma.user.findMany({
+            where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+            select: { id: true, email: true, name: true },
+          })
+
+          const planName = (job.data.metadata?.planId || team.plan || 'PRO').toString().toUpperCase()
+          const amountPaid = job.data.metadata?.amountPaid || (planName === 'GROWTH' ? '$99.00' : planName === 'BUSINESS' ? '$199.00' : '$49.00')
+          const paymentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          const nextBillingDate = team.billingCycleEnd
+            ? new Date(team.billingCycleEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+            : null
+
+          for (const admin of admins) {
+            // In-app notification
+            await createInAppNotification({
+              userId: admin.id,
+              teamId,
+              type: 'SCORE_MILESTONE',
+              title: `Payment Receipt: ${planName} Plan Active`,
+              body: `Your payment of ${amountPaid} for ${team.name} was successfully received.`,
+              actionUrl: '/settings/billing',
+            })
+
+            // Email notification
+            await emailService.sendPaymentSuccessEmail({
+              to: admin.email,
+              customerName: admin.name,
+              teamName: team.name,
+              planName,
+              amountPaid,
+              paymentDate,
+              nextBillingDate,
+              invoiceId: job.data.metadata?.invoiceId || null,
+              hostedInvoiceUrl: job.data.metadata?.hostedInvoiceUrl || null,
+              userId: admin.id,
+            })
+          }
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, teamId }, 'notify.worker.failed: BILLING_CONFIRMATION')
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13E: EMAIL_PAYMENT_SUCCESS
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_PAYMENT_SUCCESS' && job.data.emailPayload) {
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_PAYMENT_SUCCESS')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_PAYMENT_SUCCESS' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendPaymentSuccessEmail(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_PAYMENT_SUCCESS')
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13F: EMAIL_SUBSCRIPTION_UPGRADED
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'EMAIL_SUBSCRIPTION_UPGRADED' && job.data.emailPayload) {
+      try {
+        const { to, userId } = job.data.emailPayload
+        const withinCap = await notificationsService.checkAndIncrementEmailRateLimit(userId || to, 'EMAIL_SUBSCRIPTION_UPGRADED')
+        if (!withinCap) {
+          logger.info({ to, notificationType: 'EMAIL_SUBSCRIPTION_UPGRADED' }, 'notify.worker.email.skipped_ratelimit')
+        } else {
+          await emailService.sendSubscriptionUpgradedEmail(job.data.emailPayload)
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, to: job.data.emailPayload.to }, 'notify.worker.email.failed: EMAIL_SUBSCRIPTION_UPGRADED')
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13G: PAYMENT_FAILED (Team Payment Failure)
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'PAYMENT_FAILED' && teamId) {
+      try {
+        const team = await prisma.team.findUnique({
+          where: { id: teamId },
+          select: { name: true },
+        })
+        if (team) {
+          const admins = await prisma.user.findMany({
+            where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+            select: { id: true, email: true, name: true },
+          })
+          const amountDue = job.data.metadata?.amountDue || 'Subscription payment'
+          const retryUrl = `${frontendUrl}/settings/billing`
+
+          for (const admin of admins) {
+            await createInAppNotification({
+              userId: admin.id,
+              teamId,
+              type: 'SCORE_MILESTONE',
+              title: `⚠️ Payment Failed: ${team.name}`,
+              body: `We were unable to process the payment of ${amountDue} for ${team.name}.`,
+              actionUrl: '/settings/billing',
+            })
+
+            await emailService.sendPaymentFailedEmail({
+              to: admin.email,
+              teamName: team.name,
+              amountDue,
+              retryUrl,
+              userId: admin.id,
+            })
+          }
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, teamId }, 'notify.worker.failed: PAYMENT_FAILED')
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13H: SUBSCRIPTION_UPGRADED (Team Subscription Upgraded)
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'SUBSCRIPTION_UPGRADED' && teamId) {
+      try {
+        const team = await prisma.team.findUnique({
+          where: { id: teamId },
+          select: { name: true, plan: true },
+        })
+        if (team) {
+          const admins = await prisma.user.findMany({
+            where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+            select: { id: true, email: true, name: true },
+          })
+          const newPlanName = (job.data.metadata?.newPlanName || team.plan).toString().toUpperCase()
+          const amountPaid = job.data.metadata?.amountPaid || (newPlanName === 'GROWTH' ? '$99.00' : newPlanName === 'BUSINESS' ? '$199.00' : '$49.00')
+          const billingInterval = job.data.metadata?.billingInterval || 'month'
+          const effectiveDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+          for (const admin of admins) {
+            await createInAppNotification({
+              userId: admin.id,
+              teamId,
+              type: 'SCORE_MILESTONE',
+              title: `🎉 Plan Upgraded: ${newPlanName}`,
+              body: `Your workspace ${team.name} has been upgraded to ${newPlanName}.`,
+              actionUrl: '/settings/billing',
+            })
+
+            await emailService.sendSubscriptionUpgradedEmail({
+              to: admin.email,
+              customerName: admin.name,
+              teamName: team.name,
+              oldPlanName: 'FREE',
+              newPlanName,
+              amountPaid,
+              billingInterval,
+              effectiveDate,
+              dashboardUrl: `${frontendUrl}/dashboard`,
+              userId: admin.id,
+            })
+          }
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, teamId }, 'notify.worker.failed: SUBSCRIPTION_UPGRADED')
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASE 13I: SUBSCRIPTION_CANCELLED (Team Subscription Cancelled)
+    // ─────────────────────────────────────────────────────────────────────────
+    else if (type === 'SUBSCRIPTION_CANCELLED' && teamId) {
+      try {
+        const team = await prisma.team.findUnique({
+          where: { id: teamId },
+          select: { name: true },
+        })
+        if (team) {
+          const admins = await prisma.user.findMany({
+            where: { teamId, role: { in: ['OWNER', 'ADMIN'] } },
+            select: { id: true, email: true, name: true },
+          })
+          const effectiveDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+          for (const admin of admins) {
+            await createInAppNotification({
+              userId: admin.id,
+              teamId,
+              type: 'SCORE_MILESTONE',
+              title: `Subscription Cancelled: ${team.name}`,
+              body: `Your paid subscription for ${team.name} has been cancelled and moved to the Free plan.`,
+              actionUrl: '/settings/billing',
+            })
+
+            await emailService.sendSubscriptionCancelledEmail({
+              to: admin.email,
+              customerName: admin.name,
+              teamName: team.name,
+              effectiveDate,
+              billingUrl: `${frontendUrl}/settings/billing`,
+              userId: admin.id,
+            })
+          }
+        }
+      } catch (err: any) {
+        logger.error({ err: err.message, teamId }, 'notify.worker.failed: SUBSCRIPTION_CANCELLED')
+      }
+    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // CASE 14: INTEGRATION_AUTO_DISABLED (Team Integration)

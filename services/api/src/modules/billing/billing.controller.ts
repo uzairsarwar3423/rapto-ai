@@ -117,3 +117,19 @@ export async function getUsageController(
     next(err)
   }
 }
+
+// ── POST /billing/sync ────────────────────────────────────────────────────────
+
+export async function syncSubscriptionController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const teamId = req.teamId!
+    const result = await billingService.syncSubscription(teamId)
+    res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+}

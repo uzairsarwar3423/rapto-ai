@@ -150,6 +150,39 @@ function buildReversePriceMap(): Map<string, PriceReverseEntry> {
 
 export const PADDLE_PRICE_REVERSE_MAP = buildReversePriceMap()
 
+/**
+ * Dynamic priceId reverse lookup helper.
+ * Checks the static reverse map first, then dynamically checks process.env if needed.
+ */
+export function getPlanFromPriceId(priceId: string): PriceReverseEntry | undefined {
+  if (!priceId) return undefined
+
+  // 1. Check static map
+  const staticMatch = PADDLE_PRICE_REVERSE_MAP.get(priceId)
+  if (staticMatch) return staticMatch
+
+  // 2. Dynamic environment lookup (handles runtime dotenv updates)
+  const envPrices: Array<{ planId: PlanType; interval: 'month' | 'year'; envKey: string }> = [
+    { planId: PlanType.STARTER, interval: 'month', envKey: 'PADDLE_PRICE_STARTER_M' },
+    { planId: PlanType.STARTER, interval: 'year',  envKey: 'PADDLE_PRICE_STARTER_Y' },
+    { planId: PlanType.GROWTH,  interval: 'month', envKey: 'PADDLE_PRICE_GROWTH_M' },
+    { planId: PlanType.GROWTH,  interval: 'year',  envKey: 'PADDLE_PRICE_GROWTH_Y' },
+    { planId: PlanType.BUSINESS, interval: 'month', envKey: 'PADDLE_PRICE_BUSINESS_M' },
+    { planId: PlanType.BUSINESS, interval: 'year',  envKey: 'PADDLE_PRICE_BUSINESS_Y' },
+  ]
+
+  for (const item of envPrices) {
+    const envVal = process.env[item.envKey]?.trim()
+    if (envVal && envVal === priceId.trim()) {
+      // Add to static map for future O(1) lookups
+      PADDLE_PRICE_REVERSE_MAP.set(priceId, { planId: item.planId, interval: item.interval })
+      return { planId: item.planId, interval: item.interval }
+    }
+  }
+
+  return undefined
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function getPlanLimit<K extends keyof PlanLimits>(

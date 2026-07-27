@@ -22,6 +22,7 @@ import {
   getSubscriptionController,
   getInvoicesController,
   getUsageController,
+  syncSubscriptionController,
 } from './billing.controller'
 import { checkoutSchema, invoicePaginationSchema } from './billing.validator'
 
@@ -67,6 +68,16 @@ router.get(
   requireAuth,
   injectTenant,
   getSubscriptionController
+)
+
+// ── POST /billing/sync ────────────────────────────────────────────────────────
+// ADMIN only — forces live reconciliation with Paddle API
+router.post(
+  '/sync',
+  requireAuth,
+  injectTenant,
+  requireRole('ADMIN'),
+  syncSubscriptionController
 )
 
 // ── GET /billing/invoices ─────────────────────────────────────────────────────

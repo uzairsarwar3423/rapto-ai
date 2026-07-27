@@ -13,6 +13,9 @@ import { renderDeadlineReminderHtml } from './templates/DeadlineReminder'
 import { renderIntegrationWarningHtml } from './templates/IntegrationWarning'
 import { renderIntegrationDeactivatedHtml } from './templates/IntegrationDeactivated'
 import { renderPaymentFailedHtml } from './templates/PaymentFailed'
+import { renderPaymentSuccessHtml, PaymentSuccessProps } from './templates/PaymentSuccess'
+import { renderSubscriptionUpgradedHtml, SubscriptionUpgradedProps } from './templates/SubscriptionUpgraded'
+import { renderSubscriptionCancelledHtml, SubscriptionCancelledProps } from './templates/SubscriptionCancelled'
 import { renderPlanLimitHtml } from './templates/PlanLimit'
 import { renderOwnerWelcomeHtml } from './templates/OwnerWelcome'
 import { renderTeamMemberWelcomeHtml } from './templates/TeamMemberWelcome'
@@ -645,6 +648,125 @@ export const emailService = {
       subject: `Weekly Team Health Digest: ${data.teamName}`,
       htmlContent,
       notificationType: 'WEEKLY_DIGEST',
+      userId: data.userId || data.to,
+    })
+  },
+
+  /**
+   * Sends payment receipt / confirmation email after successful transaction.
+   */
+  async sendPaymentSuccessEmail(data: {
+    to: string
+    customerName?: string
+    teamName: string
+    planName: string
+    amountPaid: string
+    currency?: string
+    billingInterval?: string
+    paymentDate: string
+    nextBillingDate?: string | null
+    invoiceId?: string | null
+    paymentMethod?: string | null
+    hostedInvoiceUrl?: string | null
+    billingUrl?: string
+    userId?: string
+  }): Promise<void> {
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'PAYMENT_SUCCESS')
+    const billUrl = data.billingUrl || `${getFrontendUrl()}/settings/billing`
+    const htmlContent = renderPaymentSuccessHtml({
+      customerName: data.customerName,
+      teamName: data.teamName,
+      planName: data.planName,
+      amountPaid: data.amountPaid,
+      currency: data.currency,
+      billingInterval: data.billingInterval,
+      paymentDate: data.paymentDate,
+      nextBillingDate: data.nextBillingDate,
+      invoiceId: data.invoiceId,
+      paymentMethod: data.paymentMethod,
+      hostedInvoiceUrl: data.hostedInvoiceUrl,
+      billingUrl: billUrl,
+      unsubscribeToken: unsubToken,
+    })
+
+    logger.info({ to: data.to, teamName: data.teamName, amountPaid: data.amountPaid }, 'email.service: sending payment success email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.customerName }],
+      subject: `Payment Receipt: ${data.planName} for ${data.teamName}`,
+      htmlContent,
+      notificationType: 'PAYMENT_SUCCESS',
+      userId: data.userId || data.to,
+    })
+  },
+
+  /**
+   * Sends subscription upgraded email.
+   */
+  async sendSubscriptionUpgradedEmail(data: {
+    to: string
+    customerName?: string
+    teamName: string
+    oldPlanName: string
+    newPlanName: string
+    amountPaid: string
+    billingInterval: string
+    effectiveDate: string
+    features?: string[]
+    dashboardUrl?: string
+    userId?: string
+  }): Promise<void> {
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'SUBSCRIPTION_UPGRADED')
+    const dashUrl = data.dashboardUrl || `${getFrontendUrl()}/dashboard`
+    const htmlContent = renderSubscriptionUpgradedHtml({
+      customerName: data.customerName,
+      teamName: data.teamName,
+      oldPlanName: data.oldPlanName,
+      newPlanName: data.newPlanName,
+      amountPaid: data.amountPaid,
+      billingInterval: data.billingInterval,
+      effectiveDate: data.effectiveDate,
+      features: data.features,
+      dashboardUrl: dashUrl,
+      unsubscribeToken: unsubToken,
+    })
+
+    logger.info({ to: data.to, teamName: data.teamName, newPlanName: data.newPlanName }, 'email.service: sending subscription upgraded email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.customerName }],
+      subject: `Upgrade Confirmed: ${data.teamName} is now on ${data.newPlanName} 🚀`,
+      htmlContent,
+      notificationType: 'SUBSCRIPTION_UPGRADED',
+      userId: data.userId || data.to,
+    })
+  },
+
+  /**
+   * Sends subscription cancelled email.
+   */
+  async sendSubscriptionCancelledEmail(data: {
+    to: string
+    customerName?: string
+    teamName: string
+    effectiveDate?: string
+    billingUrl?: string
+    userId?: string
+  }): Promise<void> {
+    const unsubToken = generateUnsubscribeToken(data.userId || data.to, 'SUBSCRIPTION_CANCELLED')
+    const billUrl = data.billingUrl || `${getFrontendUrl()}/settings/billing`
+    const htmlContent = renderSubscriptionCancelledHtml({
+      customerName: data.customerName,
+      teamName: data.teamName,
+      effectiveDate: data.effectiveDate,
+      billingUrl: billUrl,
+      unsubscribeToken: unsubToken,
+    })
+
+    logger.info({ to: data.to, teamName: data.teamName }, 'email.service: sending subscription cancelled email')
+    await sendBrevoEmail({
+      to: [{ email: data.to, name: data.customerName }],
+      subject: `Subscription Cancelled: ${data.teamName}`,
+      htmlContent,
+      notificationType: 'SUBSCRIPTION_CANCELLED',
       userId: data.userId || data.to,
     })
   },

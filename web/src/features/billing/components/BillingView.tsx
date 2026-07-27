@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +13,7 @@ import { PlanStatusBadge } from "./PlanStatusBadge";
 import { BillingPortalButton } from "./BillingPortalButton";
 import { UsageProgressRow } from "./UsageProgressRow";
 import { PlanComparisonSheet } from "./PlanComparisonSheet";
+import { syncSubscription } from "../api/billing.api";
 import { PLAN_DISPLAY_NAMES } from "../data/plan-features.config";
 import type { PlanId } from "../types";
 import { cn } from "@/lib/utils";
@@ -49,6 +52,19 @@ function formatRenewalDate(isoDate: string | null): string | null {
   }).format(new Date(isoDate));
 }
 
+// Section label — Plus Jakarta Sans 13/600, uppercase, +0.04em (plan §1)
+function SectionLabel({ id, children }: { id?: string; children: React.ReactNode }) {
+  return (
+    <h3
+      id={id}
+      className="font-heading font-semibold uppercase text-muted-foreground/60 leading-[20px] tracking-[0.04em]"
+      style={{ fontSize: "13px" }}
+    >
+      {children}
+    </h3>
+  );
+}
+
 /**
  * BillingView — uses the existing useTeam() hook which calls /teams/me.
  * That endpoint already returns plan, usage.meetingsUsed, usage.meetingsLimit,
@@ -59,17 +75,15 @@ export function BillingView() {
   const { data: team, isLoading, isError } = useTeam();
   const user = useAuthStore((s) => s.user);
   const [compareSheetOpen, setCompareSheetOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Section label — Plus Jakarta Sans 13/600, uppercase, +0.04em (plan §1)
-  const SectionLabel = ({ id, children }: { id?: string; children: React.ReactNode }) => (
-    <h3
-      id={id}
-      className="font-heading font-semibold uppercase text-muted-foreground/60 leading-[20px] tracking-[0.04em]"
-      style={{ fontSize: "13px" }}
-    >
-      {children}
-    </h3>
-  );
+  const syncMutation = useMutation({
+    mutationFn: syncSubscription,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    },
+  });
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (isLoading) {
@@ -169,7 +183,7 @@ export function BillingView() {
             )}
 
             {/* Row 4: CTAs */}
-            <div className="flex items-center gap-4 mt-4">
+            <div className="flex flex-wrap items-center gap-4 mt-4">
               <BillingPortalButton />
               <button
                 type="button"
@@ -181,6 +195,21 @@ export function BillingView() {
                 )}
               >
                 Compare plans →
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await syncMutation.mutateAsync();
+                }}
+                disabled={syncMutation.isPending}
+                className={cn(
+                  "text-[13px] font-sans font-medium text-muted-foreground/70",
+                  "hover:text-foreground transition-colors duration-100",
+                  "focus:outline-none flex items-center gap-1.5 ml-auto"
+                )}
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", syncMutation.isPending && "animate-spin")} />
+                {syncMutation.isPending ? "Syncing..." : "Sync status"}
               </button>
             </div>
           </CardContent>

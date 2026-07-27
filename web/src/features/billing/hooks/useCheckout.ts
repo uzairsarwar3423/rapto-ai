@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCheckoutSession } from "../api/billing.api";
 import { initializePaddle, Paddle } from "@paddle/paddle-js";
 
@@ -22,8 +22,9 @@ export function useCheckout(): UseCheckoutReturn {
   const [checkoutState, setCheckoutState] = useState<CheckoutState>("idle");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [paddle, setPaddle] = useState<Paddle>();
+  const queryClient = useQueryClient();
 
-  // Initialize Paddle JS SDK safely on mount
+  // Initialize Paddle JS SDK safely on mount with completion listener
   useEffect(() => {
     const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim() || "";
     const envSetting = process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT?.trim().toLowerCase();
@@ -39,6 +40,15 @@ export function useCheckout(): UseCheckoutReturn {
     initializePaddle({
       environment: isSandbox ? "sandbox" : "production",
       token: clientToken,
+      eventCallback: (event) => {
+        if (event.name === "checkout.completed") {
+          console.log("🎉 Paddle payment completed successfully — refreshing workspace plan");
+          // Invalidate team and billing query caches immediately
+          queryClient.invalidateQueries({ queryKey: ["team"] });
+          queryClient.invalidateQueries({ queryKey: ["auth"] });
+          queryClient.invalidateQueries({ queryKey: ["user"] });
+        }
+      },
     })
       .then((paddleInstance) => {
         if (paddleInstance) {
@@ -48,7 +58,7 @@ export function useCheckout(): UseCheckoutReturn {
       .catch((err) => {
         console.error("❌ Failed to initialize Paddle JS SDK:", err);
       });
-  }, []);
+  }, [queryClient]);
 
   const mutation = useMutation({
     mutationFn: ({

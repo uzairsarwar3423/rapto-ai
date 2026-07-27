@@ -64,3 +64,8 @@ export async function createCheckoutSession(
 export async function cancelSubscription(): Promise<void> {
   await api.post(`/billing/cancel`);
 }
+
+export async function syncSubscription(): Promise<{ synced: boolean; plan: string }> {
+  const { data } = await api.post(`/billing/sync`);
+  return data;
+}

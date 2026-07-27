@@ -5,8 +5,7 @@
 //   1. Raw body MUST be used for signature verification (never parsed body)
 //   2. timingSafeEqual — NEVER === for signature comparison
 //   3. Timestamp tolerance enforced (5 minutes) — replay attack prevention
-//   4. teamId resolved ONLY from custom_data — the trust anchor
-//      NEVER from any other payload field, query param, or header
+//   4. teamId resolved from custom_data with DB customer fallback — the trust anchor
 //   5. Redis idempotency key checked BEFORE any handler logic runs
 //   6. Fast-ack: 200 OK returned immediately; all side effects are async
 //
@@ -24,14 +23,10 @@ import { PlanType, SubscriptionStatus } from '@prisma/client'
 import { logger } from '../../config/logger'
 import { redis } from '../../config/redis'
 import { notifyQueue } from '../../queues/queue.client'
-import { PADDLE_PRICE_REVERSE_MAP } from '../../config/plans.config'
+import { getPlanFromPriceId } from '../../config/plans.config'
 import * as billingRepo from '../billing/billing.repository'
 import { invalidatePlanCache } from '../../middleware/plan-limits.middleware'
 import type { PaddleWebhookCustomData } from '../billing/billing.types'
-
-// ── Constants ──────────────────────────────────────────────────────────────────
-
-// (Removed top-level secret evaluation to prevent dotenv hoisting bugs)
 
 // ── Main Handler ───────────────────────────────────────────────────────────────
 
@@ -58,7 +53,7 @@ export async function handlePaddleWebhook(req: Request, res: Response): Promise<
       secretPrefix: PADDLE_WEBHOOK_SECRET.substring(0, 15),
       signatureHeader,
       bodyPrefix: rawBody.toString('utf8').substring(0, 100)
-    }, '[paddle.webhook] Debugging webhook unmarshal variables');
+    }, '[paddle.webhook] Debugging webhook unmarshal variables')
 
     event = await paddle.webhooks.unmarshal(rawBody.toString('utf8'), PADDLE_WEBHOOK_SECRET, signatureHeader)
   } catch (err: any) {
@@ -125,43 +120,91 @@ export async function handlePaddleWebhook(req: Request, res: Response): Promise<
           logger.debug({ eventType }, '[paddle.webhook] Unhandled event type — ignoring')
       }
     } catch (err) {
-      // Log but don't crash — webhook ack already sent
       logger.error({ err, eventId, eventType }, '[paddle.webhook] Error processing event asynchronously')
     }
   })
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+/**
+ * Resilient resolution of teamId & planId from customData or fallback to DB/priceId.
+ */
+async function resolveTeamAndPlan(data: any): Promise<{
+  teamId: string | null
+  planId: PlanType | null
+  interval: 'month' | 'year'
+}> {
+  const customData = (data.customData || data.custom_data) as PaddleWebhookCustomData | undefined
+
+  // 1. Resolve Team ID
+  let teamId: string | null = customData?.teamId || (customData as any)?.team_id || null
+
+  const paddleCustomerId = (data.customerId || data.customer_id) as string | undefined
+  if (!teamId && paddleCustomerId) {
+    try {
+      const { prisma } = await import('../../db/client')
+      const team = await prisma.team.findFirst({
+        where: { paddleCustomerId },
+        select: { id: true },
+      })
+      if (team) {
+        teamId = team.id
+        logger.info({ paddleCustomerId, teamId }, '[paddle.webhook] Resolved teamId from paddleCustomerId fallback')
+      }
+    } catch (err) {
+      logger.error({ err, paddleCustomerId }, '[paddle.webhook] Failed to resolve teamId from DB')
+    }
+  }
+
+  // 2. Resolve Plan ID
+  let planId: PlanType | null = null
+  const customPlan = customData?.planId as PlanType | undefined
+  if (customPlan && Object.values(PlanType).includes(customPlan)) {
+    planId = customPlan
+  }
+
+  // Fallback: Resolve planId from items/priceId
+  const items = data.items || []
+  const priceId = items?.[0]?.price?.id || items?.[0]?.price_id || data.details?.line_items?.[0]?.price_id
+  const priceMatch = priceId ? getPlanFromPriceId(priceId) : undefined
+
+  if (!planId && priceMatch) {
+    planId = priceMatch.planId
+    logger.info({ priceId, planId }, '[paddle.webhook] Resolved planId from priceId lookup fallback')
+  }
+
+  const interval = priceMatch?.interval ?? (customData?.interval ?? 'month')
+
+  return { teamId, planId, interval }
+}
+
+function mapPaddleSubscriptionStatus(paddleStatus: string): SubscriptionStatus {
+  switch (paddleStatus) {
+    case 'active':    return SubscriptionStatus.active
+    case 'trialing':  return SubscriptionStatus.trialing
+    case 'past_due':  return SubscriptionStatus.past_due
+    case 'paused':    return SubscriptionStatus.paused
+    case 'canceled':  return SubscriptionStatus.cancelled
+    default:
+      logger.warn({ paddleStatus }, '[paddle.webhook] Unknown Paddle subscription status — defaulting to ACTIVE')
+      return SubscriptionStatus.active
+  }
 }
 
 // ── Event Handlers ─────────────────────────────────────────────────────────────
 
 /**
  * transaction.completed — Fires on first checkout + every renewal
- *
- * This is the PRIMARY billing state change event:
- *   1. Resolve teamId/planId from custom_data (the trust anchor — never any other field)
- *   2. Create/update subscription row
- *   3. Update team.plan + reset meetingsUsed (both on first checkout AND renewals)
- *   4. Upsert invoice row with status='paid'
- *   5. Invalidate plan cache
- *   6. Queue confirmation email
  */
 async function handleTransactionCompleted(data: any): Promise<void> {
-  const customData = (data.customData || data.custom_data) as PaddleWebhookCustomData | undefined
+  const { teamId, planId, interval } = await resolveTeamAndPlan(data)
 
-  if (!customData?.teamId || !customData?.planId) {
+  if (!teamId || !planId) {
     logger.error(
-      { transactionId: data.id, keys: Object.keys(data) },
-      '[paddle.webhook] transaction.completed: missing teamId or planId in custom_data — SKIPPING'
+      { transactionId: data.id, teamId, planId, keys: Object.keys(data) },
+      '[paddle.webhook] transaction.completed: missing teamId or planId — SKIPPING'
     )
-    return
-  }
-
-  const teamId   = customData.teamId
-  const planId   = customData.planId as PlanType
-  const interval = customData.interval ?? 'month'
-
-  // Validate planId is a real enum value — belt-and-suspenders
-  if (!Object.values(PlanType).includes(planId)) {
-    logger.error({ teamId, planId }, '[paddle.webhook] transaction.completed: invalid planId in custom_data')
     return
   }
 
@@ -174,7 +217,7 @@ async function handleTransactionCompleted(data: any): Promise<void> {
   const periodStart = billingPeriod?.startsAt || billingPeriod?.starts_at ? new Date(billingPeriod.startsAt || billingPeriod.starts_at) : undefined
   const periodEnd   = billingPeriod?.endsAt || billingPeriod?.ends_at   ? new Date(billingPeriod.endsAt || billingPeriod.ends_at)   : undefined
 
-  // 1. Upsert subscription row (if subscriptionId is present — may be absent for one-time purchases)
+  // 1. Upsert subscription row
   if (paddleSubscriptionId) {
     await billingRepo.upsertSubscription(teamId, {
       paddleSubscriptionId,
@@ -214,41 +257,40 @@ async function handleTransactionCompleted(data: any): Promise<void> {
     })
   }
 
-  // 4. Invalidate plan cache — SAME KEY as plan-limits.middleware (intentional shared key)
+  // 4. Invalidate all plan & team detail caches
   await invalidatePlanCache(teamId)
 
-  // 5. Queue confirmation email via notify infra (never inline — fast-ack principle)
+  // 5. Queue confirmation email
   await notifyQueue.add('billing-confirmation', {
     type: 'BILLING_CONFIRMATION',
     teamId,
     planId,
+    metadata: {
+      amountPaid: totals?.total ? `$${(parseInt(totals.total) / 100).toFixed(2)}` : undefined,
+      invoiceId: transactionId,
+      hostedInvoiceUrl: data.payments?.[0]?.method_details?.card ? null : (data.invoice_url ?? null),
+      planId,
+    },
   })
 
-  logger.info({ teamId, planId, transactionId }, '[paddle.webhook] transaction.completed — team plan activated')
+  logger.info({ teamId, planId, transactionId }, '[paddle.webhook] transaction.completed — team plan activated successfully')
 }
 
 /**
  * subscription.created — Captures period fields after transaction.completed
- *
- * Paddle may fire this slightly after transaction.completed with the full
- * subscription metadata. We upsert subscription row with any period/status data
- * present on this event that may not have been fully populated on the transaction.
  */
 async function handleSubscriptionCreated(data: any): Promise<void> {
-  const customData = (data.customData || data.custom_data) as PaddleWebhookCustomData | undefined
+  const { teamId, planId: resolvedPlan, interval } = await resolveTeamAndPlan(data)
   const paddleSubscriptionId = data.id as string
   const paddleCustomerId = (data.customerId || data.customer_id) as string
   const status = mapPaddleSubscriptionStatus(data.status as string)
 
-  if (!customData?.teamId) {
-    logger.warn({ subscriptionId: paddleSubscriptionId }, '[paddle.webhook] subscription.created: no teamId in custom_data')
+  if (!teamId) {
+    logger.warn({ subscriptionId: paddleSubscriptionId }, '[paddle.webhook] subscription.created: unable to resolve teamId')
     return
   }
 
-  const teamId   = customData.teamId
-  const planId   = customData.planId as PlanType ?? PlanType.FREE
-  const interval = customData.interval ?? 'month'
-
+  const planId = resolvedPlan ?? PlanType.FREE
   const scheduledChange = data.scheduledChange || data.scheduled_change
   const currentBillingPeriod = data.currentBillingPeriod || data.current_billing_period
   
@@ -287,24 +329,24 @@ async function handleSubscriptionCreated(data: any): Promise<void> {
     currency: currencyCode ?? 'usd',
   })
 
-  logger.info({ teamId, status }, '[paddle.webhook] subscription.created — subscription row upserted')
+  // Ensure active subscriptions activate team plan in Postgres
+  if (status === SubscriptionStatus.active || status === SubscriptionStatus.trialing) {
+    await billingRepo.updateTeamPlan(teamId, planId)
+    await invalidatePlanCache(teamId)
+  }
+
+  logger.info({ teamId, planId, status }, '[paddle.webhook] subscription.created — subscription row upserted & plan synced')
 }
 
 /**
- * subscription.updated — Upgrades AND downgrades (single event for both)
- *
- * Critical: resolve new plan from priceId via PADDLE_PRICE_REVERSE_MAP (O(1)).
- * If priceId is not in the map (e.g., custom enterprise price), log a warning
- * and leave team.plan UNCHANGED — never corrupt the plan field with a lookup miss.
+ * subscription.updated — Upgrades AND downgrades
  */
 async function handleSubscriptionUpdated(data: any): Promise<void> {
-  const customData = (data.customData || data.custom_data) as PaddleWebhookCustomData | undefined
+  const { teamId, planId: resolvedPlan, interval } = await resolveTeamAndPlan(data)
   const subscriptionId = data.id as string
 
-  // Resolve teamId from custom_data — the trust anchor
-  let teamId = customData?.teamId
   if (!teamId) {
-    logger.warn({ subscriptionId }, '[paddle.webhook] subscription.updated: no teamId in custom_data')
+    logger.warn({ subscriptionId }, '[paddle.webhook] subscription.updated: unable to resolve teamId')
     return
   }
 
@@ -314,30 +356,20 @@ async function handleSubscriptionUpdated(data: any): Promise<void> {
   const items = data.items || []
   const price = items?.[0]?.price
   const priceId = price?.id as string | undefined
-  const priceEntry = priceId ? PADDLE_PRICE_REVERSE_MAP.get(priceId) : undefined
-
-  if (priceId && !priceEntry) {
-    // Unknown price ID — don't corrupt team.plan, just update subscription fields
-    logger.warn(
-      { teamId, priceId, subscriptionId },
-      '[paddle.webhook] subscription.updated: priceId not in PADDLE_PRICE_REVERSE_MAP — plan field unchanged'
-    )
-  }
-
-  const newPlan   = priceEntry?.planId
-  const interval  = priceEntry?.interval ?? (customData?.interval ?? 'month')
-  const status    = mapPaddleSubscriptionStatus(data.status as string)
+  const status = mapPaddleSubscriptionStatus(data.status as string)
   
   const unitPrice = price?.unitPrice || price?.unit_price
   const currencyCode = data.currencyCode || data.currency_code
   const paddleCustomerId = (data.customerId || data.customer_id) as string
+
+  const newPlan = resolvedPlan ?? PlanType.FREE
 
   // Update subscription row
   await billingRepo.upsertSubscription(teamId, {
     paddleSubscriptionId: subscriptionId,
     paddleCustomerId,
     paddlePriceId: priceId,
-    plan: newPlan ?? (customData?.planId as PlanType) ?? PlanType.FREE,
+    plan: newPlan,
     billingInterval: interval,
     status,
     currentPeriodStart: currentBillingPeriod?.startsAt || currentBillingPeriod?.starts_at ? new Date(currentBillingPeriod.startsAt || currentBillingPeriod.starts_at) : undefined,
@@ -351,46 +383,46 @@ async function handleSubscriptionUpdated(data: any): Promise<void> {
   if (newPlan) {
     await billingRepo.updateTeamPlan(teamId, newPlan)
     await invalidatePlanCache(teamId)
-    logger.info({ teamId, oldPlan: customData?.planId, newPlan, status }, '[paddle.webhook] subscription.updated — plan changed')
-  } else {
-    logger.info({ teamId, status }, '[paddle.webhook] subscription.updated — subscription fields updated, plan unchanged')
+
+    await notifyQueue.add('subscription-upgraded', {
+      type: 'SUBSCRIPTION_UPGRADED',
+      teamId,
+      planId: newPlan,
+      metadata: {
+        newPlanName: newPlan,
+        billingInterval: interval,
+        amountPaid: unitPrice?.amount ? `$${(parseInt(unitPrice.amount) / 100).toFixed(2)}` : undefined,
+      },
+    })
+    logger.info({ teamId, newPlan, status }, '[paddle.webhook] subscription.updated — team plan updated successfully')
   }
 }
 
 /**
  * subscription.canceled — Downgrade team to FREE
- *
- * Historical data (meetings, commitments, action items) is NEVER deleted.
- * Only team.plan is set to FREE and subscription.status to CANCELLED.
  */
 async function handleSubscriptionCanceled(data: any): Promise<void> {
-  const customData = (data.customData || data.custom_data) as PaddleWebhookCustomData | undefined
+  const { teamId } = await resolveTeamAndPlan(data)
   const subscriptionId = data.id as string
 
-  const teamId = customData?.teamId
   if (!teamId) {
-    logger.warn({ subscriptionId }, '[paddle.webhook] subscription.canceled: no teamId in custom_data')
+    logger.warn({ subscriptionId }, '[paddle.webhook] subscription.canceled: unable to resolve teamId')
     return
   }
 
   const canceledAtRaw = data.canceledAt || data.canceled_at
   const cancelledAt = canceledAtRaw ? new Date(canceledAtRaw) : new Date()
 
-  // Mark subscription cancelled
   try {
     await billingRepo.markSubscriptionCancelled(subscriptionId, cancelledAt)
   } catch (err) {
-    // If subscription row doesn't exist yet (edge case), log and continue
     logger.warn({ err, subscriptionId }, '[paddle.webhook] subscription.canceled: subscription row not found — skipping markCancelled')
   }
 
-  // Downgrade team to FREE (historical data untouched)
+  // Downgrade team to FREE
   await billingRepo.downgradeTeamToFree(teamId)
-
-  // Invalidate plan cache
   await invalidatePlanCache(teamId)
 
-  // Queue cancellation email
   await notifyQueue.add('subscription-cancelled', {
     type: 'SUBSCRIPTION_CANCELLED',
     teamId,
@@ -401,22 +433,16 @@ async function handleSubscriptionCanceled(data: any): Promise<void> {
 
 /**
  * transaction.payment_failed — Payment failure handling
- *
- * Paddle handles its own dunning/retry schedule (configured in the Paddle dashboard).
- * Rapto ONLY reacts to failures — never reimplements retry logic.
- * If Paddle eventually cancels after retries, that arrives as subscription.canceled (above).
  */
 async function handleTransactionPaymentFailed(data: any): Promise<void> {
-  const customData = (data.customData || data.custom_data) as PaddleWebhookCustomData | undefined
+  const { teamId } = await resolveTeamAndPlan(data)
   const transactionId = data.id as string
 
-  const teamId = customData?.teamId
   if (!teamId) {
-    logger.warn({ transactionId }, '[paddle.webhook] transaction.payment_failed: no teamId in custom_data')
+    logger.warn({ transactionId }, '[paddle.webhook] transaction.payment_failed: unable to resolve teamId')
     return
   }
 
-  // Upsert invoice with failed status
   const totals = data.details?.totals
   if (totals) {
     await billingRepo.upsertInvoice(teamId, transactionId, {
@@ -428,27 +454,14 @@ async function handleTransactionPaymentFailed(data: any): Promise<void> {
     })
   }
 
-  // Queue payment-failed notification via shared notify infra — never inline
   await notifyQueue.add('payment-failed', {
     type: 'PAYMENT_FAILED',
     teamId,
     transactionId,
+    metadata: {
+      amountDue: totals?.total ? `$${(parseInt(totals.total) / 100).toFixed(2)}` : undefined,
+    },
   })
 
   logger.warn({ teamId, transactionId }, '[paddle.webhook] transaction.payment_failed — invoice updated, notification queued')
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function mapPaddleSubscriptionStatus(paddleStatus: string): SubscriptionStatus {
-  switch (paddleStatus) {
-    case 'active':    return SubscriptionStatus.active
-    case 'trialing':  return SubscriptionStatus.trialing
-    case 'past_due':  return SubscriptionStatus.past_due
-    case 'paused':    return SubscriptionStatus.paused
-    case 'canceled':  return SubscriptionStatus.cancelled
-    default:
-      logger.warn({ paddleStatus }, '[paddle.webhook] Unknown Paddle subscription status — defaulting to ACTIVE')
-      return SubscriptionStatus.active
-  }
 }

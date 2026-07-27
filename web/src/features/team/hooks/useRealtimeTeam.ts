@@ -107,16 +107,23 @@ export function useRealtimeTeam() {
       queryClient.invalidateQueries({ queryKey: ["team", "members"] });
     };
 
+    const handleTeamUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+    };
+
     socket.on("member:joined", handleJoined);
     socket.on("member:removed", handleRemoved);
     socket.on("system:removed_from_team", handleSystemRemoved);
     socket.on("my:role_updated", handleRoleUpdated);
+    socket.on("team:updated", handleTeamUpdated);
 
     return () => {
       socket.off("member:joined", handleJoined);
       socket.off("member:removed", handleRemoved);
       socket.off("system:removed_from_team", handleSystemRemoved);
       socket.off("my:role_updated", handleRoleUpdated);
+      socket.off("team:updated", handleTeamUpdated);
     };
   }, [queryClient, user?.teamId]);
 }

@@ -154,9 +154,22 @@ export async function checkMeetingLimit(
  */
 export async function invalidatePlanCache(teamId: string): Promise<void> {
   try {
-    await redis.del(planCacheKey(teamId))
-    logger.debug({ teamId }, 'Plan cache invalidated')
-  } catch {
-    // Non-fatal
+    // Delete all Redis cache keys associated with this team's plan and detail JSONs
+    const keysToDelete = [
+      planCacheKey(teamId),
+      `cache:team:detail:${teamId}`,
+      `cache:team:members:${teamId}`,
+    ]
+    await redis.del(...keysToDelete)
+    logger.info({ teamId, keysToDelete }, 'Team plan & detail caches invalidated')
+
+    // Emit realtime Socket.io notification if socket emitter is available
+    import('../realtime/socket.emitter')
+      .then(({ socketEmitter }) => {
+        socketEmitter.to(`team:${teamId}`).emit('team:updated', { teamId })
+      })
+      .catch(() => {})
+  } catch (err) {
+    logger.warn({ err, teamId }, 'Non-fatal error in invalidatePlanCache')
   }
 }

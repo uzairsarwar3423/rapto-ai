@@ -72,12 +72,12 @@ export function LandingHero() {
           AI Meeting Accountability
         </motion.div>
 
-        {/* Headline — Editorial Serif Font */}
+        {/* Headline — Space Grotesk Display Font */}
         <motion.h1
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="text-[clamp(42px,5.5vw,76px)] font-serif font-normal tracking-[-1.5px] text-[#1B2320] leading-[1.08] max-w-4xl mx-auto"
+          className="text-[clamp(40px,5.5vw,72px)] font-display font-bold tracking-tight text-[#1B2320] leading-[1.08] max-w-4xl mx-auto"
         >
           Never lose track of what your team commits to.
         </motion.h1>
@@ -187,7 +187,7 @@ export function LandingHero() {
                       <TrendingUp className="w-3 h-3" /> +4.2%
                     </span>
                   </div>
-                  <div className="text-3xl font-bold text-[#1B2320] tracking-tight font-serif">96%</div>
+                  <div className="text-3xl font-bold text-[#1B2320] tracking-tight font-display">96%</div>
                   <p className="text-xs text-[#48524E] mt-1">18 Commitments Fulfilled · 0 Overdue</p>
                 </div>
 
