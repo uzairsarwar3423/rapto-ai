@@ -74,17 +74,21 @@ async def ready(mongo: MongoDep, redis: RedisDep) -> JSONResponse:
     # Run dependency pings concurrently
     import asyncio
 
-    mongo_ok, redis_ok, ai_ok = await asyncio.gather(
+    results = await asyncio.gather(
         mongo.ping(),
         redis.ping(),
         _check_openai_reachability(settings.openai_api_key.get_secret_value(), settings.openai_gpt41_mini_model_name, settings.openai_org_id),
-        return_exceptions=False,
+        return_exceptions=True,
     )
 
+    mongo_ok = results[0] is True
+    redis_ok = results[1] is True
+    ai_ok = results[2] is True
+
     checks = {
-        "mongodb": bool(mongo_ok),
-        "redis": bool(redis_ok),
-        "ai": bool(ai_ok),
+        "mongodb": mongo_ok,
+        "redis": redis_ok,
+        "ai": ai_ok,
     }
 
     all_healthy = all(checks.values())
@@ -111,7 +115,7 @@ async def _check_openai_reachability(api_key: str, model_name: str, org_id: str 
     try:
         kwargs = {
             "api_key": api_key,
-            "timeout": 5.0,
+            "timeout": 3.0,
         }
         if org_id:
             kwargs["organization"] = org_id
@@ -119,7 +123,7 @@ async def _check_openai_reachability(api_key: str, model_name: str, org_id: str 
         client = openai.AsyncOpenAI(**kwargs)
         await client.models.retrieve(model_name)
         return True
-    except Exception:
-        log.warning("openai_reachability_check_failed")
+    except Exception as exc:
+        log.warning("openai_reachability_check_failed", error=str(exc))
         return False
 

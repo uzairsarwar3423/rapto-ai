@@ -165,6 +165,13 @@ def main() -> None:
             preserved_count += 1
             logger.debug(f"Preserved: {target_key}")
 
+    # Synchronize AI_PIPELINE_SECRET and API_SHARED_SECRET to guarantee auth parity
+    shared_secret = existing.get("AI_PIPELINE_SECRET") or existing.get("API_SHARED_SECRET")
+    if shared_secret:
+        existing["AI_PIPELINE_SECRET"] = shared_secret
+        existing["API_SHARED_SECRET"] = shared_secret
+        logger.info("✅ AI_PIPELINE_SECRET and API_SHARED_SECRET synchronized.")
+
     # ── CRITICAL: Fix REDIS_URL — reject localhost, always use Docker service name ──
     redis_url = existing.get("REDIS_URL", "")
     if not redis_url or is_localhost_redis(redis_url):

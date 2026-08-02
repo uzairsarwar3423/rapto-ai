@@ -82,7 +82,7 @@ app.get('/ready', async (_req, res) => {
 
     try {
         const { aipipelineClient } = await import('./services/ai-pipeline/ai-pipeline.client')
-        const r = await aipipelineClient.ready({ timeoutMs: 2000 })
+        const r = await aipipelineClient.ready({ timeoutMs: 5000 })
         checks.ai_pipeline = r.status === 'ready'
         // AI pipeline down does NOT block readiness
     } catch {
