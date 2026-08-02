@@ -91,7 +91,7 @@ services:
       - PADDLE_PRICE_BUSINESS_Y=${PADDLE_PRICE_BUSINESS_Y}
       - RECALL_API_KEY=${RECALL_API_KEY}
       - RECALL_WEBHOOK_SECRET=${RECALL_WEBHOOK_SECRET}
-      - AI_PIPELINE_URL=${AI_PIPELINE_URL:-http://ai-pipeline:8000}
+      - AI_PIPELINE_URL=${AI_PIPELINE_URL:-http://ai-pipeline:8001}
       - AI_PIPELINE_SECRET=${AI_PIPELINE_SECRET}
     depends_on:
       redis:
@@ -146,7 +146,7 @@ services:
       - JIRA_WEBHOOK_SECRET=${JIRA_WEBHOOK_SECRET}
       - BREVO_API_KEY=${BREVO_API_KEY}
       - BREVO_FROM_EMAIL=${BREVO_FROM_EMAIL}
-      - AI_PIPELINE_URL=${AI_PIPELINE_URL:-http://ai-pipeline:8000}
+      - AI_PIPELINE_URL=${AI_PIPELINE_URL:-http://ai-pipeline:8001}
       - AI_PIPELINE_SECRET=${AI_PIPELINE_SECRET}
     depends_on:
       redis:
@@ -171,6 +171,66 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  # ==========================================
+  # Python AI Pipeline Microservice
+  # ==========================================
+  ai-pipeline:
+    build:
+      context: ./services/ai-pipeline
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${IMAGE_NAME_AI:-vocaply/ai-pipeline}:${IMAGE_TAG:-latest}
+    container_name: rapto-ai-pipeline
+    restart: unless-stopped
+    user: "1001:1001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - SERVICE_NAME=ai-pipeline
+      - PORT=8001
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_ORG_ID=${OPENAI_ORG_ID:-}
+      - OPENAI_GPT41_MINI_MODEL_NAME=${OPENAI_GPT41_MINI_MODEL_NAME:-gpt-4o-mini}
+      - OPENAI_GPT41_MODEL_NAME=${OPENAI_GPT41_MODEL_NAME:-gpt-4o}
+      - OPENAI_EMBEDDING_MODEL_NAME=${OPENAI_EMBEDDING_MODEL_NAME:-text-embedding-3-small}
+      - MONGODB_URL=${MONGODB_URL}
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-vocaply}
+      - REDIS_URL=${REDIS_URL:-redis://rapto-redis:6379}
+      - API_SHARED_SECRET=${AI_PIPELINE_SECRET:-${API_SHARED_SECRET}}
+      - NODE_API_INTERNAL_ORIGIN=${NODE_API_INTERNAL_ORIGIN:-http://api:5000}
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   # ==========================================
   # PostgreSQL Database Service

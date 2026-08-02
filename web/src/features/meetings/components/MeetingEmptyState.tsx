@@ -3,6 +3,7 @@
 import React from "react";
 import { Calendar, RefreshCw, Sparkles, FilterX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AddMeetingButton } from "./AddMeetingButton";
 
 interface MeetingEmptyStateProps {
   isFiltered: boolean;
@@ -63,14 +64,11 @@ export function MeetingEmptyState({
           </Button>
         )}
         {onAddMeeting && (
-          <Button
-            type="button"
-            variant="outline"
+          <AddMeetingButton
+            id="meetings-empty-add-btn"
             onClick={onAddMeeting}
-            className="text-xs flex items-center gap-1.5 h-9"
-          >
-            Add Meeting manually
-          </Button>
+            label="Add Meeting manually"
+          />
         )}
       </div>
     </div>

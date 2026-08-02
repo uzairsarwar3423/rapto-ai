@@ -89,6 +89,7 @@ def main() -> None:
     repo_name = os.environ.get("REPO_NAME", "")
     if repo_name:
         existing["IMAGE_NAME"] = f"{repo_name}/api"
+        existing["IMAGE_NAME_AI"] = f"{repo_name}/ai-pipeline"
 
     target_tag = os.environ.get("TARGET_TAG", "").strip()
     if target_tag:
@@ -137,6 +138,17 @@ def main() -> None:
         "PROD_AI_PIPELINE_URL":       "AI_PIPELINE_URL",
         "PROD_AI_PIPELINE_SECRET":    "AI_PIPELINE_SECRET",
         "PROD_GOOGLE_CALENDAR_CALLBACK_URL": "GOOGLE_CALENDAR_CALLBACK_URL",
+
+        # ── AI Pipeline Specific Secrets & Config ──
+        "PROD_OPENAI_API_KEY":               "OPENAI_API_KEY",
+        "PROD_OPENAI_ORG_ID":                "OPENAI_ORG_ID",
+        "PROD_OPENAI_GPT41_MINI_MODEL_NAME": "OPENAI_GPT41_MINI_MODEL_NAME",
+        "PROD_OPENAI_GPT41_MODEL_NAME":      "OPENAI_GPT41_MODEL_NAME",
+        "PROD_OPENAI_EMBEDDING_MODEL_NAME":  "OPENAI_EMBEDDING_MODEL_NAME",
+        "PROD_MONGODB_DATABASE":             "MONGODB_DATABASE",
+        "PROD_API_SHARED_SECRET":            "API_SHARED_SECRET",
+        "PROD_NODE_API_INTERNAL_ORIGIN":     "NODE_API_INTERNAL_ORIGIN",
+        "PROD_LOG_LEVEL":                    "LOG_LEVEL",
     }
 
     updated_count = 0

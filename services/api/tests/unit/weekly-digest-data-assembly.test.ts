@@ -18,7 +18,8 @@ describe('Weekly Digest Data Assembly Unit Tests', () => {
     const userB = await seedTestUser(team.id, { name: 'Bob' })
     const meeting = await seedTestMeeting(team.id)
 
-    const now = new Date()
+    const now =
+     new Date()
     const thisWeekStart = startOfWeek(now, { weekStartsOn: 1 })
     const lastWeekStart = subDays(thisWeekStart, 7)
 

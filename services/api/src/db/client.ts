@@ -10,11 +10,12 @@ function getDatasourceUrl(): string | undefined {
     const rawUrl = process.env.DATABASE_URL
     if (!rawUrl) return undefined
 
-    if (!rawUrl.includes('connection_limit=')) {
-        const delimiter = rawUrl.includes('?') ? '&' : '?'
-        return `${rawUrl}${delimiter}connection_limit=3`
+    const maxConn = process.env.PRISMA_CONNECTION_LIMIT || '3'
+    if (rawUrl.includes('connection_limit=')) {
+        return rawUrl.replace(/connection_limit=\d+/, `connection_limit=${maxConn}`)
     }
-    return rawUrl
+    const delimiter = rawUrl.includes('?') ? '&' : '?'
+    return `${rawUrl}${delimiter}connection_limit=${maxConn}`
 }
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient }

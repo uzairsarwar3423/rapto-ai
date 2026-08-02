@@ -14,6 +14,7 @@ import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { notifyQueue } from '../queue.client'
 import { slackProvider } from '../../modules/integrations/providers/slack.provider'
 import { redis } from '../../config/redis'
+import { redisConnectionOptions } from '../../config/redis.config'
 
 const frontendUrl = getFrontendUrl()
 
@@ -1290,32 +1291,8 @@ export const notifyWorker = new Worker<NotifyJobData>(
     }
   },
   {
-    // Use the same resilient connection config as queue.client.ts — NOT raw env vars.
-    // Raw REDIS_HOST/PORT vars ignore REDIS_URL and the Docker-service fallback logic.
-    connection: (() => {
-      let host = process.env.REDIS_HOST
-      let port = parseInt(process.env.REDIS_PORT ?? '6379', 10)
-      let password = process.env.REDIS_PASSWORD
-
-      // Fallback: parse REDIS_URL if REDIS_HOST is localhost or unset
-      if ((!host || host === 'localhost' || host === '127.0.0.1') && process.env.REDIS_URL) {
-        try {
-          const u = new URL(process.env.REDIS_URL)
-          if (u.hostname && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
-            host = u.hostname
-            if (u.port) port = parseInt(u.port, 10)
-            if (u.password) password = decodeURIComponent(u.password)
-          }
-        } catch {}
-      }
-
-      // Hard fallback — Docker Compose service name, always reachable inside the stack
-      if (!host || host === 'localhost' || host === '127.0.0.1') {
-        host = 'rapto-redis'
-      }
-
-      return { host, port, password }
-    })(),
+    // Use centrally-resolved connection options from redis.config.ts (single source of truth).
+    connection: redisConnectionOptions,
     concurrency: parseInt(process.env.WORKER_CONCURRENCY_NOTIFY || '5', 10),
   }
 )

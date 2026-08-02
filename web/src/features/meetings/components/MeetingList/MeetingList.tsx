@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
 import { useMeetingFilters } from "../../hooks/useMeetingFilters";
 import { useMeetings } from "../../hooks/useMeetings";
 import { useFocusListNavigation } from "@/hooks/shared/useFocusListNavigation";
@@ -15,6 +14,7 @@ import { CursorPagination } from "@/shared/components/data-display/CursorPaginat
 import { AddMeetingModal } from "../AddMeetingModal";
 import { useRealtimeMeeting } from "../../hooks/useRealtimeMeeting";
 import { Button } from "@/components/ui/button";
+import { AddMeetingButton } from "../AddMeetingButton";
 import { AddMeetingTooltip } from "../AddMeetingTooltip";
 import type { MeetingListItem } from "../../types";
 
@@ -68,14 +68,10 @@ export function MeetingList({ initialData }: MeetingListProps) {
         </div>
         <div className="flex items-center gap-2">
           <AddMeetingTooltip>
-            <Button
-              type="button"
+            <AddMeetingButton
+              id="meetings-page-add-btn"
               onClick={() => setAddModalOpen(true)}
-              className="text-xs h-9 bg-brand hover:bg-brand/90 text-white flex items-center gap-1.5 font-medium cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              Add Meeting
-            </Button>
+            />
           </AddMeetingTooltip>
         </div>
       </div>

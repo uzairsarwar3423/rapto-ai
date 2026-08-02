@@ -1,41 +1,80 @@
-# Python cache
+# ==============================================================================
+# Vocaply AI Pipeline — Docker Ignore Rules
+# ==============================================================================
+
+# Python Cache & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 *.pyc
+*.pyo
+*.pyd
 
-# Virtual environments
+# Virtual Environments
 .venv/
 venv/
 env/
+ENV/
+.env/
 
-# Distribution / build
+# Distribution & Build Artifacts
 dist/
 build/
 *.egg-info/
+*.egg
+*.whl
 
-# Environment files — NEVER commit real secrets
+# Environment & Secret Files (NEVER bake secrets into image build context)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
-# Test artifacts
+# Testing & Coverage Artifacts
 .pytest_cache/
 .coverage
 htmlcov/
 coverage.xml
+.hypothesis/
+test_*.txt
+test_*.json
+test_api_out*.txt
 
-# Type checker cache
+# Temporary / Debug Scripts
+scratch*.py
+fix_*.py
+scratch-test.py
+replace_script.py
+
+# Documentation & Development Markdown Files
+*.md
+!pyproject.toml
+!requirements.txt
+
+# Type Check & Linter Caches
 .mypy_cache/
+.ruff_cache/
+.flake8
 
-# IDE
+# IDE & Editor Configuration
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
+.project
+.settings/
 
-# OS
+# Operating System Files
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Logs
+# Logs & Runtime State
 *.log
+logs/
+*.pid
+
+# Git Version Control
+.git/
+.gitignore
+.github/

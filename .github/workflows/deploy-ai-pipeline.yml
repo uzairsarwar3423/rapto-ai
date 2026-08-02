@@ -1,0 +1,200 @@
+name: AI-Pipeline Production CI/CD & Automated VPS Deployment
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'services/ai-pipeline/**'
+      - '.github/workflows/deploy-ai-pipeline.yml'
+      - 'scripts/**'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Custom Image Tag to Deploy (leave blank to use commit SHA)'
+        required: false
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/ai-pipeline
+
+jobs:
+  # ============================================================================
+  # Stage 1: Automated Unit & Integration Test Suite
+  # ============================================================================
+  test:
+    name: 🧪 Run Pytest Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 📦 Install AI-Pipeline Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r services/ai-pipeline/requirements.txt
+          pip install -r services/ai-pipeline/requirements-dev.txt
+
+      - name: 🧪 Execute Automated Pytest Suite
+        working-directory: services/ai-pipeline
+        env:
+          ENVIRONMENT: test
+          LOG_LEVEL: WARNING
+          OPENAI_API_KEY: "sk-proj-test-dummy-key-for-ci-testing-purposes-only-32bytes"
+          MONGODB_URL: "mongodb://localhost:27017/vocaply_test"
+          REDIS_URL: "redis://localhost:6379/0"
+          API_SHARED_SECRET: "vocaply_ci_ai_pipeline_shared_secret_32_bytes_min!"
+          NODE_API_INTERNAL_ORIGIN: "http://localhost:5000"
+        run: |
+          pytest tests -v --tb=short
+
+  # ============================================================================
+  # Stage 2: Multi-Stage Docker Build & Push to GHCR
+  # ============================================================================
+  build-and-push:
+    name: 🐳 Build Docker Image & Push to GHCR
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.resolve-tag.outputs.TAG }}
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔑 Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Resolve Deployment Image Tag
+        id: resolve-tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            TAG="${{ github.event.inputs.image_tag }}"
+          else
+            TAG="${{ github.sha }}"
+          fi
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+          echo "✅ Resolved image tag: ${TAG}"
+
+      - name: 🏷️ Extract Docker Metadata (Tags & Labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ steps.resolve-tag.outputs.TAG }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: 🏗️ Build & Push Multi-Stage Production Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/ai-pipeline
+          file: ./services/ai-pipeline/Dockerfile
+          target: runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # Stage 3: Zero-Downtime Deploy to VPS with Automated Rollback
+  # ============================================================================
+  deploy:
+    name: 🚀 Deploy AI-Pipeline to VPS & Validate Health
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      # ── Step 1: Sync deployment files and scripts to VPS ─────────────────────
+      - name: 📦 Sync Config & Deployment Scripts to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          source: "docker-compose.yml,scripts/"
+          target: "/opt/rapto-system"
+
+      # ── Step 2: Merge Secrets, Pull Image & Execute Deployment Script ────────
+      - name: 📡 Deploy Container & Run Health Check Probe
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          TARGET_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          REPO_NAME: ${{ github.repository }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          PROD_OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}
+          PROD_OPENAI_ORG_ID: ${{ secrets.PROD_OPENAI_ORG_ID }}
+          PROD_OPENAI_GPT41_MINI_MODEL_NAME: ${{ secrets.PROD_OPENAI_GPT41_MINI_MODEL_NAME }}
+          PROD_OPENAI_GPT41_MODEL_NAME: ${{ secrets.PROD_OPENAI_GPT41_MODEL_NAME }}
+          PROD_OPENAI_EMBEDDING_MODEL_NAME: ${{ secrets.PROD_OPENAI_EMBEDDING_MODEL_NAME }}
+          PROD_MONGODB_URL: ${{ secrets.PROD_MONGODB_URL }}
+          PROD_MONGODB_DATABASE: ${{ secrets.PROD_MONGODB_DATABASE }}
+          PROD_REDIS_URL: ${{ secrets.PROD_REDIS_URL }}
+          PROD_API_SHARED_SECRET: ${{ secrets.PROD_AI_PIPELINE_SECRET || secrets.PROD_API_SHARED_SECRET }}
+          PROD_NODE_API_INTERNAL_ORIGIN: ${{ secrets.PROD_NODE_API_INTERNAL_ORIGIN }}
+          PROD_LOG_LEVEL: ${{ secrets.PROD_LOG_LEVEL }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          request_pty: true
+          command_timeout: "15m"
+          envs: >-
+            TARGET_TAG,REPO_NAME,GHCR_TOKEN,GHCR_USER,
+            PROD_OPENAI_API_KEY,PROD_OPENAI_ORG_ID,
+            PROD_OPENAI_GPT41_MINI_MODEL_NAME,PROD_OPENAI_GPT41_MODEL_NAME,PROD_OPENAI_EMBEDDING_MODEL_NAME,
+            PROD_MONGODB_URL,PROD_MONGODB_DATABASE,PROD_REDIS_URL,
+            PROD_API_SHARED_SECRET,PROD_NODE_API_INTERNAL_ORIGIN,PROD_LOG_LEVEL
+          script: |
+            set -Eeuo pipefail
+            DEPLOY_DIR="/opt/rapto-system"
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🚀 Vocaply AI-Pipeline — VPS Deployment"
+            echo "📅 $(date -u)"
+            echo "🏷️  Target Tag: ${TARGET_TAG}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            # 1. Authenticate to GHCR
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            echo "✅ GHCR login successful"
+
+            # 2. Make deployment scripts executable
+            chmod +x "${DEPLOY_DIR}/scripts/"*.sh
+            chmod +x "${DEPLOY_DIR}/scripts/"*.py
+
+            # 3. Merge secrets and configuration into /opt/rapto-system/.env
+            TARGET_TAG="${TARGET_TAG}" python3 "${DEPLOY_DIR}/scripts/merge-env.py"
+
+            # 4. Execute zero-downtime AI-Pipeline deployment & healthcheck
+            cd "${DEPLOY_DIR}"
+            IMAGE_TAG="${TARGET_TAG}" bash ./scripts/deploy-ai.sh

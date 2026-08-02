@@ -1,0 +1,197 @@
+version: '3.8'
+
+# ==============================================================================
+# Vocaply AI Pipeline — Microservice & Infrastructure Stack
+# ==============================================================================
+# Services:
+#   - ai-pipeline: FastAPI AI Pipeline Service (Python 3.12, scikit-learn, OpenAI)
+#   - redis: Redis Cache & Event Store
+#   - mongodb: MongoDB NoSQL Document Database
+#   - postgres: PostgreSQL Relational Database (Shared/Metadata Store)
+# ==============================================================================
+
+services:
+  # ─── AI Pipeline Service ──────────────────────────────────────────────────
+  ai-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${IMAGE_NAME:-vocaply/ai-pipeline}:${IMAGE_TAG:-latest}
+    container_name: vocaply-ai-pipeline
+    restart: unless-stopped
+    user: "1001:1001" # Security: Run as non-root appuser
+    read_only: false
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "${PORT:-8001}:8001"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - SERVICE_NAME=${SERVICE_NAME:-ai-pipeline}
+      - PORT=8001
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_ORG_ID=${OPENAI_ORG_ID:-}
+      - OPENAI_GPT41_MINI_MODEL_NAME=${OPENAI_GPT41_MINI_MODEL_NAME:-gpt-4o-mini}
+      - OPENAI_GPT41_MODEL_NAME=${OPENAI_GPT41_MODEL_NAME:-gpt-4o}
+      - OPENAI_EMBEDDING_MODEL_NAME=${OPENAI_EMBEDDING_MODEL_NAME:-text-embedding-3-small}
+      - OPENAI_MAX_RETRIES=${OPENAI_MAX_RETRIES:-3}
+      - OPENAI_TIMEOUT_SECONDS=${OPENAI_TIMEOUT_SECONDS:-30.0}
+      - OPENAI_MAX_CONCURRENT_CALLS=${OPENAI_MAX_CONCURRENT_CALLS:-10}
+      - MONGODB_URL=${MONGODB_URL:-mongodb://root:change_me_mongo_secret@mongodb:27017/vocaply?authSource=admin}
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-vocaply}
+      - MONGO_POOL_MIN_SIZE=${MONGO_POOL_MIN_SIZE:-2}
+      - MONGO_POOL_MAX_SIZE=${MONGO_POOL_MAX_SIZE:-20}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_POOL_MAX_CONNECTIONS=${REDIS_POOL_MAX_CONNECTIONS:-20}
+      - API_SHARED_SECRET=${API_SHARED_SECRET}
+      - NODE_API_INTERNAL_ORIGIN=${NODE_API_INTERNAL_ORIGIN:-http://api:5000}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://rapto_user:change_me_super_secret@postgres:5432/rapto_prod}
+    env_file:
+      - .env
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-pipeline-network
+    deploy:
+      mode: replicated
+      replicas: ${AI_PIPELINE_REPLICAS:-1}
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ─── Redis Cache & Store ───────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: vocaply-ai-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel notice ${REDIS_PASSWORD_ARG:-}
+    volumes:
+      - redis_ai_data:/data
+    networks:
+      - ai-pipeline-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── MongoDB Document Database ─────────────────────────────────────────────
+  mongodb:
+    image: mongo:7-jammy
+    container_name: vocaply-ai-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-change_me_mongo_secret}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-vocaply}
+    volumes:
+      - mongo_ai_data:/data/db
+    networks:
+      - ai-pipeline-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1536M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet | grep 1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── PostgreSQL Database ───────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: vocaply-ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rapto_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-rapto_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_super_secret}
+    volumes:
+      - postgres_ai_data:/var/lib/postgresql/data
+    networks:
+      - ai-pipeline-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-rapto_user} -d $${POSTGRES_DB:-rapto_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  ai-pipeline-network:
+    name: ai-pipeline-network
+    driver: bridge
+
+volumes:
+  redis_ai_data:
+    driver: local
+  mongo_ai_data:
+    driver: local
+  postgres_ai_data:
+    driver: local

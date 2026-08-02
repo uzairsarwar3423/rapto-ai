@@ -34,11 +34,19 @@ interface AuthState {
   setSessionExpired: (expired: boolean) => void;
 }
 
+/** Synchronously hydrate initial token on client mount to prevent F5 auth drops */
+const getInitialAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return Cookies.get('rapto_access') || null;
+};
+
+const initialToken = getInitialAccessToken();
+
 export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: null,
+  accessToken: initialToken,
   user: null,
-  isAuthenticated: false,
-  isLoading: true, // Start as true to prevent flash of unauthenticated UI
+  isAuthenticated: !!initialToken,
+  isLoading: true, // Start as true during initial hydration
   isSessionExpired: false,
 
   setUser: (user) =>
@@ -56,7 +64,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         ...(isProd ? { domain: '.rapto.cloud' } : {}),
       });
     }
-    set({ accessToken: token });
+    set({ accessToken: token, isAuthenticated: !!token });
   },
 
   clearAuth: () => {

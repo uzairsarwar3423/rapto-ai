@@ -3,7 +3,9 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
+import Cookies from 'js-cookie';
 import { useAuthStore } from '@/features/auth/store/auth.store';
+import { authApi } from '@/features/auth/api/auth.api';
 import { FullPageSpinner } from '../feedback/FullPageSpinner';
 import { logger } from '@/lib/utils/logger';
 
@@ -22,7 +24,6 @@ async function silentRefresh(): Promise<{ accessToken: string; user: any } | nul
       {
         withCredentials: true,
         headers: { 'Content-Type': 'application/json' },
-        // Don't retry on network error — the interval will retry next cycle
         timeout: 10_000,
       }
     );
@@ -42,27 +43,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /**
-   * Effect 1: Mount silent refresh check.
-   * Runs once on initial load (F5 / first render) to bootstrap the auth state
-   * from the HttpOnly refresh cookie — avoids any flash of unauthenticated UI.
+   * Effect 1: Mount rehydration & session validation check.
+   * Scalable Industry-level approach:
+   *  1. First try existing valid access token from cookies via authApi.getMe()
+   *  2. If expired/401, fallback to silentRefresh() using HttpOnly refresh cookie
+   *  3. Preserves dashboard state across hard refreshes (F5 / Ctrl+R)
    */
   useEffect(() => {
     let isMounted = true;
 
     async function checkAuth() {
-      const result = await silentRefresh();
+      try {
+        const existingToken = useAuthStore.getState().accessToken || Cookies.get('rapto_access');
 
-      if (!isMounted) return;
+        // Step 1: Attempt to restore session using existing access token
+        if (existingToken) {
+          useAuthStore.getState().setAccessToken(existingToken);
+          try {
+            const me = await authApi.getMe();
+            if (isMounted && me) {
+              setUser(me);
+              setLoading(false);
+              logger.debug('[AuthProvider] Session successfully restored from active access token');
+              return;
+            }
+          } catch {
+            logger.debug('[AuthProvider] Access token stale — proceeding to silent refresh');
+          }
+        }
 
-      if (result) {
-        setAccessToken(result.accessToken);
-        if (result.user) setUser(result.user);
-      } else {
-        // No valid refresh token — user is not authenticated
-        clearAuth();
+        // Step 2: Access token missing or stale — attempt silent refresh via HttpOnly refresh cookie
+        const result = await silentRefresh();
+
+        if (!isMounted) return;
+
+        if (result) {
+          setAccessToken(result.accessToken);
+          if (result.user) setUser(result.user);
+          logger.debug('[AuthProvider] Session successfully restored via silent token rotation');
+        } else {
+          // No valid token or refresh cookie — clear auth state
+          clearAuth();
+        }
+      } catch (error) {
+        logger.error('[AuthProvider] Rehydration check failed:', error);
+        if (isMounted) clearAuth();
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-
-      setLoading(false);
     }
 
     checkAuth();
@@ -71,19 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Intentionally run only on mount — deps would cause re-runs
+  }, []);
 
   /**
    * Effect 2: Proactive token refresh timer.
-   *
-   * Key improvements over the old implementation:
-   * - Uses document.visibilityState to skip refresh when tab is hidden.
-   *   A hidden tab that can't reach the server causes a false "session expired".
-   * - Clears and recreates the interval when isAuthenticated changes so we don't
-   *   have a stale closure holding old state.
-   * - Does NOT call clearAuth() on a single failure — the Axios interceptor in
-   *   client.ts handles individual 401 responses. Here we log a warning and let
-   *   the next interval cycle retry.
    */
   useEffect(() => {
     if (!isAuthenticated) {
@@ -109,9 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (result.user) setUser(result.user);
         logger.debug('[AuthProvider] Proactive refresh succeeded');
       } else {
-        // Single failure is NOT a session expiry — could be a brief network blip.
-        // The Axios response interceptor in client.ts will handle the next 401
-        // that actually affects a user request and will show the modal then.
         logger.warn('[AuthProvider] Proactive refresh failed — will retry next cycle');
       }
     }, PROACTIVE_REFRESH_INTERVAL_MS);
@@ -126,8 +144,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Effect 3: Refresh immediately when tab becomes visible again.
-   * This handles the case where the user wakes up their laptop or switches back
-   * to the tab after the access token has expired (>15 min of inactivity).
    */
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -140,8 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAccessToken(result.accessToken);
           if (result.user) setUser(result.user);
         }
-        // If it fails, don't force logout — next API call will 401 and the
-        // interceptor queue will handle it gracefully.
       }
     };
 

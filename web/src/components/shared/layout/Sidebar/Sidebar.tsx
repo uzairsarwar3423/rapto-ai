@@ -13,6 +13,7 @@ import {
 import { useUIStore } from "@/store/ui.store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { SidebarLogo } from "./SidebarLogo";
 import { SidebarTeamSwitcher } from "./SidebarTeamSwitcher";
 import { SidebarUser } from "./SidebarUser";
 import { SidebarNav } from "./SidebarNav";
@@ -46,6 +47,7 @@ export function Sidebar({ user, team }: SidebarProps) {
         "w-[240px] data-[collapsed=true]:w-14" // data-[collapsed=true]:w-14 is 56px (14 * 4px)
       )}
     >
+      <SidebarLogo collapsed={collapsed} />
       <SidebarTeamSwitcher team={team} collapsed={collapsed} />
       <Separator className="bg-border" />
 

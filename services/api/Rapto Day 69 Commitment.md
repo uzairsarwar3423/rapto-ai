@@ -16,7 +16,8 @@
 7. [Layer 4 — Recalculation Trigger-Point Audit](#7-layer-4--recalculation-trigger-point-audit)
 8. [Layer 5 — commitments.service.ts Integration](#8-layer-5--commitmentsservicets-integration)
 9. [Layer 6 — commitment-resolver.service.ts / extract.worker.ts Integration (The New Wiring)](#9-layer-6--commitment-resolverservicets--extractworkerts-integration-the-new-wiring)
-10. [Layer 7 — deadline.worker.ts Integration](#10-layer-7--deadlineworkerts-integration)
+10. [Layer 7 — dea
+dline.worker.ts Integration](#10-layer-7--deadlineworkerts-integration)
 11. [Layer 8 — Weekly Snapshot Cron](#11-layer-8--weekly-snapshot-cron)
 12. [Layer 9 — Socket.io Real-Time Event Design](#12-layer-9--socketio-real-time-event-design)
 13. [The CANCELLED Exclusion Rule — Explicit Design](#13-the-cancelled-exclusion-rule--explicit-design)
