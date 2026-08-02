@@ -83,7 +83,7 @@ const envSchema = z.object({
     OUTLOOK_TENANT_ID: z.string().optional(),
 
     // AI Pipeline
-    AI_PIPELINE_URL: z.string().url().default('http://127.0.0.1:8000'),
+    AI_PIPELINE_URL: z.string().url().default('http://ai-pipeline:8001'),
     AI_PIPELINE_SECRET: z.string().min(32).default('change-me-min-32-chars-in-production-please-use-a-secure-secret'),
     AI_PIPELINE_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
     AI_PIPELINE_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(3),

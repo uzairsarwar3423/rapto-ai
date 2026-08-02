@@ -172,6 +172,17 @@ def main() -> None:
         existing["API_SHARED_SECRET"] = shared_secret
         logger.info("✅ AI_PIPELINE_SECRET and API_SHARED_SECRET synchronized.")
 
+    # ── CRITICAL: Fix AI_PIPELINE_URL — reject localhost/127.0.0.1, use Docker service name ──
+    ai_pipeline_url = existing.get("AI_PIPELINE_URL", "")
+    if not ai_pipeline_url or "localhost" in ai_pipeline_url or "127.0.0.1" in ai_pipeline_url:
+        logger.warning(
+            f"⚠️  AI_PIPELINE_URL={ai_pipeline_url!r} is localhost, 127.0.0.1, or empty — "
+            "overriding with Docker service name: http://ai-pipeline:8001"
+        )
+        existing["AI_PIPELINE_URL"] = "http://ai-pipeline:8001"
+    else:
+        logger.info(f"✅ AI_PIPELINE_URL validated: {ai_pipeline_url}")
+
     # ── CRITICAL: Fix REDIS_URL — reject localhost, always use Docker service name ──
     redis_url = existing.get("REDIS_URL", "")
     if not redis_url or is_localhost_redis(redis_url):
