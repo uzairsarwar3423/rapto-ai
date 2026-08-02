@@ -1,10 +1,11 @@
 from src.models.extraction_models import ExtractedActionItem, PriorityLevel
 from src.services.extraction.action_item_parser import parse_action_item, dedup_action_items
+from src.services.extraction.commitment_parser import normalize_text
 
 def test_parse_action_item():
     raw = ExtractedActionItem(text="do something", assignee_name=" User ", priority="HIGH", confidence=0.8)
     parsed = parse_action_item(raw)
-    assert parsed.dedup_key == "user::do something"
+    assert parsed.dedup_key == f"user::{normalize_text('do something')}"
     assert parsed.priority == PriorityLevel.HIGH
 
 def test_dedup_action_items():

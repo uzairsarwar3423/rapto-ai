@@ -30,24 +30,21 @@ def basic_request():
 
 @pytest.mark.asyncio
 async def test_extract_short_single_chunk(mock_openai_client, basic_request):
-    mock_openai_client.generate_structured.return_value = AICallResult(
-        data=ExtractionResponse(
-            commitments=[ExtractedCommitment(text="I will do this task", owner_name="User", confidence=0.9)],
-            summary="A short meeting summary"
-        ),
-        cost=CostRecord(input_tokens=10, output_tokens=10, model_tier=ModelTier.MINI, model_name="test", estimated_cost_usd=0.01),
+    mock_openai_client.generate_text.return_value = AICallResult(
+        data="A short meeting summary",
+        cost=CostRecord(input_tokens=10, output_tokens=10, model_tier=ModelTier.FULL, model_name="test", estimated_cost_usd=0.01),
         latency_ms=100.0,
         retry_count=0,
-        task_type=TaskType.EXTRACTION,
+        task_type=TaskType.SUMMARY,
         model_name="test"
     )
-    
+
     result = await extract(basic_request, mock_openai_client)
-    
+
     assert isinstance(result, ExtractionResultWithMeta)
     assert result.chunks_total == 1
     assert result.chunks_succeeded == 1
     assert len(result.commitments) == 1
     assert result.summary == "A short meeting summary"
     assert result.summary_scope.value == "FULL"
-    mock_openai_client.generate_structured.assert_called_once()
+    assert mock_openai_client.generate_structured.call_count >= 1

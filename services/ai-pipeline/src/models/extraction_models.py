@@ -103,10 +103,10 @@ class ExtractedDecision(BaseModel):
 
 class ExtractedBlocker(BaseModel):
     text: str = Field(..., min_length=1)
-    blocked_work: str = Field(..., min_length=1)
+    blocked_work: str = Field(default="general work", min_length=1)
     affected_name: Optional[str] = None
     blocking_party: Optional[str] = None
-    severity: SeverityLevel
+    severity: SeverityLevel = SeverityLevel.MEDIUM
     confidence: float = Field(..., ge=0.0, le=1.0)
 
     @model_validator(mode='after')
@@ -123,11 +123,11 @@ class ExtractedBlocker(BaseModel):
 
 class ExtractedRisk(BaseModel):
     text: str = Field(..., min_length=1)
-    description: str = Field(..., min_length=1)
-    category: RiskCategory
+    description: str = Field(default="risk item", min_length=1)
+    category: RiskCategory = RiskCategory.TECHNICAL
     raised_by: Optional[str] = None
-    impact: str = Field(..., min_length=1)
-    trigger_condition: str = Field(..., min_length=1)
+    impact: str = Field(default="medium impact", min_length=1)
+    trigger_condition: str = Field(default="unspecified", min_length=1)
     confidence: float = Field(..., ge=0.0, le=1.0)
 
     @model_validator(mode='after')

@@ -18,7 +18,7 @@ import pytest
 
 # Vars that must be cleared so Settings() uses only explicit kwargs
 _CLEAR_VARS = [
-    "GEMINI_API_KEY", "API_SHARED_SECRET", "MONGODB_URL", "REDIS_URL",
+    "OPENAI_API_KEY", "GEMINI_API_KEY", "API_SHARED_SECRET", "MONGODB_URL", "REDIS_URL",
     "ENVIRONMENT", "GEMINI_FLASH_MODEL_NAME", "GEMINI_FLASH_LITE_MODEL_NAME",
 ]
 

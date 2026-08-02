@@ -91,10 +91,62 @@ def mock_redis_client():
 
 @pytest.fixture
 def mock_openai_client():
-    """Mock OpenAIClient — all methods return success by default."""
+    """Mock OpenAIClient — all methods return valid typed data by default."""
+    from src.models.common import AICallResult, CostRecord, ModelTier, TaskType
+    from src.models.extraction_models import (
+        ActionItemsResponse, BlockersResponse, CommitmentsResponse,
+        DecisionsResponse, ExtractionResponse, RisksResponse,
+    )
+
     mock = MagicMock()
-    mock.generate_structured = AsyncMock()
-    mock.generate_text = AsyncMock()
+
+    from src.models.resolution_models import ResolutionDetectionModelResponse
+
+    async def default_generate_structured(task_type=None, system_prompt="", user_prompt="", response_schema=None, **kwargs):
+        ret = mock.generate_structured.return_value
+        if ret is not None and type(ret).__name__ == "AICallResult":
+            return ret
+
+        from src.models.extraction_models import ExtractedCommitment
+        if response_schema == CommitmentsResponse:
+            data = CommitmentsResponse(commitments=[ExtractedCommitment(text="I will do this task", owner_name="User", confidence=0.9)])
+        elif response_schema == ActionItemsResponse:
+            data = ActionItemsResponse(action_items=[])
+        elif response_schema == DecisionsResponse:
+            data = DecisionsResponse(decisions=[])
+        elif response_schema == BlockersResponse:
+            data = BlockersResponse(blockers=[])
+        elif response_schema == RisksResponse:
+            data = RisksResponse(risks=[])
+        elif response_schema == ResolutionDetectionModelResponse or task_type == TaskType.RESOLUTION_CHECK:
+            data = ResolutionDetectionModelResponse(resolved=True, confidence=0.9, reason="Mocked resolution")
+        else:
+            data = ExtractionResponse(commitments=[ExtractedCommitment(text="I will do this task", owner_name="User", confidence=0.9)])
+        return AICallResult(
+            data=data,
+            cost=CostRecord(input_tokens=10, output_tokens=10, model_tier=ModelTier.MINI, model_name="test", estimated_cost_usd=0.001),
+            latency_ms=50.0,
+            retry_count=0,
+            task_type=task_type or TaskType.EXTRACTION,
+            model_name="test",
+        )
+
+    mock.generate_structured = AsyncMock(side_effect=default_generate_structured)
+
+    async def default_generate_text(task_type=None, system_prompt="", user_prompt="", **kwargs):
+        ret = mock.generate_text.return_value
+        if ret is not None and type(ret).__name__ == "AICallResult":
+            return ret
+        return AICallResult(
+            data="Mocked summary text",
+            cost=CostRecord(input_tokens=10, output_tokens=10, model_tier=ModelTier.FULL, model_name="test", estimated_cost_usd=0.001),
+            latency_ms=50.0,
+            retry_count=0,
+            task_type=TaskType.SUMMARY,
+            model_name="test",
+        )
+
+    mock.generate_text = AsyncMock(side_effect=default_generate_text)
     mock.embed = AsyncMock()
     return mock
 

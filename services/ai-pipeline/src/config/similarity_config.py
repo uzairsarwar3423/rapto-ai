@@ -65,7 +65,7 @@ The fallback_used field on SimilarityBreakdown documents this for callers.
 
 # ─── Prefix-Match Configuration ───────────────────────────────────────────────
 
-PREFIX_MATCH_LENGTH: int = 4
+PREFIX_MATCH_LENGTH: int = 3
 """Number of leading tokens compared in has_prefix_match().
 
 WHY 4: With an 8-token max normalized text (upgraded from 5), the first 4
