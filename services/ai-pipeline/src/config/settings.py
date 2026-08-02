@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     )
 
     # ── Service Identity ─────────────────────────────────────────────────────
-    environment: Literal["development", "staging", "production"] = "development"
+    environment: Literal["development", "staging", "production", "test"] = "development"
     service_name: str = "ai-pipeline"
     port: int = Field(default=8001, ge=1, le=65535)
 

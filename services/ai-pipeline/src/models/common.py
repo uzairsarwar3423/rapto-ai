@@ -36,6 +36,7 @@ class TaskType(str, Enum):
     EXTRACT_DECISIONS = "extract_decisions"
     EXTRACT_BLOCKERS = "extract_blockers"
     EXTRACT_RISKS = "extract_risks"
+    EXTRACTION = "extraction"
     RESOLUTION_CHECK = "resolution_check"
     SUMMARY = "summary"
     CHAT_ANSWER = "chat_answer"

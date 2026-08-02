@@ -129,7 +129,7 @@ POLICY NOTE:
 
 # ─── DoS / Safety Guard ──────────────────────────────────────────────────────
 
-MAX_INPUT_TOKENS_GUARD: int = 8
+MAX_INPUT_TOKENS_GUARD: int = 5
 """Maximum tokens allowed into TfidfVectorizer per text input.
 
 This mirrors the 8-token cap in normalize_text() (commitment_parser.py).

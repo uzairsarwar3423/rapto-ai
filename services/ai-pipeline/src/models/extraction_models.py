@@ -90,7 +90,7 @@ class ExtractedActionItem(BaseModel):
 class ExtractedDecision(BaseModel):
     text: str = Field(..., min_length=1)
     made_by: Optional[str] = None
-    decision_type: DecisionType
+    decision_type: DecisionType = DecisionType.OTHER
     confidence: float = Field(..., ge=0.0, le=1.0)
     
     @model_validator(mode='after')
@@ -156,6 +156,19 @@ class BlockersResponse(BaseModel):
 
 class RisksResponse(BaseModel):
     risks: List[ExtractedRisk] = Field(default_factory=list)
+
+class ExtractionResponse(BaseModel):
+    commitments: List[ExtractedCommitment] = Field(default_factory=list)
+    action_items: List[ExtractedActionItem] = Field(default_factory=list)
+    decisions: List[ExtractedDecision] = Field(default_factory=list)
+    blockers: List[ExtractedBlocker] = Field(default_factory=list)
+    risks: List[ExtractedRisk] = Field(default_factory=list)
+    summary: Optional[str] = None
+
+    @field_validator("commitments")
+    @classmethod
+    def filter_low_confidence_commitments(cls, v: List[ExtractedCommitment]) -> List[ExtractedCommitment]:
+        return [c for c in v if c.confidence >= 0.3]
 
 class ConfidenceCalibrationFlag(BaseModel):
     is_suspicious: bool

@@ -44,6 +44,24 @@ _DEDUP_SIMILARITY_THRESHOLD: float = 0.65
 Mirrors MATCH_THRESHOLD in similarity_config.py — kept explicit here for clarity."""
 
 
+_ACCEPTANCE_PATTERNS = [
+    "i will",
+    "i'll",
+    "sure, i",
+    "yes, i",
+    "i can handle",
+    "i'll handle",
+    "i'm on it",
+    "i am on it",
+]
+
+
+def has_acceptance_phrases(text: str) -> bool:
+    """Check if text contains first-person commitment / acceptance phrases."""
+    t = text.lower()
+    return any(p in t for p in _ACCEPTANCE_PATTERNS)
+
+
 def _names_match(name_a: str, name_b: str) -> bool:
     """Case-insensitive name match with partial-name fallback.
 
@@ -77,28 +95,17 @@ def deduplicate_commitments_and_action_items(
     Commitment (first-person) and an Action Item (potentially third-party
     assigned), the Action Item is removed to avoid double-counting.
 
-    Uses the pipeline's canonical similarity engine (TF-IDF Cosine + Jaccard
-    on normalized text) for text comparison, NOT raw string difflib.
-
-    Algorithm:
-      For each Action Item:
-        For each Commitment:
-          1. Check name match (assignee vs owner) using _names_match()
-          2. If names match, compute similarity_score(ai.normalized_text, c.normalized_text)
-          3. If similarity >= _DEDUP_SIMILARITY_THRESHOLD → mark AI as duplicate
-        If not duplicate → keep in output
-
-    Time complexity: O(N_ai × N_commitments) — acceptable for meeting-scale
-    entity counts (typically 0-20 per entity type).
+    Also converts self-commitment Action Items (containing acceptance phrases)
+    into Commitments.
 
     Args:
         commitments: Parsed commitments (already deduped within their own type).
         action_items: Parsed action items (already deduped within their own type).
 
     Returns:
-        (final_commitments, final_action_items) — commitments are unchanged;
-        action_items has duplicates-of-commitments removed.
+        (final_commitments, final_action_items)
     """
+    final_commitments: List[ParsedCommitment] = list(commitments)
     final_action_items: List[ParsedActionItem] = []
     removed_count = 0
 
@@ -106,7 +113,7 @@ def deduplicate_commitments_and_action_items(
         ai_normalized = ai.dedup_key.split("::", 1)[-1] if "::" in ai.dedup_key else ai.text.lower()
         is_duplicate = False
 
-        for comm in commitments:
+        for comm in final_commitments:
             # Step 1: Name match (fast, O(1))
             if not _names_match(ai.assignee_name, comm.owner_name):
                 continue
@@ -131,7 +138,17 @@ def deduplicate_commitments_and_action_items(
                 break
 
         if not is_duplicate:
-            final_action_items.append(ai)
+            if has_acceptance_phrases(ai.text):
+                converted_comm = ParsedCommitment(
+                    text=ai.text,
+                    owner_name=ai.assignee_name,
+                    confidence=ai.confidence,
+                    normalized_text=ai_normalized,
+                    dedup_key=ai.dedup_key,
+                )
+                final_commitments.append(converted_comm)
+            else:
+                final_action_items.append(ai)
 
     if removed_count:
         log.info(
@@ -142,4 +159,4 @@ def deduplicate_commitments_and_action_items(
             output_action_items=len(final_action_items),
         )
 
-    return list(commitments), final_action_items
+    return final_commitments, final_action_items

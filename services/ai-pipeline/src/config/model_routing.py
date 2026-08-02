@@ -48,6 +48,7 @@ TASK_MODEL_MAP: dict[TaskType, ModelTier] = {
     TaskType.EXTRACT_DECISIONS: ModelTier.MINI,
     TaskType.EXTRACT_BLOCKERS: ModelTier.MINI,
     TaskType.EXTRACT_RISKS: ModelTier.MINI,
+    TaskType.EXTRACTION: ModelTier.MINI,
     TaskType.RESOLUTION_CHECK: ModelTier.MINI,
     TaskType.SUMMARY: ModelTier.FULL,
     TaskType.CHAT_ANSWER: ModelTier.FULL,
@@ -64,6 +65,7 @@ MODEL_TASK_TEMPERATURE_OVERRIDES: dict[TaskType, float] = {
     TaskType.EXTRACT_DECISIONS: 0.0,
     TaskType.EXTRACT_BLOCKERS: 0.0,
     TaskType.EXTRACT_RISKS: 0.1,
+    TaskType.EXTRACTION: 0.1,
     TaskType.SUMMARY: 0.3,
 }
 

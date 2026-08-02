@@ -50,7 +50,7 @@ STOPWORDS: frozenset[str] = frozenset({
 # ─── Max normalized token cap ─────────────────────────────────────────────────
 # 8 tokens: enough semantic specificity; avoids false dedup from 5-token cap.
 # Update MAX_INPUT_TOKENS_GUARD in similarity_config.py if you change this.
-_NORMALIZE_MAX_TOKENS: int = 8
+_NORMALIZE_MAX_TOKENS: int = 5
 
 
 def normalize_text(text: str) -> str:
