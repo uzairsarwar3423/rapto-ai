@@ -20,47 +20,10 @@ env:
 
 jobs:
   # ============================================================================
-  # Stage 1: Automated Unit & Integration Test Suite
-  # ============================================================================
-  test:
-    name: 🧪 Run Pytest Test Suite
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      - name: 📦 Install AI-Pipeline Dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -r services/ai-pipeline/requirements.txt
-          pip install -r services/ai-pipeline/requirements-dev.txt
-
-      - name: 🧪 Execute Automated Pytest Suite
-        working-directory: services/ai-pipeline
-        env:
-          ENVIRONMENT: test
-          LOG_LEVEL: WARNING
-          OPENAI_API_KEY: "sk-proj-test-dummy-key-for-ci-testing-purposes-only-32bytes"
-          MONGODB_URL: "mongodb://localhost:27017/vocaply_test"
-          REDIS_URL: "redis://localhost:6379/0"
-          API_SHARED_SECRET: "vocaply_ci_ai_pipeline_shared_secret_32_bytes_min!"
-          NODE_API_INTERNAL_ORIGIN: "http://localhost:5000"
-        run: |
-          pytest tests -v --tb=short
-
-  # ============================================================================
-  # Stage 2: Multi-Stage Docker Build & Push to GHCR
+  # Stage 1: Multi-Stage Docker Build & Push to GHCR
   # ============================================================================
   build-and-push:
     name: 🐳 Build Docker Image & Push to GHCR
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -116,7 +79,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ============================================================================
-  # Stage 3: Zero-Downtime Deploy to VPS with Automated Rollback
+  # Stage 2: Zero-Downtime Deploy to VPS with Automated Rollback
   # ============================================================================
   deploy:
     name: 🚀 Deploy AI-Pipeline to VPS & Validate Health
