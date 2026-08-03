@@ -9,7 +9,9 @@ export type CalendarProviderName = CalendarProvider
 
 export interface TeamIntegrationSummary {
     provider: ProviderType
+    workspaceId: string | null
     workspaceName: string | null
+    workspaceUrl: string | null
     isActive: boolean
     lastSyncedAt: Date | null
     connectedBy: {
@@ -18,6 +20,7 @@ export interface TeamIntegrationSummary {
     } | null
     consecutiveErrors: number
     lastError: string | null
+    metadata: Record<string, unknown> | null
 }
 
 export interface OAuthCallbackResult {

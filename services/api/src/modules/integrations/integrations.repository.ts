@@ -32,11 +32,14 @@ export class IntegrationsRepository {
             where: { teamId },
             select: {
                 provider: true,
+                workspaceId: true,
                 workspaceName: true,
+                workspaceUrl: true,
                 isActive: true,
                 lastSyncedAt: true,
                 consecutiveErrors: true,
                 lastError: true,
+                metadata: true,
                 connectedBy: {
                     select: {
                         id: true,
@@ -48,11 +51,14 @@ export class IntegrationsRepository {
 
         return integrations.map((i) => ({
             provider: i.provider as ProviderType,
+            workspaceId: i.workspaceId,
             workspaceName: i.workspaceName,
+            workspaceUrl: i.workspaceUrl,
             isActive: i.isActive,
             lastSyncedAt: i.lastSyncedAt,
             consecutiveErrors: i.consecutiveErrors,
             lastError: i.lastError,
+            metadata: (i.metadata as Record<string, unknown>) || null,
             connectedBy: i.connectedBy
                 ? {
                       id: i.connectedBy.id,
