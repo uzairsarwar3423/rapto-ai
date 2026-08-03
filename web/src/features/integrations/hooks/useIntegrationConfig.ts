@@ -30,7 +30,11 @@ export function useIntegrationConfig(provider: string, isCalendar = false) {
     },
     onSuccess: () => {
       toast.success("Configuration updated successfully");
-      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(teamId) });
+      if (teamId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(teamId) });
+      }
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      queryClient.invalidateQueries({ queryKey: ["integrations"] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.error?.message || "Failed to save configuration");

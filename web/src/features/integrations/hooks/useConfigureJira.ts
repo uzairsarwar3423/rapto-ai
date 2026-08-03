@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/shared/lib/cache/query-keys";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { configureJiraClient } from "../api/integrations.api";
 
 export interface ConfigureJiraInput {
@@ -16,16 +19,9 @@ interface UseConfigureJiraReturn {
   error: string | null;
 }
 
-/**
- * useConfigureJira — submits the Jira project configuration form.
- *
- * Calls PATCH /integrations/jira/configure with projectKey + defaultIssueType.
- * Returns `true` on success so the form can close the config sheet.
- *
- * Uses the server's JSONB merge-update — setting only projectKey never
- * clobbers an already-configured defaultIssueType (Day 58 §12).
- */
 export function useConfigureJira(): UseConfigureJiraReturn {
+  const queryClient = useQueryClient();
+  const teamId = useAuthStore((state) => state.user?.teamId) || "";
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +31,11 @@ export function useConfigureJira(): UseConfigureJiraReturn {
 
     try {
       await configureJiraClient(input);
+      if (teamId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(teamId) });
+      }
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      queryClient.invalidateQueries({ queryKey: ["integrations"] });
       toast.success("Jira configuration saved. Tickets will now sync to the configured project.");
       return true;
     } catch (err: any) {

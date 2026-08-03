@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/shared/lib/cache/query-keys";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { fetchLinearTeamsClient, configureLinearClient } from "../api/integrations.api";
 
 export interface LinearState {
@@ -32,6 +35,8 @@ interface UseLinearConfigReturn {
 }
 
 export function useLinearConfig(enabled = true): UseLinearConfigReturn {
+  const queryClient = useQueryClient();
+  const teamId = useAuthStore((state) => state.user?.teamId) || "";
   const [teams, setTeams] = useState<LinearTeam[]>([]);
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
   const [teamsError, setTeamsError] = useState<string | null>(null);
@@ -77,6 +82,11 @@ export function useLinearConfig(enabled = true): UseLinearConfigReturn {
 
     try {
       await configureLinearClient(input);
+      if (teamId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(teamId) });
+      }
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      queryClient.invalidateQueries({ queryKey: ["integrations"] });
       toast.success("Linear configuration saved. Action items will now sync to the configured team and state.");
       return true;
     } catch (err: any) {
