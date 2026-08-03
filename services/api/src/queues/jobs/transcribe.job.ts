@@ -1,5 +1,6 @@
 export interface TranscribeJobData {
-  meetingId:       string
-  teamId:          string
+  meetingId:         string
+  teamId:            string
   mongoTranscriptId: string
+  isReprocess?:       boolean
 }

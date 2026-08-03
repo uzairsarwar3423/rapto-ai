@@ -38,6 +38,15 @@ app.set('trust proxy', 1)
 // unhealthy on the VERY FIRST probe because the rate limiter called redis.ping()
 // before redis.connect() completed, throwing ECONNREFUSED.
 // ──────────────────────────────────────────────────────────────────────────────
+app.get('/', (_req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        service: 'rapto-api',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+    })
+})
+
 app.get('/health', (_req, res) => {
     res.status(200).json({
         status: 'ok',

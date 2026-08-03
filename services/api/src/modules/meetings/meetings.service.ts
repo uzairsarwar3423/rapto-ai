@@ -512,3 +512,104 @@ export async function updateMeetingStatus(
 
   return updated
 }
+
+// ── Reprocess Meeting ─────────────────────────────────────────────────────────
+
+/**
+ * Reprocess a meeting transcript:
+ *  1. Validates that the meeting exists, belongs to teamId, and has a transcript in Mongo.
+ *  2. Cannot reprocess while actively RECORDING or BOT_JOINING.
+ *  3. Cleans up old extracted entities (commitments, action items, decisions, blockers, risks).
+ *  4. Resets meeting state to PROCESSING, clears errors/summaries, sets reprocessedAt & reprocessedById.
+ *  5. Emits real-time MEETING_PROCESSING event.
+ *  6. Enqueues job to transcribeQueue for full processing pipeline.
+ */
+export async function reprocessMeeting(id: string, teamId: string, userId: string) {
+  const meeting = await repo.findById(id, teamId)
+
+  if (!meeting) {
+    throw new NotFoundError('Meeting', id)
+  }
+
+  if (!meeting.mongoTranscriptId) {
+    throw new AppError(
+      'MEETING_NO_TRANSCRIPT',
+      400,
+      'Cannot reprocess meeting without a transcript. Ensure the meeting has a recorded transcript.'
+    )
+  }
+
+  if (meeting.status === 'RECORDING' || meeting.status === 'BOT_JOINING') {
+    throw new AppError(
+      'INVALID_STATUS_TRANSITION',
+      409,
+      `Cannot reprocess meeting while it is actively ${meeting.status}`
+    )
+  }
+
+  // Validate state machine transition
+  validateTransition(meeting.status, 'PROCESSING')
+
+  // 1. Transactionally clean up old extracted entities and reset meeting state
+  const updatedMeeting = await prisma.$transaction(async (tx) => {
+    await tx.commitment.deleteMany({ where: { meetingId: id } })
+    await tx.actionItem.deleteMany({ where: { meetingId: id } })
+    await tx.decision.deleteMany({ where: { meetingId: id } })
+    await tx.blocker.deleteMany({ where: { meetingId: id } })
+    await tx.risk.deleteMany({ where: { meetingId: id } })
+
+    return tx.meeting.update({
+      where: { id },
+      data: {
+        status: 'PROCESSING',
+        processingStartedAt: new Date(),
+        processingCompletedAt: null,
+        processingError: null,
+        summary: null,
+        commitmentCount: 0,
+        actionItemCount: 0,
+        decisionCount: 0,
+        blockerCount: 0,
+        riskCount: 0,
+        resolutionComplete: false,
+        resolutionFailed: false,
+        resolutionPartial: false,
+        reprocessedAt: new Date(),
+        reprocessedById: userId,
+      },
+    })
+  })
+
+  // 2. Emit real-time MEETING_PROCESSING event
+  try {
+    const { teamRoom } = await import('../../realtime/rooms.manager')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    const { getIO } = await import('../../realtime/socket.server')
+    getIO().to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_PROCESSING, {
+      meetingId: id,
+    })
+  } catch (err) {
+    logger.warn({ meetingId: id, err }, 'reprocessMeeting: Socket.io emit failed (non-fatal)')
+  }
+
+  // 3. Dispatch to transcribe queue for transcript cleaning + extraction + resolution
+  const { transcribeQueue } = await import('../../queues/queue.client')
+  await transcribeQueue.add(
+    'process-transcript',
+    {
+      meetingId: id,
+      teamId,
+      mongoTranscriptId: meeting.mongoTranscriptId,
+      isReprocess: true,
+    },
+    { priority: 2 }
+  )
+
+  logger.info({ meetingId: id, teamId, userId }, '✅ Meeting reprocess initiated successfully')
+
+  return {
+    meeting: updatedMeeting,
+    message: 'Meeting reprocessing initiated. Transcript cleanup and AI entity extraction are now in progress.',
+  }
+}
+

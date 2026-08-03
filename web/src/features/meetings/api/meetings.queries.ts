@@ -39,3 +39,30 @@ export async function fetchTranscriptClient(meetingId: string): Promise<any> {
   return response.data.data;
 }
 
+/**
+ * Client-side mutation to reprocess a meeting transcript and AI extraction.
+ */
+export async function reprocessMeetingClient(meetingId: string): Promise<any> {
+  const response = await api.post<{ data: any }>(`/meetings/${meetingId}/reprocess`);
+  return response.data.data;
+}
+
+/**
+ * Client-side mutation to remove bot / cancel recording for a meeting.
+ */
+export async function removeBotClient(meetingId: string): Promise<any> {
+  const response = await api.delete<{ data: any }>(`/meetings/${meetingId}/bot`);
+  return response.data.data;
+}
+
+/**
+ * Client-side mutation to delete a meeting.
+ */
+export async function deleteMeetingClient(meetingId: string, deleteTranscript = false): Promise<any> {
+  const response = await api.delete<{ data: any }>(`/meetings/${meetingId}`, {
+    params: { deleteTranscript },
+  });
+  return response.data.data;
+}
+
+

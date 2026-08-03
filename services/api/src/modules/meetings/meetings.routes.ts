@@ -38,6 +38,7 @@ import {
   addBotController,
   removeBotController,
   deleteMeetingController,
+  reprocessMeetingController,
 } from './meetings.controller'
 
 export const meetingsRouter = Router()
@@ -122,6 +123,18 @@ meetingsRouter.delete(
   validate({ ...meetingIdParamSchema, ...deleteMeetingSchema }),
   deleteMeetingController
 )
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /meetings/:meetingId/reprocess — Reprocess Meeting
+// ─────────────────────────────────────────────────────────────────────────────
+meetingsRouter.post(
+  '/:meetingId/reprocess',
+  requireAuth,
+  injectTenant,
+  validate(meetingIdParamSchema),
+  reprocessMeetingController
+)
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /meetings/:meetingId/simulate-complete (Development ONLY)

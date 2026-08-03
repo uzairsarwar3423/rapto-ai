@@ -203,3 +203,14 @@ export const deleteMeetingController = asyncHandler(async (req: Request, res: Re
 
   res.status(200).json(success(result))
 })
+
+// ── POST /meetings/:meetingId/reprocess — Reprocess Meeting ──────────────────
+
+export const reprocessMeetingController = asyncHandler(async (req: Request, res: Response) => {
+  const meetingId = param(req, 'meetingId')
+
+  const result = await meetingService.reprocessMeeting(meetingId, req.teamId as string, req.user!.id)
+
+  res.status(200).json(success(result))
+})
+
