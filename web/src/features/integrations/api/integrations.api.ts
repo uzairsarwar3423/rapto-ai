@@ -11,8 +11,18 @@ export async function fetchIntegrationsClient(): Promise<IntegrationsListRespons
 }
 
 export async function initiateOAuthConnectClient(provider: string): Promise<string> {
-  const response = await api.get<{ authUrl: string }>(`/integrations/${provider}/connect`);
-  return response.data.authUrl;
+  const endpoint = provider.toLowerCase().replace(/_/g, '-');
+  const response = await api.get<{ 
+    success?: boolean; 
+    data?: { authUrl: string }; 
+    authUrl?: string 
+  }>(`/integrations/${endpoint}/connect`);
+  
+  const authUrl = response.data?.data?.authUrl || response.data?.authUrl;
+  if (!authUrl) {
+    throw new Error(`Failed to retrieve OAuth authorization URL for ${provider}. Unexpected server response format.`);
+  }
+  return authUrl;
 }
 
 export async function disconnectTeamIntegrationClient(provider: string): Promise<void> {

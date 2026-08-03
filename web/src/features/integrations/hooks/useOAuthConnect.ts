@@ -18,6 +18,9 @@ export function useOAuthConnect() {
         window.location.href = `${apiBase}/api/v1/integrations/outlook-calendar/connect?token=${accessToken}`;
       } else {
         const authUrl = await initiateOAuthConnectClient(provider);
+        if (!authUrl || typeof authUrl !== "string") {
+          throw new Error(`Invalid OAuth URL received for ${provider}`);
+        }
         window.location.href = authUrl;
       }
     } catch (err: any) {

@@ -309,7 +309,7 @@ export const connectController = async (req: Request, res: Response, next: NextF
         const provider = req.params.provider as ProviderType
         
         const result = await integrationsService.initiateOAuth(provider, teamId, userId)
-        res.status(200).json(result)
+        res.status(200).json({ success: true, data: { authUrl: result.authUrl } })
     } catch (e) {
         next(e)
     }
