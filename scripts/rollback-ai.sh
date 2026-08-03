@@ -21,7 +21,7 @@ echo "⏪ Rolling back to image tag: ${PREVIOUS_TAG}"
 export IMAGE_TAG="${PREVIOUS_TAG}"
 
 # Re-deploy previous stable container
-docker compose up -d --no-deps ai-pipeline
+docker compose up -d --no-build --no-deps ai-pipeline
 
 echo "⏳ Waiting 10s for rolled-back container to stabilize..."
 sleep 10

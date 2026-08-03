@@ -20,7 +20,7 @@ import type { RecallScheduleBotInput, RecallScheduleBotResult } from '../modules
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const RECALL_BASE_URL = 'https://ap-northeast-1.recall.ai/api/v1'
+const RECALL_BASE_URL = env.RECALL_BASE_URL
 const REQUEST_TIMEOUT_MS = 15_000
 const MAX_RETRIES = 3
 const RETRY_DELAYS_MS = [1000, 2000, 4000] // exponential backoff

@@ -85,7 +85,7 @@ echo "✅ [3/4] Database migrations applied successfully."
 
 # 5. Zero-Downtime Container Update (preserve DB containers, update app services)
 echo "🔄 [4/4] Starting updated application services (API, Worker, NGINX)..."
-docker compose up -d api worker nginx
+docker compose up -d --no-build api worker nginx
 
 # 6. Post-deploy verification
 echo "⏳ Verifying deployment via Docker health state..."

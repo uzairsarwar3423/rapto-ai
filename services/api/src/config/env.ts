@@ -47,6 +47,7 @@ const envSchema = z.object({
 
     RECALL_API_KEY: z.string().optional(),
     RECALL_WEBHOOK_SECRET: z.string().optional(),
+    RECALL_BASE_URL: z.string().url().default('https://ap-northeast-1.recall.ai/api/v1'),
 
     BREVO_API_KEY: z.string().optional(),
     BREVO_FROM_EMAIL: z.string().optional(),

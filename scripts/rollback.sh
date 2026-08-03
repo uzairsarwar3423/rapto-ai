@@ -20,7 +20,7 @@ echo "⏪ Rolling back to image tag: ${PREVIOUS_TAG}"
 export IMAGE_TAG="${PREVIOUS_TAG}"
 
 # Re-deploy previous stable containers
-docker compose up -d --no-deps api worker nginx
+docker compose up -d --no-build --no-deps api worker nginx
 
 echo "⏳ Waiting 15s for rolled-back containers to stabilize..."
 sleep 15
