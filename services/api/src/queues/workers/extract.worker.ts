@@ -198,40 +198,33 @@ export const extractWorker = new Worker<ExtractJobData>(
     }
 
     // ── STEP 7: Pre-process extracted entities ─────────────────────────────
+    // ── Commitments: always stored as Commitment records ───────────────────
+    // External participants (not registered team members) get ownerId=null
+    // and ownerNameRaw populated so they are visible on the platform.
+    // Previously these fell back to Action Items — that was architecturally
+    // incorrect and caused external-participant commitments to disappear from
+    // the Commitments tab.
     const validCommitments: any[] = []
-    const fallbackActionItems: any[] = []
 
     for (const c of result.commitments) {
       const ownerId = resolveParticipantToUserId(c.owner_name, userPool)
-      if (ownerId) {
-        validCommitments.push({
-          meetingId,
-          teamId,
-          text:           c.text,
-          ownerId,
-          status:         'PENDING',
-          confidenceScore: c.confidence,
-          dueDateRaw:     c.due_date_raw,
-          dueDate:        c.due_date_utc ? new Date(c.due_date_utc) : null,
-          normalizedText: c.normalized_text,
-          dedupKey:       c.dedup_key,
-          extractionModel: result.extraction_model,
-        })
-      } else {
-        // Fallback to Action Item if owner is not a registered user
-        fallbackActionItems.push({
-          meetingId,
-          teamId,
-          text:            c.text,
-          assigneeId:      null,
-          assigneeNameRaw: c.owner_name,
-          confidenceScore: c.confidence,
-          dueDateRaw:      c.due_date_raw,
-          dueDate:         c.due_date_utc ? new Date(c.due_date_utc) : null,
-        })
-      }
+      validCommitments.push({
+        meetingId,
+        teamId,
+        text:            c.text,
+        ownerId:         ownerId ?? null,          // null for external participants
+        ownerNameRaw:    c.owner_name ?? null,     // always store raw name for display
+        status:          'PENDING',
+        confidenceScore: c.confidence,
+        dueDateRaw:      c.due_date_raw,
+        dueDate:         c.due_date_utc ? new Date(c.due_date_utc) : null,
+        normalizedText:  c.normalized_text,
+        dedupKey:        c.dedup_key,
+        extractionModel: result.extraction_model,
+      })
     }
 
+    // ── Action Items: external assignees remain as action items with raw name ─
     const actionItemsData = result.action_items.map((a) => ({
       meetingId,
       teamId,
@@ -241,7 +234,7 @@ export const extractWorker = new Worker<ExtractJobData>(
       confidenceScore: a.confidence,
       dueDateRaw:      a.due_date_raw,
       priority:        a.priority,
-    })).concat(fallbackActionItems)
+    }))
 
     // ── STEP 8: PostgreSQL transaction — ALL writes or NONE ────────────────
     await prisma.$transaction(async (tx) => {

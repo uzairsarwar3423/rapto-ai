@@ -443,7 +443,8 @@ model Commitment {
   id                    String            @id @default(cuid())
   teamId                String
   meetingId             String
-  ownerId               String
+  ownerId               String?
+  ownerNameRaw          String?
   text                  String
   normalizedText        String?
   dedupKey              String?
@@ -474,7 +475,7 @@ model Commitment {
 
   team                  Team              @relation(fields: [teamId],              references: [id], onDelete: Cascade)
   meeting               Meeting           @relation("MeetingCommitments",  fields: [meetingId],            references: [id], onDelete: Cascade)
-  owner                 User              @relation("CommitmentOwner",     fields: [ownerId],              references: [id], onDelete: Cascade)
+  owner                 User?             @relation("CommitmentOwner",     fields: [ownerId],              references: [id], onDelete: Cascade)
   resolvedInMeeting     Meeting?          @relation("CommitmentResolution", fields: [resolvedInMeetingId], references: [id], onDelete: SetNull)
   manualStatusBy        User?             @relation("CommitmentManualStatus", fields: [manualStatusById],  references: [id], onDelete: SetNull)
   inAppNotifications    InAppNotification[]

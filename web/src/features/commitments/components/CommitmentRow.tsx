@@ -122,7 +122,7 @@ export function CommitmentRow({
 
           {/* Owner Avatar Indicator (w-6 text-center) */}
           <div className="w-6 flex items-center justify-center">
-            {showOwner && commitment.owner && (
+            {showOwner && commitment.owner ? (
               <Avatar className="h-5.5 w-5.5 hover:scale-[1.08] hover:shadow-xs transition-all duration-160 border border-border/40 select-none">
                 {commitment.owner.avatarUrl && (
                   <AvatarImage src={commitment.owner.avatarUrl} alt={commitment.owner.name} />
@@ -134,7 +134,17 @@ export function CommitmentRow({
                   {getInitials(commitment.owner.name)}
                 </AvatarFallback>
               </Avatar>
-            )}
+            ) : showOwner && commitment.ownerNameRaw ? (
+              // External participant (not a team member) — show initials from raw extracted name
+              <Avatar className="h-5.5 w-5.5 hover:scale-[1.08] hover:shadow-xs transition-all duration-160 border border-dashed border-border/60 select-none opacity-70">
+                <AvatarFallback
+                  className="font-heading font-medium text-[8px] bg-muted/40 text-muted-foreground/70 flex items-center justify-center"
+                  title={`External participant: ${commitment.ownerNameRaw}`}
+                >
+                  {getInitials(commitment.ownerNameRaw)}
+                </AvatarFallback>
+              </Avatar>
+            ) : null}
           </div>
         </div>
       </div>

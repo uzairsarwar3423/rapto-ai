@@ -140,7 +140,8 @@ export async function updateCommitmentStatus(
 
   // Recalculate and persist score for FULFILLED or DEFERRED transitions
   // Note: CANCELLED transition explicitly skips score recalculation (Section 13 exclusion rule)
-  if (data.status === 'FULFILLED' || data.status === 'DEFERRED') {
+  // Skip for external participants (ownerId=null) as they have no commitmentScore
+  if ((data.status === 'FULFILLED' || data.status === 'DEFERRED') && commitment.ownerId) {
     const scoreResult = await calculateCommitmentScore(commitment.ownerId, teamId)
     await persistScore(commitment.ownerId, teamId, scoreResult, 'manual_status_change')
   }

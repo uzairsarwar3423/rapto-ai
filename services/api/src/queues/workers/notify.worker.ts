@@ -153,6 +153,32 @@ export const notifyWorker = new Worker<NotifyJobData>(
 
       const { owner } = commitment
 
+      // External participants have no registered account — skip owner-specific notifications,
+      // but still notify managers so they're aware of the missed external commitment.
+      if (!owner) {
+        const ownerDisplayName = (commitment as any).ownerNameRaw ?? 'External participant'
+        logger.info({ commitmentId: commitment.id, ownerDisplayName }, 'notify.worker: skipping owner notification for external participant commitment')
+
+        // Notify managers only
+        let managersToNotify: string[] = managerIds || []
+        if (managersToNotify.length === 0) {
+          const managers = await notificationsService.getManagersToNotify(commitment.teamId)
+          managersToNotify = managers.map(m => m.id)
+        }
+        for (const managerId of managersToNotify) {
+          const manager = await prisma.user.findUnique({ where: { id: managerId } })
+          if (!manager) continue
+          await createInAppNotification({
+            userId: manager.id,
+            teamId: commitment.teamId,
+            type: 'COMMITMENT_MISSED',
+            title: `⚠️ External Commitment Overdue: ${ownerDisplayName}`,
+            body: `${ownerDisplayName} (external) missed the deadline for: "${commitment.text}"`,
+            commitmentId: commitment.id,
+            actionUrl: `/dashboard`
+          })
+        }
+      } else {
       // 1. Notify Assignee / Owner (In-App)
       await createInAppNotification({
         userId: owner.id,
@@ -217,8 +243,10 @@ export const notifyWorker = new Worker<NotifyJobData>(
           })
         }
       }
+      } // end if (owner)
 
-      // 4. Slack Branch (Isolated Try/Catch)
+      // 4. Slack Branch (only for registered owners, isolated try/catch)
+      if (owner) {
       try {
         const slackIntegration = await prisma.teamIntegration.findUnique({
           where: { teamId_provider: { teamId: commitment.teamId, provider: 'SLACK' } }
@@ -280,6 +308,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
       } catch (err: any) {
         logger.error({ teamId: commitment.teamId, notificationType: 'COMMITMENT_MISSED_GLOBAL', err: err.message }, 'notify.worker.slack.send_failed')
       }
+      } // end if (owner) Slack branch
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -407,6 +436,8 @@ export const notifyWorker = new Worker<NotifyJobData>(
 
       const { owner } = commitment
 
+      // Skip all notifications for external participants (no registered account)
+      if (owner) {
       // 1. In-App Notification
       await createInAppNotification({
         userId: owner.id,
@@ -471,6 +502,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
       } catch (err: any) {
         logger.error({ teamId: commitment.teamId, notificationType: 'COMMITMENT_FULFILLED_GLOBAL', err: err.message }, 'notify.worker.slack.send_failed')
       }
+      } // end if (owner)
     }
 
     // ─────────────────────────────────────────────────────────────────────────

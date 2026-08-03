@@ -11,9 +11,11 @@ export function getAvailableActions(
   status: CommitmentStatus,
   currentUserRole: UserRole | undefined | null,
   currentUserId: string | undefined | null,
-  ownerId: string
+  ownerId: string | null
 ): CommitmentAction[] {
-  const isOwner = currentUserId === ownerId;
+  // External participants (ownerId=null) can never be "owned" by the current user;
+  // only managers/admins can perform write actions on their commitments.
+  const isOwner = ownerId !== null && currentUserId === ownerId;
   const isManager = currentUserRole === "ADMIN";
   const hasWritePermission = isOwner || isManager;
 

@@ -33,7 +33,7 @@ export function CommitmentDetailHeader({
       {/* Profile & Metadata Row */}
       <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-border/40">
         <div className="flex items-center gap-3">
-          {commitment.owner && (
+          {commitment.owner ? (
             <Avatar className="h-10 w-10 border border-border/60 hover:scale-[1.04] transition-transform duration-160">
               {commitment.owner.avatarUrl && (
                 <AvatarImage src={commitment.owner.avatarUrl} alt={commitment.owner.name} />
@@ -42,10 +42,30 @@ export function CommitmentDetailHeader({
                 {getInitials(commitment.owner.name)}
               </AvatarFallback>
             </Avatar>
-          )}
+          ) : commitment.ownerNameRaw ? (
+            // External participant — not a registered team member
+            <Avatar className="h-10 w-10 border border-dashed border-border/60 opacity-75 hover:scale-[1.04] transition-transform duration-160">
+              <AvatarFallback
+                className="font-heading font-medium text-xs bg-muted/40 text-muted-foreground/70 flex items-center justify-center"
+                title={`External participant: ${commitment.ownerNameRaw}`}
+              >
+                {getInitials(commitment.ownerNameRaw)}
+              </AvatarFallback>
+            </Avatar>
+          ) : null}
           <div>
             <div className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-              <span>{commitment.owner?.name}</span>
+              <span>
+                {commitment.owner?.name ?? commitment.ownerNameRaw ?? "Unassigned"}
+              </span>
+              {!commitment.owner && commitment.ownerNameRaw && (
+                <span
+                  className="font-mono text-3xs px-1.5 py-0.5 rounded-full border border-border bg-muted/50 text-muted-foreground/70 italic"
+                  title="This person is not a registered team member. Their name was extracted from the meeting transcript."
+                >
+                  External
+                </span>
+              )}
               {commitment.owner?.commitmentScore !== undefined && (
                 <span
                   className="font-mono text-3xs px-1.5 py-0.5 rounded-full border border-border bg-muted/50 text-muted-foreground"

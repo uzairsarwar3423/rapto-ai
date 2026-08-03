@@ -134,24 +134,46 @@ export function CommitmentDetailClientPage({
                 Owner Performance
               </h2>
               <p className="text-3xs text-muted-foreground/80 mt-1 select-none">
-                {activeCommitment.owner?.name}&apos;s aggregate rating
+                {activeCommitment.owner?.name
+                  ? `${activeCommitment.owner.name}'s aggregate rating`
+                  : activeCommitment.ownerNameRaw
+                  ? `${activeCommitment.ownerNameRaw} is an external participant`
+                  : "No owner assigned"}
               </p>
             </div>
 
-            {/* SVG Progress Gauge */}
-            <div className="py-2 hover:scale-[1.02] transition-transform duration-160">
-              <CommitmentScore score={ownerScore} size="lg" animateFrom={0} />
-            </div>
+            {activeCommitment.owner ? (
+              <>
+                {/* SVG Progress Gauge */}
+                <div className="py-2 hover:scale-[1.02] transition-transform duration-160">
+                  <CommitmentScore score={ownerScore} size="lg" animateFrom={0} />
+                </div>
 
-            {/* Gauge Legend */}
-            <div className="w-full border-t border-border/40 pt-4">
-              <CommitmentScoreLegend
-                fulfillmentRate={ownerFulfillmentRate}
-                onTimeRate={100} // Mocked ontime rate or fallback
-                trend={ownerTrend}
-                weekOverWeekText={wowText}
-              />
-            </div>
+                {/* Gauge Legend */}
+                <div className="w-full border-t border-border/40 pt-4">
+                  <CommitmentScoreLegend
+                    fulfillmentRate={ownerFulfillmentRate}
+                    onTimeRate={100}
+                    trend={ownerTrend}
+                    weekOverWeekText={wowText}
+                  />
+                </div>
+              </>
+            ) : (
+              // External participant — no performance data available
+              <div className="flex flex-col items-center gap-3 py-4 text-center">
+                <div className="h-16 w-16 rounded-full border-2 border-dashed border-border/60 flex items-center justify-center text-2xl text-muted-foreground/40">
+                  {activeCommitment.ownerNameRaw
+                    ? activeCommitment.ownerNameRaw.charAt(0).toUpperCase()
+                    : "?"}
+                </div>
+                <p className="text-xs text-muted-foreground/70 font-sans max-w-[180px] leading-relaxed">
+                  {activeCommitment.ownerNameRaw
+                    ? `"${activeCommitment.ownerNameRaw}" is an external participant and does not have a team performance score.`
+                    : "No owner is assigned to this commitment."}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

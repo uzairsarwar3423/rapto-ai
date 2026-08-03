@@ -46,6 +46,12 @@ export async function runDeadlineReminders(): Promise<void> {
   for (const c of commitments) {
     if (c.team.plan === 'FREE') continue // Notifications = paid feature
 
+    // Skip external-participant commitments (no registered user to notify)
+    if (!c.owner) {
+      logger.debug({ commitmentId: c.id, ownerNameRaw: (c as any).ownerNameRaw }, 'deadline.worker: skipping reminder for external participant commitment')
+      continue
+    }
+
     // Dedup check
     const dedupKey = `notif:dedup:DEADLINE_REMINDER:${c.owner.id}:${c.id}`
     if (await redis.exists(dedupKey)) continue
@@ -96,23 +102,29 @@ export async function markMissedCommitments(): Promise<void> {
       const { socketEmitter } = await import('../../realtime/socket.emitter')
       socketEmitter.to(teamRoom(c.teamId)).emit(SERVER_EVENTS.COMMITMENT_MISSED, {
         commitmentId: c.id,
-        ownerName: c.owner.name,
+        ownerName: c.owner?.name ?? (c as any).ownerNameRaw ?? 'Unknown',
       })
-      socketEmitter.to(userRoom(c.ownerId)).emit(SERVER_EVENTS.MY_DEADLINE_MISSED, {
-        commitmentId: c.id,
-        text: c.text,
-      })
+      // Only emit personal event if owner is a registered user
+      if (c.ownerId) {
+        socketEmitter.to(userRoom(c.ownerId)).emit(SERVER_EVENTS.MY_DEADLINE_MISSED, {
+          commitmentId: c.id,
+          text: c.text,
+        })
+      }
     } catch (err) {
       logger.warn({ err, commitmentId: c.id }, 'deadline.worker: Socket.io emit failed (non-fatal)')
     }
 
-    await notifyQueue.add('commitment-missed', {
-      type: 'COMMITMENT_MISSED',
-      teamId: c.teamId,
-      commitmentId: c.id,
-      ownerId: c.ownerId,
-      managerIds: c.team.members.map((m) => m.id),
-    })
+    // Only queue user notification for registered owners
+    if (c.ownerId) {
+      await notifyQueue.add('commitment-missed', {
+        type: 'COMMITMENT_MISSED',
+        teamId: c.teamId,
+        commitmentId: c.id,
+        ownerId: c.ownerId,
+        managerIds: c.team.members.map((m) => m.id),
+      })
+    }
   }
 
   // Deduplicate score recalculation per unique owner
@@ -122,6 +134,8 @@ export async function markMissedCommitments(): Promise<void> {
 
   const { calculateCommitmentScore, persistScore } = await import('../../services/score.service')
   for (const { ownerId, teamId } of uniqueOwnerPairs) {
+    // Skip score recalculation for external participants (no ownerId)
+    if (!ownerId) continue
     try {
       const scoreResult = await calculateCommitmentScore(ownerId, teamId)
       await persistScore(ownerId, teamId, scoreResult, 'deadline_cron')

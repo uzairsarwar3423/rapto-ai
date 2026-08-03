@@ -155,7 +155,6 @@ async function getTeamStats(teamId: string, query: TeamStatsQuery) {
 }
 
 async function getPerMemberStats(teamId: string, query: TeamStatsQuery) {
-  // Simplification for brevity, real implementation would group by ownerId and status
   const where: any = { teamId }
   if (query.from || query.to) {
     where.createdAt = {}

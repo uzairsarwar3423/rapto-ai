@@ -80,8 +80,8 @@ export const resolveWorker = new Worker<ResolveJobData>(
 
     const newCommitments: ParsedCommitment[] = newCommitmentRecords.map((c) => ({
       text:             c.text,
-      // Use the actual owner name from the joined User record, not the raw ownerId
-      owner_name:       c.owner?.name ?? c.ownerId,
+      // Prefer the joined User name, then ownerNameRaw (external participant), then ownerId
+      owner_name:       c.owner?.name ?? (c as any).ownerNameRaw ?? c.ownerId ?? '',
       due_date_raw:     c.dueDateRaw ?? null,
       due_date_utc:     c.dueDate ? c.dueDate.toISOString() : null,
       confidence:       c.confidenceScore ?? 0,
@@ -101,12 +101,13 @@ export const resolveWorker = new Worker<ResolveJobData>(
     //   e. Capped at 500 per the integration spec
     //
     // NOTE on owner filtering: we use owner IDs of new commitments to pre-filter.
-    // If an ownerId is 'unknown' (unresolved speaker), we don't filter by that.
+    // External-participant commitments (ownerId=null) are included via ownerNameRaw matching
+    // in the resolver logic, so we skip null ownerIds here.
     const knownOwnerIds = [
       ...new Set(
         newCommitmentRecords
           .map((c) => c.ownerId)
-          .filter((id) => id && id !== 'unknown')
+          .filter((id): id is string => !!id && id !== 'unknown')
       ),
     ]
 
@@ -128,8 +129,8 @@ export const resolveWorker = new Worker<ResolveJobData>(
 
     const historicalCommitments: HistoricalCommitment[] = historicalRecords.map((c) => ({
       id:                   c.id,
-      owner_id:             c.ownerId,
-      owner_name:           c.owner?.name ?? c.ownerId,
+      owner_id:             c.ownerId ?? '',  // external participants get empty string for compatibility
+      owner_name:           c.owner?.name ?? (c as any).ownerNameRaw ?? c.ownerId ?? '',
       text:                 c.text,
       normalized_text:      c.normalizedText ?? c.text,
       status:               c.status as 'PENDING' | 'DEFERRED',

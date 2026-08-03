@@ -6,7 +6,8 @@ export interface Commitment {
   id: string;
   teamId: string;
   meetingId: string;
-  ownerId: string;
+  ownerId: string | null;
+  ownerNameRaw: string | null;
   text: string;
   normalizedText: string | null;
   dueDate: string | null;

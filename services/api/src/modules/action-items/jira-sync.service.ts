@@ -254,11 +254,15 @@ async function triggerCommitmentCascade(
     })
 
     // Recalculate the commitment owner's score (same path as the human-initiated route).
-    const newScore = await calculateCommitmentScore(commitment.ownerId, teamId)
-    await prisma.user.update({
-      where: { id: commitment.ownerId },
-      data:  { commitmentScore: newScore.score },
-    })
+    // Skip for external participants (ownerId=null) as they have no team account.
+    let newScore: { score: number } | undefined
+    if (commitment.ownerId) {
+      newScore = await calculateCommitmentScore(commitment.ownerId, teamId)
+      await prisma.user.update({
+        where: { id: commitment.ownerId },
+        data:  { commitmentScore: newScore.score },
+      })
+    }
 
     // Emit the commitment fulfilled event (same event the human-initiated path emits).
     // source is NOT on this event's shape (Day 19 established COMMITMENT_FULFILLED
@@ -281,7 +285,7 @@ async function triggerCommitmentCascade(
         actionItemId: actionItem.id,
         linkedCommitmentId,
         ownerId: commitment.ownerId,
-        newScore: newScore.score,
+        newScore: newScore?.score,
       },
       'webhook.jira.cascade_fulfilled: commitment fulfiled via Jira reverse-sync'
     )
