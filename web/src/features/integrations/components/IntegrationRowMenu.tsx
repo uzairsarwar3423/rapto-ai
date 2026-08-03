@@ -11,10 +11,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { IntegrationBadgeStatus } from "./IntegrationStatusBadge";
 
 interface IntegrationRowMenuProps {
-  status: "NOT_CONNECTED" | "CONNECTED" | "NEEDS_REAUTH" | "SYNCING";
+  status: IntegrationBadgeStatus;
   onConfigure: () => void;
   onTest: () => void;
   onReconnect: () => void;

@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { IntegrationBadgeStatus } from "./IntegrationStatusBadge";
+import { resolveIntegrationState } from "../utils/integration-status";
 import { JiraIntegration } from "./JiraIntegration";
 import { SlackIntegration } from "./SlackIntegration";
 import { LinearIntegration } from "./LinearIntegration";
@@ -327,11 +328,7 @@ export function IntegrationsGrid() {
 
   const getStatus = (providerId: string): IntegrationBadgeStatus => {
     const integration = getIntegrationRecord(providerId);
-    if (!integration || !integration.isActive) return "NOT_CONNECTED";
-    if (integration.consecutiveErrors && integration.consecutiveErrors > 0) {
-      return "NEEDS_REAUTH";
-    }
-    return "CONNECTED";
+    return resolveIntegrationState(providerId, integration as any) as IntegrationBadgeStatus;
   };
 
   const connectedCount =

@@ -336,10 +336,10 @@ function SlackStateBadge({ state }: { state: SlackState }) {
       return (
         <Badge
           variant="fulfilled"
-          className="text-[10px] h-5 px-1.5 font-normal normal-case tracking-normal gap-1"
+          className="text-[10px] h-5 px-1.5 font-normal normal-case tracking-normal gap-1 bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-700"
         >
           <CheckCircle2 className="w-2.5 h-2.5" />
-          Active
+          Connected
         </Badge>
       );
     case "ERROR":
