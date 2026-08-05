@@ -4,6 +4,15 @@
  * Enforces strict, multi-tenant CORS rules allowing https://app.rapto.cloud,
  * subdomains (*.rapto.cloud), configured env origins (FRONTEND_URL/APP_URL),
  * and local development origins (http://localhost:3000).
+ *
+ * ALLOWED HEADERS — every custom request header the API reads must be listed
+ * here, otherwise browsers block the preflight (OPTIONS) request with a CORS
+ * policy violation. Add new headers here AND in cors.ts (keep in sync).
+ *
+ * Current custom headers consumed by the API:
+ *  - X-Idempotency-Key   → action-items sync (idempotency dedup)
+ *  - X-Request-ID        → request tracing / logging
+ *  - X-Requested-With    → legacy XHR detection
  */
 
 import { env } from './env'
@@ -47,6 +56,44 @@ export function isOriginAllowed(origin: string | undefined): boolean {
     return false
 }
 
+/**
+ * Master list of request headers allowed by the CORS preflight.
+ * RULE: Any header sent by the browser client (Axios, fetch) that the
+ * server reads MUST be in this list — or the browser blocks the request
+ * before it ever reaches Express.
+ */
+export const ALLOWED_REQUEST_HEADERS = [
+    // Standard headers (always required)
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'Origin',
+
+    // Request tracing — sent by Axios interceptor & read by request-logger middleware
+    'X-Request-ID',
+    'X-Requested-With',
+
+    // Idempotency — sent by frontend for POST /action-items/:id/sync and
+    // any other mutation that requires exactly-once semantics
+    'X-Idempotency-Key',
+
+    // Cache control (used by some browser clients)
+    'Cache-Control',
+    'Pragma',
+]
+
+/**
+ * Response headers exposed to the browser JS client.
+ * Only listed headers are readable via response.headers in XHR / fetch.
+ */
+export const EXPOSED_RESPONSE_HEADERS = [
+    'X-Request-ID',
+    'X-RateLimit-Limit',
+    'X-RateLimit-Remaining',
+    'X-RateLimit-Reset',
+    'Retry-After',
+]
+
 export const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
         if (isOriginAllowed(origin)) {
@@ -58,20 +105,7 @@ export const corsOptions = {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'X-Request-ID',
-        'X-Requested-With',
-        'Accept',
-        'Origin',
-    ],
-    exposedHeaders: [
-        'X-Request-ID',
-        'X-RateLimit-Limit',
-        'X-RateLimit-Remaining',
-        'X-RateLimit-Reset',
-        'Retry-After',
-    ],
-    maxAge: 86400, // Cache preflight for 24 hours
+    allowedHeaders: ALLOWED_REQUEST_HEADERS,
+    exposedHeaders: EXPOSED_RESPONSE_HEADERS,
+    maxAge: 86400, // Cache preflight 24h — browser skips OPTIONS on repeat requests
 }

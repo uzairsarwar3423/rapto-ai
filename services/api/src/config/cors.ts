@@ -1,38 +1,23 @@
 // services/api/src/config/cors.ts
+// Legacy CORS middleware wrapper — kept for backward compatibility with any
+// code that imports `corsMiddleware` directly.
+//
+// SOURCE OF TRUTH: cors.config.ts
+// This file re-uses the canonical ALLOWED_REQUEST_HEADERS and origin logic
+// from cors.config.ts to ensure a single place to add new headers.
 
 import cors, { CorsOptions } from 'cors'
-
-const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    process.env.WEB_APP_URL,
-    process.env.ADMIN_APP_URL,
-].filter(Boolean)
-
-const previewPatterns = [
-    /^https:\/\/.*\.vercel\.app$/,
-    /^https:\/\/.*\.netlify\.app$/,
-]
+import {
+    isOriginAllowed,
+    ALLOWED_REQUEST_HEADERS,
+    EXPOSED_RESPONSE_HEADERS,
+} from './cors.config'
 
 const corsOptions: CorsOptions = {
     origin(origin, callback) {
-        // Postman, curl, mobile apps
-        if (!origin) {
+        if (isOriginAllowed(origin)) {
             return callback(null, true)
         }
-
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true)
-        }
-
-        const isPreviewDeployment = previewPatterns.some((pattern) =>
-            pattern.test(origin)
-        )
-
-        if (isPreviewDeployment) {
-            return callback(null, true)
-        }
-
         callback(new Error(`CORS blocked for origin: ${origin}`))
     },
 
@@ -47,18 +32,9 @@ const corsOptions: CorsOptions = {
         'OPTIONS',
     ],
 
-    allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'X-Team-Id',
-        'X-Request-Id',
-    ],
+    allowedHeaders: ALLOWED_REQUEST_HEADERS,
 
-    exposedHeaders: [
-        'X-RateLimit-Limit',
-        'X-RateLimit-Remaining',
-        'X-RateLimit-Reset',
-    ],
+    exposedHeaders: EXPOSED_RESPONSE_HEADERS,
 
     maxAge: 86400,
 }
