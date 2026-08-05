@@ -6,11 +6,8 @@ const isProd = process.env.NODE_ENV === 'production';
 
 /**
  * Cookie options for the short-lived access token cookie.
- * This is used by the Next.js server-client (SSR) to read the token for RSC calls.
- * It is NOT httpOnly so Next.js middleware/server actions can read it via cookies().
- *
- * domain: '.rapto.cloud' in production ensures both app.rapto.cloud and api.rapto.cloud
- *         can read the cookie (same root domain).
+ * Domain: '.rapto.cloud' in production ensures both app.rapto.cloud and api.rapto.cloud
+ * can read the cookie (same root domain).
  */
 const ACCESS_COOKIE_OPTIONS: Cookies.CookieAttributes = {
   path: '/',
@@ -34,7 +31,6 @@ interface AuthState {
   setSessionExpired: (expired: boolean) => void;
 }
 
-/** Synchronously hydrate initial token on client mount to prevent F5 auth drops */
 const getInitialAccessToken = (): string | null => {
   if (typeof window === 'undefined') return null;
   return Cookies.get('rapto_access') || null;
@@ -42,36 +38,39 @@ const getInitialAccessToken = (): string | null => {
 
 const initialToken = getInitialAccessToken();
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: initialToken,
   user: null,
   isAuthenticated: !!initialToken,
-  isLoading: true, // Start as true during initial hydration
+  isLoading: true, // Remains true during initial hydration check
   isSessionExpired: false,
 
   setUser: (user) =>
     set({
       user,
-      isAuthenticated: !!user,
+      isAuthenticated: !!(user || get().accessToken),
     }),
 
   setAccessToken: (token) => {
     if (token) {
       Cookies.set('rapto_access', token, ACCESS_COOKIE_OPTIONS);
     } else {
-      Cookies.remove('rapto_access', {
-        path: '/',
-        ...(isProd ? { domain: '.rapto.cloud' } : {}),
-      });
+      Cookies.remove('rapto_access', { path: '/' });
+      if (isProd) {
+        Cookies.remove('rapto_access', { path: '/', domain: '.rapto.cloud' });
+      }
     }
-    set({ accessToken: token, isAuthenticated: !!token });
+    set({
+      accessToken: token,
+      isAuthenticated: !!(token || get().user),
+    });
   },
 
   clearAuth: () => {
-    Cookies.remove('rapto_access', {
-      path: '/',
-      ...(isProd ? { domain: '.rapto.cloud' } : {}),
-    });
+    Cookies.remove('rapto_access', { path: '/' });
+    if (isProd) {
+      Cookies.remove('rapto_access', { path: '/', domain: '.rapto.cloud' });
+    }
     set({
       accessToken: null,
       user: null,

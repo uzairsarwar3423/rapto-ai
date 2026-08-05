@@ -9,14 +9,55 @@ import { getServerApiUrl } from "./config";
 const backendUrl = getServerApiUrl();
 
 /**
- * De-duplicated server-side fetch of a fresh access token using the user's HttpOnly refresh cookie.
- * React cache() ensures that even if 4 different RSC widgets invoke this in parallel, only 1 request is sent.
+ * Attempts a server-to-server token refresh using the HttpOnly `rapto_refresh` cookie.
+ * React cache() ensures that even if multiple RSCs call this in parallel during render,
+ * only ONE server-to-server refresh request is dispatched.
+ */
+const refreshServerAccessToken = cache(async (): Promise<string | null> => {
+  try {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get("rapto_refresh")?.value;
+
+    if (!refreshToken) {
+      return null;
+    }
+
+    const refreshResponse = await axios.post(
+      `${backendUrl}/api/v1/auth/refresh`,
+      {},
+      {
+        headers: {
+          Cookie: `rapto_refresh=${refreshToken}`,
+        },
+        validateStatus: () => true,
+        timeout: 5000,
+      }
+    );
+
+    if (refreshResponse.status === 200 && refreshResponse.data?.data?.accessToken) {
+      return refreshResponse.data.data.accessToken;
+    }
+
+    return null;
+  } catch (error: any) {
+    console.error("[Server Client] Refresh failed:", error?.message || error);
+    return null;
+  }
+});
+
+/**
+ * Retrieves the current access token from cookies or attempts a silent refresh on the server.
  */
 const getAccessToken = cache(async (): Promise<string | null> => {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("rapto_access")?.value;
-    return accessToken || null;
+    if (accessToken) {
+      return accessToken;
+    }
+
+    // Access token expired or missing — attempt silent refresh with refresh cookie
+    return await refreshServerAccessToken();
   } catch (error: any) {
     console.error("Failed to retrieve server-side access token:", error?.message || error);
     return null;
@@ -25,7 +66,7 @@ const getAccessToken = cache(async (): Promise<string | null> => {
 
 export const serverApiClient = {
   async get<T>(url: string, config?: { params?: Record<string, any> }): Promise<T> {
-    const accessToken = await getAccessToken();
+    let accessToken = await getAccessToken();
 
     try {
       const response = await axios.get(`${backendUrl}/api/v1${url}`, {
@@ -38,15 +79,30 @@ export const serverApiClient = {
       return response.data.data;
     } catch (error: any) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        const { redirect } = await import('next/navigation');
-        redirect('/login');
+        // Retry once after forcing a server refresh
+        const refreshedToken = await refreshServerAccessToken();
+        if (refreshedToken) {
+          try {
+            const retryResponse = await axios.get(`${backendUrl}/api/v1${url}`, {
+              ...config,
+              headers: {
+                Authorization: `Bearer ${refreshedToken}`,
+              },
+            });
+            return retryResponse.data.data;
+          } catch {
+            // Retry failed — redirect to login
+          }
+        }
+        const { redirect } = await import("next/navigation");
+        redirect("/login");
       }
       throw error;
     }
   },
 
   async post<T>(url: string, data?: any, config?: { params?: Record<string, any> }): Promise<T> {
-    const accessToken = await getAccessToken();
+    let accessToken = await getAccessToken();
 
     try {
       const response = await axios.post(`${backendUrl}/api/v1${url}`, data, {
@@ -59,8 +115,22 @@ export const serverApiClient = {
       return response.data.data;
     } catch (error: any) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        const { redirect } = await import('next/navigation');
-        redirect('/login');
+        const refreshedToken = await refreshServerAccessToken();
+        if (refreshedToken) {
+          try {
+            const retryResponse = await axios.post(`${backendUrl}/api/v1${url}`, data, {
+              ...config,
+              headers: {
+                Authorization: `Bearer ${refreshedToken}`,
+              },
+            });
+            return retryResponse.data.data;
+          } catch {
+            // Retry failed — redirect to login
+          }
+        }
+        const { redirect } = await import("next/navigation");
+        redirect("/login");
       }
       throw error;
     }
@@ -70,7 +140,7 @@ export const serverApiClient = {
 /**
  * Centralized handler for server-side query errors.
  * Ensures Next.js internal redirect and not-found errors are propagated,
- * logs unexpected API errors cleanly, and handles expected API errors (404/403) with a fallback.
+ * logs unexpected API errors cleanly, and handles expected API errors with a fallback.
  */
 export function handleServerQueryError<T>(error: unknown, context: string, fallbackValue: T): T {
   // Rethrow Next.js internal control flow errors (redirects, not-found, etc.)
@@ -81,8 +151,9 @@ export function handleServerQueryError<T>(error: unknown, context: string, fallb
     const responseData = error.response?.data;
 
     if (status === 401) {
-      const { redirect } = require("next/navigation");
-      redirect("/login");
+      // Return fallback value so the client page can render and let AuthProvider / AuthGuard rehydrate
+      console.warn(`[Server Query] ${context}: Received 401. Returning fallback for client rehydration.`);
+      return fallbackValue;
     }
 
     if (status === 404 || status === 403) {
@@ -104,5 +175,3 @@ export function handleServerQueryError<T>(error: unknown, context: string, fallb
 
   return fallbackValue;
 }
-
-

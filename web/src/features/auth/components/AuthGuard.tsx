@@ -20,7 +20,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated && !isSessionExpired) {
-        router.push('/login');
+        const redirectUrl = pathname && pathname !== '/' ? `/login?redirect=${encodeURIComponent(pathname)}` : '/login';
+        router.push(redirectUrl);
       } else if (user && !user.onboardingCompleted) {
         const isExemptRoute = pathname.startsWith('/onboarding') || pathname.startsWith('/invite');
         if (!isExemptRoute) {
@@ -34,14 +35,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [isLoading, isAuthenticated, isSessionExpired, user, router, pathname]);
 
-  // If still fetching initial status, show loading spinner
+  // If still rehydrating initial session, show full page loading spinner
   if (isLoading) {
     return <FullPageSpinner />;
   }
 
   const isOnboardingRoute = pathname.startsWith('/onboarding') || pathname.startsWith('/invite');
 
-  // If verified authenticated, team exists, and onboarding is complete, render page content
+  // Renders children if authenticated & onboarding is complete, or if session expired modal is active
   if ((isAuthenticated && user && user.teamId && user.onboardingCompleted) || isSessionExpired) {
     return (
       <>
@@ -50,12 +51,21 @@ export function AuthGuard({ children }: AuthGuardProps) {
       </>
     );
   }
-  
-  // If verified authenticated but onboarding NOT complete, only render if on an exempt route
+
+  // If authenticated but onboarding pending, only allow onboarding/invite routes
   if (isAuthenticated && user && !user.onboardingCompleted && isOnboardingRoute) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <SessionExpiredModal />
+      </>
+    );
   }
 
-  // Render nothing while redirecting
-  return null;
+  return (
+    <>
+      <FullPageSpinner />
+      <SessionExpiredModal />
+    </>
+  );
 }

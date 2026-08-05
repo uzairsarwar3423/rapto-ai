@@ -7,9 +7,11 @@ import { LogOut } from 'lucide-react';
 export function SessionExpiredModal() {
   const isSessionExpired = useAuthStore((state) => state.isSessionExpired);
   const setSessionExpired = useAuthStore((state) => state.setSessionExpired);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const router = useRouter();
 
   const handleLogin = () => {
+    clearAuth();
     setSessionExpired(false);
     router.push('/login?reason=session_expired');
   };
@@ -24,7 +26,7 @@ export function SessionExpiredModal() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-background/80 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -35,15 +37,15 @@ export function SessionExpiredModal() {
               <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
                 <LogOut className="h-8 w-8" />
               </div>
-              
+
               <h2 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">
                 Session Expired
               </h2>
-              
+
               <p className="mb-8 text-sm text-muted">
                 Your session has expired due to inactivity or a security update. Please log in again to continue.
               </p>
-              
+
               <button
                 onClick={handleLogin}
                 className="flex w-full items-center justify-center rounded-xl bg-brand px-4 py-3 text-sm font-medium text-white shadow-brand transition-all hover:bg-brand-hover focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-background"

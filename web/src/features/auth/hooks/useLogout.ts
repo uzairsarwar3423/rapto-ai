@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
+import { authSync } from '../utils/auth-events';
 
 export const useLogout = () => {
   const router = useRouter();
@@ -13,6 +14,7 @@ export const useLogout = () => {
     onSettled: () => {
       clearAuth();
       queryClient.clear();
+      authSync.emit('LOGOUT');
       router.push('/login');
     },
   });

@@ -11,10 +11,13 @@ import {
   Users,
   TrendingUp,
   Check,
+  LayoutDashboard,
 } from "lucide-react";
 import { NavLogo } from "@/components/ui/NavLogo";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 export function LandingHero() {
+  const { isAuthenticated, user, isLoading } = useAuth();
   const [completedItems, setCompletedItems] = useState<Record<string, boolean>>({
     "item-2": true,
   });
@@ -43,18 +46,30 @@ export function LandingHero() {
           />
 
           <div className="flex items-center gap-6">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-[#48524E] hover:text-[#1B2320] transition-colors duration-150"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/register"
-              className="text-sm font-medium text-[#FAF9F5] bg-[#1B2320] hover:bg-[#1F844F] px-4.5 py-2 rounded-md shadow-2xs transition-all duration-150 active:scale-[0.98] border border-[#1B2320]"
-            >
-              Start Free Trial
-            </Link>
+            {!isLoading && isAuthenticated && user ? (
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-[#FAF9F5] bg-[#1F844F] hover:bg-[#196b40] px-4.5 py-2 rounded-md shadow-2xs transition-all duration-150 active:scale-[0.98] border border-[#1F844F] inline-flex items-center gap-2"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Dashboard</span>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-[#48524E] hover:text-[#1B2320] transition-colors duration-150"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  className="text-sm font-medium text-[#FAF9F5] bg-[#1B2320] hover:bg-[#1F844F] px-4.5 py-2 rounded-md shadow-2xs transition-all duration-150 active:scale-[0.98] border border-[#1B2320]"
+                >
+                  Start Free Trial
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -99,19 +114,31 @@ export function LandingHero() {
           transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 w-full sm:w-auto"
         >
-          <Link
-            href="/register"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-base font-medium text-[#FAF9F5] bg-[#1B2320] hover:bg-[#1F844F] border border-[#1B2320] px-7 py-3.5 rounded-md shadow-md transition-all duration-200 active:scale-[0.98] group cursor-pointer"
-          >
-            <span>Start Free Trial</span>
-            <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-          </Link>
-          <Link
-            href="/login"
-            className="w-full sm:w-auto inline-flex items-center justify-center text-base font-medium text-[#1B2320] hover:text-[#1B2320] bg-[#FAF9F5] hover:bg-[#F3F2ED] border border-[#B2B9B6]/40 px-7 py-3.5 rounded-md shadow-2xs transition-all duration-200 cursor-pointer"
-          >
-            Sign In
-          </Link>
+          {!isLoading && isAuthenticated && user ? (
+            <Link
+              href="/dashboard"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-base font-medium text-[#FAF9F5] bg-[#1F844F] hover:bg-[#196b40] border border-[#1F844F] px-8 py-3.5 rounded-md shadow-md transition-all duration-200 active:scale-[0.98] group cursor-pointer"
+            >
+              <span>Go to Dashboard</span>
+              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/register"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-base font-medium text-[#FAF9F5] bg-[#1B2320] hover:bg-[#1F844F] border border-[#1B2320] px-7 py-3.5 rounded-md shadow-md transition-all duration-200 active:scale-[0.98] group cursor-pointer"
+              >
+                <span>Start Free Trial</span>
+                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Link>
+              <Link
+                href="/login"
+                className="w-full sm:w-auto inline-flex items-center justify-center text-base font-medium text-[#1B2320] hover:text-[#1B2320] bg-[#FAF9F5] hover:bg-[#F3F2ED] border border-[#B2B9B6]/40 px-7 py-3.5 rounded-md shadow-2xs transition-all duration-200 cursor-pointer"
+              >
+                Sign In
+              </Link>
+            </>
+          )}
         </motion.div>
 
         {/* Floating Product Interface Preview */}
@@ -128,254 +155,139 @@ export function LandingHero() {
               <div className="w-2.5 h-2.5 rounded-full bg-[#77827E]/40" />
               <div className="w-2.5 h-2.5 rounded-full bg-[#77827E]/40" />
               <span className="ml-2 text-xs font-medium text-[#77827E] font-mono">
-                app.rapto.cloud / workspace / commitments
+                app.rapto.cloud/dashboard
               </span>
             </div>
-            <div className="hidden sm:flex items-center gap-2 text-xs text-[#48524E] font-medium bg-white px-2.5 py-1 rounded border border-[#B2B9B6]/40 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-[#1F844F] animate-pulse" />
-              <span>Live Sync Active</span>
+            <div className="flex items-center gap-1.5 text-xs text-[#1F844F] font-medium bg-[#E1F4E9] px-2.5 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#1F844F]" />
+              Live Syncing Active
             </div>
           </div>
 
-          {/* SaaS Interface Dashboard Body */}
-          <div className="p-6 sm:p-8 space-y-6 bg-white">
-            {/* Top Grid: Meeting Summary + Team Progress */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Meeting Summary Card */}
-              <div className="lg:col-span-2 rounded-lg bg-[#F3F2ED]/60 border border-[#B2B9B6]/40 p-5 flex flex-col justify-between space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[#48524E] uppercase tracking-wider mb-1">
-                      <Sparkles className="w-3.5 h-3.5 text-[#1F844F]" />
-                      <span>Latest Meeting Intelligence</span>
-                    </div>
-                    <h3 className="text-base font-semibold text-[#1B2320]">
-                      Q3 Product Architecture & Deliverables Sync
-                    </h3>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-[#E1F4E9] text-[#1F844F] border border-[#1F844F]/20">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Processed
-                  </span>
+          {/* Interactive Mock Dashboard Preview Container */}
+          <div className="p-6 sm:p-8 bg-[#FAF9F5] space-y-6">
+            {/* Header Summary Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white border border-[#B2B9B6]/40 p-4 rounded-lg shadow-2xs">
+                <div className="flex items-center justify-between text-xs text-[#77827E] font-medium mb-1">
+                  <span>Commitments Met</span>
+                  <TrendingUp className="w-4 h-4 text-[#1F844F]" />
                 </div>
-
-                <p className="text-xs text-[#48524E] leading-relaxed bg-white p-3 rounded-md border border-[#B2B9B6]/40">
-                  <strong className="font-semibold text-[#1B2320]">Executive Summary:</strong> Team finalized API contract v2 migration by Friday. Engineering leads committed to completing OAuth refresh token handlers and deployment audit.
-                </p>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#77827E] pt-1 border-t border-[#B2B9B6]/30">
-                  <div className="flex items-center gap-4 text-[#48524E]">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" /> 45 mins
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" /> 6 Attendees
-                    </span>
-                  </div>
-                  <span className="font-medium text-[#1B2320]">5 Action Items Extracted</span>
+                <div className="text-2xl font-bold text-[#1B2320]">94.2%</div>
+                <div className="text-[11px] text-[#1F844F] font-medium mt-1">
+                  +12.4% vs last week
                 </div>
               </div>
 
-              {/* Team Progress Card */}
-              <div className="rounded-lg bg-[#F3F2ED]/60 border border-[#B2B9B6]/40 p-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-[#48524E] uppercase tracking-wider">
-                      Team Reliability
-                    </span>
-                    <span className="text-xs font-semibold text-[#1F844F] flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" /> +4.2%
-                    </span>
-                  </div>
-                  <div className="text-3xl font-bold text-[#1B2320] tracking-tight font-display">96%</div>
-                  <p className="text-xs text-[#48524E] mt-1">18 Commitments Fulfilled · 0 Overdue</p>
+              <div className="bg-white border border-[#B2B9B6]/40 p-4 rounded-lg shadow-2xs">
+                <div className="flex items-center justify-between text-xs text-[#77827E] font-medium mb-1">
+                  <span>Active Follow-ups</span>
+                  <Clock className="w-4 h-4 text-[#77827E]" />
                 </div>
+                <div className="text-2xl font-bold text-[#1B2320]">18 Items</div>
+                <div className="text-[11px] text-[#77827E] font-medium mt-1">
+                  3 due today
+                </div>
+              </div>
 
-                <div className="space-y-2 mt-6">
-                  <div className="w-full bg-[#B2B9B6]/40 rounded-full h-2 overflow-hidden">
-                    <div className="bg-[#1F844F] h-2 rounded-full w-[96%]" />
-                  </div>
-                  <div className="flex justify-between text-[11px] font-medium text-[#48524E]">
-                    <span>On-time Rate</span>
-                    <span className="text-[#1B2320] font-semibold">96.4%</span>
-                  </div>
+              <div className="bg-white border border-[#B2B9B6]/40 p-4 rounded-lg shadow-2xs">
+                <div className="flex items-center justify-between text-xs text-[#77827E] font-medium mb-1">
+                  <span>AI Accuracy Score</span>
+                  <Sparkles className="w-4 h-4 text-[#1F844F]" />
+                </div>
+                <div className="text-2xl font-bold text-[#1B2320]">99.8%</div>
+                <div className="text-[11px] text-[#1F844F] font-medium mt-1">
+                  Zero hallucinations
                 </div>
               </div>
             </div>
 
-            {/* Action Items & Commitments Table */}
-            <div className="rounded-lg border border-[#B2B9B6]/40 bg-white overflow-hidden">
-              <div className="px-5 py-3.5 bg-[#F3F2ED]/80 border-b border-[#B2B9B6]/40 flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#1B2320] tracking-tight uppercase">
-                  Action Items & Deliverables
-                </span>
-                <span className="text-xs text-[#77827E] font-mono">Real-time sync</span>
+            {/* Simulated Live Tracked Commitments */}
+            <div className="bg-white border border-[#B2B9B6]/40 rounded-lg overflow-hidden shadow-2xs">
+              <div className="px-4 py-3 bg-[#F3F2ED]/60 border-b border-[#B2B9B6]/30 flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[#48524E]">
+                  Recent Meeting Commitments (Live Stream)
+                </h3>
+                <span className="text-xs text-[#77827E]">Product Sync • Today, 10:00 AM</span>
               </div>
 
-              <div className="divide-y divide-[#B2B9B6]/30">
+              <div className="divide-y divide-[#B2B9B6]/20">
                 {/* Item 1 */}
-                <div
-                  onClick={() => toggleItem("item-1")}
-                  className="p-4 sm:px-5 flex items-center justify-between gap-4 hover:bg-[#F3F2ED]/40 transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
+                <div className="p-4 flex items-start justify-between gap-4 transition-colors hover:bg-[#FAF9F5]/60">
+                  <div className="flex items-start gap-3">
                     <button
-                      type="button"
-                      aria-label="Toggle commitment status"
-                      className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
+                      onClick={() => toggleItem("item-1")}
+                      className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-all ${
                         completedItems["item-1"]
-                          ? "bg-[#1F844F] text-white"
-                          : "border border-[#77827E] text-transparent hover:border-[#1B2320]"
+                          ? "bg-[#1F844F] border-[#1F844F] text-white"
+                          : "border-[#B2B9B6] hover:border-[#1F844F] bg-white"
                       }`}
                     >
-                      <Check className="w-3 h-3 stroke-[3]" />
+                      {completedItems["item-1"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                     </button>
-                    <span
-                      className={`text-xs sm:text-sm font-medium min-w-0 truncate ${
-                        completedItems["item-1"]
-                          ? "line-through text-[#77827E]"
-                          : "text-[#1B2320]"
-                      }`}
-                    >
-                      Finalize OAuth 2.0 PKCE refresh token handler
-                    </span>
+                    <div>
+                      <p
+                        className={`text-sm font-medium transition-all ${
+                          completedItems["item-1"]
+                            ? "line-through text-[#77827E]"
+                            : "text-[#1B2320]"
+                        }`}
+                      >
+                        Ship updated API rate limiter & CORS policy to production cluster
+                      </p>
+                      <div className="flex items-center gap-2 mt-1.5 text-xs text-[#77827E]">
+                        <span className="font-medium text-[#48524E]">Assignee: Uzair</span>
+                        <span>•</span>
+                        <span className="text-[#1F844F] font-medium bg-[#E1F4E9] px-2 py-0.5 rounded">
+                          Due: Today 5:00 PM
+                        </span>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F3F2ED] text-[#1B2320] border border-[#B2B9B6]/40">
-                      Uzair S.
-                    </span>
-                    <span className="text-xs font-medium text-[#48524E]">Today</span>
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${
-                        completedItems["item-1"]
-                          ? "bg-[#E1F4E9] text-[#1F844F] border-[#1F844F]/20"
-                          : "bg-amber-50 text-amber-700 border-amber-200/60"
-                      }`}
-                    >
-                      {completedItems["item-1"] ? "Fulfilled" : "In Progress"}
-                    </span>
-                  </div>
+                  <span className="text-xs font-medium px-2.5 py-1 rounded bg-[#E1F4E9] text-[#1F844F] shrink-0">
+                    Confirmed
+                  </span>
                 </div>
 
                 {/* Item 2 */}
-                <div
-                  onClick={() => toggleItem("item-2")}
-                  className="p-4 sm:px-5 flex items-center justify-between gap-4 hover:bg-[#F3F2ED]/40 transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
+                <div className="p-4 flex items-start justify-between gap-4 transition-colors hover:bg-[#FAF9F5]/60">
+                  <div className="flex items-start gap-3">
                     <button
-                      type="button"
-                      aria-label="Toggle commitment status"
-                      className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
+                      onClick={() => toggleItem("item-2")}
+                      className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-all ${
                         completedItems["item-2"]
-                          ? "bg-[#1F844F] text-white"
-                          : "border border-[#77827E] text-transparent hover:border-[#1B2320]"
+                          ? "bg-[#1F844F] border-[#1F844F] text-white"
+                          : "border-[#B2B9B6] hover:border-[#1F844F] bg-white"
                       }`}
                     >
-                      <Check className="w-3 h-3 stroke-[3]" />
+                      {completedItems["item-2"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                     </button>
-                    <span
-                      className={`text-xs sm:text-sm font-medium min-w-0 truncate ${
-                        completedItems["item-2"]
-                          ? "line-through text-[#77827E]"
-                          : "text-[#1B2320]"
-                      }`}
-                    >
-                      Implement brand logo system across email templates
-                    </span>
+                    <div>
+                      <p
+                        className={`text-sm font-medium transition-all ${
+                          completedItems["item-2"]
+                            ? "line-through text-[#77827E]"
+                            : "text-[#1B2320]"
+                        }`}
+                      >
+                        Review Q3 infrastructure roadmap with DevOps team
+                      </p>
+                      <div className="flex items-center gap-2 mt-1.5 text-xs text-[#77827E]">
+                        <span className="font-medium text-[#48524E]">Assignee: Sarah K.</span>
+                        <span>•</span>
+                        <span>Due: Tomorrow 2:00 PM</span>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F3F2ED] text-[#1B2320] border border-[#B2B9B6]/40">
-                      Sarah M.
-                    </span>
-                    <span className="text-xs font-medium text-[#48524E]">Today</span>
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${
-                        completedItems["item-2"]
-                          ? "bg-[#E1F4E9] text-[#1F844F] border-[#1F844F]/20"
-                          : "bg-amber-50 text-amber-700 border-amber-200/60"
-                      }`}
-                    >
-                      {completedItems["item-2"] ? "Fulfilled" : "In Progress"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Item 3 */}
-                <div
-                  onClick={() => toggleItem("item-3")}
-                  className="p-4 sm:px-5 flex items-center justify-between gap-4 hover:bg-[#F3F2ED]/40 transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <button
-                      type="button"
-                      aria-label="Toggle commitment status"
-                      className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
-                        completedItems["item-3"]
-                          ? "bg-[#1F844F] text-white"
-                          : "border border-[#77827E] text-transparent hover:border-[#1B2320]"
-                      }`}
-                    >
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    </button>
-                    <span
-                      className={`text-xs sm:text-sm font-medium min-w-0 truncate ${
-                        completedItems["item-3"]
-                          ? "line-through text-[#77827E]"
-                          : "text-[#1B2320]"
-                      }`}
-                    >
-                      Deploy Redis cluster for BullMQ notification queue
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F3F2ED] text-[#1B2320] border border-[#B2B9B6]/40">
-                      Alex R.
-                    </span>
-                    <span className="text-xs font-medium text-[#48524E]">Tomorrow</span>
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${
-                        completedItems["item-3"]
-                          ? "bg-[#E1F4E9] text-[#1F844F] border-[#1F844F]/20"
-                          : "bg-[#F3F2ED] text-[#48524E] border-[#B2B9B6]/40"
-                      }`}
-                    >
-                      {completedItems["item-3"] ? "Fulfilled" : "Scheduled"}
-                    </span>
-                  </div>
+                  <span className="text-xs font-medium px-2.5 py-1 rounded bg-[#F3F2ED] text-[#48524E] shrink-0">
+                    In Progress
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </motion.div>
       </main>
-
-      {/* Minimal Footer */}
-      <footer className="w-full border-t border-[#B2B9B6]/40 mt-auto py-8 bg-[#FAF9F5] z-10">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-xs font-mono text-[#77827E]">
-            © 2026 Rapto AI
-          </span>
-
-          <div className="flex items-center gap-6 text-xs font-medium text-[#48524E]">
-            <Link href="/privacy" className="hover:text-[#1B2320] transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="hover:text-[#1B2320] transition-colors">
-              Terms of Service
-            </Link>
-            <Link href="/refund" className="hover:text-[#1B2320] transition-colors">
-              Refund Policy
-            </Link>
-            <Link href="/contact" className="hover:text-[#1B2320] transition-colors">
-              Contact
-            </Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

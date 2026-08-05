@@ -6,17 +6,18 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { useAuthStore } from '@/features/auth/store/auth.store';
 import { authApi } from '@/features/auth/api/auth.api';
+import { authSync } from '@/features/auth/utils/auth-events';
 import { FullPageSpinner } from '../feedback/FullPageSpinner';
 import { logger } from '@/lib/utils/logger';
 
-// How often to proactively refresh — every 13 min (access token lasts 15 min)
-const PROACTIVE_REFRESH_INTERVAL_MS = 13 * 60 * 1000;
+// Proactively refresh access token every 12 minutes (since JWT expires in 15 mins)
+const PROACTIVE_REFRESH_INTERVAL_MS = 12 * 60 * 1000;
 
 /**
- * Calls the Next.js BFF refresh proxy.
- * Returns { accessToken, user } on success, null on failure.
+ * Calls Next.js BFF refresh proxy endpoint (/api/v1/auth/refresh).
+ * Returns { accessToken, user } on success, or { is401: boolean } on error.
  */
-async function silentRefresh(): Promise<{ accessToken: string; user: any } | null> {
+async function silentRefresh(): Promise<{ accessToken: string; user: any } | { error: true; is401: boolean }> {
   try {
     const response = await axios.post(
       '/api/v1/auth/refresh',
@@ -32,31 +33,28 @@ async function silentRefresh(): Promise<{ accessToken: string; user: any } | nul
       return { accessToken: response.data.accessToken, user: response.data.user ?? null };
     }
 
-    return null;
-  } catch {
-    return null;
+    return { error: true, is401: response.status === 401 };
+  } catch (err: any) {
+    const status = err?.response?.status;
+    return { error: true, is401: status === 401 };
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading, setAccessToken, setUser, clearAuth, setLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, setAccessToken, setUser, clearAuth, setLoading, setSessionExpired } = useAuthStore();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /**
-   * Effect 1: Mount rehydration & session validation check.
-   * Scalable Industry-level approach:
-   *  1. First try existing valid access token from cookies via authApi.getMe()
-   *  2. If expired/401, fallback to silentRefresh() using HttpOnly refresh cookie
-   *  3. Preserves dashboard state across hard refreshes (F5 / Ctrl+R)
+   * Effect 1: Initial App Mount Session Rehydration & Validation
    */
   useEffect(() => {
     let isMounted = true;
 
-    async function checkAuth() {
+    async function initializeAuth() {
       try {
         const existingToken = useAuthStore.getState().accessToken || Cookies.get('rapto_access');
 
-        // Step 1: Attempt to restore session using existing access token
+        // Step 1: If access token exists in memory/cookie, attempt getMe()
         if (existingToken) {
           useAuthStore.getState().setAccessToken(existingToken);
           try {
@@ -64,30 +62,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (isMounted && me) {
               setUser(me);
               setLoading(false);
-              logger.debug('[AuthProvider] Session successfully restored from active access token');
+              logger.debug('[AuthProvider] Session validated via getMe()');
               return;
             }
-          } catch {
-            logger.debug('[AuthProvider] Access token stale — proceeding to silent refresh');
+          } catch (err: any) {
+            logger.debug('[AuthProvider] Access token stale/invalid — proceeding to silent refresh');
           }
         }
 
-        // Step 2: Access token missing or stale — attempt silent refresh via HttpOnly refresh cookie
+        // Step 2: Access token missing or stale — perform silent refresh using HttpOnly refresh cookie
         const result = await silentRefresh();
 
         if (!isMounted) return;
 
-        if (result) {
+        if ('accessToken' in result) {
           setAccessToken(result.accessToken);
           if (result.user) setUser(result.user);
           logger.debug('[AuthProvider] Session successfully restored via silent token rotation');
-        } else {
-          // No valid token or refresh cookie — clear auth state
+        } else if (result.is401) {
+          // Explicit 401 from backend — no valid session
           clearAuth();
+          logger.debug('[AuthProvider] No valid session cookie found');
+        } else {
+          // Network error or offline — leave state intact
+          logger.warn('[AuthProvider] Initial refresh encountered network issue — preserving existing auth state');
         }
       } catch (error) {
-        logger.error('[AuthProvider] Rehydration check failed:', error);
-        if (isMounted) clearAuth();
+        logger.error('[AuthProvider] Auth initialization error:', error);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -95,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    checkAuth();
+    initializeAuth();
 
     return () => {
       isMounted = false;
@@ -104,7 +105,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Effect 2: Proactive token refresh timer.
+   * Effect 2: Multi-Tab Authentication Synchronization
+   */
+  useEffect(() => {
+    const unsubscribe = authSync.subscribe((event) => {
+      logger.debug('[AuthProvider] Cross-tab auth event received:', event.type);
+
+      switch (event.type) {
+        case 'LOGIN':
+        case 'TOKEN_REFRESHED':
+          if (event.accessToken) {
+            setAccessToken(event.accessToken);
+          }
+          if (event.user) {
+            setUser(event.user);
+          }
+          setSessionExpired(false);
+          setLoading(false);
+          break;
+
+        case 'LOGOUT':
+          clearAuth();
+          break;
+
+        case 'SESSION_EXPIRED':
+          clearAuth();
+          setSessionExpired(true);
+          break;
+      }
+    });
+
+    return () => unsubscribe();
+  }, [setAccessToken, setUser, clearAuth, setSessionExpired, setLoading]);
+
+  /**
+   * Effect 3: Proactive Background Token Refresh Timer
    */
   useEffect(() => {
     if (!isAuthenticated) {
@@ -116,21 +151,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     intervalRef.current = setInterval(async () => {
-      // Skip refresh if tab is hidden — avoid false session expiry on network blips
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-        logger.debug('[AuthProvider] Tab hidden — skipping proactive refresh');
         return;
       }
 
-      logger.debug('[AuthProvider] Proactive token refresh...');
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return;
+      }
+
+      logger.debug('[AuthProvider] Proactive background token refresh...');
       const result = await silentRefresh();
 
-      if (result) {
+      if ('accessToken' in result) {
         setAccessToken(result.accessToken);
         if (result.user) setUser(result.user);
-        logger.debug('[AuthProvider] Proactive refresh succeeded');
-      } else {
-        logger.warn('[AuthProvider] Proactive refresh failed — will retry next cycle');
+        authSync.emit('TOKEN_REFRESHED', { accessToken: result.accessToken, user: result.user });
       }
     }, PROACTIVE_REFRESH_INTERVAL_MS);
 
@@ -143,24 +178,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, setAccessToken, setUser]);
 
   /**
-   * Effect 3: Refresh immediately when tab becomes visible again.
+   * Effect 4: Window Visibility & Online Re-connection Refresh
    */
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        logger.debug('[AuthProvider] Tab became visible — checking token freshness...');
+    const handleRecheck = async () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        logger.debug('[AuthProvider] Tab visible / re-connected — checking token freshness...');
         const result = await silentRefresh();
-        if (result) {
+        if ('accessToken' in result) {
           setAccessToken(result.accessToken);
           if (result.user) setUser(result.user);
+          authSync.emit('TOKEN_REFRESHED', { accessToken: result.accessToken, user: result.user });
         }
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleRecheck);
+    window.addEventListener('online', handleRecheck);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleRecheck);
+      window.removeEventListener('online', handleRecheck);
+    };
   }, [isAuthenticated, setAccessToken, setUser]);
 
   if (isLoading) {

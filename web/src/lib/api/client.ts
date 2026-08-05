@@ -1,9 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/features/auth/store/auth.store';
+import { authSync } from '@/features/auth/utils/auth-events';
 import { getPublicApiUrl } from './config';
 import { logger } from '@/lib/utils/logger';
 
-// Set up base Axios instance pointing to the Express Backend API
+// Base Axios instance pointing to the Express Backend API
 export const api = axios.create({
   baseURL: `${getPublicApiUrl()}/api/v1`,
   headers: {
@@ -12,7 +13,7 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Interceptor to attach accessToken from Zustand memory store
+// Interceptor to attach accessToken from Zustand memory store / readable cookie
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().accessToken;
@@ -25,8 +26,6 @@ api.interceptors.request.use(
 );
 
 // ── Queued 401 refresh handling ───────────────────────────────────────────────
-// Prevents concurrent 401s from each triggering their own refresh call.
-// All queued requests are resumed or rejected once the single refresh resolves.
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -50,17 +49,28 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Only handle 401s that haven't been retried yet
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    // Don't handle non-401 errors
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
+    }
+
+    // Check offline status — if user is offline, reject without blowing away session
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      logger.warn('[API] Request failed while offline — preserving auth state');
       return Promise.reject(error);
     }
 
     // Guard: Don't try to refresh if the 401 came FROM the refresh endpoint itself
-    // (avoids an infinite refresh loop)
-    if (originalRequest.url?.includes('/auth/refresh')) {
-      logger.warn('[API] Refresh endpoint returned 401 — clearing auth state');
+    if (originalRequest?.url?.includes('/auth/refresh')) {
+      logger.warn('[API] Refresh endpoint returned 401 — clearing session');
       useAuthStore.getState().clearAuth();
       useAuthStore.getState().setSessionExpired(true);
+      authSync.emit('SESSION_EXPIRED');
+      return Promise.reject(error);
+    }
+
+    // Avoid infinite retry loops on a single request
+    if (originalRequest._retry) {
       return Promise.reject(error);
     }
 
@@ -80,9 +90,7 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // Always go through the Next.js BFF proxy — it holds the HttpOnly cookie
-      // and knows the correct backend URL. We use a plain axios call (not `api`)
-      // to avoid the base URL being set to the backend port.
+      // Call Next.js BFF refresh proxy
       const response = await axios.post(
         '/api/v1/auth/refresh',
         {},
@@ -93,37 +101,42 @@ api.interceptors.response.use(
         }
       );
 
-      const { accessToken } = response.data;
+      const { accessToken, user } = response.data;
 
       if (!accessToken) {
-        throw new Error('No access token in refresh response');
+        throw new Error('NO_ACCESS_TOKEN');
       }
 
       logger.debug('[API] Token refreshed successfully via interceptor');
 
-      // Update the Zustand store
+      // Update local Zustand store
       useAuthStore.getState().setAccessToken(accessToken);
-      if (response.data.user) {
-        useAuthStore.getState().setUser(response.data.user);
+      if (user) {
+        useAuthStore.getState().setUser(user);
       }
+
+      // Broadcast token refresh to other open tabs
+      authSync.emit('TOKEN_REFRESHED', { accessToken, user });
 
       // Resume all queued requests with the new token
       processQueue(null, accessToken);
 
-      // Retry the original request
+      // Retry original request
       originalRequest.headers.Authorization = `Bearer ${accessToken}`;
       return api(originalRequest);
-    } catch (refreshError) {
-      logger.error('[API] Silent refresh failed — showing session expired modal');
+    } catch (refreshError: any) {
+      const is401 = refreshError?.response?.status === 401 || refreshError?.message === 'NO_ACCESS_TOKEN';
 
-      // Drain the queue with an error so those requests reject cleanly
-      processQueue(refreshError, null);
-
-      // Clear local auth state
-      useAuthStore.getState().clearAuth();
-
-      // Show the "Session Expired" modal instead of hard-redirecting
-      useAuthStore.getState().setSessionExpired(true);
+      if (is401) {
+        logger.error('[API] Refresh token expired/invalid (401) — prompt session re-login');
+        processQueue(refreshError, null);
+        useAuthStore.getState().clearAuth();
+        useAuthStore.getState().setSessionExpired(true);
+        authSync.emit('SESSION_EXPIRED');
+      } else {
+        logger.warn('[API] Refresh request failed due to network/transient error — preserving auth state');
+        processQueue(refreshError, null);
+      }
 
       return Promise.reject(refreshError);
     } finally {
