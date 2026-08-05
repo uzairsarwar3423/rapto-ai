@@ -39,11 +39,27 @@ import {
   CleanedTranscriptTurn,
   ExtractionResultWithMeta,
   ParsedCommitment,
+  StructuredSummary,
 } from '../../services/ai-pipeline/ai-pipeline.types'
 import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { teamRoom } from '../../realtime/rooms.manager'
 import { ResolveJobData } from '../jobs/resolve.job'
 import { resolveParticipantToUserId } from '../../utils/participant-matcher'
+
+/**
+ * Serialize the summary field (StructuredSummary object or plain string) to a
+ * JSON string for storage in the Postgres TEXT column.
+ * The frontend's MeetingSummaryBlock will detect and parse JSON automatically.
+ */
+function serializeSummary(summary: StructuredSummary | string | null | undefined): string | null {
+  if (!summary) return null
+  if (typeof summary === 'string') return summary
+  try {
+    return JSON.stringify(summary)
+  } catch {
+    return null
+  }
+}
 
 // (Helpers removed: Using resolveParticipantToUserId instead)
 // WORKER
@@ -310,7 +326,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         where: { id: meetingId },
         data: {
           status:                 isPartial ? 'EXTRACTED_PARTIAL' : 'EXTRACTED',
-          summary:                result.summary,
+          summary:                serializeSummary(result.summary),
           commitmentCount:        validCommitments.length,
           actionItemCount:        actionItemsData.length,
           decisionCount:          result.decisions.length,
@@ -374,7 +390,7 @@ export const extractWorker = new Worker<ExtractJobData>(
 
       socketEmitter.to(teamRoom(teamId)).emit(eventName, {
         meetingId,
-        summary:          result.summary,
+        summary:          serializeSummary(result.summary),
         commitmentCount:  validCommitments.length,
         actionItemCount:  actionItemsData.length,
         decisionCount:    result.decisions.length,
@@ -387,7 +403,7 @@ export const extractWorker = new Worker<ExtractJobData>(
       // frontend listeners that have not yet migrated to MEETING_EXTRACTED
       socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_PROCESSED, {
         meetingId,
-        summary:          result.summary,
+        summary:          serializeSummary(result.summary),
         commitmentCount:  validCommitments.length,
         actionItemCount:  actionItemsData.length,
       })

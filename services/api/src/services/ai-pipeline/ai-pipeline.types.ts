@@ -245,6 +245,27 @@ export interface ParsedRisk {
 }
 
 /**
+ * A single topic discussed in the meeting (structured summary v4.0).
+ */
+export interface TopicSection {
+  topic: string;
+  bullets: string[];
+}
+
+/**
+ * Structured meeting summary returned by summary_system.txt v4.0.
+ * May be returned as an object (new) or serialised JSON string (legacy fallback).
+ */
+export interface StructuredSummary {
+  meeting_purpose?: string;
+  overview?: string;
+  key_takeaways?: string[];
+  topics_discussed?: TopicSection[];
+  conclusions?: string[];
+  decisions?: string[];
+}
+
+/**
  * Full extraction result with per-request cost and chunk metadata.
  * Maps Python's ExtractionResultWithMeta Pydantic model.
  * Returned on HTTP 200 from POST /extract.
@@ -257,7 +278,11 @@ export interface ExtractionResultWithMeta {
   decisions: ParsedDecision[];
   blockers: ParsedBlocker[];
   risks: ParsedRisk[];
-  summary: string;
+  /**
+   * v4.0: structured object with 6 canonical sections.
+   * Legacy: plain string (backward-compat with v3.0 prompt).
+   */
+  summary: StructuredSummary | string;
   /** FULL = all transcript chunks succeeded; PARTIAL_FIRST_CHUNK = only the first chunk's summary */
   summary_scope: 'FULL' | 'PARTIAL_FIRST_CHUNK';
   extraction_model: string;

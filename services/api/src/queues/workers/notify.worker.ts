@@ -67,7 +67,17 @@ export const notifyWorker = new Worker<NotifyJobData>(
           teamId: meeting.teamId,
           type: 'MEETING_PROCESSED',
           title: `Meeting processed: ${meeting.title}`,
-          body: meeting.summary ? meeting.summary.substring(0, 150) + '...' : 'Meeting summary is ready.',
+        body: (() => {
+          if (!meeting.summary) return 'Meeting summary is ready.'
+          // Parse structured summary if stored as JSON string
+          try {
+            const parsed = typeof meeting.summary === 'string' ? JSON.parse(meeting.summary) : meeting.summary
+            const text = parsed?.overview || parsed?.meeting_purpose || parsed?.key_takeaways?.[0] || ''
+            return text ? text.substring(0, 150) + '...' : 'Meeting summary is ready.'
+          } catch {
+            return (meeting.summary as string).substring(0, 150) + '...'
+          }
+        })(),
           meetingId: meeting.id,
           actionUrl: `/meetings/${meeting.id}`
         })
@@ -81,7 +91,15 @@ export const notifyWorker = new Worker<NotifyJobData>(
               to: member.email,
               name: member.name,
               meetingTitle: meeting.title,
-              summary: meeting.summary || 'Summary extraction completed.',
+              summary: (() => {
+                if (!meeting.summary) return 'Summary extraction completed.'
+                try {
+                  const parsed = typeof meeting.summary === 'string' ? JSON.parse(meeting.summary) : meeting.summary
+                  return parsed?.overview || parsed?.meeting_purpose || 'Summary extraction completed.'
+                } catch {
+                  return meeting.summary as string
+                }
+              })(),
               commitmentsCount: meeting.commitmentCount,
               actionItemsCount: meeting.actionItemCount,
               viewUrl: `${frontendUrl}/meetings/${meeting.id}`

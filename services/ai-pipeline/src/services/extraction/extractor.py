@@ -47,6 +47,7 @@ from src.models.extraction_models import (
     DecisionsResponse,
     BlockersResponse,
     RisksResponse,
+    StructuredSummary,
 )
 from src.services.openai_client import OpenAIClient
 from src.services.chunker import chunk_content
@@ -97,12 +98,18 @@ try:
     )
 
     _META_SUMMARY_SYSTEM = (
-        "You are an executive meeting summarizer. You receive multiple partial "
-        "summaries from consecutive sections of a long meeting. Synthesize them "
-        "into a single coherent summary of 100-150 words. Follow the same structure: "
-        "PARAGRAPH 1 — context/theme. PARAGRAPH 2 — key outcomes/decisions/commitments. "
-        "PARAGRAPH 3 — critical blockers or risks (omit if none). "
-        "Past tense. Professional. Specific. No bullet points. No filler phrases."
+        "You are a Principal Meeting Intelligence Engine. You receive multiple partial "
+        "structured summaries (JSON) from consecutive sections of a long meeting. "
+        "Synthesize ALL sections into a single, complete structured summary. "
+        "Return ONLY a valid JSON object with these exact keys: "
+        "meeting_purpose (string, 1-2 sentences), "
+        "overview (string, 2-5 sentences, prose, max 150 words), "
+        "key_takeaways (array of strings — high-signal insights, no action items), "
+        "topics_discussed (array of {topic: string, bullets: string[]}), "
+        "conclusions (array of strings — final outcomes only), "
+        "decisions (array of strings — confirmed decisions only, never suggestions). "
+        "Ground every point strictly in the partial summaries provided. "
+        "Never hallucinate. Empty sections use '' or []. Past tense. No filler."
     )
 
     _PROMPTS = {
@@ -236,10 +243,17 @@ async def _enrich_result(
     # ── Hierarchical summary ──────────────────────────────────────────────────
     partial_summaries = [r.summary for r in succeeded_chunks if r.summary]
 
+    def _summary_to_text(s) -> str:
+        """Flatten a StructuredSummary or plain str to text for meta-summary user prompt."""
+        if isinstance(s, StructuredSummary):
+            import json
+            return json.dumps(s.model_dump(), ensure_ascii=False)
+        return str(s) if s else ""
+
     if len(partial_summaries) > 1:
         # Multiple chunks → synthesize a meta-summary
         combined = "\n\n---\n\n".join(
-            f"[Section {i + 1} of {len(partial_summaries)}]:\n{s}"
+            f"[Section {i + 1} of {len(partial_summaries)}]:\n{_summary_to_text(s)}"
             for i, s in enumerate(partial_summaries)
         )
         user_prompt = (
@@ -253,13 +267,15 @@ async def _enrich_result(
                 system_prompt=_META_SUMMARY_SYSTEM,
                 user_prompt=user_prompt,
             )
-            final_result.summary = meta_result.data
+            parsed_meta = StructuredSummary.from_raw(meta_result.data)
+            final_result.summary = parsed_meta
             final_result.summary_scope = SummaryScopeType.FULL
+            meta_chars = len(meta_result.data) if isinstance(meta_result.data, str) else 0
             log.info(
                 "meta_summary_generated",
                 meeting_id=request.meeting_id,
                 partial_count=len(partial_summaries),
-                meta_summary_chars=len(final_result.summary),
+                meta_summary_chars=meta_chars,
             )
         except Exception as exc:
             log.warning(
@@ -415,7 +431,7 @@ async def _extract_one_chunk(
             [parse_risk(r) for r in risks_res.data.risks]
             if risks_res else []
         )
-        summary_text = summary_res.data if summary_res else None
+        summary_text = StructuredSummary.from_raw(summary_res.data) if summary_res else None
 
         # Aggregate costs from successful calls only
         successful_results = [r for r in results if not isinstance(r, BaseException)]
@@ -605,7 +621,7 @@ def _merge_chunk_results(
 
     # ── Summary — from first successful chunk (meta-summary added in _enrich) ─
     first_success = next((r for r in succeeded_chunks if r.summary), None)
-    summary = first_success.summary if first_success else ""
+    summary = first_success.summary if first_success else StructuredSummary()
     summary_scope = (
         SummaryScopeType.FULL
         if len(chunk_results) == 1

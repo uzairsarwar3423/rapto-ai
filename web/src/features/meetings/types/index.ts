@@ -17,6 +17,26 @@ export interface MeetingFilters {
   search?: string;
 }
 
+/** A single topic discussed during the meeting */
+export interface TopicSection {
+  topic: string;
+  bullets: string[];
+}
+
+/**
+ * Production-grade structured meeting summary (v4.0).
+ * Matches the StructuredSummary Pydantic model in extraction_models.py.
+ * All fields are optional so legacy plain-string summaries stay compatible.
+ */
+export interface StructuredSummary {
+  meeting_purpose?: string;
+  overview?: string;
+  key_takeaways?: string[];
+  topics_discussed?: TopicSection[];
+  conclusions?: string[];
+  decisions?: string[];
+}
+
 export interface MeetingListItem {
   id: string;
   title: string;
@@ -30,7 +50,7 @@ export interface MeetingListItem {
   commitmentCount: number;
   actionItemCount: number;
   decisionCount: number;
-  summary: string | null;
+  summary: StructuredSummary | string | null;
   createdAt: string;
 }
 
