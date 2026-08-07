@@ -12,8 +12,15 @@ export const metadata: Metadata = {
 export default function RegisterPage() {
   return (
     <AuthCard
-      title="Create your account"
-      subtitle="Sign up in seconds to get started"
+      mode="register"
+      title={
+        <>
+          Create your
+          <br />
+          account
+        </>
+      }
+      subtitle="Sign up in seconds to get started with AI meeting tracking."
     >
       {/* Suspense required because RegisterForm uses useSearchParams() */}
       <Suspense

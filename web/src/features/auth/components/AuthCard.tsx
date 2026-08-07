@@ -1,50 +1,26 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { NavLogo } from "@/components/ui/NavLogo";
+import Auth12 from '@/components/ui/auth-12';
+import { NavLogo } from '@/components/ui/NavLogo';
 
 interface AuthCardProps {
   children: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
+  mode?: 'login' | 'register';
 }
 
-export function AuthCard({ children, title, subtitle }: AuthCardProps) {
+export function AuthCard({ children, title, subtitle, mode }: AuthCardProps) {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4 py-12 sm:px-6 lg:px-8">
-      {/* Background radial glow */}
-      <div className="absolute top-0 left-0 -translate-x-1/3 -translate-y-1/3 w-[500px] h-[500px] rounded-full bg-brand/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 translate-x-1/3 translate-y-1/3 w-[500px] h-[500px] rounded-full bg-brand/10 blur-[120px] pointer-events-none" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-[420px] z-10"
-      >
-        {/* Brand Logo Header */}
-        <div className="flex flex-col items-center mb-8">
-          <NavLogo className="font-display text-3xl font-bold tracking-tight text-foreground transition-transform hover:scale-105 flex items-center" />
-        </div>
-
-        {/* Card Body */}
-        <div className="rounded-2xl border border-border bg-surface-2 p-8 shadow-md backdrop-blur-sm sm:p-10">
-          <div className="text-center mb-6">
-            <h1 className="text-h3 auth-heading font-semibold text-foreground tracking-tight">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="mt-2 text-sm text-muted">
-                {subtitle}
-              </p>
-            )}
-          </div>
-
-          {children}
-        </div>
-      </motion.div>
-    </div>
+    <Auth12
+      mode={mode}
+      title={title}
+      subtitle={subtitle}
+      brandLogo={<NavLogo className="font-display text-2xl font-bold tracking-tight text-white flex items-center" />}
+    >
+      {children}
+    </Auth12>
   );
 }
+

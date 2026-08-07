@@ -4,12 +4,16 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Eye, EyeOff, Loader2, AlertCircle, Mail } from 'lucide-react';
+import { Loader2, AlertCircle, Mail } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { useRegister } from '../hooks/useRegister';
 import { PasswordStrengthBar } from './PasswordStrengthBar';
 import { OAuthButton } from './OAuthButton';
+import { itemVariants } from '@/components/ui/auth-12';
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
@@ -28,7 +32,7 @@ export function RegisterForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
-  const { mutate: registerUser, isPending, isSuccess, data: responseData } = useRegister();
+  const { mutate: registerUser, isPending, isSuccess } = useRegister();
 
   // Extract invite token from redirect param: redirect=/invite/<token>
   const redirectParam = searchParams.get('redirect') ?? '';
@@ -65,7 +69,7 @@ export function RegisterForm() {
     );
   };
 
-  // If successfully registered, show the inline check-email state (UX decision from plan)
+  // If successfully registered, show the inline check-email state
   if (isSuccess) {
     return (
       <div className="text-center py-6 space-y-4">
@@ -98,36 +102,24 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Google Sign In */}
-      <OAuthButton inviteToken={inviteToken} />
-
-      {/* Or Divider */}
-      <div className="relative flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border"></div>
-        </div>
-        <span className="relative bg-surface-2 px-3 text-xs uppercase text-muted">
-          or
-        </span>
-      </div>
-
+    <div className="flex flex-col gap-5">
       {/* Error Alert */}
       {errorMessage && (
-        <div
-          className="flex gap-3 rounded-xl p-4 text-sm bg-error-subtle/30 border border-error/20 text-error"
+        <motion.div
+          variants={itemVariants}
+          className="flex gap-3 rounded-xl p-4 text-sm bg-error-subtle/40 border border-error/30 text-error"
           role="alert"
         >
           <AlertCircle className="h-5 w-5 shrink-0" />
-          <p className="font-medium">{errorMessage}</p>
-        </div>
+          <p className="font-medium text-[14px]">{errorMessage}</p>
+        </motion.div>
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
         {/* Name */}
-        <div className="space-y-1.5">
-          <label htmlFor="name" className="text-xs font-semibold text-foreground uppercase tracking-wider">
+        <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
+          <label htmlFor="name" className="text-[14px] font-medium text-foreground">
             Full Name
           </label>
           <input
@@ -136,21 +128,21 @@ export function RegisterForm() {
             autoComplete="name"
             {...register('name')}
             aria-describedby={errors.name ? 'name-error' : undefined}
-            className={`w-full rounded-xl border bg-background px-4 py-2.5 text-sm text-foreground shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand ${
-              errors.name ? 'border-error' : 'border-border'
+            className={`w-full rounded-xl border bg-background px-4 py-3 text-[14px] text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors ${
+              errors.name ? 'border-error ring-1 ring-error/50' : 'border-border'
             }`}
-            placeholder="John Doe"
+            placeholder="Alex Costa"
           />
           {errors.name && (
-            <p id="name-error" className="text-xs text-error font-medium flex items-center gap-1 mt-1">
-              <AlertCircle className="h-3 w-3" /> {errors.name.message}
+            <p id="name-error" className="text-xs text-error font-medium flex items-center gap-1 mt-0.5">
+              <AlertCircle className="h-3.5 w-3.5" /> {errors.name.message}
             </p>
           )}
-        </div>
+        </motion.div>
 
         {/* Email */}
-        <div className="space-y-1.5">
-          <label htmlFor="email" className="text-xs font-semibold text-foreground uppercase tracking-wider">
+        <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
+          <label htmlFor="email" className="text-[14px] font-medium text-foreground">
             Email address
           </label>
           <input
@@ -159,21 +151,21 @@ export function RegisterForm() {
             autoComplete="email"
             {...register('email')}
             aria-describedby={errors.email ? 'email-error' : undefined}
-            className={`w-full rounded-xl border bg-background px-4 py-2.5 text-sm text-foreground shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand ${
-              errors.email ? 'border-error' : 'border-border'
+            className={`w-full rounded-xl border bg-background px-4 py-3 text-[14px] text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors ${
+              errors.email ? 'border-error ring-1 ring-error/50' : 'border-border'
             }`}
-            placeholder="you@example.com"
+            placeholder="alex.costa@example.com"
           />
           {errors.email && (
-            <p id="email-error" className="text-xs text-error font-medium flex items-center gap-1 mt-1">
-              <AlertCircle className="h-3 w-3" /> {errors.email.message}
+            <p id="email-error" className="text-xs text-error font-medium flex items-center gap-1 mt-0.5">
+              <AlertCircle className="h-3.5 w-3.5" /> {errors.email.message}
             </p>
           )}
-        </div>
+        </motion.div>
 
         {/* Password */}
-        <div className="space-y-1.5">
-          <label htmlFor="password" className="text-xs font-semibold text-foreground uppercase tracking-wider">
+        <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
+          <label htmlFor="password" className="text-[14px] font-medium text-foreground">
             Password
           </label>
           <div className="relative">
@@ -183,53 +175,62 @@ export function RegisterForm() {
               autoComplete="new-password"
               {...register('password')}
               aria-describedby={errors.password ? 'password-error' : undefined}
-              className={`w-full rounded-xl border bg-background pl-4 pr-11 py-2.5 text-sm text-foreground shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand ${
-                errors.password ? 'border-error' : 'border-border'
+              className={`w-full rounded-xl border bg-background pl-4 pr-11 py-3 text-[14px] font-mono text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors ${
+                errors.password ? 'border-error ring-1 ring-error/50' : 'border-border'
               }`}
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground focus:outline-none"
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted hover:text-foreground transition-colors focus:outline-none"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              <HugeiconsIcon icon={showPassword ? ViewIcon : ViewOffIcon} className="size-5" />
             </button>
           </div>
           <PasswordStrengthBar password={passwordValue} />
           {errors.password && (
-            <p id="password-error" className="text-xs text-error font-medium flex items-center gap-1 mt-1">
-              <AlertCircle className="h-3 w-3" /> {errors.password.message}
+            <p id="password-error" className="text-xs text-error font-medium flex items-center gap-1 mt-0.5">
+              <AlertCircle className="h-3.5 w-3.5" /> {errors.password.message}
             </p>
           )}
-        </div>
+        </motion.div>
 
         {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full flex items-center justify-center rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-brand transition-all hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:bg-muted-subtle disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
-        >
-          {isPending ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Creating account...
-            </span>
-          ) : (
-            'Create account'
-          )}
-        </button>
+        <motion.div variants={itemVariants} className="mt-2">
+          <button
+            type="submit"
+            disabled={isPending}
+            className="w-full rounded-xl bg-brand py-3 text-[14px] font-medium text-white transition-transform active:scale-[0.98] hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shadow-brand"
+          >
+            {isPending ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Creating account...
+              </span>
+            ) : (
+              'Create account'
+            )}
+          </button>
+        </motion.div>
       </form>
 
-      <p className="text-center text-xs text-muted mt-4">
+      {/* Google OAuth Button */}
+      <motion.div variants={itemVariants}>
+        <OAuthButton inviteToken={inviteToken} />
+      </motion.div>
+
+      {/* Footer Link */}
+      <motion.div variants={itemVariants} className="mt-6 text-center text-[14px] text-muted">
         Already have an account?{' '}
         <Link
           href={redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : '/login'}
-          className="font-semibold text-brand hover:underline"
+          className="font-semibold text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-brand hover:decoration-brand"
         >
           Sign in
         </Link>
-      </p>
+      </motion.div>
     </div>
   );
 }
+

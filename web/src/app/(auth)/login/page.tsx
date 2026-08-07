@@ -12,8 +12,15 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <AuthCard
-      title="Welcome back"
-      subtitle="Sign in to your account to continue"
+      mode="login"
+      title={
+        <>
+          Welcome
+          <br />
+          back
+        </>
+      }
+      subtitle="Sign in to your account to access your project dashboard."
     >
       {/* Suspense required because LoginForm uses useSearchParams() */}
       <Suspense
