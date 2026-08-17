@@ -99,7 +99,7 @@ services:
       mongodb:
         condition: service_healthy
     ports:
-      - "5005:5000"
+      - "${API_PORT:-5009}:5000"
     networks:
       - app-network
     deploy:
