@@ -13,13 +13,8 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:seed": "prisma db seed",
-    "seed:demo-commitments": "node src/seed-demo-commitments.js",
     "test": "jest",
     "test:integration": "jest --testPathPattern=tests/integration"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",

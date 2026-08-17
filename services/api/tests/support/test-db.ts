@@ -10,24 +10,32 @@ import { TeamProvider, CalendarProvider, PriorityLevel, PlatformType, MeetingSta
 import { encrypt } from '../../src/utils/crypto'
 
 export async function cleanTestDatabase() {
+    // ── SAFETY GUARD: Never execute full table purges unless explicitly running an isolated test DB ──
+    const dbUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || ''
+    if (process.env.NODE_ENV === 'production' || (!dbUrl.includes('test') && process.env.ALLOW_TEST_DB_CLEANUP !== 'true')) {
+        return
+    }
+
     // Delete in reverse FK dependency order
-    await prisma.actionItem.deleteMany()
+    await prisma.actionItem.deleteMany().catch(() => {})
     await prisma.commitmentScoreSnapshot.deleteMany().catch(() => {})
-    await prisma.commitment.deleteMany()
-    await prisma.decision.deleteMany()
-    await prisma.blocker.deleteMany()
-    await prisma.risk.deleteMany()
-    await prisma.meetingParticipant.deleteMany()
-    await prisma.meeting.deleteMany()
-    await prisma.teamIntegration.deleteMany()
-    await prisma.userIntegration.deleteMany()
-    await prisma.teamInvitation.deleteMany()
-    await prisma.notificationPreference.deleteMany()
-    await prisma.subscription.deleteMany().catch(() => {})
+    await prisma.commitment.deleteMany().catch(() => {})
+    await prisma.decision.deleteMany().catch(() => {})
+    await prisma.blocker.deleteMany().catch(() => {})
+    await prisma.risk.deleteMany().catch(() => {})
+    await prisma.meetingParticipant.deleteMany().catch(() => {})
+    await prisma.meeting.deleteMany().catch(() => {})
+    await prisma.teamIntegration.deleteMany().catch(() => {})
+    await prisma.userIntegration.deleteMany().catch(() => {})
+    await prisma.teamInvitation.deleteMany().catch(() => {})
+    await prisma.notificationPreference.deleteMany().catch(() => {})
+    await prisma.refund.deleteMany().catch(() => {})
     await prisma.invoice.deleteMany().catch(() => {})
+    await prisma.billingAuditLog.deleteMany().catch(() => {})
+    await prisma.subscription.deleteMany().catch(() => {})
     await prisma.usageEvent.deleteMany().catch(() => {})
-    await prisma.user.deleteMany()
-    await prisma.team.deleteMany()
+    await prisma.user.deleteMany().catch(() => {})
+    await prisma.team.deleteMany().catch(() => {})
 }
 
 
