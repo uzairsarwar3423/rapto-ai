@@ -12,6 +12,7 @@ import './queues/workers/integrate.worker'
 import './queues/workers/deadline.worker'
 import './queues/workers/calendar.worker'
 import './queues/workers/token-refresh.worker'
+import './queues/workers/billing-webhook.worker'
 import { startScheduler } from './queues/scheduler'
 
 async function startWorkers() {

@@ -8,6 +8,7 @@
 //   ✅ Only checkout + portal require live Paddle calls (unavoidable — we need URLs)
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { randomUUID } from 'node:crypto'
 import { PlanType, SubscriptionStatus } from '@prisma/client'
 import { logger } from '../../config/logger'
 import { AppError } from '../../utils/errors'
@@ -29,6 +30,14 @@ import type {
 function planCacheKey(teamId: string): string {
   return `cache:team:plan:${teamId}`
 }
+
+const RELEASE_LOCK_LUA = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+else
+    return 0
+end
+`
 
 // ── Plans (no Paddle API — 100% local static config) ─────────────────────────
 
@@ -79,16 +88,16 @@ interface CheckoutParams {
 }
 
 /**
- * Create a Paddle checkout transaction.
+ * Create a Paddle checkout transaction or update an existing subscription.
  *
- * Security: planId is validated against an explicit allow-list here.
- * The actual Paddle price ID is resolved SERVER-SIDE from PADDLE_PRICE_MAP —
- * the client never passes a raw price ID, only a validated planId.
+ * Concurrency Safety:
+ *   - Uses a tokenized distributed lock (UUID) in Redis with atomic Lua release.
+ *   - Validates planId against an explicit server-side allow-list.
  */
 export async function createCheckoutSession(params: CheckoutParams): Promise<CheckoutResult> {
   const { teamId, requesterEmail, requesterName, planId, interval } = params
 
-  // 1. Validate planId against allow-list (FREE and ENTERPRISE not allowed via checkout)
+  // 1. Validate planId against allow-list (FREE and ENTERPRISE not allowed via self-serve checkout)
   const checkoutablePlans: PlanType[] = [PlanType.STARTER, PlanType.GROWTH, PlanType.BUSINESS]
   if (!checkoutablePlans.includes(planId)) {
     throw new AppError('PLAN_INVALID', 422, `Plan '${planId}' is not available for self-serve checkout`)
@@ -104,14 +113,15 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
     throw new AppError('PADDLE_CHECKOUT_FAILED', 502, `Missing Paddle price ID for ${planId}/${interval}`)
   }
 
-  // 3. Race Condition & Concurrency Defense: Acquire Redis lock for team checkout
+  // 3. Concurrency Defense: Acquire Redis lock for team checkout with unique token
   const lockKey = `lock:checkout:${teamId}`
-  const acquiredLock = await redis.set(lockKey, '1', 'EX', 10, 'NX')
+  const lockToken = randomUUID()
+  const acquiredLock = await redis.set(lockKey, lockToken, 'EX', 15, 'NX')
   if (!acquiredLock) {
     throw new AppError(
       'CHECKOUT_IN_PROGRESS',
       409,
-      'A checkout or subscription operation is already in progress for this team. Please wait a moment.'
+      'A checkout or subscription operation is already in progress for this workspace. Please wait a moment.'
     )
   }
 
@@ -122,19 +132,19 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
 
     if (existingSub && activeStatuses.includes(existingSub.status)) {
       // 4a. If team ALREADY has an active/trialing subscription for the EXACT SAME plan -> 409 Conflict
-      if (existingSub.plan === planId) {
+      if (existingSub.plan === planId && existingSub.billingInterval === interval) {
         logger.warn(
           { teamId, planId, paddleSubscriptionId: existingSub.paddleSubscriptionId, status: existingSub.status },
-          '[billing.service] Checkout rejected: Team already has an active subscription for requested plan'
+          '[billing.service] Checkout rejected: Team already has an active subscription for requested plan and interval'
         )
         throw new AppError(
           'ACTIVE_SUBSCRIPTION_EXISTS',
           409,
-          `Team already has an active or trialing subscription for the '${planId}' plan`
+          `Team already has an active subscription for the '${planId}' plan (${interval}ly)`
         )
       }
 
-      // 4b. Plan Change (STARTER -> GROWTH, GROWTH -> BUSINESS): Update existing Paddle subscription
+      // 4b. Plan Change (e.g. STARTER -> GROWTH): Update existing Paddle subscription
       logger.info(
         {
           teamId,
@@ -142,11 +152,12 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
           newPlan: planId,
           paddleSubscriptionId: existingSub.paddleSubscriptionId,
         },
-        '[billing.service] Existing active subscription found for different plan — updating Paddle subscription'
+        '[billing.service] Existing active subscription found — updating Paddle subscription'
       )
 
+      let updatedSub: any
       try {
-        await paddleClient.updateSubscriptionPlan({
+        updatedSub = await paddleClient.updateSubscriptionPlan({
           paddleSubscriptionId: existingSub.paddleSubscriptionId,
           priceId,
           planId,
@@ -164,55 +175,31 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
         )
       }
 
-      // Sync local DB mirror tables immediately (webhooks will also confirm)
-      await billingRepo.upsertSubscription(teamId, {
-        paddleSubscriptionId: existingSub.paddleSubscriptionId,
-        paddleCustomerId: existingSub.paddleCustomerId,
-        paddlePriceId: priceId,
-        plan: planId,
-        billingInterval: interval,
-        status: existingSub.status,
-      })
-      await billingRepo.updateTeamPlan(teamId, planId)
-      await invalidatePlanCache(teamId)
-
-      // Emit real-time socket event for immediate UI reflection
-      try {
-        const { socketEmitter } = await import('../../realtime/socket.emitter')
-        const { SERVER_EVENTS } = await import('../../realtime/socket.events')
-        socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
-          teamId,
+      // Only update local state if Paddle returns active or trialing status
+      if (updatedSub?.status === 'active' || updatedSub?.status === 'trialing') {
+        await billingRepo.updateSubscriptionTransaction(teamId, planId, {
+          paddleSubscriptionId: existingSub.paddleSubscriptionId,
+          paddleCustomerId: existingSub.paddleCustomerId,
+          paddlePriceId: priceId,
           plan: planId,
-          updatedAt: new Date().toISOString(),
+          billingInterval: interval,
+          status: updatedSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
         })
-      } catch (err: any) {
-        logger.warn({ err: err.message, teamId }, '[billing.service] Failed to emit socket event on plan update')
-      }
+        await invalidatePlanCache(teamId)
 
-      // Enqueue upgrade notification email
-      try {
-        const { notifyQueue } = await import('../../queues/queue.client')
-        await notifyQueue.add(
-          'subscription-upgraded',
-          {
-            type: 'SUBSCRIPTION_UPGRADED',
+        // Emit real-time socket event
+        try {
+          const { socketEmitter } = await import('../../realtime/socket.emitter')
+          const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+          socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
             teamId,
-            planId,
-            metadata: {
-              newPlanName: planId,
-              billingInterval: interval,
-            },
-          },
-          { jobId: `subscription-upgraded:sub:${existingSub.paddleSubscriptionId}:${Date.now()}` }
-        )
-      } catch (queueErr: any) {
-        logger.warn({ err: queueErr.message, teamId }, '[billing.service] Failed to queue upgrade notification email')
+            plan: planId,
+            updatedAt: new Date().toISOString(),
+          })
+        } catch (err: any) {
+          logger.warn({ err: err.message, teamId }, '[billing.service] Failed to emit socket event on plan update')
+        }
       }
-
-      logger.info(
-        { teamId, oldPlan: existingSub.plan, newPlan: planId, paddleSubscriptionId: existingSub.paddleSubscriptionId },
-        '[billing.service] Paddle subscription updated successfully'
-      )
 
       return {
         transactionId: existingSub.paddleSubscriptionId,
@@ -220,7 +207,7 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
       }
     }
 
-    // 5. New Purchase / Renewal (no active or trialing subscription exists; or existing is canceled/expired)
+    // 5. New Purchase / Renewal (no active subscription exists)
     let paddleCustomerId: string
     try {
       paddleCustomerId = await paddleClient.getOrCreatePaddleCustomer(teamId, requesterEmail, requesterName)
@@ -248,8 +235,10 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
     logger.info({ teamId, planId, interval, transactionId: result.transactionId }, '[billing.service] Checkout session created')
     return result
   } finally {
-    // Release concurrency lock
-    await redis.del(lockKey)
+    // Safe atomic release: only delete if lock still belongs to this token
+    await redis.eval(RELEASE_LOCK_LUA, 1, lockKey, lockToken).catch((err) => {
+      logger.warn({ err: err.message, lockKey }, '[billing.service] Failed to release checkout lock safely')
+    })
   }
 }
 
@@ -260,9 +249,6 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
  * Requires the team to have a paddleCustomerId (i.e., at least one prior checkout).
  */
 export async function createPortalSession(teamId: string): Promise<PortalResult> {
-  const team = await billingRepo.getTeamForUsage(teamId) as any
-
-  // We need the paddleCustomerId — fetch it directly
   const { prisma } = await import('../../db/client')
   const teamRecord = await prisma.team.findUnique({
     where: { id: teamId },
@@ -314,14 +300,8 @@ export async function getInvoices(
 
 /**
  * Get current usage for a team.
- *
- * PROVIDER-AGNOSTIC: this function has zero Paddle-specific logic.
- * It reads the same denormalized teams.meetingsUsed field and the same
- * Redis cache key (cache:team:plan:{teamId}) established by plan-limits.middleware.
- * The payment provider swap is completely invisible here.
  */
 export async function getUsage(teamId: string): Promise<UsageDetail> {
-  // Try Redis cache first — same key as plan-limits.middleware (intentional sharing)
   const cacheKey = planCacheKey(teamId)
   const cached = await redis.get(cacheKey)
 
@@ -334,7 +314,6 @@ export async function getUsage(teamId: string): Promise<UsageDetail> {
     const entry = JSON.parse(cached)
     meetingsUsed = entry.meetingsUsed
     plan = entry.plan
-    billingCycleEnd = null // Not cached — fetch from DB on cache hit is acceptable
   }
 
   const teamData = await billingRepo.getTeamForUsage(teamId)
@@ -391,7 +370,6 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
   try {
     const { paddle } = await import('../../services/paddle.client')
     const { getPlanFromPriceId } = await import('../../config/plans.config')
-    const { SubscriptionStatus } = await import('@prisma/client')
 
     const collection = paddle.subscriptions.list({
       customerId: [team.paddleCustomerId],
@@ -414,21 +392,27 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
         const periodStart = activeSub.currentBillingPeriod?.startsAt ? new Date(activeSub.currentBillingPeriod.startsAt) : new Date()
         const periodEnd = activeSub.currentBillingPeriod?.endsAt ? new Date(activeSub.currentBillingPeriod.endsAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
-        await billingRepo.upsertSubscription(teamId, {
-          paddleSubscriptionId: activeSub.id,
-          paddleCustomerId: team.paddleCustomerId,
-          paddlePriceId: priceId,
-          plan: resolvedPlan,
-          billingInterval: priceMatch?.interval ?? 'month',
-          status: activeSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
-          currentPeriodStart: periodStart,
-          currentPeriodEnd: periodEnd,
-        })
+        await billingRepo.activateSubscriptionTransaction(
+          teamId,
+          resolvedPlan,
+          {
+            paddleSubscriptionId: activeSub.id,
+            paddleCustomerId: team.paddleCustomerId,
+            paddlePriceId: priceId,
+            plan: resolvedPlan,
+            billingInterval: priceMatch?.interval ?? 'month',
+            status: activeSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
+            currentPeriodStart: periodStart,
+            currentPeriodEnd: periodEnd,
+          },
+          null,
+          periodStart,
+          periodEnd
+        )
 
-        await billingRepo.activateTeamPlan(teamId, resolvedPlan, periodStart, periodEnd)
         await invalidatePlanCache(teamId)
 
-        // Emit real-time socket event to team room
+        // Emit real-time socket event
         try {
           const { socketEmitter } = await import('../../realtime/socket.emitter')
           const { SERVER_EVENTS } = await import('../../realtime/socket.events')
@@ -438,32 +422,9 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
             updatedAt: new Date().toISOString(),
           })
         } catch (err: any) {
-          logger.warn({ err: err.message, teamId }, '[billing.service] Failed to emit billing socket event on sync')
+          logger.warn({ err: err.message, teamId }, '[billing.service] Failed to emit socket event on sync')
         }
 
-        // Enqueue confirmation email with deterministic jobId so it never duplicates with Webhook email
-        try {
-          const { notifyQueue } = await import('../../queues/queue.client')
-          await notifyQueue.add(
-            'billing-confirmation',
-            {
-              type: 'BILLING_CONFIRMATION',
-              teamId,
-              planId: resolvedPlan,
-              metadata: {
-                billingInterval: priceMatch?.interval ?? 'month',
-                planId: resolvedPlan,
-                syncedFromApi: true,
-              },
-            },
-            { jobId: `billing-confirmation:sub:${activeSub.id}` }
-          )
-          logger.info({ teamId, plan: resolvedPlan }, '[billing.service] Billing confirmation email queued from sync')
-        } catch (queueErr: any) {
-          logger.error({ err: queueErr.message, teamId }, '[billing.service] Failed to queue confirmation email from sync')
-        }
-
-        logger.info({ teamId, plan: resolvedPlan }, '[billing.service] Subscription synced successfully from Paddle API')
         return { synced: true, plan: resolvedPlan }
       }
     }

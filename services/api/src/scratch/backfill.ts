@@ -14,6 +14,7 @@ async function main() {
       status: { in: ['DONE', 'RESOLVED'] },
     };
     
+    
     if (team.billingCycleStart) {
       meetingFilter.createdAt = { gte: team.billingCycleStart };
     }

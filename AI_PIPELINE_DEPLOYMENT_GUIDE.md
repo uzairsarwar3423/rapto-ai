@@ -113,7 +113,8 @@ Add the following required production secrets:
 | `VPS_HOST` | Public IP address or domain of VPS | `192.168.1.100` or `deploy.rapto.cloud` |
 | `VPS_USERNAME` | SSH User on VPS | `root` or `deploy` |
 | `VPS_SSH_KEY` | Private SSH Key (OpenSSH format) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-| `VPS_SSH_PORT` | SSH Port (Optional, default 22) | `22` |
+| `
+` | SSH Port (Optional, default 22) | `22` |
 
 ### 2. AI-Pipeline Application Secrets
 | Secret Name | Description | Example / Value |
@@ -153,6 +154,7 @@ The AI Pipeline uses a multi-stage `Dockerfile` (`services/ai-pipeline/Dockerfil
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MONGODB_URL=${MONGODB_URL}
+
       - REDIS_URL=${REDIS_URL:-redis://rapto-redis:6379}
       - API_SHARED_SECRET=${API_SHARED_SECRET}
     ports:
@@ -261,6 +263,7 @@ export PROD_AI_PIPELINE_SECRET="your-32-character-api-shared-secret"
 python3 scripts/merge-env.py
 ```
 
+
 #### Step 4: Execute zero-downtime deployment script
 ```bash
 IMAGE_TAG="latest" bash ./scripts/deploy-ai.sh
@@ -280,8 +283,11 @@ docker ps --filter "name=rapto-ai-pipeline"
 - Response: `{"status": "ok"}` (HTTP 200)
 - Execution: Non-blocking, light probe executed inside container via `python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"`.
 
+
+
 ### Automated Rollback Trigger
 During deployment:
+
 1. `deploy-ai.sh` saves running image tag to `/tmp/previous_ai_pipeline_image_tag.txt`.
 2. New container image is started via `docker compose up -d --no-deps ai-pipeline`.
 3. `health-check-ai.sh` probes `/health` up to 15 times (every 4 seconds).

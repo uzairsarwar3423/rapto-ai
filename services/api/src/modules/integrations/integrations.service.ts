@@ -65,6 +65,28 @@ export class IntegrationsService {
             throw new AppError('PROVIDER_NOT_CONFIGURED', 422, `Provider ${provider} is not configured`)
         }
 
+        // Enforce plan integration limits (e.g. Free tier = 1 integration)
+        const { prisma } = await import('../../db/client')
+        const { PLAN_LIMITS } = await import('../../config/plans.config')
+        const team = await prisma.team.findUnique({
+            where: { id: teamId },
+            select: { plan: true },
+        })
+        const plan = team?.plan ?? 'FREE'
+        const limit = PLAN_LIMITS[plan]?.integrations ?? 1
+
+        if (limit !== -1) {
+            const existingIntegrations = await integrationsRepository.findAllByTeam(teamId)
+            const isExistingProvider = existingIntegrations.some((i) => i.provider === provider && i.isActive)
+            if (!isExistingProvider && existingIntegrations.filter((i) => i.isActive).length >= limit) {
+                throw new AppError(
+                    'PLAN_LIMIT_REACHED',
+                    403,
+                    `Your ${plan} plan allows a maximum of ${limit} active integration(s). Please upgrade to connect additional services.`
+                )
+            }
+        }
+
         const state = await OAuthStateService.generateState(provider, teamId, userId)
 
         let authUrl = `${config.authUrl}?client_id=${config.clientId}&response_type=code&redirect_uri=${encodeURIComponent(config.callbackUrl)}&state=${state}&scope=${encodeURIComponent(config.scopes.join(' '))}`

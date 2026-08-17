@@ -751,7 +751,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
             await createInAppNotification({
               userId: admin.id,
               teamId,
-              type: 'SCORE_MILESTONE',
+              type: 'PAYMENT_SUCCESS',
               title: `Payment Receipt: ${planName} Plan Active`,
               body: `Your payment of ${amountPaid} for ${team.name} was successfully received.`,
               actionUrl: '/settings/billing',
@@ -866,7 +866,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
             await createInAppNotification({
               userId: admin.id,
               teamId,
-              type: 'SCORE_MILESTONE',
+              type: 'PAYMENT_FAILED',
               title: `⚠️ Payment Failed: ${team.name}`,
               body: `We were unable to process the payment of ${amountDue} for ${team.name}.`,
               actionUrl: '/settings/billing',
@@ -942,7 +942,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
             await createInAppNotification({
               userId: admin.id,
               teamId,
-              type: 'SCORE_MILESTONE',
+              type: 'SUBSCRIPTION_UPGRADED',
               title: `🎉 Plan Upgraded: ${newPlanName}`,
               body: `Your workspace ${team.name} has been upgraded to ${newPlanName}.`,
               actionUrl: '/settings/billing',
@@ -1021,7 +1021,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
             await createInAppNotification({
               userId: admin.id,
               teamId,
-              type: 'SCORE_MILESTONE',
+              type: 'SUBSCRIPTION_CANCELLED',
               title: `Subscription Cancelled: ${team.name}`,
               body: `Your paid subscription for ${team.name} has been cancelled and moved to the Free plan.`,
               actionUrl: '/settings/billing',
@@ -1107,7 +1107,7 @@ export const notifyWorker = new Worker<NotifyJobData>(
             await createInAppNotification({
               userId: admin.id,
               teamId,
-              type: 'SCORE_MILESTONE',
+              type: 'TRIAL_STARTED',
               title: `🎉 Your free trial has started!`,
               body: `Your trial for ${team.name} is active and ends on ${trialEndsAt}.`,
               actionUrl: '/settings/billing',

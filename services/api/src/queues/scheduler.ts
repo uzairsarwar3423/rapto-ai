@@ -190,6 +190,111 @@ export async function runWeeklyDigestDispatchCron(): Promise<void> {
     }
 }
 
+export async function runBillingCycleResetCron(): Promise<void> {
+    const now = new Date()
+    logger.info('billing-cycle cron: evaluating workspace billing cycles and quotas')
+
+    const { invalidatePlanCache } = await import('../middleware/plan-limits.middleware')
+
+    // 1. Reset Free tier teams whose 30-day quota cycle has completed
+    try {
+        const freeTeams = await prisma.team.findMany({
+            where: {
+                plan: 'FREE',
+                OR: [
+                    { billingCycleEnd: { lte: now } },
+                    { billingCycleEnd: null, meetingsUsed: { gt: 0 } },
+                ],
+            },
+            select: { id: true },
+        })
+
+        for (const team of freeTeams) {
+            const nextCycleEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+            await prisma.team.update({
+                where: { id: team.id },
+                data: {
+                    meetingsUsed: 0,
+                    billingCycleStart: now,
+                    billingCycleEnd: nextCycleEnd,
+                },
+            })
+            await invalidatePlanCache(team.id)
+        }
+
+        if (freeTeams.length > 0) {
+            logger.info({ count: freeTeams.length }, 'billing-cycle cron: reset quotas for Free tier workspaces')
+        }
+    } catch (err: any) {
+        logger.error({ err: err.message }, 'billing-cycle cron: error resetting Free tier quotas')
+    }
+
+    // 2. Evaluate expired grace periods for past_due teams
+    try {
+        const expiredGraceTeams = await prisma.team.findMany({
+            where: {
+                gracePeriodEnd: { lte: now },
+                plan: { not: 'FREE' },
+            },
+            select: { id: true },
+        })
+
+        for (const team of expiredGraceTeams) {
+            await prisma.team.update({
+                where: { id: team.id },
+                data: {
+                    plan: 'FREE',
+                    gracePeriodEnd: null,
+                },
+            })
+            await invalidatePlanCache(team.id)
+        }
+
+        if (expiredGraceTeams.length > 0) {
+            logger.info({ count: expiredGraceTeams.length }, 'billing-cycle cron: downgraded expired past_due workspaces')
+        }
+    } catch (err: any) {
+        logger.error({ err: err.message }, 'billing-cycle cron: error evaluating grace periods')
+    }
+
+    // 3. Process period-end scheduled cancellations
+    try {
+        const expiredCancellations = await prisma.subscription.findMany({
+            where: {
+                cancelAtPeriodEnd: true,
+                currentPeriodEnd: { lte: now },
+                status: { not: 'cancelled' },
+            },
+            select: { teamId: true, paddleSubscriptionId: true },
+        })
+
+        for (const sub of expiredCancellations) {
+            await prisma.subscription.update({
+                where: { paddleSubscriptionId: sub.paddleSubscriptionId },
+                data: {
+                    status: 'cancelled',
+                    cancelAtPeriodEnd: false,
+                    cancelledAt: now,
+                },
+            })
+            await prisma.team.update({
+                where: { id: sub.teamId },
+                data: {
+                    plan: 'FREE',
+                    billingCycleEnd: null,
+                },
+            })
+            await invalidatePlanCache(sub.teamId)
+        }
+
+        if (expiredCancellations.length > 0) {
+            logger.info({ count: expiredCancellations.length }, 'billing-cycle cron: executed scheduled period-end cancellations')
+        }
+    } catch (err: any) {
+        logger.error({ err: err.message }, 'billing-cycle cron: error processing scheduled cancellations')
+    }
+}
+
 export function startScheduler(): void {
     // ── Day 19: Commitment deadline reminders (9 AM UTC daily) ───────────────
     cron.schedule('0 9 * * *', async () => {
@@ -231,6 +336,16 @@ export function startScheduler(): void {
         }
     })
 
+    // ── Billing Cycle & Quota Reset Cron (Daily Midnight UTC) ────────────────
+    cron.schedule('0 0 * * *', async () => {
+        logger.info('Cron: running daily billing cycle quota reset')
+        try {
+            await runBillingCycleResetCron()
+        } catch (err) {
+            logger.error({ err }, 'Cron: billing cycle reset failed')
+        }
+    })
+
     // ── Day 22: Calendar sync fan-out (HOURLY) ────────────────────────────────
     cron.schedule('0 * * * *', async () => {
         logger.info('Cron: enqueueing calendar sync jobs (hourly)')
@@ -248,6 +363,6 @@ export function startScheduler(): void {
     })
 
     logger.info(
-        'Scheduler started: deadline-reminder@9AM, mark-missed@6PM, digest@Mon9AM, snapshot@SunMidnight, calendar-sync@hourly, token-refresh@15min'
+        'Scheduler started: deadline-reminder@9AM, mark-missed@6PM, digest@Mon9AM, snapshot@SunMidnight, billing-cycle@Midnight, calendar-sync@hourly, token-refresh@15min'
     )
 }

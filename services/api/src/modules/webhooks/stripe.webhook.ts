@@ -102,8 +102,12 @@ async function handlePaymentFailed(invoice: any): Promise<void> {
   logger.info({ teamId: team.id }, 'Payment failed notification queued')
 }
 
-function mapPriceIdToPlan(priceId: string): any {
-  if (priceId === process.env.STRIPE_PRO_PRICE_ID) return 'PRO'
-  if (priceId === process.env.STRIPE_ENTERPRISE_PRICE_ID) return 'ENTERPRISE'
-  return 'FREE'
+import { PlanType } from '@prisma/client'
+
+function mapPriceIdToPlan(priceId: string): PlanType {
+  if (priceId === process.env.STRIPE_GROWTH_PRICE_ID) return PlanType.GROWTH
+  if (priceId === process.env.STRIPE_BUSINESS_PRICE_ID) return PlanType.BUSINESS
+  if (priceId === process.env.STRIPE_ENTERPRISE_PRICE_ID) return PlanType.ENTERPRISE
+  if (priceId === process.env.STRIPE_STARTER_PRICE_ID) return PlanType.STARTER
+  return PlanType.FREE
 }

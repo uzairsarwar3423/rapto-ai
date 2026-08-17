@@ -130,6 +130,7 @@ docker compose up -d
 docker compose ps
 
 # Stream structured JSON logs
+
 docker compose logs -f ai-pipeline
 ```
 

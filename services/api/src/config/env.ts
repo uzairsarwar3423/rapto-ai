@@ -92,6 +92,16 @@ const envSchema = z.object({
     AI_PIPELINE_CIRCUIT_FAILURE_THRESHOLD: z.coerce.number().int().positive().default(5),
     AI_PIPELINE_CIRCUIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
     AI_PIPELINE_CIRCUIT_OPEN_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+}).superRefine((data, ctx) => {
+    if (data.NODE_ENV === 'production') {
+        if (!process.env.JWT_ACCESS_SECRET || process.env.JWT_ACCESS_SECRET.includes('default')) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['JWT_ACCESS_SECRET'],
+                message: 'Production requires an explicit, secure JWT_ACCESS_SECRET (min 32 bytes)',
+            })
+        }
+    }
 })
 
 const parsed = envSchema.safeParse(process.env)

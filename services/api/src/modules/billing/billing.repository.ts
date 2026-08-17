@@ -7,9 +7,15 @@
 //   ✅ Keyed on UNIQUE constraints to prevent race-window upserts
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { PlanType } from '@prisma/client'
+import { PlanType, SubscriptionStatus, Prisma } from '@prisma/client'
 import { prisma } from '../../db/client'
-import type { UpsertSubscriptionData, UpsertInvoiceData, PaginatedInvoices } from './billing.types'
+import type {
+  UpsertSubscriptionData,
+  UpsertInvoiceData,
+  UpsertRefundData,
+  CreateBillingAuditLogData,
+  PaginatedInvoices,
+} from './billing.types'
 
 // ── Subscription ──────────────────────────────────────────────────────────────
 
@@ -64,7 +70,6 @@ export async function findFullSubscriptionByTeam(teamId: string) {
 /**
  * Upsert the subscription row for a team.
  * Keyed on UNIQUE teamId — zero read-before-write race window.
- * Called by webhook handlers ONLY — never called from user-facing endpoints.
  */
 export async function upsertSubscription(
   teamId: string,
@@ -107,7 +112,6 @@ export async function upsertSubscription(
 
 /**
  * Mark a subscription as cancelled. Keyed on unique paddleSubscriptionId.
- * team.plan is set to FREE by the webhook handler (not here — separate concerns).
  */
 export async function markSubscriptionCancelled(
   paddleSubscriptionId: string,
@@ -116,7 +120,7 @@ export async function markSubscriptionCancelled(
   await prisma.subscription.update({
     where: { paddleSubscriptionId },
     data: {
-      status: 'cancelled',
+      status: SubscriptionStatus.cancelled,
       cancelledAt,
       cancelAtPeriodEnd: false,
     },
@@ -162,6 +166,7 @@ export async function activateSubscriptionTransaction(
         meetingsUsed: 0,
         billingCycleStart: periodStart,
         billingCycleEnd: periodEnd,
+        gracePeriodEnd: null,
       },
     })
 
@@ -171,6 +176,7 @@ export async function activateSubscriptionTransaction(
         create: {
           teamId,
           ...invoiceData,
+          amountRefunded: invoiceData.amountRefunded ?? 0,
         },
         update: {
           amountPaid: invoiceData.amountPaid,
@@ -207,10 +213,21 @@ export async function updateSubscriptionTransaction(
       },
     })
 
-    await tx.team.update({
-      where: { id: teamId },
-      data: { plan },
-    })
+    // Only update team plan if subscription is active or trialing
+    if (
+      subscriptionData.status === SubscriptionStatus.active ||
+      subscriptionData.status === SubscriptionStatus.trialing
+    ) {
+      await tx.team.update({
+        where: { id: teamId },
+        data: {
+          plan,
+          ...(subscriptionData.currentPeriodStart && { billingCycleStart: subscriptionData.currentPeriodStart }),
+          ...(subscriptionData.currentPeriodEnd && { billingCycleEnd: subscriptionData.currentPeriodEnd }),
+          gracePeriodEnd: null,
+        },
+      })
+    }
   })
 }
 
@@ -233,6 +250,7 @@ export async function upsertInvoice(
       paddleCustomerId: data.paddleCustomerId,
       amountDue: data.amountDue,
       amountPaid: data.amountPaid,
+      amountRefunded: data.amountRefunded ?? 0,
       currency: data.currency,
       status: data.status,
       periodStart: data.periodStart,
@@ -245,7 +263,17 @@ export async function upsertInvoice(
       status: data.status,
       hostedInvoiceUrl: data.hostedInvoiceUrl,
       paidAt: data.paidAt,
+      ...(data.amountRefunded !== undefined && { amountRefunded: data.amountRefunded }),
     },
+  })
+}
+
+/**
+ * Find invoice by Paddle Transaction ID.
+ */
+export async function findInvoiceByTransactionId(paddleTransactionId: string) {
+  return prisma.invoice.findUnique({
+    where: { paddleTransactionId },
   })
 }
 
@@ -267,6 +295,7 @@ export async function findInvoicesByTeam(
       id: true,
       amountDue: true,
       amountPaid: true,
+      amountRefunded: true,
       currency: true,
       status: true,
       hostedInvoiceUrl: true,
@@ -280,6 +309,97 @@ export async function findInvoicesByTeam(
   const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null
 
   return { invoices: page, nextCursor }
+}
+
+// ── Refunds & Adjustments ─────────────────────────────────────────────────────
+
+/**
+ * Record a refund adjustment transaction and update invoice and subscription state atomically.
+ */
+export async function processRefundAdjustmentTransaction(params: {
+  teamId: string
+  paddleTransactionId: string
+  paddleAdjustmentId: string
+  amountRefunded: number
+  currency: string
+  reason?: string
+  status: string
+}): Promise<{ isFullRefund: boolean }> {
+  const { teamId, paddleTransactionId, paddleAdjustmentId, amountRefunded, currency, reason, status } = params
+
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findUnique({
+      where: { paddleTransactionId },
+    })
+
+    if (!invoice) {
+      throw new Error(`Invoice not found for transaction: ${paddleTransactionId}`)
+    }
+
+    await tx.refund.upsert({
+      where: { paddleAdjustmentId },
+      create: {
+        teamId,
+        invoiceId: invoice.id,
+        paddleAdjustmentId,
+        amount: amountRefunded,
+        currency,
+        reason: reason ?? 'customer_refund',
+        status: status || 'completed',
+      },
+      update: {
+        status: status || 'completed',
+      },
+    })
+
+    const totalRefunded = invoice.amountRefunded + amountRefunded
+    const isFullRefund = totalRefunded >= invoice.amountPaid
+
+    await tx.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        amountRefunded: totalRefunded,
+        status: isFullRefund ? 'refunded' : invoice.status,
+      },
+    })
+
+    if (isFullRefund) {
+      await tx.team.update({
+        where: { id: teamId },
+        data: { plan: PlanType.FREE },
+      })
+      await tx.subscription.updateMany({
+        where: { teamId },
+        data: { status: SubscriptionStatus.refunded },
+      })
+    }
+
+    return { isFullRefund }
+  })
+}
+
+// ── Audit Log ─────────────────────────────────────────────────────────────────
+
+/**
+ * Insert an immutable record into the BillingAuditLog table.
+ */
+export async function createBillingAuditLog(data: CreateBillingAuditLogData): Promise<void> {
+  try {
+    await prisma.billingAuditLog.create({
+      data: {
+        teamId: data.teamId,
+        eventId: data.eventId,
+        eventType: data.eventType,
+        action: data.action,
+        payload: (data.payload ?? {}) as Prisma.InputJsonValue,
+      },
+    })
+  } catch (err: any) {
+    // If unique eventId already recorded, ignore duplicate audit log
+    if (err?.code !== 'P2002') {
+      throw err
+    }
+  }
 }
 
 // ── Team billing fields ────────────────────────────────────────────────────────
@@ -301,6 +421,7 @@ export async function activateTeamPlan(
       meetingsUsed: 0,
       billingCycleStart,
       billingCycleEnd,
+      gracePeriodEnd: null,
     },
   })
 }
@@ -326,6 +447,7 @@ export async function downgradeTeamToFree(teamId: string): Promise<void> {
     data: {
       plan: PlanType.FREE,
       billingCycleEnd: null,
+      gracePeriodEnd: null,
     },
   })
 }

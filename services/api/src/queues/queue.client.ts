@@ -117,7 +117,20 @@ export const tokenRefreshQueue = new Queue('token-refresh', {
   },
 })
 
-const queues = [transcribeQueue, extractQueue, resolveQueue, notifyQueue, integrateQueue, deadlineQueue, calendarSyncQueue, tokenRefreshQueue]
+// billing-webhook: Durable persistent queue for incoming payment provider webhooks (Paddle, etc.)
+// removeOnFail: false — MANDATORY: Failed webhooks must be inspectable and replayable without data loss
+export const billingWebhookQueue = new Queue('billing-webhook', {
+  connection,
+  defaultJobOptions: {
+    attempts:         5,
+    backoff:          { type: 'exponential', delay: 5_000 },
+    priority:         1,
+    removeOnComplete: { count: 1000 },
+    removeOnFail:     false, // Retain all failed billing webhook jobs permanently for manual inspection & retry
+  },
+})
+
+const queues = [transcribeQueue, extractQueue, resolveQueue, notifyQueue, integrateQueue, deadlineQueue, calendarSyncQueue, tokenRefreshQueue, billingWebhookQueue]
 
 queues.forEach((q) => {
   const events = new QueueEvents(q.name, { connection })

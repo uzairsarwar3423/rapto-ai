@@ -18,8 +18,6 @@ export async function requireAuth(
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.split(' ')[1]
-  } else if (req.query.token) {
-    token = req.query.token as string
   }
 
   if (!token) {

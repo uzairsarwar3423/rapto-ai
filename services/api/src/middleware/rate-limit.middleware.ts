@@ -158,7 +158,13 @@ export const ipRateLimiter = createRateLimiter({
     limit: 100,
     windowSeconds: 60,
     keyPrefix: 'ratelimit:ip',
-    identifier: (req) => req.ip ?? null,
+    identifier: (req) => {
+        const path = req.path || req.originalUrl || ''
+        if (path.includes('/webhooks') || path.includes('/health')) {
+            return null // Exempt provider webhooks and health checks from rate limiting
+        }
+        return req.ip ?? null
+    },
 })
 
 /* -------------------------------------------------------------------------- */

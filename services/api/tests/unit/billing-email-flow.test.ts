@@ -276,32 +276,26 @@ describe('[RC-4] email.service — pino structured logging', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECTION 9 — Paddle webhook idempotency key semantics
+// SECTION 9 — Paddle webhook durable queue & idempotency architecture
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('paddle.webhook — idempotency architecture', () => {
+describe('paddle.webhook — durable queue & idempotency architecture', () => {
   const srcController = read('modules/webhooks/paddle.webhook.controller.ts')
-  const srcService = read('modules/webhooks/paddle.webhook.service.ts')
-  const src = srcController + srcService
+  const srcQueue = read('queues/queue.client.ts')
+  const src = srcController + srcQueue
 
-  it('uses Redis NX to set idempotency key', () => {
-    expect(src).toContain("redis.set(idempotencyKey, '1', 'EX', 86400, 'NX')")
+  it('enqueues into persistent billingWebhookQueue with deterministic jobId', () => {
+    expect(src).toContain('billingWebhookQueue.add(')
+    expect(src).toContain('jobId')
   })
 
-  it('uses a 24-hour TTL (86400 seconds)', () => {
-    expect(src).toContain('86400')
+  it('retains failed webhook jobs for manual inspection and replay (removeOnFail: false)', () => {
+    expect(srcQueue).toContain('export const billingWebhookQueue')
+    expect(srcQueue).toContain('removeOnFail:     false')
   })
 
-  it('fast-acks Paddle with 200 before async processing', () => {
-    expect(src).toContain('res.status(200).json({ received: true })')
-    expect(src).toContain('setImmediate(async () =>')
-  })
-
-  it('returns 200 on duplicate event (idempotent skip)', () => {
-    // The idempotent skip path must return 200 (not 409) to prevent Paddle retries.
-    // Verify via the IDEMPOTENT SKIP log message that lives right next to the 200 response.
-    expect(src).toContain("IDEMPOTENT SKIP: event already processed")
-    expect(src).toContain('res.status(200).json({ received: true })')
+  it('fast-acks Paddle with 200 after durable enqueueing', () => {
+    expect(srcController).toContain('res.status(200).json({ received: true, eventId })')
   })
 })
 
@@ -393,8 +387,10 @@ describe('billing.service — Single Active Subscription Rules', () => {
     expect(src).toContain('paddleClient.updateSubscriptionPlan')
   })
 
-  it('acquires Redis distributed lock to prevent checkout race conditions', () => {
-    expect(src).toContain("redis.set(lockKey, '1', 'EX', 10, 'NX')")
+  it('acquires tokenized Redis distributed lock with Lua release to prevent checkout race conditions', () => {
+    expect(src).toContain("redis.set(lockKey, lockToken, 'EX', 15, 'NX')")
+    expect(src).toContain("redis.eval(RELEASE_LOCK_LUA")
   })
 })
+
 

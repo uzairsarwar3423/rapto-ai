@@ -41,6 +41,7 @@ export interface InvoiceListItem {
   id: string
   amountDue: number
   amountPaid: number
+  amountRefunded: number
   currency: string
   status: string
   hostedInvoiceUrl: string | null
@@ -107,10 +108,28 @@ export interface UpsertInvoiceData {
   paddleCustomerId: string
   amountDue: number
   amountPaid: number
+  amountRefunded?: number
   currency: string
   status: string
   periodStart?: Date
   periodEnd?: Date
   hostedInvoiceUrl?: string
   paidAt?: Date
+}
+
+export interface UpsertRefundData {
+  paddleAdjustmentId: string
+  invoiceId: string
+  amount: number
+  currency: string
+  reason?: string
+  status: string
+}
+
+export interface CreateBillingAuditLogData {
+  teamId: string
+  eventId?: string
+  eventType: string
+  action: string
+  payload: any
 }

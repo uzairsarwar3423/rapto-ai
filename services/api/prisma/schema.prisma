@@ -96,6 +96,7 @@ enum SubscriptionStatus {
   incomplete
   incomplete_expired
   unpaid
+  refunded
 }
 
 enum UsageEventType {
@@ -130,8 +131,12 @@ enum NotificationType {
   DEADLINE_TODAY
   DEADLINE_TOMORROW
   WEEKLY_DIGEST
+  PAYMENT_SUCCESS
   PAYMENT_FAILED
   PLAN_LIMIT_REACHED
+  SUBSCRIPTION_UPGRADED
+  SUBSCRIPTION_CANCELLED
+  TRIAL_STARTED
   TEAM_INVITE
   MEMBER_JOINED
   SCORE_MILESTONE
@@ -294,10 +299,11 @@ model Team {
   plan                  PlanType  @default(FREE)
   stripeCustomerId      String?   @unique
   stripeSubId           String?   @unique
-  paddleCustomerId      String?
+  paddleCustomerId      String?   @unique
   meetingsUsed          Int       @default(0)
   billingCycleStart     DateTime?
   billingCycleEnd       DateTime?
+  gracePeriodEnd        DateTime?
   settings              Json      @default("{}")
   ssoProvider           String?
   ssoMetadataUrl        String?
@@ -316,6 +322,8 @@ model Team {
   teamIntegrations      TeamIntegration[]
   subscription          Subscription?
   invoices              Invoice[]
+  refunds               Refund[]
+  billingAuditLogs      BillingAuditLog[]
   usageEvents           UsageEvent[]
   apiKeys               ApiKey[]
   webhookRegistrations  WebhookRegistration[]
@@ -324,6 +332,7 @@ model Team {
   teamInvitations       TeamInvitation[]
   inAppNotifications    InAppNotification[]
 
+  @@index([paddleCustomerId])
   @@map("teams")
 }
 
@@ -697,8 +706,9 @@ model Invoice {
   number                String?
   amountDue             Int
   amountPaid            Int       @default(0)
+  amountRefunded        Int       @default(0)
   currency              String    @default("usd")
-  status                String    // 'paid' | 'past_due' | 'draft' | 'voided'
+  status                String    // 'paid' | 'past_due' | 'draft' | 'voided' | 'refunded'
   periodStart           DateTime?
   periodEnd             DateTime?
   description           String?
@@ -708,9 +718,43 @@ model Invoice {
   createdAt             DateTime  @default(now())
 
   team                  Team      @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  refunds               Refund[]
 
   @@index([teamId, createdAt(sort: Desc)])
   @@map("invoices")
+}
+
+model Refund {
+  id                    String    @id @default(cuid())
+  teamId                String
+  invoiceId             String
+  paddleAdjustmentId    String    @unique
+  amount                Int
+  currency              String    @default("usd")
+  reason                String?
+  status                String    // 'completed' | 'pending'
+  createdAt             DateTime  @default(now())
+
+  team                  Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invoice               Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([teamId])
+  @@map("refunds")
+}
+
+model BillingAuditLog {
+  id                    String    @id @default(cuid())
+  teamId                String
+  eventId               String?   @unique
+  eventType             String
+  action                String
+  payload               Json
+  createdAt             DateTime  @default(now())
+
+  team                  Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt(sort: Desc)])
+  @@map("billing_audit_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────
