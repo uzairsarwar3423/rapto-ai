@@ -183,6 +183,19 @@ export function getPlanFromPriceId(priceId: string): PriceReverseEntry | undefin
   return undefined
 }
 
+/**
+ * Returns the price in minor units (USD cents) for a given plan and interval.
+ * Uses PLAN_LIMITS as the primary source of truth, with 10x monthly price for annual subscriptions (2 months free standard SaaS discount).
+ */
+export function getPlanPriceCents(plan: PlanType, interval: 'month' | 'year' = 'month'): number {
+  const baseMonthly = PLAN_LIMITS[plan]?.monthlyPriceCents ?? 0
+  if (baseMonthly <= 0) return 0
+  if (interval === 'year') {
+    return baseMonthly * 10
+  }
+  return baseMonthly
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function getPlanLimit<K extends keyof PlanLimits>(

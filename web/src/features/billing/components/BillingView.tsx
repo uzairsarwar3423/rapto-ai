@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, CheckCircle2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,6 +77,10 @@ export function BillingView() {
   const user = useAuthStore((s) => s.user);
   const [compareSheetOpen, setCompareSheetOpen] = useState(false);
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const isCheckoutSuccess =
+    searchParams.get("success") === "true" ||
+    searchParams.get("checkout") === "success";
 
   const syncMutation = useMutation({
     mutationFn: syncSubscription,
@@ -84,6 +89,18 @@ export function BillingView() {
       queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
   });
+
+  // Auto-sync on successful checkout return
+  React.useEffect(() => {
+    if (isCheckoutSuccess) {
+      syncSubscription()
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["team"] });
+          queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        })
+        .catch(() => {});
+    }
+  }, [isCheckoutSuccess, queryClient]);
 
   // Auto-sync fail-safe: if team is listed as FREE but has a paddleCustomerId,
   // sync automatically in the background to catch any missed or delayed webhooks.
@@ -154,6 +171,15 @@ export function BillingView() {
   return (
     <>
       <div className="space-y-6">
+        {isCheckoutSuccess && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="h-5 w-5 shrink-0" />
+            <div className="text-sm font-medium">
+              Payment successful! Your subscription and quota limits have been upgraded.
+            </div>
+          </div>
+        )}
+
         {/* ── CurrentPlanCard — the ONE Card on this page (plan §3) ── */}
         <Card className="border border-border bg-card rounded-[var(--radius-lg)] shadow-none">
           <CardContent className="p-5">

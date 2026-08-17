@@ -1,7 +1,7 @@
 import { PlanType, SubscriptionStatus } from '@prisma/client'
 import { logger } from '../../config/logger'
 import { notifyQueue } from '../../queues/queue.client'
-import { getPlanFromPriceId } from '../../config/plans.config'
+import { getPlanFromPriceId, getPlanPriceCents } from '../../config/plans.config'
 import * as billingRepo from '../billing/billing.repository'
 import { invalidatePlanCache } from '../../middleware/plan-limits.middleware'
 import type { PaddleWebhookCustomData } from '../billing/billing.types'
@@ -169,23 +169,31 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
 
   const totals = data.details?.totals
   const amountPaidCents = parseMinorAmount(totals?.total)
-  const currency        = (data.currencyCode || data.currency_code) ?? 'usd'
+  const currency        = (data.currencyCode || data.currency_code || 'usd').toLowerCase()
 
   logger.info(
     { eventId, transactionId, teamId, planId, interval, amountPaidCents, currency, paddleSubscriptionId },
     '[paddle.webhook.service][transaction.completed] ▶ Starting DB transaction'
   )
 
+  const calculatedUnitAmount = totals?.subtotal
+    ? parseMinorAmount(totals.subtotal)
+    : (totals?.total ? parseMinorAmount(totals.total) : getPlanPriceCents(planId, interval))
+
+  const items = data.items || []
+  const paddlePriceId = items?.[0]?.price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id || undefined
+
   const subData = paddleSubscriptionId ? {
     paddleSubscriptionId,
     paddleCustomerId,
+    paddlePriceId,
     plan: planId,
     billingInterval: interval,
     status: SubscriptionStatus.active,
     currentPeriodStart: periodStart,
     currentPeriodEnd: periodEnd,
     cancelAtPeriodEnd: false,
-    unitAmount: totals?.subtotal ? parseMinorAmount(totals.subtotal) : undefined,
+    unitAmount: calculatedUnitAmount,
     currency,
   } : null
 
@@ -280,8 +288,9 @@ async function handleSubscriptionCreated(data: any, eventId: string): Promise<vo
   const trialDates           = data.trialDates           || data.trial_dates
   const items                = data.items || []
   const price                = items?.[0]?.price
+  const priceId              = price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id
   const unitPrice            = price?.unitPrice           || price?.unit_price
-  const currencyCode         = data.currencyCode         || data.currency_code
+  const currencyCode         = (data.currencyCode || data.currency_code || price?.unitPrice?.currencyCode || price?.unit_price?.currency_code || 'usd').toLowerCase()
 
   const periodStart = currentBillingPeriod?.startsAt || currentBillingPeriod?.starts_at
     ? new Date(currentBillingPeriod.startsAt || currentBillingPeriod.starts_at)
@@ -290,20 +299,45 @@ async function handleSubscriptionCreated(data: any, eventId: string): Promise<vo
     ? new Date(currentBillingPeriod.endsAt || currentBillingPeriod.ends_at)
     : undefined
 
+  // Defensive Trial Dates Resolution
+  let trialStart = trialDates?.startsAt || trialDates?.starts_at
+    ? new Date(trialDates.startsAt || trialDates.starts_at)
+    : undefined
+  let trialEnd = trialDates?.endsAt || trialDates?.ends_at
+    ? new Date(trialDates.endsAt || trialDates.ends_at)
+    : undefined
+
+  if (status === SubscriptionStatus.trialing) {
+    if (!trialStart && periodStart) trialStart = periodStart
+    if (!trialEnd && periodEnd)     trialEnd = periodEnd
+  }
+
+  // Defensive Unit Amount Resolution
+  let unitAmount = unitPrice?.amount ? parseMinorAmount(unitPrice.amount) : undefined
+  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
+    const rawTotal = data.details?.totals?.subtotal || data.details?.totals?.total
+    if (rawTotal) {
+      unitAmount = parseMinorAmount(rawTotal)
+    }
+  }
+  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
+    unitAmount = getPlanPriceCents(planId, interval)
+  }
+
   const subData = {
     paddleSubscriptionId,
     paddleCustomerId,
-    paddlePriceId: price?.id,
+    paddlePriceId: priceId,
     plan:          planId,
     billingInterval: interval,
     status,
     currentPeriodStart: periodStart,
     currentPeriodEnd:   periodEnd,
     cancelAtPeriodEnd:  !!scheduledChange,
-    trialStart: trialDates?.startsAt || trialDates?.starts_at ? new Date(trialDates.startsAt || trialDates.starts_at) : undefined,
-    trialEnd:   trialDates?.endsAt   || trialDates?.ends_at   ? new Date(trialDates.endsAt   || trialDates.ends_at)   : undefined,
-    unitAmount: unitPrice?.amount ? parseMinorAmount(unitPrice.amount) : undefined,
-    currency:   currencyCode ?? 'usd',
+    trialStart,
+    trialEnd,
+    unitAmount,
+    currency: currencyCode,
   }
 
   if (status === SubscriptionStatus.active || status === SubscriptionStatus.trialing) {
@@ -345,14 +379,47 @@ async function handleSubscriptionUpdated(data: any, eventId: string): Promise<vo
 
   const currentBillingPeriod = data.currentBillingPeriod || data.current_billing_period
   const scheduledChange      = data.scheduledChange      || data.scheduled_change
+  const trialDates           = data.trialDates           || data.trial_dates
   const items                = data.items || []
   const price                = items?.[0]?.price
-  const priceId              = price?.id as string | undefined
+  const priceId              = price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id
   const status               = mapPaddleSubscriptionStatus(data.status as string)
   const unitPrice            = price?.unitPrice || price?.unit_price
-  const currencyCode         = data.currencyCode || data.currency_code
+  const currencyCode         = (data.currencyCode || data.currency_code || price?.unitPrice?.currencyCode || price?.unit_price?.currency_code || 'usd').toLowerCase()
   const paddleCustomerId     = (data.customerId || data.customer_id) as string
   const newPlan              = resolvedPlan ?? PlanType.FREE
+
+  const periodStart = currentBillingPeriod?.startsAt || currentBillingPeriod?.starts_at
+    ? new Date(currentBillingPeriod.startsAt || currentBillingPeriod.starts_at)
+    : undefined
+  const periodEnd = currentBillingPeriod?.endsAt || currentBillingPeriod?.ends_at
+    ? new Date(currentBillingPeriod.endsAt || currentBillingPeriod.ends_at)
+    : undefined
+
+  // Defensive Trial Dates Resolution
+  let trialStart = trialDates?.startsAt || trialDates?.starts_at
+    ? new Date(trialDates.startsAt || trialDates.starts_at)
+    : undefined
+  let trialEnd = trialDates?.endsAt || trialDates?.ends_at
+    ? new Date(trialDates.endsAt || trialDates.ends_at)
+    : undefined
+
+  if (status === SubscriptionStatus.trialing) {
+    if (!trialStart && periodStart) trialStart = periodStart
+    if (!trialEnd && periodEnd)     trialEnd = periodEnd
+  }
+
+  // Defensive Unit Amount Resolution
+  let unitAmount = unitPrice?.amount ? parseMinorAmount(unitPrice.amount) : undefined
+  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
+    const rawTotal = data.details?.totals?.subtotal || data.details?.totals?.total
+    if (rawTotal) {
+      unitAmount = parseMinorAmount(rawTotal)
+    }
+  }
+  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
+    unitAmount = getPlanPriceCents(newPlan, interval)
+  }
 
   const subData = {
     paddleSubscriptionId: subscriptionId,
@@ -361,15 +428,13 @@ async function handleSubscriptionUpdated(data: any, eventId: string): Promise<vo
     plan:          newPlan,
     billingInterval: interval,
     status,
-    currentPeriodStart: currentBillingPeriod?.startsAt || currentBillingPeriod?.starts_at
-      ? new Date(currentBillingPeriod.startsAt || currentBillingPeriod.starts_at)
-      : undefined,
-    currentPeriodEnd: currentBillingPeriod?.endsAt || currentBillingPeriod?.ends_at
-      ? new Date(currentBillingPeriod.endsAt || currentBillingPeriod.ends_at)
-      : undefined,
-    cancelAtPeriodEnd: !!scheduledChange,
-    unitAmount: unitPrice?.amount ? parseMinorAmount(unitPrice.amount) : undefined,
-    currency:   currencyCode ?? 'usd',
+    currentPeriodStart: periodStart,
+    currentPeriodEnd:   periodEnd,
+    cancelAtPeriodEnd:  !!scheduledChange,
+    trialStart,
+    trialEnd,
+    unitAmount,
+    currency: currencyCode,
   }
 
   if (status === SubscriptionStatus.active || status === SubscriptionStatus.trialing) {
@@ -385,8 +450,8 @@ async function handleSubscriptionUpdated(data: any, eventId: string): Promise<vo
         metadata: {
           newPlanName:     newPlan,
           billingInterval: interval,
-          amountPaid: unitPrice?.amount
-            ? `$${(parseMinorAmount(unitPrice.amount) / 100).toFixed(2)}`
+          amountPaid: unitAmount
+            ? `$${(unitAmount / 100).toFixed(2)}`
             : undefined,
         },
       },
