@@ -294,7 +294,7 @@ model Team {
   plan                  PlanType  @default(FREE)
   stripeCustomerId      String?   @unique
   stripeSubId           String?   @unique
-  paddleCustomerId      String?   @unique
+  paddleCustomerId      String?
   meetingsUsed          Int       @default(0)
   billingCycleStart     DateTime?
   billingCycleEnd       DateTime?
