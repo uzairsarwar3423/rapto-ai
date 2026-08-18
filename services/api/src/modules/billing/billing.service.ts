@@ -177,6 +177,21 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
 
       // Only update local state if Paddle returns active or trialing status
       if (updatedSub?.status === 'active' || updatedSub?.status === 'trialing') {
+        const currentBillingPeriod = updatedSub.currentBillingPeriod || updatedSub.current_billing_period
+        const periodStart = currentBillingPeriod?.startsAt ? new Date(currentBillingPeriod.startsAt) : undefined
+        const periodEnd   = currentBillingPeriod?.endsAt ? new Date(currentBillingPeriod.endsAt) : undefined
+
+        const trialDates = updatedSub.trialDates || updatedSub.trial_dates
+        const trialStart = trialDates?.startsAt ? new Date(trialDates.startsAt) : undefined
+        const trialEnd   = trialDates?.endsAt ? new Date(trialDates.endsAt) : undefined
+
+        const rawUnit = updatedSub.items?.[0]?.price?.unitPrice?.amount || updatedSub.items?.[0]?.price?.unit_price?.amount
+        const { getPlanPriceCents } = await import('../../config/plans.config')
+        const unitAmount = rawUnit ? Number(rawUnit) : getPlanPriceCents(planId, interval)
+
+        const currency = (updatedSub.currencyCode || updatedSub.currency_code || 'usd').toLowerCase()
+        const cancelAtPeriodEnd = Boolean(updatedSub.scheduledChange?.action === 'cancel' || updatedSub.scheduled_change?.action === 'cancel')
+
         await billingRepo.updateSubscriptionTransaction(teamId, planId, {
           paddleSubscriptionId: existingSub.paddleSubscriptionId,
           paddleCustomerId: existingSub.paddleCustomerId,
@@ -184,6 +199,13 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
           plan: planId,
           billingInterval: interval,
           status: updatedSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          cancelAtPeriodEnd,
+          trialStart,
+          trialEnd,
+          unitAmount,
+          currency,
         })
         await invalidatePlanCache(teamId)
 
@@ -194,6 +216,7 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
           socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
             teamId,
             plan: planId,
+            status: updatedSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
             updatedAt: new Date().toISOString(),
           })
         } catch (err: any) {
@@ -369,7 +392,7 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
 
   try {
     const { paddle } = await import('../../services/paddle.client')
-    const { getPlanFromPriceId } = await import('../../config/plans.config')
+    const { getPlanFromPriceId, getPlanPriceCents } = await import('../../config/plans.config')
 
     const collection = paddle.subscriptions.list({
       customerId: [team.paddleCustomerId],
@@ -389,8 +412,26 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
         : priceMatch?.planId
 
       if (resolvedPlan) {
-        const periodStart = activeSub.currentBillingPeriod?.startsAt ? new Date(activeSub.currentBillingPeriod.startsAt) : new Date()
-        const periodEnd = activeSub.currentBillingPeriod?.endsAt ? new Date(activeSub.currentBillingPeriod.endsAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        const interval = priceMatch?.interval ?? ((activeSub.customData as any)?.interval ?? 'month')
+        const currentBillingPeriod = activeSub.currentBillingPeriod || (activeSub as any).current_billing_period
+        const periodStart = currentBillingPeriod?.startsAt ? new Date(currentBillingPeriod.startsAt) : new Date()
+        const periodEnd   = currentBillingPeriod?.endsAt ? new Date(currentBillingPeriod.endsAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+        const status = activeSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active
+
+        const trialDates = (activeSub as any).trialDates || (activeSub as any).trial_dates
+        let trialStart = trialDates?.startsAt ? new Date(trialDates.startsAt) : undefined
+        let trialEnd   = trialDates?.endsAt ? new Date(trialDates.endsAt) : undefined
+        if (status === SubscriptionStatus.trialing) {
+          if (!trialStart) trialStart = periodStart
+          if (!trialEnd) trialEnd = periodEnd
+        }
+
+        const rawUnit = activeSub.items?.[0]?.price?.unitPrice?.amount || (activeSub.items?.[0] as any)?.price?.unit_price?.amount
+        const unitAmount = rawUnit ? Number(rawUnit) : getPlanPriceCents(resolvedPlan, interval)
+
+        const currency = (activeSub.currencyCode || (activeSub as any).currency_code || 'usd').toLowerCase()
+        const cancelAtPeriodEnd = Boolean(activeSub.scheduledChange?.action === 'cancel' || (activeSub as any).scheduled_change?.action === 'cancel')
 
         await billingRepo.activateSubscriptionTransaction(
           teamId,
@@ -400,10 +441,15 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
             paddleCustomerId: team.paddleCustomerId,
             paddlePriceId: priceId,
             plan: resolvedPlan,
-            billingInterval: priceMatch?.interval ?? 'month',
-            status: activeSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
+            billingInterval: interval,
+            status,
             currentPeriodStart: periodStart,
             currentPeriodEnd: periodEnd,
+            cancelAtPeriodEnd,
+            trialStart,
+            trialEnd,
+            unitAmount,
+            currency,
           },
           null,
           periodStart,
@@ -419,6 +465,7 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
           socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
             teamId,
             plan: resolvedPlan,
+            status,
             updatedAt: new Date().toISOString(),
           })
         } catch (err: any) {

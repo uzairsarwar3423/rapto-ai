@@ -643,6 +643,8 @@ model Subscription {
   team                    Team                @relation(fields: [teamId], references: [id], onDelete: Restrict)
 
   @@index([status])
+  @@index([paddleCustomerId])
+  @@index([plan])
   @@map("subscriptions")
 }
 

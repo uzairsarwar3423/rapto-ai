@@ -4,7 +4,7 @@ import { notifyQueue } from '../../queues/queue.client'
 import { getPlanFromPriceId, getPlanPriceCents } from '../../config/plans.config'
 import * as billingRepo from '../billing/billing.repository'
 import { invalidatePlanCache } from '../../middleware/plan-limits.middleware'
-import type { PaddleWebhookCustomData } from '../billing/billing.types'
+import type { PaddleWebhookCustomData, UpsertSubscriptionData } from '../billing/billing.types'
 
 export async function processEvent(event: any, eventId: string, eventType: string): Promise<void> {
   const data = event.data || event
@@ -13,15 +13,24 @@ export async function processEvent(event: any, eventId: string, eventType: strin
 
   switch (eventType) {
     case 'transaction.completed':
+    case 'transaction.paid':
+    case 'transaction.billed':
       await handleTransactionCompleted(data, eventId)
       break
     case 'subscription.created':
+    case 'subscription.imported':
       await handleSubscriptionCreated(data, eventId)
       break
     case 'subscription.updated':
+    case 'subscription.activated':
+    case 'subscription.resumed':
       await handleSubscriptionUpdated(data, eventId)
       break
+    case 'subscription.trialing':
+      await handleSubscriptionTrialing(data, eventId)
+      break
     case 'subscription.canceled':
+    case 'subscription.cancelled':
       await handleSubscriptionCanceled(data, eventId)
       break
     case 'subscription.past_due':
@@ -29,9 +38,6 @@ export async function processEvent(event: any, eventId: string, eventType: strin
       break
     case 'subscription.paused':
       await handleSubscriptionPaused(data, eventId)
-      break
-    case 'subscription.resumed':
-      await handleSubscriptionResumed(data, eventId)
       break
     case 'adjustment.created':
     case 'adjustment.updated':
@@ -42,6 +48,144 @@ export async function processEvent(event: any, eventId: string, eventType: strin
       break
     default:
       logger.info({ eventType, eventId }, '[paddle.webhook.service] Unhandled or informative event type — skipping')
+  }
+}
+
+export function parsePaddleDate(val: any): Date | undefined {
+  if (!val) return undefined
+  if (val instanceof Date) return isNaN(val.getTime()) ? undefined : val
+  if (typeof val === 'number') {
+    const ms = val < 1e11 ? val * 1000 : val
+    const d = new Date(ms)
+    return isNaN(d.getTime()) ? undefined : d
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim()
+    if (!trimmed) return undefined
+    const d = new Date(trimmed)
+    return isNaN(d.getTime()) ? undefined : d
+  }
+  return undefined
+}
+
+export function mapPaddleSubscriptionStatus(paddleStatus: string): SubscriptionStatus {
+  switch ((paddleStatus || '').toLowerCase()) {
+    case 'active':             return SubscriptionStatus.active
+    case 'trialing':          return SubscriptionStatus.trialing
+    case 'past_due':          return SubscriptionStatus.past_due
+    case 'paused':            return SubscriptionStatus.paused
+    case 'canceled':
+    case 'cancelled':         return SubscriptionStatus.cancelled
+    case 'unpaid':            return SubscriptionStatus.unpaid
+    case 'incomplete':        return SubscriptionStatus.incomplete
+    case 'incomplete_expired':return SubscriptionStatus.incomplete_expired
+    case 'refunded':          return SubscriptionStatus.refunded
+    default:
+      logger.warn({ paddleStatus }, '[paddle.webhook.service] Unknown Paddle subscription status — defaulting to active')
+      return SubscriptionStatus.active
+  }
+}
+
+export function parseMinorAmount(amountRaw: any): number {
+  if (amountRaw === null || amountRaw === undefined) return 0
+  const num = Number(amountRaw)
+  if (isNaN(num)) return 0
+  return Math.round(num)
+}
+
+export function extractSubscriptionData(
+  data: any,
+  resolvedPlan: PlanType | null,
+  interval: 'month' | 'year'
+): UpsertSubscriptionData {
+  const paddleSubscriptionId = (data.id || data.subscriptionId || data.subscription_id) as string
+  const paddleCustomerId     = (data.customerId || data.customer_id) as string
+  const rawStatus            = (data.status as string) || 'active'
+  const status               = mapPaddleSubscriptionStatus(rawStatus)
+  const plan                 = resolvedPlan ?? PlanType.FREE
+
+  const items = data.items || []
+  const price = items?.[0]?.price
+  const priceId = price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id || undefined
+
+  const currentBillingPeriod = data.currentBillingPeriod || data.current_billing_period
+  const billingPeriod = data.billingPeriod || data.billing_period
+  const periodSource = currentBillingPeriod || billingPeriod
+
+  let currentPeriodStart = parsePaddleDate(
+    periodSource?.startsAt || periodSource?.starts_at || data.started_at || data.first_billed_at || data.created_at
+  )
+  let currentPeriodEnd = parsePaddleDate(
+    periodSource?.endsAt || periodSource?.ends_at || data.next_billed_at
+  )
+
+  // Defensive Trial Dates Resolution
+  const trialDates = data.trialDates || data.trial_dates || items?.[0]?.trial_dates || data.details?.line_items?.[0]?.trial_dates
+  let trialStart = parsePaddleDate(trialDates?.startsAt || trialDates?.starts_at)
+  let trialEnd = parsePaddleDate(trialDates?.endsAt || trialDates?.ends_at)
+
+  if (status === SubscriptionStatus.trialing) {
+    if (!trialStart) trialStart = currentPeriodStart || parsePaddleDate(data.started_at || data.created_at) || new Date()
+    if (!trialEnd) trialEnd = currentPeriodEnd || parsePaddleDate(data.next_billed_at) || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    if (!currentPeriodStart && trialStart) currentPeriodStart = trialStart
+    if (!currentPeriodEnd && trialEnd) currentPeriodEnd = trialEnd
+  }
+
+  // Defensive Unit Amount Resolution
+  const unitPrice = price?.unitPrice || price?.unit_price
+  let unitAmount: number | undefined = undefined
+
+  if (unitPrice?.amount) {
+    unitAmount = parseMinorAmount(unitPrice.amount)
+  }
+  if (unitAmount === undefined || unitAmount === 0) {
+    const lineItemAmount = data.details?.line_items?.[0]?.unit_totals?.total || data.details?.line_items?.[0]?.price?.unit_price?.amount
+    if (lineItemAmount) unitAmount = parseMinorAmount(lineItemAmount)
+  }
+  if (unitAmount === undefined || unitAmount === 0) {
+    const recurringTotal = data.recurring_transaction_details?.totals?.subtotal || data.recurring_transaction_details?.totals?.total
+    if (recurringTotal) unitAmount = parseMinorAmount(recurringTotal)
+  }
+  if (unitAmount === undefined || unitAmount === 0) {
+    const rawTotal = data.details?.totals?.subtotal || data.details?.totals?.total
+    if (rawTotal) unitAmount = parseMinorAmount(rawTotal)
+  }
+  if (unitAmount === undefined || unitAmount === 0) {
+    unitAmount = getPlanPriceCents(plan, interval)
+  }
+
+  const currency = (
+    data.currencyCode ||
+    data.currency_code ||
+    unitPrice?.currencyCode ||
+    unitPrice?.currency_code ||
+    'usd'
+  ).toLowerCase()
+
+  const scheduledChange = data.scheduledChange || data.scheduled_change
+  const cancelAtPeriodEnd = Boolean(
+    scheduledChange?.action === 'cancel' ||
+    data.cancel_at_period_end ||
+    data.cancelAtPeriodEnd
+  )
+
+  const canceledAt = parsePaddleDate(data.canceledAt || data.canceled_at)
+
+  return {
+    paddleSubscriptionId,
+    paddleCustomerId,
+    paddlePriceId: priceId,
+    plan,
+    billingInterval: interval,
+    status,
+    currentPeriodStart,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    cancelledAt: canceledAt,
+    trialStart,
+    trialEnd,
+    unitAmount,
+    currency,
   }
 }
 
@@ -103,27 +247,6 @@ async function resolveTeamAndPlan(data: any): Promise<{
   return { teamId, planId, interval }
 }
 
-function mapPaddleSubscriptionStatus(paddleStatus: string): SubscriptionStatus {
-  switch (paddleStatus) {
-    case 'active':   return SubscriptionStatus.active
-    case 'trialing': return SubscriptionStatus.trialing
-    case 'past_due': return SubscriptionStatus.past_due
-    case 'paused':   return SubscriptionStatus.paused
-    case 'canceled': return SubscriptionStatus.cancelled
-    case 'unpaid':   return SubscriptionStatus.unpaid
-    default:
-      logger.warn({ paddleStatus }, '[paddle.webhook.service] Unknown Paddle subscription status — defaulting to active')
-      return SubscriptionStatus.active
-  }
-}
-
-function parseMinorAmount(amountRaw: any): number {
-  if (amountRaw === null || amountRaw === undefined) return 0
-  const num = Number(amountRaw)
-  if (isNaN(num)) return 0
-  return Math.round(num)
-}
-
 async function enqueueBillingJob(
   jobName: string,
   jobData: object,
@@ -159,13 +282,9 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
   const paddleCustomerId     = (data.customerId || data.customer_id) as string
   const transactionId        = data.id as string
 
-  const billingPeriod = data.billingPeriod || data.billing_period
-  const periodStart = billingPeriod?.startsAt || billingPeriod?.starts_at
-    ? new Date(billingPeriod.startsAt || billingPeriod.starts_at)
-    : new Date()
-  const periodEnd = billingPeriod?.endsAt || billingPeriod?.ends_at
-    ? new Date(billingPeriod.endsAt || billingPeriod.ends_at)
-    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  const billingPeriod = data.billingPeriod || data.billing_period || data.currentBillingPeriod || data.current_billing_period
+  const periodStart = parsePaddleDate(billingPeriod?.startsAt || billingPeriod?.starts_at) || new Date()
+  const periodEnd   = parsePaddleDate(billingPeriod?.endsAt || billingPeriod?.ends_at) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
   const totals = data.details?.totals
   const amountPaidCents = parseMinorAmount(totals?.total)
@@ -183,16 +302,31 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
   const items = data.items || []
   const paddlePriceId = items?.[0]?.price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id || undefined
 
-  const subData = paddleSubscriptionId ? {
+  // Determine if this transaction is for a trialing subscription ($0 transaction or trialing origin)
+  const isTrialTransaction = Boolean(data.trial_dates || data.trialDates || (amountPaidCents === 0 && data.status === 'trialing'))
+  const status = isTrialTransaction ? SubscriptionStatus.trialing : SubscriptionStatus.active
+
+  // Defensive Trial Dates Resolution
+  const trialDates = data.trialDates || data.trial_dates || items?.[0]?.trial_dates
+  let trialStart = parsePaddleDate(trialDates?.startsAt || trialDates?.starts_at)
+  let trialEnd   = parsePaddleDate(trialDates?.endsAt || trialDates?.ends_at)
+  if (status === SubscriptionStatus.trialing) {
+    if (!trialStart) trialStart = periodStart
+    if (!trialEnd) trialEnd = periodEnd
+  }
+
+  const subData: UpsertSubscriptionData | null = paddleSubscriptionId ? {
     paddleSubscriptionId,
     paddleCustomerId,
     paddlePriceId,
     plan: planId,
     billingInterval: interval,
-    status: SubscriptionStatus.active,
+    status,
     currentPeriodStart: periodStart,
     currentPeriodEnd: periodEnd,
     cancelAtPeriodEnd: false,
+    trialStart,
+    trialEnd,
     unitAmount: calculatedUnitAmount,
     currency,
   } : null
@@ -225,7 +359,7 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
     eventId,
     eventType: 'transaction.completed',
     action: 'ACTIVATE_SUBSCRIPTION',
-    payload: { transactionId, planId, interval, amountPaidCents, currency },
+    payload: { transactionId, planId, interval, amountPaidCents, currency, status },
   })
 
   await invalidatePlanCache(teamId)
@@ -236,7 +370,7 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
     socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
       teamId,
       plan: planId,
-      status: SubscriptionStatus.active,
+      status,
       updatedAt: new Date().toISOString(),
     })
   } catch (err: any) {
@@ -264,15 +398,13 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
 
   logger.info(
     { eventId, transactionId, teamId, planId, interval, amountPaidCents },
-    '[paddle.webhook.service][transaction.completed] ✅ COMPLETE — subscription active, email queued'
+    '[paddle.webhook.service][transaction.completed] ✅ COMPLETE — subscription record synced, email queued'
   )
 }
 
 async function handleSubscriptionCreated(data: any, eventId: string): Promise<void> {
   const { teamId, planId: resolvedPlan, interval } = await resolveTeamAndPlan(data)
-  const paddleSubscriptionId = data.id as string
-  const paddleCustomerId     = (data.customerId || data.customer_id) as string
-  const status               = mapPaddleSubscriptionStatus(data.status as string)
+  const paddleSubscriptionId = (data.id || data.subscriptionId || data.subscription_id) as string
 
   if (!teamId) {
     logger.warn(
@@ -282,66 +414,10 @@ async function handleSubscriptionCreated(data: any, eventId: string): Promise<vo
     return
   }
 
-  const planId               = resolvedPlan ?? PlanType.FREE
-  const scheduledChange      = data.scheduledChange      || data.scheduled_change
-  const currentBillingPeriod = data.currentBillingPeriod || data.current_billing_period
-  const trialDates           = data.trialDates           || data.trial_dates
-  const items                = data.items || []
-  const price                = items?.[0]?.price
-  const priceId              = price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id
-  const unitPrice            = price?.unitPrice           || price?.unit_price
-  const currencyCode         = (data.currencyCode || data.currency_code || price?.unitPrice?.currencyCode || price?.unit_price?.currency_code || 'usd').toLowerCase()
+  const subData = extractSubscriptionData(data, resolvedPlan, interval)
 
-  const periodStart = currentBillingPeriod?.startsAt || currentBillingPeriod?.starts_at
-    ? new Date(currentBillingPeriod.startsAt || currentBillingPeriod.starts_at)
-    : undefined
-  const periodEnd = currentBillingPeriod?.endsAt || currentBillingPeriod?.ends_at
-    ? new Date(currentBillingPeriod.endsAt || currentBillingPeriod.ends_at)
-    : undefined
-
-  // Defensive Trial Dates Resolution
-  let trialStart = trialDates?.startsAt || trialDates?.starts_at
-    ? new Date(trialDates.startsAt || trialDates.starts_at)
-    : undefined
-  let trialEnd = trialDates?.endsAt || trialDates?.ends_at
-    ? new Date(trialDates.endsAt || trialDates.ends_at)
-    : undefined
-
-  if (status === SubscriptionStatus.trialing) {
-    if (!trialStart && periodStart) trialStart = periodStart
-    if (!trialEnd && periodEnd)     trialEnd = periodEnd
-  }
-
-  // Defensive Unit Amount Resolution
-  let unitAmount = unitPrice?.amount ? parseMinorAmount(unitPrice.amount) : undefined
-  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
-    const rawTotal = data.details?.totals?.subtotal || data.details?.totals?.total
-    if (rawTotal) {
-      unitAmount = parseMinorAmount(rawTotal)
-    }
-  }
-  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
-    unitAmount = getPlanPriceCents(planId, interval)
-  }
-
-  const subData = {
-    paddleSubscriptionId,
-    paddleCustomerId,
-    paddlePriceId: priceId,
-    plan:          planId,
-    billingInterval: interval,
-    status,
-    currentPeriodStart: periodStart,
-    currentPeriodEnd:   periodEnd,
-    cancelAtPeriodEnd:  !!scheduledChange,
-    trialStart,
-    trialEnd,
-    unitAmount,
-    currency: currencyCode,
-  }
-
-  if (status === SubscriptionStatus.active || status === SubscriptionStatus.trialing) {
-    await billingRepo.updateSubscriptionTransaction(teamId, planId, subData)
+  if (subData.status === SubscriptionStatus.active || subData.status === SubscriptionStatus.trialing) {
+    await billingRepo.updateSubscriptionTransaction(teamId, subData.plan, subData)
     await invalidatePlanCache(teamId)
   } else {
     await billingRepo.upsertSubscription(teamId, subData)
@@ -352,22 +428,40 @@ async function handleSubscriptionCreated(data: any, eventId: string): Promise<vo
     eventId,
     eventType: 'subscription.created',
     action: 'SUBSCRIPTION_CREATED',
-    payload: { paddleSubscriptionId, planId, status },
+    payload: { paddleSubscriptionId, planId: subData.plan, status: subData.status, trialStart: subData.trialStart, trialEnd: subData.trialEnd, unitAmount: subData.unitAmount },
   })
 
-  if (data.status === 'trialing') {
+  // Emit real-time socket event
+  try {
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
+      teamId,
+      plan: subData.plan,
+      status: subData.status,
+      updatedAt: new Date().toISOString(),
+    })
+  } catch (err: any) {
+    logger.warn({ err: err.message, teamId }, '[paddle.webhook.service] Failed to emit billing socket event')
+  }
+
+  if (subData.status === SubscriptionStatus.trialing) {
     await enqueueBillingJob(
       'trial-started',
-      { type: 'TRIAL_STARTED', teamId, trialEndsAt: periodEnd },
+      { type: 'TRIAL_STARTED', teamId, trialEndsAt: subData.trialEnd },
       `trial-started:${paddleSubscriptionId}`,
       { eventId, teamId }
     )
   }
 }
 
+async function handleSubscriptionTrialing(data: any, eventId: string): Promise<void> {
+  await handleSubscriptionCreated(data, eventId)
+}
+
 async function handleSubscriptionUpdated(data: any, eventId: string): Promise<void> {
   const { teamId, planId: resolvedPlan, interval } = await resolveTeamAndPlan(data)
-  const subscriptionId = data.id as string
+  const subscriptionId = (data.id || data.subscriptionId || data.subscription_id) as string
 
   if (!teamId) {
     logger.warn(
@@ -377,68 +471,10 @@ async function handleSubscriptionUpdated(data: any, eventId: string): Promise<vo
     return
   }
 
-  const currentBillingPeriod = data.currentBillingPeriod || data.current_billing_period
-  const scheduledChange      = data.scheduledChange      || data.scheduled_change
-  const trialDates           = data.trialDates           || data.trial_dates
-  const items                = data.items || []
-  const price                = items?.[0]?.price
-  const priceId              = price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id
-  const status               = mapPaddleSubscriptionStatus(data.status as string)
-  const unitPrice            = price?.unitPrice || price?.unit_price
-  const currencyCode         = (data.currencyCode || data.currency_code || price?.unitPrice?.currencyCode || price?.unit_price?.currency_code || 'usd').toLowerCase()
-  const paddleCustomerId     = (data.customerId || data.customer_id) as string
-  const newPlan              = resolvedPlan ?? PlanType.FREE
+  const subData = extractSubscriptionData(data, resolvedPlan, interval)
 
-  const periodStart = currentBillingPeriod?.startsAt || currentBillingPeriod?.starts_at
-    ? new Date(currentBillingPeriod.startsAt || currentBillingPeriod.starts_at)
-    : undefined
-  const periodEnd = currentBillingPeriod?.endsAt || currentBillingPeriod?.ends_at
-    ? new Date(currentBillingPeriod.endsAt || currentBillingPeriod.ends_at)
-    : undefined
-
-  // Defensive Trial Dates Resolution
-  let trialStart = trialDates?.startsAt || trialDates?.starts_at
-    ? new Date(trialDates.startsAt || trialDates.starts_at)
-    : undefined
-  let trialEnd = trialDates?.endsAt || trialDates?.ends_at
-    ? new Date(trialDates.endsAt || trialDates.ends_at)
-    : undefined
-
-  if (status === SubscriptionStatus.trialing) {
-    if (!trialStart && periodStart) trialStart = periodStart
-    if (!trialEnd && periodEnd)     trialEnd = periodEnd
-  }
-
-  // Defensive Unit Amount Resolution
-  let unitAmount = unitPrice?.amount ? parseMinorAmount(unitPrice.amount) : undefined
-  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
-    const rawTotal = data.details?.totals?.subtotal || data.details?.totals?.total
-    if (rawTotal) {
-      unitAmount = parseMinorAmount(rawTotal)
-    }
-  }
-  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
-    unitAmount = getPlanPriceCents(newPlan, interval)
-  }
-
-  const subData = {
-    paddleSubscriptionId: subscriptionId,
-    paddleCustomerId,
-    paddlePriceId: priceId,
-    plan:          newPlan,
-    billingInterval: interval,
-    status,
-    currentPeriodStart: periodStart,
-    currentPeriodEnd:   periodEnd,
-    cancelAtPeriodEnd:  !!scheduledChange,
-    trialStart,
-    trialEnd,
-    unitAmount,
-    currency: currencyCode,
-  }
-
-  if (status === SubscriptionStatus.active || status === SubscriptionStatus.trialing) {
-    await billingRepo.updateSubscriptionTransaction(teamId, newPlan, subData)
+  if (subData.status === SubscriptionStatus.active || subData.status === SubscriptionStatus.trialing) {
+    await billingRepo.updateSubscriptionTransaction(teamId, subData.plan, subData)
     await invalidatePlanCache(teamId)
 
     await enqueueBillingJob(
@@ -446,12 +482,12 @@ async function handleSubscriptionUpdated(data: any, eventId: string): Promise<vo
       {
         type: 'SUBSCRIPTION_UPGRADED',
         teamId,
-        planId: newPlan,
+        planId: subData.plan,
         metadata: {
-          newPlanName:     newPlan,
+          newPlanName:     subData.plan,
           billingInterval: interval,
-          amountPaid: unitAmount
-            ? `$${(unitAmount / 100).toFixed(2)}`
+          amountPaid: subData.unitAmount
+            ? `$${(subData.unitAmount / 100).toFixed(2)}`
             : undefined,
         },
       },
@@ -459,8 +495,8 @@ async function handleSubscriptionUpdated(data: any, eventId: string): Promise<vo
       { eventId, teamId }
     )
   } else {
-    // For non-active states (past_due, paused, etc.), update subscription row but DO NOT escalate team plan
-    await billingRepo.upsertSubscription(teamId, subData)
+    // For non-active states (past_due, paused, canceled), update subscription row & adjust team plan atomically
+    await billingRepo.updateSubscriptionTransaction(teamId, subData.plan, subData)
     await invalidatePlanCache(teamId)
   }
 
@@ -469,8 +505,22 @@ async function handleSubscriptionUpdated(data: any, eventId: string): Promise<vo
     eventId,
     eventType: 'subscription.updated',
     action: 'SUBSCRIPTION_UPDATED',
-    payload: { subscriptionId, newPlan, status },
+    payload: { subscriptionId, newPlan: subData.plan, status: subData.status, trialStart: subData.trialStart, trialEnd: subData.trialEnd, unitAmount: subData.unitAmount },
   })
+
+  // Emit real-time socket event
+  try {
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
+      teamId,
+      plan: subData.plan,
+      status: subData.status,
+      updatedAt: new Date().toISOString(),
+    })
+  } catch (err: any) {
+    logger.warn({ err: err.message, teamId }, '[paddle.webhook.service] Failed to emit billing socket event')
+  }
 }
 
 async function handleSubscriptionPastDue(data: any, eventId: string): Promise<void> {

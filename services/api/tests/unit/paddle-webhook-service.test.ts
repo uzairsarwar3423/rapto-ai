@@ -214,4 +214,123 @@ describe('paddle.webhook.service — Production Event Processing', () => {
       )
     })
   })
+
+  describe('subscription.created & subscription.trialing with Trial Dates & unitAmount', () => {
+    it('persists trialStart, trialEnd, and unitAmount for a trialing subscription', async () => {
+      const eventId = 'evt_sub_trial_1'
+      const event = {
+        data: {
+          id: 'sub_trial_999',
+          customerId: 'ctm_user_1',
+          status: 'trialing',
+          currencyCode: 'USD',
+          trialDates: {
+            startsAt: '2026-08-18T00:00:00Z',
+            endsAt: '2026-09-01T00:00:00Z',
+          },
+          currentBillingPeriod: {
+            startsAt: '2026-08-18T00:00:00Z',
+            endsAt: '2026-09-01T00:00:00Z',
+          },
+          items: [
+            {
+              price: {
+                id: 'pri_starter_mo',
+                unitPrice: {
+                  amount: '4900',
+                  currencyCode: 'USD',
+                },
+              },
+            },
+          ],
+          customData: {
+            teamId: 'team_trial_123',
+            planId: 'STARTER',
+            interval: 'month',
+          },
+        },
+      }
+
+      await paddleWebhookService.processEvent(event, eventId, 'subscription.created')
+
+      expect(billingRepo.updateSubscriptionTransaction).toHaveBeenCalledWith(
+        'team_trial_123',
+        PlanType.STARTER,
+        expect.objectContaining({
+          paddleSubscriptionId: 'sub_trial_999',
+          status: SubscriptionStatus.trialing,
+          plan: PlanType.STARTER,
+          trialStart: new Date('2026-08-18T00:00:00Z'),
+          trialEnd: new Date('2026-09-01T00:00:00Z'),
+          unitAmount: 4900,
+          currency: 'usd',
+        })
+      )
+
+      expect(notifyQueue.add).toHaveBeenCalledWith(
+        'trial-started',
+        expect.objectContaining({
+          type: 'TRIAL_STARTED',
+          teamId: 'team_trial_123',
+          trialEndsAt: new Date('2026-09-01T00:00:00Z'),
+        }),
+        expect.objectContaining({
+          jobId: 'trial-started:sub_trial_999',
+        })
+      )
+    })
+
+    it('fallback assigns trialStart/End from currentBillingPeriod if trialDates omitted', async () => {
+      const eventId = 'evt_sub_trial_2'
+      const event = {
+        data: {
+          id: 'sub_trial_888',
+          customerId: 'ctm_user_2',
+          status: 'trialing',
+          currentBillingPeriod: {
+            startsAt: '2026-08-18T10:00:00Z',
+            endsAt: '2026-09-01T10:00:00Z',
+          },
+          customData: {
+            teamId: 'team_trial_456',
+            planId: 'GROWTH',
+            interval: 'month',
+          },
+        },
+      }
+
+      await paddleWebhookService.processEvent(event, eventId, 'subscription.trialing')
+
+      expect(billingRepo.updateSubscriptionTransaction).toHaveBeenCalledWith(
+        'team_trial_456',
+        PlanType.GROWTH,
+        expect.objectContaining({
+          paddleSubscriptionId: 'sub_trial_888',
+          status: SubscriptionStatus.trialing,
+          plan: PlanType.GROWTH,
+          trialStart: new Date('2026-08-18T10:00:00Z'),
+          trialEnd: new Date('2026-09-01T10:00:00Z'),
+          unitAmount: 9900, // Growth plan default
+          currency: 'usd',
+        })
+      )
+    })
+  })
+
+  describe('Utility parsers: parsePaddleDate & extractSubscriptionData', () => {
+    it('handles ISO strings, Unix timestamps, and nulls correctly', () => {
+      expect(paddleWebhookService.parsePaddleDate('2026-08-18T00:00:00Z')).toEqual(new Date('2026-08-18T00:00:00Z'))
+      expect(paddleWebhookService.parsePaddleDate(1787011200)).toEqual(new Date(1787011200000))
+      expect(paddleWebhookService.parsePaddleDate(null)).toBeUndefined()
+      expect(paddleWebhookService.parsePaddleDate('')).toBeUndefined()
+      expect(paddleWebhookService.parsePaddleDate('invalid-date')).toBeUndefined()
+    })
+
+    it('parses minor amounts accurately', () => {
+      expect(paddleWebhookService.parseMinorAmount('4900')).toBe(4900)
+      expect(paddleWebhookService.parseMinorAmount(4900)).toBe(4900)
+      expect(paddleWebhookService.parseMinorAmount(null)).toBe(0)
+      expect(paddleWebhookService.parseMinorAmount('invalid')).toBe(0)
+    })
+  })
 })

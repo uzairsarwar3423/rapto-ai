@@ -33,6 +33,7 @@ export async function findSubscriptionByTeam(teamId: string) {
       currentPeriodStart: true,
       currentPeriodEnd: true,
       cancelAtPeriodEnd: true,
+      cancelledAt: true,
       trialStart: true,
       trialEnd: true,
       unitAmount: true,
@@ -59,6 +60,7 @@ export async function findFullSubscriptionByTeam(teamId: string) {
       currentPeriodStart: true,
       currentPeriodEnd: true,
       cancelAtPeriodEnd: true,
+      cancelledAt: true,
       trialStart: true,
       trialEnd: true,
       unitAmount: true,
@@ -88,18 +90,21 @@ export async function upsertSubscription(
       currentPeriodStart: data.currentPeriodStart,
       currentPeriodEnd: data.currentPeriodEnd,
       cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+      cancelledAt: data.cancelledAt,
       trialStart: data.trialStart,
       trialEnd: data.trialEnd,
       unitAmount: data.unitAmount,
       currency: data.currency ?? 'usd',
     },
     update: {
+      paddleSubscriptionId: data.paddleSubscriptionId,
+      paddleCustomerId: data.paddleCustomerId,
       ...(data.paddlePriceId && { paddlePriceId: data.paddlePriceId }),
       plan: data.plan,
       billingInterval: data.billingInterval,
       status: data.status,
-      ...(data.currentPeriodStart && { currentPeriodStart: data.currentPeriodStart }),
-      ...(data.currentPeriodEnd && { currentPeriodEnd: data.currentPeriodEnd }),
+      ...(data.currentPeriodStart !== undefined && { currentPeriodStart: data.currentPeriodStart }),
+      ...(data.currentPeriodEnd !== undefined && { currentPeriodEnd: data.currentPeriodEnd }),
       cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
       ...(data.cancelledAt !== undefined && { cancelledAt: data.cancelledAt }),
       ...(data.trialStart !== undefined && { trialStart: data.trialStart }),
@@ -152,14 +157,16 @@ export async function activateSubscriptionTransaction(
           currency: subscriptionData.currency ?? 'usd',
         },
         update: {
+          paddleSubscriptionId: subscriptionData.paddleSubscriptionId,
+          paddleCustomerId: subscriptionData.paddleCustomerId,
           ...(subscriptionData.paddlePriceId && { paddlePriceId: subscriptionData.paddlePriceId }),
           plan: subscriptionData.plan,
           billingInterval: subscriptionData.billingInterval,
           status: subscriptionData.status,
           cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd ?? false,
           currency: subscriptionData.currency ?? 'usd',
-          ...(subscriptionData.currentPeriodStart && { currentPeriodStart: subscriptionData.currentPeriodStart }),
-          ...(subscriptionData.currentPeriodEnd && { currentPeriodEnd: subscriptionData.currentPeriodEnd }),
+          ...(subscriptionData.currentPeriodStart !== undefined && { currentPeriodStart: subscriptionData.currentPeriodStart }),
+          ...(subscriptionData.currentPeriodEnd !== undefined && { currentPeriodEnd: subscriptionData.currentPeriodEnd }),
           ...(subscriptionData.trialStart !== undefined && { trialStart: subscriptionData.trialStart }),
           ...(subscriptionData.trialEnd !== undefined && { trialEnd: subscriptionData.trialEnd }),
           ...(subscriptionData.unitAmount !== undefined && { unitAmount: subscriptionData.unitAmount }),
@@ -168,16 +175,18 @@ export async function activateSubscriptionTransaction(
       })
     }
 
-    await tx.team.update({
-      where: { id: teamId },
-      data: {
-        plan,
-        meetingsUsed: 0,
-        billingCycleStart: periodStart,
-        billingCycleEnd: periodEnd,
-        gracePeriodEnd: null,
-      },
-    })
+    if (!subscriptionData || subscriptionData.status === SubscriptionStatus.active || subscriptionData.status === SubscriptionStatus.trialing) {
+      await tx.team.update({
+        where: { id: teamId },
+        data: {
+          plan,
+          meetingsUsed: 0,
+          billingCycleStart: periodStart,
+          billingCycleEnd: periodEnd,
+          gracePeriodEnd: null,
+        },
+      })
+    }
 
     if (invoiceData) {
       await tx.invoice.upsert({
@@ -216,14 +225,16 @@ export async function updateSubscriptionTransaction(
         currency: subscriptionData.currency ?? 'usd',
       },
       update: {
+        paddleSubscriptionId: subscriptionData.paddleSubscriptionId,
+        paddleCustomerId: subscriptionData.paddleCustomerId,
         ...(subscriptionData.paddlePriceId && { paddlePriceId: subscriptionData.paddlePriceId }),
         plan: subscriptionData.plan,
         billingInterval: subscriptionData.billingInterval,
         status: subscriptionData.status,
         cancelAtPeriodEnd: subscriptionData.cancelAtPeriodEnd ?? false,
         currency: subscriptionData.currency ?? 'usd',
-        ...(subscriptionData.currentPeriodStart && { currentPeriodStart: subscriptionData.currentPeriodStart }),
-        ...(subscriptionData.currentPeriodEnd && { currentPeriodEnd: subscriptionData.currentPeriodEnd }),
+        ...(subscriptionData.currentPeriodStart !== undefined && { currentPeriodStart: subscriptionData.currentPeriodStart }),
+        ...(subscriptionData.currentPeriodEnd !== undefined && { currentPeriodEnd: subscriptionData.currentPeriodEnd }),
         ...(subscriptionData.trialStart !== undefined && { trialStart: subscriptionData.trialStart }),
         ...(subscriptionData.trialEnd !== undefined && { trialEnd: subscriptionData.trialEnd }),
         ...(subscriptionData.unitAmount !== undefined && { unitAmount: subscriptionData.unitAmount }),
@@ -243,6 +254,16 @@ export async function updateSubscriptionTransaction(
           ...(subscriptionData.currentPeriodStart && { billingCycleStart: subscriptionData.currentPeriodStart }),
           ...(subscriptionData.currentPeriodEnd && { billingCycleEnd: subscriptionData.currentPeriodEnd }),
           gracePeriodEnd: null,
+        },
+      })
+    } else if (
+      subscriptionData.status === SubscriptionStatus.cancelled ||
+      subscriptionData.status === SubscriptionStatus.paused
+    ) {
+      await tx.team.update({
+        where: { id: teamId },
+        data: {
+          plan: PlanType.FREE,
         },
       })
     }

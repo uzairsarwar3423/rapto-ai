@@ -17,7 +17,7 @@ describe('Email Shared Primitives', () => {
       expect(html).toContain('<!DOCTYPE html>')
       expect(html).toContain('Test Email Title')
       expect(html).toContain('This is a preview text for email clients')
-      expect(html).toContain('Rapto')
+      expect(html).toContain('https://app.rapto.cloud')
       expect(html).toContain('Test Body Content')
     })
   })
@@ -99,7 +99,7 @@ describe('Email Shared Primitives', () => {
       })
 
       expect(html).toContain('47 / 50')
-      expect(html).toContain('MEETINGS USED')
+      expect(html).toContain('Meetings Used')
     })
   })
 })
