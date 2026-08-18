@@ -84,6 +84,7 @@ def main() -> None:
     # 2. Core deployment metadata — always overwrite
     existing["NODE_ENV"] = "production"
     existing["PORT"] = "5000"
+    existing["API_HOST_PORT"] = os.environ.get("API_HOST_PORT", existing.get("API_HOST_PORT", "5010"))
     existing["DOCKER_REGISTRY"] = "ghcr.io"
 
     repo_name = os.environ.get("REPO_NAME", "")

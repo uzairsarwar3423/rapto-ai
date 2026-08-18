@@ -157,7 +157,7 @@ jobs:
             rm -f "${DEPLOY_DIR}/docker-compose.override.yml" "${DEPLOY_DIR}/docker-compose.override.yaml" "${DEPLOY_DIR}/compose.override.yml" "${DEPLOY_DIR}/docker-compose.yaml"
 
             # 3. Clean up any stale container instance that might hold legacy host port mappings
-            docker rm -f rapto-redis 2>/dev/null || true
+            docker rm -f rapto-api rapto-worker rapto-redis 2>/dev/null || true
 
             # 4. Merge secrets and configuration into /opt/rapto-system/.env
             TARGET_TAG="${TARGET_TAG}" python3 "${DEPLOY_DIR}/scripts/merge-env.py"

@@ -98,6 +98,8 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+    ports:
+      - "${API_HOST_PORT:-5010}:5000"
     networks:
       - app-network
     deploy:
