@@ -85,6 +85,8 @@ def main() -> None:
     existing["NODE_ENV"] = "production"
     existing["PORT"] = "5000"
     existing["API_HOST_PORT"] = os.environ.get("API_HOST_PORT", existing.get("API_HOST_PORT", "5010"))
+    existing["NGINX_HTTP_PORT"] = os.environ.get("NGINX_HTTP_PORT", existing.get("NGINX_HTTP_PORT", "8080"))
+    existing["NGINX_HTTPS_PORT"] = os.environ.get("NGINX_HTTPS_PORT", existing.get("NGINX_HTTPS_PORT", "8443"))
     existing["DOCKER_REGISTRY"] = "ghcr.io"
 
     repo_name = os.environ.get("REPO_NAME", "")
