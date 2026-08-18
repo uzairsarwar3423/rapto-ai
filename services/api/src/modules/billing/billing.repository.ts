@@ -69,14 +69,41 @@ export async function findFullSubscriptionByTeam(teamId: string) {
   })
 }
 
+function normalizeSubscriptionPayload(data: UpsertSubscriptionData): UpsertSubscriptionData {
+  let { trialStart, trialEnd, unitAmount, currentPeriodStart, currentPeriodEnd, status, plan, billingInterval } = data
+
+  if (status === SubscriptionStatus.trialing) {
+    if (!trialStart) trialStart = currentPeriodStart || new Date()
+    if (!trialEnd) trialEnd = currentPeriodEnd || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    if (!currentPeriodStart && trialStart) currentPeriodStart = trialStart
+    if (!currentPeriodEnd && trialEnd) currentPeriodEnd = trialEnd
+  }
+
+  if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
+    const { getPlanPriceCents } = require('../../config/plans.config')
+    unitAmount = getPlanPriceCents(plan, (billingInterval || 'month') as any)
+  }
+
+  return {
+    ...data,
+    trialStart,
+    trialEnd,
+    unitAmount,
+    currentPeriodStart,
+    currentPeriodEnd,
+  }
+}
+
 /**
  * Upsert the subscription row for a team.
  * Keyed on UNIQUE teamId — zero read-before-write race window.
  */
 export async function upsertSubscription(
   teamId: string,
-  data: UpsertSubscriptionData
+  rawPayload: UpsertSubscriptionData
 ): Promise<void> {
+  const data = normalizeSubscriptionPayload(rawPayload)
+
   await prisma.subscription.upsert({
     where: { teamId },
     create: {
@@ -141,11 +168,13 @@ export async function markSubscriptionCancelled(
 export async function activateSubscriptionTransaction(
   teamId: string,
   plan: PlanType,
-  subscriptionData: UpsertSubscriptionData | null,
+  rawSubscriptionData: UpsertSubscriptionData | null,
   invoiceData: (UpsertInvoiceData & { paddleTransactionId: string }) | null,
   periodStart: Date,
   periodEnd: Date
 ): Promise<void> {
+  const subscriptionData = rawSubscriptionData ? normalizeSubscriptionPayload(rawSubscriptionData) : null
+
   await prisma.$transaction(async (tx) => {
     if (subscriptionData) {
       await tx.subscription.upsert({
@@ -213,8 +242,10 @@ export async function activateSubscriptionTransaction(
 export async function updateSubscriptionTransaction(
   teamId: string,
   plan: PlanType,
-  subscriptionData: UpsertSubscriptionData
+  rawSubscriptionData: UpsertSubscriptionData
 ): Promise<void> {
+  const subscriptionData = normalizeSubscriptionPayload(rawSubscriptionData)
+
   await prisma.$transaction(async (tx) => {
     await tx.subscription.upsert({
       where: { teamId },
