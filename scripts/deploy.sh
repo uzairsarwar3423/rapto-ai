@@ -90,7 +90,11 @@ echo "✅ [3/4] Database migrations applied successfully."
 
 # 5. Zero-Downtime Container Update (preserve DB containers, update app services)
 echo "🔄 [4/4] Starting updated application services (API, Worker, NGINX)..."
-docker compose up -d --no-build api worker nginx
+if ! docker compose up -d --no-build --force-recreate api worker nginx; then
+    echo "⚠️ Initial container startup failed (likely stale container state). Cleaning up and recreating..."
+    docker rm -f rapto-api rapto-worker rapto-nginx 2>/dev/null || true
+    docker compose up -d --no-build --force-recreate api worker nginx
+fi
 
 # 6. Post-deploy verification
 echo "⏳ Verifying deployment via Docker health state..."

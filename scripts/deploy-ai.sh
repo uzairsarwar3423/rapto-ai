@@ -34,7 +34,11 @@ docker compose pull ai-pipeline
 
 # 4. Zero-Downtime Container Update
 echo "🔄 [3/3] Deploying updated AI-Pipeline container..."
-docker compose up -d --no-build --no-deps ai-pipeline
+if ! docker compose up -d --no-build --no-deps --force-recreate ai-pipeline; then
+    echo "⚠️ Initial startup failed. Cleaning up stale container and recreating..."
+    docker rm -f rapto-ai-pipeline 2>/dev/null || true
+    docker compose up -d --no-build --no-deps --force-recreate ai-pipeline
+fi
 
 # 5. Post-deploy verification & health check
 echo "⏳ Waiting for container startup..."
