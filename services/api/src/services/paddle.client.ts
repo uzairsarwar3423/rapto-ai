@@ -96,13 +96,32 @@ export async function getOrCreatePaddleCustomer(
 
     const paddleCustomerId = customer.id
 
-    // Persist immediately — next call will hit branch 1 above
-    await prisma.team.update({
-      where: { id: teamId },
-      data: { paddleCustomerId },
-    })
+    // Persist customer ID to team with auto-healing fallback
+    try {
+      await prisma.team.update({
+        where: { id: teamId },
+        data: { paddleCustomerId },
+      })
+      logger.info({ teamId, paddleCustomerId }, '[paddle.client] Created and persisted new Paddle customer')
+    } catch (dbErr: any) {
+      if (dbErr?.code === 'P2002') {
+        logger.warn({ teamId, paddleCustomerId }, '[paddle.client] Legacy unique constraint hit on Team.paddleCustomerId — attempting auto-healing')
+        try {
+          await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "teams_paddleCustomerId_key";`)
+          await prisma.$executeRawUnsafe(`ALTER TABLE "teams" DROP CONSTRAINT IF EXISTS "teams_paddleCustomerId_key";`)
+          await prisma.team.update({
+            where: { id: teamId },
+            data: { paddleCustomerId },
+          })
+          logger.info({ teamId, paddleCustomerId }, '[paddle.client] Auto-healed legacy unique index and persisted paddleCustomerId')
+        } catch (healErr: any) {
+          logger.warn({ err: healErr.message }, '[paddle.client] Auto-heal index drop skipped/failed, proceeding with valid paddleCustomerId')
+        }
+      } else {
+        logger.error({ err: dbErr.message, teamId, paddleCustomerId }, '[paddle.client] Failed to persist paddleCustomerId on team')
+      }
+    }
 
-    logger.info({ teamId, paddleCustomerId }, '[paddle.client] Created and persisted new Paddle customer')
     return paddleCustomerId
   } catch (err: any) {
     if (err.code === 'customer_already_exists') {
@@ -138,11 +157,32 @@ export async function getOrCreatePaddleCustomer(
       }
 
       if (paddleCustomerId) {
-        // Persist recovered ID
-        await prisma.team.update({
-          where: { id: teamId },
-          data: { paddleCustomerId },
-        })
+        // Persist recovered ID with auto-healing fallback
+        try {
+          await prisma.team.update({
+            where: { id: teamId },
+            data: { paddleCustomerId },
+          })
+          logger.info({ teamId, paddleCustomerId }, '[paddle.client] Persisted recovered Paddle customer on team')
+        } catch (dbErr: any) {
+          if (dbErr?.code === 'P2002') {
+            logger.warn({ teamId, paddleCustomerId }, '[paddle.client] Legacy unique constraint hit on Team.paddleCustomerId — attempting auto-healing')
+            try {
+              await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "teams_paddleCustomerId_key";`)
+              await prisma.$executeRawUnsafe(`ALTER TABLE "teams" DROP CONSTRAINT IF EXISTS "teams_paddleCustomerId_key";`)
+              await prisma.team.update({
+                where: { id: teamId },
+                data: { paddleCustomerId },
+              })
+              logger.info({ teamId, paddleCustomerId }, '[paddle.client] Auto-healed legacy unique index and persisted recovered paddleCustomerId')
+            } catch (healErr: any) {
+              logger.warn({ err: healErr.message }, '[paddle.client] Auto-heal index drop skipped/failed, proceeding with valid paddleCustomerId')
+            }
+          } else {
+            logger.warn({ err: dbErr.message, teamId, paddleCustomerId }, '[paddle.client] Could not persist paddleCustomerId, proceeding with valid customer')
+          }
+        }
+
         return paddleCustomerId
       }
     }
