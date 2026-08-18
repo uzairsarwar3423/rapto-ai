@@ -102,6 +102,12 @@ if ! $COMPOSE up -d --no-build --force-recreate api worker nginx; then
     $COMPOSE up -d --no-build --force-recreate api worker nginx
 fi
 
+# 5.5. Configure Host NGINX Reverse Proxy for api.rapto.cloud
+if [ -f "./scripts/configure-nginx.sh" ]; then
+    echo "🌐 Configuring NGINX routing for api.rapto.cloud -> port ${API_HOST_PORT:-5010}..."
+    bash ./scripts/configure-nginx.sh "api.rapto.cloud" "${API_HOST_PORT:-5010}" || true
+fi
+
 # 6. Post-deploy verification
 echo "⏳ Verifying deployment via Docker health state..."
 sleep 10
