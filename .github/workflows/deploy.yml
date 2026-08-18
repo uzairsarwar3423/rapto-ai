@@ -173,13 +173,17 @@ jobs:
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
             echo "✅ GHCR login successful"
 
-            # 2. Ensure scripts are executable
+            # 2. Ensure scripts are executable and purge any legacy override files
             chmod +x "${DEPLOY_DIR}/scripts/"*.sh
             chmod +x "${DEPLOY_DIR}/scripts/"*.py
+            rm -f "${DEPLOY_DIR}/docker-compose.override.yml" "${DEPLOY_DIR}/docker-compose.override.yaml" "${DEPLOY_DIR}/compose.override.yml" "${DEPLOY_DIR}/docker-compose.yaml"
 
-            # 3. Merge secrets + fix Redis URL → write .env atomically
+            # 3. Clean up any stale container instance that might hold legacy host port mappings
+            docker rm -f rapto-redis 2>/dev/null || true
+
+            # 4. Merge secrets + fix Redis URL → write .env atomically
             TARGET_TAG="${DEPLOY_IMAGE_TAG}" python3 "${DEPLOY_DIR}/scripts/merge-env.py"
 
-            # 4. Execute zero-downtime deployment
+            # 5. Execute zero-downtime deployment
             cd "${DEPLOY_DIR}"
             IMAGE_TAG="${DEPLOY_IMAGE_TAG}" bash ./scripts/deploy.sh

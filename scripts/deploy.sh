@@ -14,6 +14,11 @@ echo "🏷️  Target Image Tag: ${IMAGE_TAG}"
 
 cd "${DEPLOY_DIR}"
 
+# 0. Clean up any lingering dev override files to prevent unexpected host port exposures
+rm -f "${DEPLOY_DIR}/docker-compose.override.yml" "${DEPLOY_DIR}/docker-compose.override.yaml" "${DEPLOY_DIR}/compose.override.yml" "${DEPLOY_DIR}/docker-compose.yaml"
+
+COMPOSE="docker compose -f ${DEPLOY_DIR}/docker-compose.yml"
+
 # 1. Capture currently running image tag for rollback
 CURRENT_TAG=$(docker inspect --format='{{.Config.Image}}' "${CONTAINER_NAME}" 2>/dev/null | cut -d':' -f2 || echo "latest")
 echo "${CURRENT_TAG}" > /tmp/previous_image_tag.txt
@@ -22,7 +27,7 @@ echo "📌 Saved current image tag for rollback: ${CURRENT_TAG}"
 # 2. Pull latest Docker images from Container Registry
 echo "📥 Pulling latest Docker images..."
 export IMAGE_TAG="${IMAGE_TAG}"
-docker compose pull api worker nginx
+$COMPOSE pull api worker nginx
 
 # 3. Build single-connection URL from DIRECT_URL or DATABASE_URL (for migrations only)
 build_migration_url() {
@@ -42,7 +47,7 @@ build_migration_url() {
 run_migration() {
     local MIGRATION_URL
     MIGRATION_URL=$(build_migration_url)
-    docker compose run --rm \
+    $COMPOSE run --rm \
         -e NODE_ENV=production \
         -e DATABASE_URL="${MIGRATION_URL}" \
         -e DIRECT_URL="${MIGRATION_URL}" \
@@ -56,10 +61,11 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # Ensure local Redis and MongoDB containers are active without legacy host port conflicts
 echo "📦 Ensuring Redis and MongoDB backing stores are active..."
-if ! docker compose up -d --remove-orphans redis mongodb; then
+docker rm -f rapto-redis 2>/dev/null || true
+if ! $COMPOSE up -d --remove-orphans redis mongodb; then
     echo "⚠️ Redis/MongoDB startup encountered container or port conflict. Force recreating cleanly..."
-    docker rm -f rapto-redis 2>/dev/null || true
-    docker compose up -d --force-recreate redis mongodb
+    docker rm -f rapto-redis rapto-mongodb 2>/dev/null || true
+    $COMPOSE up -d --force-recreate redis mongodb
 fi
 
 echo "🗄️ [2/4] Executing Safe Prisma Database Migrations (prisma migrate deploy)..."
@@ -71,7 +77,7 @@ echo "${MIGRATION_LOGS}"
 if [ "${MIGRATION_SUCCESS}" = "false" ]; then
     if echo "${MIGRATION_LOGS}" | grep -qE "EMAXCONNSESSION|max clients|pool_size"; then
         echo "⚠️ PgBouncer pool fully saturated — temporarily pausing API connection pool..."
-        docker compose stop api worker 2>/dev/null || true
+        $COMPOSE stop api worker 2>/dev/null || true
         sleep 5
 
         echo "🔄 Retrying Prisma migration with app connections freed..."
@@ -81,7 +87,7 @@ if [ "${MIGRATION_SUCCESS}" = "false" ]; then
 
     if [ "${MIGRATION_SUCCESS}" = "false" ]; then
         echo "❌ CRITICAL: Database migration failed! Aborting deployment to preserve data integrity."
-        docker compose up -d api worker nginx redis mongodb || true
+        $COMPOSE up -d api worker nginx redis mongodb || true
         exit 1
     fi
 fi
@@ -90,10 +96,10 @@ echo "✅ [3/4] Database migrations applied successfully."
 
 # 5. Zero-Downtime Container Update (preserve DB containers, update app services)
 echo "🔄 [4/4] Starting updated application services (API, Worker, NGINX)..."
-if ! docker compose up -d --no-build --force-recreate api worker nginx; then
+if ! $COMPOSE up -d --no-build --force-recreate api worker nginx; then
     echo "⚠️ Initial container startup failed (likely stale container state). Cleaning up and recreating..."
     docker rm -f rapto-api rapto-worker rapto-nginx 2>/dev/null || true
-    docker compose up -d --no-build --force-recreate api worker nginx
+    $COMPOSE up -d --no-build --force-recreate api worker nginx
 fi
 
 # 6. Post-deploy verification
