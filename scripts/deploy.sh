@@ -54,8 +54,13 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "🔍 [1/4] Verifying Managed Database (Supabase) Connectivity..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Ensure local Redis and MongoDB containers are active
-docker compose up -d redis mongodb
+# Ensure local Redis and MongoDB containers are active without legacy host port conflicts
+echo "📦 Ensuring Redis and MongoDB backing stores are active..."
+if ! docker compose up -d --remove-orphans redis mongodb; then
+    echo "⚠️ Redis/MongoDB startup encountered container or port conflict. Force recreating cleanly..."
+    docker rm -f rapto-redis 2>/dev/null || true
+    docker compose up -d --force-recreate redis mongodb
+fi
 
 echo "🗄️ [2/4] Executing Safe Prisma Database Migrations (prisma migrate deploy)..."
 echo "ℹ️ Target: Supabase Managed Postgres — using non-destructive migration engine."

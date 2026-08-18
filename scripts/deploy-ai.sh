@@ -21,7 +21,11 @@ echo "📌 Saved current AI-Pipeline image tag for rollback: ${CURRENT_TAG}"
 
 # 2. Ensure supporting backing databases are up (Redis & MongoDB)
 echo "🔍 [1/3] Ensuring Redis and MongoDB backing stores are running..."
-docker compose up -d redis mongodb
+if ! docker compose up -d --remove-orphans redis mongodb; then
+    echo "⚠️ Redis/MongoDB startup encountered container or port conflict. Force recreating cleanly..."
+    docker rm -f rapto-redis 2>/dev/null || true
+    docker compose up -d --force-recreate redis mongodb
+fi
 
 # 3. Pull latest AI-Pipeline Docker image from GHCR
 echo "📥 [2/3] Pulling latest AI-Pipeline Docker image..."
