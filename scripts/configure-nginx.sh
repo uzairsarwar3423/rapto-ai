@@ -127,6 +127,8 @@ server {
     }
 }
 EOF
+    fi
+
     # Purge any duplicate or legacy symlinks/configs to prevent "conflicting server name" warnings
     sudo rm -f "${NGINX_ENABLED_DIR}/${DOMAIN}" "${NGINX_ENABLED_DIR}/${DOMAIN}.conf" "${NGINX_CONF_DIR}/${DOMAIN}" "/etc/nginx/conf.d/${DOMAIN}.conf" "/etc/nginx/conf.d/${DOMAIN}"
 
