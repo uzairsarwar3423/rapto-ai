@@ -182,10 +182,10 @@ export async function getInvoicePdfController(
 ): Promise<void> {
   try {
     const teamId = req.teamId!
-    const invoiceId = req.params.id
+    const invoiceId = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string
     const result = await billingService.getInvoicePdf(teamId, invoiceId)
     if (result.url) {
-      if (req.headers.accept?.includes('application/json')) {
+      if (req.accepts('json') || String(req.headers.accept || '').includes('application/json')) {
         res.status(200).json(result)
       } else {
         res.redirect(result.url)
