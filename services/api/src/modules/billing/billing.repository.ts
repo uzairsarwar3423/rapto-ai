@@ -72,11 +72,14 @@ export async function findFullSubscriptionByTeam(teamId: string) {
 function normalizeSubscriptionPayload(data: UpsertSubscriptionData): UpsertSubscriptionData {
   let { trialStart, trialEnd, unitAmount, currentPeriodStart, currentPeriodEnd, status, plan, billingInterval } = data
 
-  if (status === SubscriptionStatus.trialing) {
+  const isTrialing = status === SubscriptionStatus.trialing || Boolean(trialStart) || Boolean(trialEnd)
+
+  if (isTrialing) {
     if (!trialStart) trialStart = currentPeriodStart || new Date()
-    if (!trialEnd) trialEnd = currentPeriodEnd || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    if (!trialEnd) trialEnd = currentPeriodEnd || new Date(trialStart.getTime() + 14 * 24 * 60 * 60 * 1000)
     if (!currentPeriodStart && trialStart) currentPeriodStart = trialStart
     if (!currentPeriodEnd && trialEnd) currentPeriodEnd = trialEnd
+    status = SubscriptionStatus.trialing
   }
 
   if (unitAmount === undefined || unitAmount === null || unitAmount === 0) {
@@ -86,6 +89,7 @@ function normalizeSubscriptionPayload(data: UpsertSubscriptionData): UpsertSubsc
 
   return {
     ...data,
+    status,
     trialStart,
     trialEnd,
     unitAmount,

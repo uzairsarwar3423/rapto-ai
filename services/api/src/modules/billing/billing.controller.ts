@@ -156,3 +156,44 @@ export async function getWebhookStatusController(
     next(err)
   }
 }
+
+// ── POST /billing/cancel ──────────────────────────────────────────────────────
+
+export async function cancelSubscriptionController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const teamId = req.teamId!
+    const result = await billingService.cancelSubscription(teamId)
+    res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ── GET /billing/invoices/:id/pdf ─────────────────────────────────────────────
+
+export async function getInvoicePdfController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const teamId = req.teamId!
+    const invoiceId = req.params.id
+    const result = await billingService.getInvoicePdf(teamId, invoiceId)
+    if (result.url) {
+      if (req.headers.accept?.includes('application/json')) {
+        res.status(200).json(result)
+      } else {
+        res.redirect(result.url)
+      }
+    } else {
+      res.status(404).json({ error: 'Invoice PDF not available' })
+    }
+  } catch (err) {
+    next(err)
+  }
+}

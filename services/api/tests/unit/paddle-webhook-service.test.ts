@@ -96,6 +96,59 @@ describe('paddle.webhook.service — Production Event Processing', () => {
         })
       )
     })
+
+    it('activates 14-day free trial on $0 trial checkout transaction and persists trialStart and trialEnd', async () => {
+      const eventId = 'evt_tx_trial_123'
+      const event = {
+        data: {
+          id: 'txn_trial_01',
+          subscriptionId: 'sub_trial_01',
+          customerId: 'ctm_trial_01',
+          status: 'completed',
+          currencyCode: 'USD',
+          details: {
+            totals: {
+              total: '0',
+              subtotal: '0',
+            },
+          },
+          items: [
+            {
+              price: {
+                id: 'pri_growth_mo',
+                unitPrice: {
+                  amount: '9900',
+                  currencyCode: 'USD',
+                },
+              },
+            },
+          ],
+          customData: {
+            teamId: 'team_trial_xyz',
+            planId: 'GROWTH',
+            interval: 'month',
+          },
+        },
+      }
+
+      await paddleWebhookService.processEvent(event, eventId, 'transaction.completed')
+
+      expect(billingRepo.activateSubscriptionTransaction).toHaveBeenCalledWith(
+        'team_trial_xyz',
+        PlanType.GROWTH,
+        expect.objectContaining({
+          paddleSubscriptionId: 'sub_trial_01',
+          plan: PlanType.GROWTH,
+          status: SubscriptionStatus.trialing,
+          trialStart: expect.any(Date),
+          trialEnd: expect.any(Date),
+          unitAmount: 9900,
+        }),
+        expect.anything(),
+        expect.any(Date),
+        expect.any(Date)
+      )
+    })
   })
 
   describe('adjustment.created (Refunds & Chargebacks)', () => {

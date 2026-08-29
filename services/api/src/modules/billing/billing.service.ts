@@ -15,6 +15,7 @@ import { AppError } from '../../utils/errors'
 import { redis } from '../../config/redis'
 import { PLAN_LIMITS, PADDLE_PRICE_MAP } from '../../config/plans.config'
 import { invalidatePlanCache } from '../../middleware/plan-limits.middleware'
+import { IN_FLIGHT_STATUSES } from '../meetings/meetings.service.state'
 import * as paddleClient from '../../services/paddle.client'
 import * as billingRepo from './billing.repository'
 import type {
@@ -325,21 +326,17 @@ export async function getInvoices(
  * Get current usage for a team.
  */
 export async function getUsage(teamId: string): Promise<UsageDetail> {
-  const cacheKey = planCacheKey(teamId)
-  const cached = await redis.get(cacheKey)
+  const { prisma } = await import('../../db/client')
+  const [teamData, inFlightMeetings] = await Promise.all([
+    billingRepo.getTeamForUsage(teamId),
+    prisma.meeting.count({
+      where: {
+        teamId,
+        status: { in: IN_FLIGHT_STATUSES },
+      },
+    }),
+  ])
 
-  let meetingsUsed: number
-  let plan: PlanType
-  let billingCycleEnd: Date | null
-  let membersCount: number
-
-  if (cached) {
-    const entry = JSON.parse(cached)
-    meetingsUsed = entry.meetingsUsed
-    plan = entry.plan
-  }
-
-  const teamData = await billingRepo.getTeamForUsage(teamId)
   if (!teamData) {
     return {
       meetingsUsed: 0,
@@ -351,10 +348,10 @@ export async function getUsage(teamId: string): Promise<UsageDetail> {
     }
   }
 
-  plan = teamData.plan
-  meetingsUsed = teamData.meetingsUsed
-  membersCount = teamData._count.members
-  billingCycleEnd = teamData.billingCycleEnd ?? null
+  const plan = teamData.plan
+  const meetingsUsed = teamData.meetingsUsed + inFlightMeetings
+  const membersCount = teamData._count.members
+  const billingCycleEnd = teamData.billingCycleEnd ?? null
 
   const limits = PLAN_LIMITS[plan]
   const meetingsLimit = limits.meetings
@@ -371,6 +368,75 @@ export async function getUsage(teamId: string): Promise<UsageDetail> {
     membersLimit,
     billingCycleEnd,
     percentUsed,
+  }
+}
+
+/**
+ * Cancel the team's active subscription at period end via Paddle SDK.
+ */
+export async function cancelSubscription(teamId: string): Promise<{ success: boolean; cancelAt: Date | null }> {
+  const sub = await billingRepo.findFullSubscriptionByTeam(teamId)
+  if (!sub || (sub.status !== SubscriptionStatus.active && sub.status !== SubscriptionStatus.trialing)) {
+    throw new AppError('NO_ACTIVE_SUBSCRIPTION', 400, 'No active subscription found to cancel.')
+  }
+
+  try {
+    const { paddle } = await import('../../services/paddle.client')
+    await paddle.subscriptions.cancel(sub.paddleSubscriptionId, {
+      effectiveFrom: 'next_billing_period',
+    })
+
+    const currentPeriodEnd = sub.currentPeriodEnd ?? new Date()
+
+    const { prisma } = await import('../../db/client')
+    await prisma.subscription.update({
+      where: { teamId },
+      data: {
+        cancelAtPeriodEnd: true,
+      },
+    })
+
+    await billingRepo.createBillingAuditLog({
+      teamId,
+      eventType: 'subscription.cancel_requested',
+      action: 'SCHEDULE_CANCEL_PERIOD_END',
+      payload: { paddleSubscriptionId: sub.paddleSubscriptionId, effectiveFrom: 'next_billing_period' },
+    })
+
+    await invalidatePlanCache(teamId)
+
+    return { success: true, cancelAt: currentPeriodEnd }
+  } catch (err: any) {
+    logger.error({ err: err.message, teamId, paddleSubId: sub.paddleSubscriptionId }, 'Paddle cancel failed')
+    throw new AppError('PADDLE_CANCEL_FAILED', 502, `Failed to cancel subscription: ${err.message}`)
+  }
+}
+
+/**
+ * Retrieve Paddle Invoice PDF download URL or hosted invoice link.
+ */
+export async function getInvoicePdf(teamId: string, invoiceId: string): Promise<{ url: string | null }> {
+  const { prisma } = await import('../../db/client')
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: invoiceId, teamId },
+  })
+
+  if (!invoice) {
+    throw new AppError('INVOICE_NOT_FOUND', 404, 'Invoice not found')
+  }
+
+  if (invoice.hostedInvoiceUrl) {
+    return { url: invoice.hostedInvoiceUrl }
+  }
+
+  try {
+    const { paddle } = await import('../../services/paddle.client')
+    const txn = await paddle.transactions.get(invoice.paddleTransactionId)
+    const pdfUrl = (txn as any).invoice_url ?? (txn as any).details?.invoice_url ?? invoice.hostedInvoiceUrl
+    return { url: pdfUrl ?? invoice.hostedInvoiceUrl }
+  } catch (err: any) {
+    logger.warn({ err: err.message, invoiceId }, 'Failed to fetch PDF URL from Paddle API')
+    return { url: invoice.hostedInvoiceUrl }
   }
 }
 
@@ -417,14 +483,17 @@ export async function syncSubscription(teamId: string): Promise<{ synced: boolea
         const periodStart = currentBillingPeriod?.startsAt ? new Date(currentBillingPeriod.startsAt) : new Date()
         const periodEnd   = currentBillingPeriod?.endsAt ? new Date(currentBillingPeriod.endsAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
-        const status = activeSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active
-
         const trialDates = (activeSub as any).trialDates || (activeSub as any).trial_dates
+        const trialPeriodConfig = (activeSub.items?.[0] as any)?.price?.trial_period || (activeSub.items?.[0] as any)?.price?.trialPeriod
+        const isTrialing = activeSub.status === 'trialing' || Boolean(trialDates) || Boolean(trialPeriodConfig)
+
+        const status = isTrialing ? SubscriptionStatus.trialing : SubscriptionStatus.active
+
         let trialStart = trialDates?.startsAt ? new Date(trialDates.startsAt) : undefined
         let trialEnd   = trialDates?.endsAt ? new Date(trialDates.endsAt) : undefined
-        if (status === SubscriptionStatus.trialing) {
+        if (isTrialing) {
           if (!trialStart) trialStart = periodStart
-          if (!trialEnd) trialEnd = periodEnd
+          if (!trialEnd) trialEnd = (activeSub as any).next_billed_at ? new Date((activeSub as any).next_billed_at) : new Date(trialStart.getTime() + 14 * 24 * 60 * 60 * 1000)
         }
 
         const rawUnit = activeSub.items?.[0]?.price?.unitPrice?.amount || (activeSub.items?.[0] as any)?.price?.unit_price?.amount

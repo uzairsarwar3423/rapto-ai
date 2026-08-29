@@ -119,7 +119,11 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
 
-// Custom Request Logging & Rate Limiting
+// ── Webhook Routes (Mounted BEFORE rate limiter — secured via HMAC signature) ──
+app.use('/api/webhooks', webhookRoutes)
+app.use('/api/v1/webhooks', webhookRoutes)
+
+// Custom Request Logging & Rate Limiting (Applied to all standard API routes)
 app.use(requestLogger())
 app.use(ipRateLimiter)
 
@@ -147,8 +151,6 @@ app.use('/api/v1/integrations', integrationsRouter)
 app.use('/api/v1/notifications', notificationsRouter)
 app.use('/api/v1/analytics', analyticsRouter)
 app.use('/api/v1/billing', billingRouter)
-app.use('/api/webhooks', webhookRoutes)
-app.use('/api/v1/webhooks', webhookRoutes)
 
 // BullBoard — must be mounted BEFORE the 404 catch-all
 setupBullBoard(app)

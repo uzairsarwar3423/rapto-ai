@@ -17,6 +17,19 @@ jest.mock('../../src/config/redis', () => ({
 jest.mock('../../src/middleware/plan-limits.middleware', () => ({
   invalidatePlanCache: jest.fn().mockResolvedValue(undefined),
 }))
+jest.mock('../../src/db/client', () => ({
+  prisma: {
+    meeting: {
+      count: jest.fn().mockResolvedValue(0),
+    },
+    subscription: {
+      update: jest.fn().mockResolvedValue({}),
+    },
+    invoice: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+  },
+}))
 
 describe('billing.service — Business Logic & Concurrency Flow', () => {
   beforeEach(() => {
@@ -134,6 +147,57 @@ describe('billing.service — Business Logic & Concurrency Flow', () => {
       expect(usage.membersCount).toBe(3)
       expect(usage.membersLimit).toBe(10)
       expect(usage.percentUsed).toBe(30) // 12/40 = 30%
+    })
+  })
+
+  describe('cancelSubscription', () => {
+    it('schedules cancellation at period end and updates subscription record', async () => {
+      ;(billingRepo.findFullSubscriptionByTeam as jest.Mock).mockResolvedValueOnce({
+        paddleSubscriptionId: 'sub_active_1',
+        status: SubscriptionStatus.active,
+        currentPeriodEnd: new Date('2026-09-18T00:00:00Z'),
+      })
+      ;(paddleClient as any).paddle = {
+        subscriptions: {
+          cancel: jest.fn().mockResolvedValue({ id: 'sub_active_1' }),
+        },
+      }
+      ;(billingRepo.createBillingAuditLog as jest.Mock).mockResolvedValueOnce({})
+
+      const result = await billingService.cancelSubscription('team_01')
+
+      expect(result.success).toBe(true)
+      expect(result.cancelAt).toEqual(new Date('2026-09-18T00:00:00Z'))
+      expect(billingRepo.createBillingAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          teamId: 'team_01',
+          eventType: 'subscription.cancel_requested',
+          action: 'SCHEDULE_CANCEL_PERIOD_END',
+        })
+      )
+    })
+
+    it('rejects cancellation when no active subscription exists', async () => {
+      ;(billingRepo.findFullSubscriptionByTeam as jest.Mock).mockResolvedValueOnce(null)
+
+      await expect(billingService.cancelSubscription('team_01')).rejects.toThrow(
+        'No active subscription found to cancel.'
+      )
+    })
+  })
+
+  describe('getInvoicePdf', () => {
+    it('returns hostedInvoiceUrl when available', async () => {
+      const { prisma } = await import('../../src/db/client')
+      ;(prisma.invoice.findFirst as jest.Mock).mockResolvedValueOnce({
+        id: 'inv_01',
+        teamId: 'team_01',
+        paddleTransactionId: 'txn_01',
+        hostedInvoiceUrl: 'https://paddle.com/receipt/inv_01.pdf',
+      })
+
+      const result = await billingService.getInvoicePdf('team_01', 'inv_01')
+      expect(result.url).toBe('https://paddle.com/receipt/inv_01.pdf')
     })
   })
 })

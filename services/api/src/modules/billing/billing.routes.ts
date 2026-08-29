@@ -24,6 +24,8 @@ import {
   getUsageController,
   syncSubscriptionController,
   getWebhookStatusController,
+  cancelSubscriptionController,
+  getInvoicePdfController,
 } from './billing.controller'
 import { checkoutSchema, invoicePaginationSchema } from './billing.validator'
 
@@ -71,6 +73,16 @@ router.get(
   getSubscriptionController
 )
 
+// ── POST /billing/cancel ──────────────────────────────────────────────────────
+// ADMIN only — schedules cancellation of active subscription at period end
+router.post(
+  '/cancel',
+  requireAuth,
+  injectTenant,
+  requireRole('ADMIN'),
+  cancelSubscriptionController
+)
+
 // ── POST /billing/sync ────────────────────────────────────────────────────────
 // ADMIN only — forces live reconciliation with Paddle API
 router.post(
@@ -90,6 +102,16 @@ router.get(
   requireRole('ADMIN'),
   validate({ query: invoicePaginationSchema }),
   getInvoicesController
+)
+
+// ── GET /billing/invoices/:id/pdf ─────────────────────────────────────────────
+// ADMIN only — retrieves invoice PDF download receipt URL
+router.get(
+  '/invoices/:id/pdf',
+  requireAuth,
+  injectTenant,
+  requireRole('ADMIN'),
+  getInvoicePdfController
 )
 
 // ── GET /billing/usage ────────────────────────────────────────────────────────

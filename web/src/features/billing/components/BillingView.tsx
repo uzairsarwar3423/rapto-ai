@@ -14,6 +14,7 @@ import { PlanStatusBadge } from "./PlanStatusBadge";
 import { BillingPortalButton } from "./BillingPortalButton";
 import { UsageProgressRow } from "./UsageProgressRow";
 import { PlanComparisonSheet } from "./PlanComparisonSheet";
+import { InvoiceTable } from "./InvoiceTable";
 import { syncSubscription } from "../api/billing.api";
 import { PLAN_DISPLAY_NAMES } from "../data/plan-features.config";
 import type { PlanId } from "../types";
@@ -293,13 +294,11 @@ export function BillingView() {
 
         <Separator />
 
-        {/* ── Invoices — placeholder until Stripe invoices API is wired ── */}
+        {/* ── Invoices ── */}
         <section aria-labelledby="invoices-label">
           <SectionLabel id="invoices-label">Invoices</SectionLabel>
-          <div className="mt-3 rounded-lg border border-border/50 overflow-hidden">
-            <div className="py-10 text-center text-[13px] font-sans font-normal text-muted-foreground/60 select-none">
-              No invoices yet — they'll appear here after your first billing cycle.
-            </div>
+          <div className="mt-3">
+            <InvoiceTable />
           </div>
         </section>
       </div>

@@ -121,12 +121,17 @@ export function extractSubscriptionData(
 
   // Defensive Trial Dates Resolution
   const trialDates = data.trialDates || data.trial_dates || items?.[0]?.trial_dates || data.details?.line_items?.[0]?.trial_dates
+  const trialPeriodConfig = items?.[0]?.price?.trial_period || items?.[0]?.price?.trialPeriod
+  const trialDays = trialPeriodConfig?.interval === 'day' ? Number(trialPeriodConfig?.frequency || 14) : 14
+
+  const isTrial = status === SubscriptionStatus.trialing || Boolean(trialDates) || (rawStatus === 'trialing' || rawStatus === 'trial') || Boolean(trialPeriodConfig)
+
   let trialStart = parsePaddleDate(trialDates?.startsAt || trialDates?.starts_at)
   let trialEnd = parsePaddleDate(trialDates?.endsAt || trialDates?.ends_at)
 
-  if (status === SubscriptionStatus.trialing) {
+  if (isTrial) {
     if (!trialStart) trialStart = currentPeriodStart || parsePaddleDate(data.started_at || data.created_at) || new Date()
-    if (!trialEnd) trialEnd = currentPeriodEnd || parsePaddleDate(data.next_billed_at) || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    if (!trialEnd) trialEnd = parsePaddleDate(data.next_billed_at) || (currentPeriodEnd && currentPeriodEnd.getTime() - trialStart.getTime() <= (trialDays + 2) * 86400000 ? currentPeriodEnd : new Date(trialStart.getTime() + trialDays * 24 * 60 * 60 * 1000))
     if (!currentPeriodStart && trialStart) currentPeriodStart = trialStart
     if (!currentPeriodEnd && trialEnd) currentPeriodEnd = trialEnd
   }
@@ -196,32 +201,63 @@ async function resolveTeamAndPlan(data: any): Promise<{
 }> {
   const customData = (data.customData || data.custom_data) as PaddleWebhookCustomData | undefined
   let teamId: string | null = customData?.teamId || (customData as any)?.team_id || null
+
+  const paddleSubscriptionId = (data.subscriptionId || data.subscription_id || (typeof data.id === 'string' && data.id.startsWith('sub_') ? data.id : undefined)) as string | undefined
+  const paddleTransactionId = (data.transactionId || data.transaction_id || (typeof data.id === 'string' && data.id.startsWith('txn_') ? data.id : undefined)) as string | undefined
   const paddleCustomerId = (data.customerId || data.customer_id) as string | undefined
 
+  const { prisma } = await import('../../db/client')
+
+  // 1. Primary DB Anchor: Check Subscription by paddleSubscriptionId (Guaranteed Unique)
+  if (!teamId && paddleSubscriptionId && paddleSubscriptionId.startsWith('sub_')) {
+    try {
+      const sub = await prisma.subscription.findUnique({
+        where: { paddleSubscriptionId },
+        select: { teamId: true, plan: true, billingInterval: true },
+      })
+      if (sub) {
+        teamId = sub.teamId
+        logger.info({ paddleSubscriptionId, teamId }, '[paddle.webhook.service] resolveTeamAndPlan: teamId resolved via subscription record')
+      }
+    } catch (err: any) {
+      logger.error({ err: err.message, paddleSubscriptionId }, '[paddle.webhook.service] resolveTeamAndPlan: Subscription lookup failed')
+    }
+  }
+
+  // 2. Secondary DB Anchor: Check Invoice by transaction ID
+  if (!teamId && paddleTransactionId && paddleTransactionId.startsWith('txn_')) {
+    try {
+      const invoice = await prisma.invoice.findUnique({
+        where: { paddleTransactionId },
+        select: { teamId: true },
+      })
+      if (invoice) {
+        teamId = invoice.teamId
+        logger.info({ paddleTransactionId, teamId }, '[paddle.webhook.service] resolveTeamAndPlan: teamId resolved via invoice transaction record')
+      }
+    } catch (err: any) {
+      logger.error({ err: err.message, paddleTransactionId }, '[paddle.webhook.service] resolveTeamAndPlan: Invoice lookup failed')
+    }
+  }
+
+  // 3. Last Resort Fallback: paddleCustomerId (ONLY if unique match exists across teams)
   if (!teamId && paddleCustomerId) {
     try {
-      const { prisma } = await import('../../db/client')
-      const team = await prisma.team.findFirst({
+      const teams = await prisma.team.findMany({
         where: { paddleCustomerId },
         select: { id: true },
       })
-      if (team) {
-        teamId = team.id
-        logger.info(
-          { paddleCustomerId, teamId },
-          '[paddle.webhook.service] resolveTeamAndPlan: teamId resolved via paddleCustomerId DB fallback'
-        )
-      } else {
-        logger.warn(
-          { paddleCustomerId },
-          '[paddle.webhook.service] resolveTeamAndPlan: paddleCustomerId not found in DB — teamId unresolvable'
+      if (teams.length === 1) {
+        teamId = teams[0].id
+        logger.info({ paddleCustomerId, teamId }, '[paddle.webhook.service] resolveTeamAndPlan: teamId resolved via unique paddleCustomerId match')
+      } else if (teams.length > 1) {
+        logger.error(
+          { paddleCustomerId, matchCount: teams.length },
+          '[paddle.webhook.service] resolveTeamAndPlan: Ambiguous paddleCustomerId shared across multiple teams — aborting unsafe fallback'
         )
       }
     } catch (err: any) {
-      logger.error(
-        { err: err.message, paddleCustomerId },
-        '[paddle.webhook.service] resolveTeamAndPlan: DB lookup failed'
-      )
+      logger.error({ err: err.message, paddleCustomerId }, '[paddle.webhook.service] resolveTeamAndPlan: DB lookup failed')
     }
   }
 
@@ -283,8 +319,9 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
   const transactionId        = data.id as string
 
   const billingPeriod = data.billingPeriod || data.billing_period || data.currentBillingPeriod || data.current_billing_period
-  const periodStart = parsePaddleDate(billingPeriod?.startsAt || billingPeriod?.starts_at) || new Date()
-  const periodEnd   = parsePaddleDate(billingPeriod?.endsAt || billingPeriod?.ends_at) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  let periodStart = parsePaddleDate(billingPeriod?.startsAt || billingPeriod?.starts_at) || new Date()
+  const defaultPeriodDays = interval === 'year' ? 365 : 30
+  let periodEnd   = parsePaddleDate(billingPeriod?.endsAt || billingPeriod?.ends_at) || new Date(Date.now() + defaultPeriodDays * 24 * 60 * 60 * 1000)
 
   const totals = data.details?.totals
   const amountPaidCents = parseMinorAmount(totals?.total)
@@ -295,24 +332,44 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<v
     '[paddle.webhook.service][transaction.completed] ▶ Starting DB transaction'
   )
 
-  const calculatedUnitAmount = totals?.subtotal
-    ? parseMinorAmount(totals.subtotal)
-    : (totals?.total ? parseMinorAmount(totals.total) : getPlanPriceCents(planId, interval))
-
   const items = data.items || []
+  const unitPrice = items?.[0]?.price?.unitPrice || items?.[0]?.price?.unit_price
+  let calculatedUnitAmount = unitPrice?.amount ? parseMinorAmount(unitPrice.amount) : undefined
+  if (!calculatedUnitAmount || calculatedUnitAmount === 0) {
+    const rawSubtotal = totals?.subtotal ? parseMinorAmount(totals.subtotal) : 0
+    const rawTotal = totals?.total ? parseMinorAmount(totals.total) : 0
+    calculatedUnitAmount = rawSubtotal > 0 ? rawSubtotal : (rawTotal > 0 ? rawTotal : getPlanPriceCents(planId, interval))
+  }
   const paddlePriceId = items?.[0]?.price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id || undefined
 
-  // Determine if this transaction is for a trialing subscription ($0 transaction or trialing origin)
-  const isTrialTransaction = Boolean(data.trial_dates || data.trialDates || (amountPaidCents === 0 && data.status === 'trialing'))
+  // Determine if this transaction is for a trialing subscription ($0 transaction on paid plan or explicit trial dates/status)
+  const isPaidPlan = planId === PlanType.STARTER || planId === PlanType.GROWTH || planId === PlanType.BUSINESS
+  const trialPeriodConfig = items?.[0]?.price?.trial_period || items?.[0]?.price?.trialPeriod
+  const trialDays = trialPeriodConfig?.interval === 'day' ? Number(trialPeriodConfig?.frequency || 14) : 14
+
+  const isTrialTransaction = Boolean(
+    data.trial_dates ||
+    data.trialDates ||
+    trialPeriodConfig ||
+    data.status === 'trialing' ||
+    data.status === 'trial' ||
+    (amountPaidCents === 0 && isPaidPlan)
+  )
   const status = isTrialTransaction ? SubscriptionStatus.trialing : SubscriptionStatus.active
 
   // Defensive Trial Dates Resolution
-  const trialDates = data.trialDates || data.trial_dates || items?.[0]?.trial_dates
+  const trialDates = data.trialDates || data.trial_dates || items?.[0]?.trial_dates || data.details?.line_items?.[0]?.trial_dates
   let trialStart = parsePaddleDate(trialDates?.startsAt || trialDates?.starts_at)
   let trialEnd   = parsePaddleDate(trialDates?.endsAt || trialDates?.ends_at)
-  if (status === SubscriptionStatus.trialing) {
-    if (!trialStart) trialStart = periodStart
-    if (!trialEnd) trialEnd = periodEnd
+  if (isTrialTransaction) {
+    if (!trialStart) trialStart = periodStart || new Date()
+    if (!trialEnd) {
+      trialEnd = (periodEnd && periodEnd > trialStart && (periodEnd.getTime() - trialStart.getTime()) <= (trialDays + 2) * 86400000)
+        ? periodEnd
+        : new Date(trialStart.getTime() + trialDays * 24 * 60 * 60 * 1000)
+    }
+    periodStart = trialStart
+    periodEnd = trialEnd
   }
 
   const subData: UpsertSubscriptionData | null = paddleSubscriptionId ? {
@@ -655,16 +712,18 @@ async function handleAdjustmentCreated(data: any, eventId: string): Promise<void
   const reason         = data.reason || 'customer_refund'
   const status         = data.status || 'completed'
 
-  const { teamId } = await resolveTeamAndPlan(data)
+  // The authoritative owner of a refund is ALWAYS the team that owns the original invoice transaction
+  let teamId: string | null = null
+  const invoice = await billingRepo.findInvoiceByTransactionId(transactionId)
+  if (invoice) {
+    teamId = invoice.teamId
+  } else {
+    const resolved = await resolveTeamAndPlan(data)
+    teamId = resolved.teamId
+  }
 
   if (!teamId) {
-    // Attempt lookup by invoice transaction
-    const invoice = await billingRepo.findInvoiceByTransactionId(transactionId)
-    if (!invoice) {
-      logger.error({ transactionId, adjustmentId }, '[paddle.webhook.service] Refund adjustment received for unknown invoice')
-      return
-    }
-    await processRefundForTeam(invoice.teamId, transactionId, adjustmentId, amountRefunded, currency, reason, status, eventId)
+    logger.error({ transactionId, adjustmentId, eventId }, '[paddle.webhook.service] Refund adjustment received for untracked invoice / team')
     return
   }
 

@@ -79,9 +79,18 @@ export function useCheckout(): UseCheckoutReturn {
       setCheckoutState("redirecting");
       setCheckoutError(null);
     },
-    onSuccess: (data) => {
-      // 1. Try Paddle Overlay Modal if SDK initialized successfully
-      if (paddle && data.transactionId) {
+    onSuccess: (data: any) => {
+      // If this was an immediate server-side plan update (no transaction required)
+      if (data.updated && !data.checkoutUrl && !data.transactionId?.startsWith("txn_")) {
+        setCheckoutState("idle");
+        queryClient.invalidateQueries({ queryKey: ["team"] });
+        queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        queryClient.invalidateQueries({ queryKey: ["billing"] });
+        return;
+      }
+
+      // 1. Try Paddle Overlay Modal if SDK initialized and valid transaction ID returned
+      if (paddle && data.transactionId && data.transactionId.startsWith("txn_")) {
         try {
           paddle.Checkout.open({
             transactionId: data.transactionId,
