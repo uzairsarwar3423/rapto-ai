@@ -16,22 +16,24 @@ export function CommitmentRowSkeleton({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 px-3 border-b border-border/40 w-full bg-background/50",
-        isCompact ? "h-[36px]" : "h-[44px]",
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-0 border-b border-border/40 w-full bg-background/50",
+        isCompact ? "min-h-[58px] sm:min-h-0 sm:h-[42px]" : "min-h-[66px] sm:min-h-0 sm:h-[50px]",
         className
       )}
     >
-      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+      <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
         {/* Status indicator skeleton */}
-        <Skeleton className="h-4 w-12 rounded-sm" />
+        <Skeleton className="h-5 w-14 rounded-full shrink-0" />
         {/* Text line skeleton */}
-        <Skeleton className="h-3 w-[60%] sm:w-[45%] shrink-0" />
+        <Skeleton className="h-3.5 w-[75%] sm:w-[50%] shrink-0 rounded" />
       </div>
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0 pl-[86px] sm:pl-0">
         {/* Due date skeleton */}
-        <Skeleton className="h-3 w-16 rounded-sm font-mono" />
+        <Skeleton className="h-4 w-20 sm:w-24 rounded font-mono shrink-0" />
         {/* Owner initials avatar skeleton */}
-        <Skeleton className="h-5 w-5 rounded-full" />
+        <div className="w-7 flex items-center justify-center shrink-0">
+          <Skeleton className="h-5.5 w-5.5 rounded-full" />
+        </div>
       </div>
     </div>
   );

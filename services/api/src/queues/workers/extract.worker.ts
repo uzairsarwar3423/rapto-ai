@@ -383,12 +383,13 @@ export const extractWorker = new Worker<ExtractJobData>(
     // ── STEP 10: Emit Socket.io event ────────────────────────────────────────
     try {
       const { socketEmitter } = await import('../../realtime/socket.emitter')
+      const { meetingRoom } = await import('../../realtime/rooms.manager')
 
       const eventName = isPartial
         ? SERVER_EVENTS.MEETING_EXTRACTED_PARTIAL
         : SERVER_EVENTS.MEETING_EXTRACTED
 
-      socketEmitter.to(teamRoom(teamId)).emit(eventName, {
+      const payload = {
         meetingId,
         summary:          serializeSummary(result.summary),
         commitmentCount:  validCommitments.length,
@@ -397,16 +398,21 @@ export const extractWorker = new Worker<ExtractJobData>(
         blockerCount:     result.blockers.length,
         riskCount:        result.risks ? result.risks.length : 0,
         isPartial,
-      })
+      }
+
+      socketEmitter.to(teamRoom(teamId)).emit(eventName, payload)
+      socketEmitter.to(meetingRoom(meetingId)).emit(eventName, payload)
 
       // Emit MEETING_PROCESSED as well for backward compatibility with existing
       // frontend listeners that have not yet migrated to MEETING_EXTRACTED
-      socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_PROCESSED, {
+      const processedPayload = {
         meetingId,
         summary:          serializeSummary(result.summary),
         commitmentCount:  validCommitments.length,
         actionItemCount:  actionItemsData.length,
-      })
+      }
+      socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_PROCESSED, processedPayload)
+      socketEmitter.to(meetingRoom(meetingId)).emit(SERVER_EVENTS.MEETING_PROCESSED, processedPayload)
     } catch (e) {
       logger.warn({ err: e, meetingId }, 'extract.worker: socket emit failed (non-fatal)')
     }

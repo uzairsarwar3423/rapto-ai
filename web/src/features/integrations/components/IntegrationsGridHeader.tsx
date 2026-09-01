@@ -26,15 +26,15 @@ export function IntegrationsGridHeader({ connectedCount }: IntegrationsGridHeade
   }, []);
 
   return (
-    <div className="flex items-center justify-between select-none">
-      <div className="flex items-center gap-3">
-        <h1 className="font-heading font-semibold text-[20px] tracking-[-0.01em] text-foreground leading-[28px]">
+    <div className="flex items-center justify-between gap-3 select-none">
+      <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+        <h1 className="font-heading font-semibold text-[18px] sm:text-[20px] tracking-[-0.01em] text-foreground leading-[28px]">
           Integrations
         </h1>
         {connectedCount > 0 && (
           <Badge
             variant="outline"
-            className="font-poppins font-medium text-[12px] leading-[16px] px-2 py-0.5 bg-muted/40 border-muted/30 text-muted-foreground/80 tabular-nums rounded-md"
+            className="font-poppins font-medium text-[11px] sm:text-[12px] leading-[16px] px-2 py-0.5 bg-muted/40 border-muted/30 text-muted-foreground/80 tabular-nums rounded-md"
           >
             {connectedCount} connected
           </Badge>
@@ -42,7 +42,7 @@ export function IntegrationsGridHeader({ connectedCount }: IntegrationsGridHeade
       </div>
 
       {!dismissed && (
-        <span className="text-[11px] font-sans font-normal text-muted-foreground/40 tracking-normal transition-opacity duration-150">
+        <span className="hidden sm:inline-block text-[11px] font-sans font-normal text-muted-foreground/40 tracking-normal transition-opacity duration-150">
           <kbd className="font-sans">⌘K</kbd> to search integrations
         </span>
       )}

@@ -107,9 +107,9 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
         </Link>
 
         {/* Dynamic Detail Grid */}
-        <div className="flex flex-col md:flex-row gap-8 w-full items-start mt-2">
+        <div className="flex flex-col lg:flex-row gap-6 w-full items-start mt-2">
           {/* Main Context (Left) */}
-          <div className="flex-1 min-w-0 flex flex-col gap-6">
+          <div className="flex-1 min-w-0 flex flex-col gap-6 w-full">
             {/* Title Block */}
             <div className="flex items-start gap-3">
               <ActionItemCompletedCheckbox
@@ -124,11 +124,11 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
             </div>
 
             {/* Context/Description Card */}
-            <div className="border border-border/40 bg-card rounded-lg p-5">
+            <div className="border border-border/40 bg-card rounded-lg p-4 sm:p-5">
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                 Context & Transcription
               </h3>
-              <p className="text-sm text-foreground leading-relaxed font-light mb-4">
+              <p className="text-sm text-foreground leading-relaxed font-light mb-4 break-words">
                 {item.text}
               </p>
               {item.meeting && (
@@ -140,7 +140,7 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
                     <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <Link
                       href={`/meetings/${item.meeting.id}`}
-                      className="text-xs text-brand hover:underline font-medium"
+                      className="text-xs text-brand hover:underline font-medium truncate"
                     >
                       {item.meeting.title}
                     </Link>
@@ -151,7 +151,7 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
           </div>
 
           {/* Properties Panel (Right Sidebar) */}
-          <div className="w-full md:w-72 bg-muted/10 border border-border/30 rounded-lg p-4 flex flex-col gap-5">
+          <div className="w-full lg:w-72 bg-muted/10 border border-border/30 rounded-lg p-4 flex flex-col gap-5">
             <h3 className="text-2xs font-bold text-muted-foreground uppercase tracking-wider">
               Properties
             </h3>
@@ -181,12 +181,12 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
                 }
               >
                 <SelectTrigger className="h-9 text-xs border border-border bg-card w-full">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 truncate">
                     <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <SelectValue placeholder="Assignee" />
                   </div>
                 </SelectTrigger>
-                <SelectContent className="bg-background border border-border shadow-lg">
+                <SelectContent className="bg-white dark:bg-zinc-950 border border-border shadow-lg font-sans text-foreground">
                   <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
                   {teamMembers.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
@@ -196,7 +196,7 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
                 </SelectContent>
               </Select>
               {!item.assigneeId && item.assigneeNameRaw && (
-                <span className="text-[10px] text-muted-foreground/80 italic pl-1 mt-0.5">
+                <span className="text-[10px] text-muted-foreground/80 italic pl-1 mt-0.5 truncate">
                   Extracted: {item.assigneeNameRaw}
                 </span>
               )}
@@ -215,7 +215,7 @@ export function ActionItemDetailClientPage({ actionItemId }: ActionItemDetailCli
                     <SelectValue placeholder="Priority" />
                   </div>
                 </SelectTrigger>
-                <SelectContent className="bg-background border border-border shadow-lg">
+                <SelectContent className="bg-white dark:bg-zinc-950 border border-border shadow-lg font-sans text-foreground">
                   <SelectItem value="LOW">Low</SelectItem>
                   <SelectItem value="MEDIUM">Medium</SelectItem>
                   <SelectItem value="HIGH">High</SelectItem>

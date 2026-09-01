@@ -4,7 +4,7 @@ import React, { createContext, useEffect } from "react";
 import { socketManager } from "../lib/websocket/socket";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useRealtimeStore } from "@/store/realtime.store";
-import axios from "axios";
+import { executeTokenRefresh } from "@/features/auth/utils/auth-refresh";
 
 const WebSocketContext = createContext<null>(null);
 
@@ -49,25 +49,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       if (isAuthError) {
         setConnectionStatus("disconnected");
 
-        // Silent refresh flow
-        try {
-          const response = await axios.post(
-            "/api/v1/auth/refresh",
-            {},
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
+        // Silent refresh flow via singleton coordinator
+        const result = await executeTokenRefresh();
 
-          const { accessToken: newToken } = response.data;
-          if (newToken) {
-            setAccessToken(newToken);
-          } else {
-            throw new Error("Token refresh returned empty token");
-          }
-        } catch (refreshError) {
+        if ("accessToken" in result && result.accessToken) {
+          setAccessToken(result.accessToken);
+          socketManager.connect(result.accessToken);
+        } else if ("is401" in result && result.is401) {
           clearAuth();
           setSessionExpired(true);
         }

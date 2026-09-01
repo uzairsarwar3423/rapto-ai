@@ -91,13 +91,13 @@ export function ActionItemDetailHeader({ initialText, onSave }: ActionItemDetail
   return (
     <button
       onClick={() => setIsEditing(true)}
-      className="group flex items-center gap-2 text-left cursor-pointer hover:bg-muted/40 px-2.5 py-1 -ml-2.5 rounded transition-colors w-fit max-w-2xl border-none outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex items-center gap-2 text-left cursor-pointer hover:bg-muted/40 px-2.5 py-1 -ml-2.5 rounded transition-colors w-full max-w-2xl border-none outline-none focus-visible:ring-2 focus-visible:ring-ring"
       title="Click to edit"
     >
-      <h1 className="text-xl font-heading font-semibold tracking-tight text-foreground truncate select-text">
+      <h1 className="text-lg sm:text-xl font-heading font-semibold tracking-tight text-foreground break-words select-text">
         {text}
       </h1>
-      <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50 focus:opacity-50 transition-opacity shrink-0 text-muted-foreground" />
+      <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-0 group-hover:opacity-50 focus:opacity-50 transition-opacity shrink-0 text-muted-foreground" />
     </button>
   );
 }

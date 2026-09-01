@@ -59,7 +59,7 @@ export function MeetingFiltersPopover({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-56 p-3 bg-white dark:bg-zinc-950 border border-border shadow-lg font-sans">
+      <PopoverContent align="start" className="w-[min(calc(100vw-32px),240px)] p-3 bg-white dark:bg-zinc-950 border border-border shadow-lg font-sans">
         <h4 className="font-medium text-xs text-muted-foreground mb-2 pb-1 border-b border-border">
           Filter by Status
         </h4>

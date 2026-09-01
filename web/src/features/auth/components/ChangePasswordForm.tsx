@@ -63,7 +63,7 @@ export function ChangePasswordForm() {
   };
 
   return (
-    <div className="max-w-md space-y-6">
+    <div className="max-w-xl space-y-6">
       {errorMessage && (
         <div className="flex gap-3 rounded-xl p-4 text-sm bg-error-subtle/30 border border-error/20 text-error" role="alert">
           <AlertCircle className="h-5 w-5 shrink-0" />
@@ -170,11 +170,11 @@ export function ChangePasswordForm() {
           )}
         </div>
 
-        <div className="border-t border-border pt-4 flex items-center gap-3">
+        <div className="border-t border-border pt-4 flex flex-wrap items-center gap-3">
           <button
             type="submit"
             disabled={saveState === 'saving'}
-            className="flex items-center justify-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-brand transition-all hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:bg-muted-subtle disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
+            className="w-full sm:w-auto min-h-[44px] flex items-center justify-center rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-brand transition-all hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:bg-muted-subtle disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
           >
             Update password
           </button>

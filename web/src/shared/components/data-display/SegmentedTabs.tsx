@@ -134,22 +134,15 @@ export function SegmentedTabs<T extends string>({
       aria-orientation="horizontal"
       onKeyDown={handleKeyDown}
       className={cn(
-        "relative flex h-8 items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5 select-none font-sans",
+        "relative flex h-8 items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5 select-none font-sans overflow-x-auto max-w-full no-scrollbar scroll-smooth",
         className
       )}
     >
-      {/* ── Sliding thumb indicator ─────────────────────────────────────
-          Positioned absolutely at (0,0) on mount; useLayoutEffect immediately
-          moves it to the active tab. Transition is applied AFTER first paint
-          so there's no flash from (0,0). Width / height animate in sync with
-          transform — all via a single inline `transition` string to avoid the
-          Tailwind multiple-transition-class conflict.
-      ───────────────────────────────────────────────────────────────── */}
+      {/* ── Sliding thumb indicator ───────────────────────────────────── */}
       <span
         ref={thumbRef}
         aria-hidden="true"
-        className="absolute left-0 top-0 rounded-[6px] bg-[#111111] pointer-events-none will-change-transform shadow-sm"
-        // transition is managed entirely via inline style in useLayoutEffect
+        className="absolute left-0 top-0 rounded-[6px] bg-zinc-900 dark:bg-zinc-100 pointer-events-none will-change-transform shadow-xs"
         style={{ transition: "none" }}
       />
 
@@ -169,19 +162,19 @@ export function SegmentedTabs<T extends string>({
             onClick={() => onValueChange(item.value)}
             className={cn(
               // Base — always present
-              "relative z-10 flex h-full items-center justify-center gap-1.5 px-3 rounded-md text-xs font-sans cursor-pointer select-none",
+              "relative z-10 flex h-full items-center justify-center gap-1 px-2.5 sm:px-3 rounded-md text-xs font-sans cursor-pointer select-none shrink-0 whitespace-nowrap",
               // Focus ring
               "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               // Text color cross-fades smoothly as the pill slides
               "transition-colors duration-200",
               isActive
-                ? "font-semibold text-white"
+                ? "font-semibold text-zinc-50 dark:text-zinc-950"
                 : "font-normal text-muted-foreground hover:text-foreground"
             )}
           >
             <span>{item.label}</span>
             {item.count !== undefined && (
-              <span className="font-mono text-2xs tabular-nums opacity-70">
+              <span className="font-mono text-3xs sm:text-2xs tabular-nums opacity-75">
                 ({item.count})
               </span>
             )}

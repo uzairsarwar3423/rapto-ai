@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCommitmentFilters, type CommitmentStatusFilter } from "../../hooks/useCommitmentFilters";
 import { useCommitments } from "../../hooks/useCommitments";
 import { useCommitmentCounts } from "../../hooks/useCommitmentCounts";
+import { useRealtimeCommitments } from "../../hooks/useRealtimeCommitments";
 import { CommitmentStatusTabs } from "../CommitmentStatusTabs";
 import { CommitmentFilters } from "../CommitmentFilters";
 import { CommitmentList } from "../CommitmentList/CommitmentList";
@@ -25,6 +26,9 @@ interface CommitmentTrackerProps {
 }
 
 export function CommitmentTracker({ teamId, initialData }: CommitmentTrackerProps) {
+  // Subscribe to realtime commitments and member score socket updates
+  useRealtimeCommitments();
+
   const { urlFilters, initialStatus, setUrlFilters, clearUrlFilters, activeFilterCount } =
     useCommitmentFilters();
   const router = useRouter();
@@ -123,14 +127,14 @@ export function CommitmentTracker({ teamId, initialData }: CommitmentTrackerProp
   const hasActiveFilters = activeFilterCount > 0;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 font-sans">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 font-sans">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border pb-4 sm:pb-5">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground font-heading">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground font-heading">
             Commitments
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
             Track commitments and deliverables extracted from your calendar events and meetings.
           </p>
         </div>
@@ -143,8 +147,8 @@ export function CommitmentTracker({ teamId, initialData }: CommitmentTrackerProp
         onStatusChange={handleStatusChange}
       />
 
-      {/* Status tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Status tabs (Horizontal scrolling on mobile) */}
+      <div className="flex items-center overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
         <CommitmentStatusTabs
           value={status}
           onValueChange={handleStatusChange}
@@ -153,7 +157,7 @@ export function CommitmentTracker({ teamId, initialData }: CommitmentTrackerProp
       </div>
 
       {/* Filters bar */}
-      <div className="bg-card border border-border rounded-lg p-4 shadow-xs">
+      <div className="bg-card border border-border rounded-lg p-3 sm:p-4 shadow-xs">
         <CommitmentFilters onClearAll={handleClearAll} />
       </div>
 

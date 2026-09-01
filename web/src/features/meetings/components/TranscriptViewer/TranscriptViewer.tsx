@@ -11,6 +11,9 @@ import { useTranscriptScroll } from "../../hooks/useTranscriptScroll"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
+import { useTranscript } from "../../hooks/useTranscript"
+import { useMeetingDetail } from "../../hooks/useMeetingDetail"
+
 interface TranscriptData {
   id: string
   meeting_id: string
@@ -20,19 +23,46 @@ interface TranscriptData {
 }
 
 interface TranscriptViewerProps {
+  meetingId?: string
   transcript: TranscriptData | null
   meetingStatus: string
   onRetry?: () => void
 }
 
 export function TranscriptViewer({
-  transcript,
-  meetingStatus,
+  meetingId,
+  transcript: initialTranscript,
+  meetingStatus: initialStatus,
   onRetry,
 }: TranscriptViewerProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
   const [selectedSpeaker, setSelectedSpeaker] = useState<string | null>(null)
+
+  // Real-time meeting detail synchronization
+  const { data: liveMeeting } = useMeetingDetail(meetingId || "", null)
+  const currentStatus = liveMeeting?.status || initialStatus
+
+  const transcriptReadyStates = [
+    "DONE", 
+    "RESOLVED", 
+    "RESOLUTION_FAILED", 
+    "EXTRACTION_FAILED", 
+    "EXTRACTED", 
+    "EXTRACTED_PARTIAL",
+    "TRANSCRIPT_CLEANED",
+    "TRANSCRIPT_CLEANUP_FAILED",
+    "TRANSCRIPT_CLEANUP_DEGRADED",
+    "TRANSCRIBED"
+  ]
+  const isReady = transcriptReadyStates.includes(currentStatus)
+
+  // Real-time transcript fetch when ready
+  const { data: clientTranscript } = useTranscript(
+    meetingId || "",
+    Boolean(meetingId) && isReady && !initialTranscript
+  )
+  const transcript = clientTranscript || initialTranscript
 
   // Virtualizer instance reference
   const virtualizerRef = useRef<Virtualizer<HTMLDivElement, Element> | null>(null)
@@ -43,7 +73,7 @@ export function TranscriptViewer({
     if (!transcript) return []
 
     // Use normalized_transcript if available and non-empty, otherwise raw_transcript
-    const sourceTurns =
+    const sourceTurns: any[] =
       Array.isArray(transcript.normalized_transcript) &&
       transcript.normalized_transcript.length > 0
         ? transcript.normalized_transcript
@@ -51,7 +81,7 @@ export function TranscriptViewer({
         ? transcript.raw_transcript
         : []
 
-    return sourceTurns.map((turn, index) => {
+    return sourceTurns.map((turn: any, index: number) => {
       // 1. Resolve Speaker Name
       let speaker = "Unknown Speaker"
       if (turn.speaker) {
@@ -211,21 +241,8 @@ export function TranscriptViewer({
     }
   }, [jumpToTime])
 
-  // Guard: If meeting is not DONE or has failed, render empty/processing state
-  const transcriptReadyStates = [
-    "DONE", 
-    "RESOLVED", 
-    "RESOLUTION_FAILED", 
-    "EXTRACTION_FAILED", 
-    "EXTRACTED", 
-    "EXTRACTED_PARTIAL",
-    "TRANSCRIPT_CLEANED",
-    "TRANSCRIPT_CLEANUP_FAILED",
-    "TRANSCRIPT_CLEANUP_DEGRADED",
-    "TRANSCRIBED"
-  ]
-  if (!transcriptReadyStates.includes(meetingStatus) || !transcript) {
-    return <TranscriptEmptyState status={meetingStatus} onRetry={onRetry} />
+  if (!isReady || !transcript) {
+    return <TranscriptEmptyState status={currentStatus} onRetry={onRetry} />
   }
 
   return (

@@ -57,26 +57,26 @@ export function CommitmentStats({ stats }: CommitmentStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-surface/30 backdrop-blur-md border border-border/60 p-4 rounded-xl shadow-xs">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 bg-surface/30 backdrop-blur-md border border-border/60 p-2.5 sm:p-4 rounded-xl shadow-xs">
       {statCards.map((card, idx) => {
         const IconComponent = card.icon;
         return (
           <div
             key={idx}
-            className={`flex flex-col gap-2 p-4 rounded-lg border border-border/40 ${card.bgClass} ${card.borderClass} border-l-4 shadow-2xs hover:shadow-xs transition-all duration-160 hover:-translate-y-0.5 select-none`}
+            className={`flex flex-col gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-lg border border-border/40 ${card.bgClass} ${card.borderClass} border-l-4 shadow-2xs hover:shadow-xs transition-all duration-160 hover:-translate-y-0.5 select-none`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/85">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider sm:tracking-widest text-muted-foreground/85 truncate">
                 {card.label}
               </span>
-              <IconComponent className={`h-4.5 w-4.5 ${card.iconColor}`} />
+              <IconComponent className={`h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 shrink-0 ${card.iconColor}`} />
             </div>
             <div>
-              <span className="text-2xl font-bold tracking-tight font-mono tabular-nums text-foreground">
+              <span className="text-xl sm:text-2xl font-bold tracking-tight font-mono tabular-nums text-foreground">
                 {card.value}
               </span>
             </div>
-            <div className="text-3xs text-muted-foreground/90 font-medium">
+            <div className="text-[10px] sm:text-3xs text-muted-foreground/90 font-medium truncate">
               {card.subtext}
             </div>
           </div>

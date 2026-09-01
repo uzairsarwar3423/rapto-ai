@@ -14,10 +14,10 @@ export default function SecuritySettingsPage() {
     <div className="space-y-8 pb-10">
       {/* Page Header */}
       <div>
-        <h1 className="font-heading text-lg font-bold text-foreground">
+        <h1 className="font-heading text-[18px] sm:text-[20px] font-semibold tracking-[-0.01em] text-foreground leading-[28px]">
           Security Settings
         </h1>
-        <p className="font-sans text-xs text-muted-foreground mt-1">
+        <p className="font-sans text-xs sm:text-sm text-muted-foreground mt-1">
           Manage your account credentials, configure two-factor authentication, and track active sessions.
         </p>
       </div>

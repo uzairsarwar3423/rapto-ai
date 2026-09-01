@@ -54,19 +54,44 @@ export function MeetingList({ initialData }: MeetingListProps) {
     !!filters.to ||
     !!(filters.status && filters.status.length > 0);
 
+  const recordingCount = flatMeetings.filter((m) => m.status === "RECORDING").length;
+  const processingCount = flatMeetings.filter((m) => m.status === "PROCESSING" || m.status === "BOT_JOINING").length;
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 font-sans">
+    <div className="space-y-5 sm:space-y-6 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 font-sans">
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 sm:gap-4 border-b border-border pb-4 sm:pb-5">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground font-heading">
-            Meetings
-          </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Analyze, track, and retrieve intelligence from your calendar events and calls.
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-heading">
+              Meetings
+            </h1>
+            {flatMeetings.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-medium font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full border border-border/50">
+                  {flatMeetings.length} total
+                </span>
+                {recordingCount > 0 && (
+                  <span className="text-[11px] font-semibold text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20 animate-pulse flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-400" />
+                    {recordingCount} live
+                  </span>
+                )}
+                {processingCount > 0 && (
+                  <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-spin" />
+                    {processingCount} processing
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 max-w-xl">
+            Analyze, track, and retrieve intelligence from your calendar events, recordings, and team calls.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <AddMeetingTooltip>
             <AddMeetingButton
               id="meetings-page-add-btn"
@@ -77,7 +102,7 @@ export function MeetingList({ initialData }: MeetingListProps) {
       </div>
 
       {/* Filter panel */}
-      <div className="bg-card border border-border rounded-lg p-4 shadow-xs">
+      <div className="bg-card border border-border rounded-xl p-3.5 sm:p-4 shadow-xs">
         <MeetingFilters />
       </div>
 
@@ -92,11 +117,11 @@ export function MeetingList({ initialData }: MeetingListProps) {
           onConnectCalendar={() => router.push("/integrations")}
         />
       ) : (
-        <div className="border border-border rounded-lg bg-card overflow-hidden shadow-xs">
+        <div className="border border-border rounded-xl bg-card overflow-hidden shadow-xs">
           <MeetingListHeader />
           <div
             ref={containerRef as React.RefObject<HTMLDivElement>}
-            className="divide-y divide-border"
+            className="divide-y divide-border/70"
           >
             {flatMeetings.map((meeting, index) => (
               <MeetingListRow
@@ -115,6 +140,14 @@ export function MeetingList({ initialData }: MeetingListProps) {
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={fetchNextPage}
           />
+        </div>
+      )}
+
+      {/* Keyboard Shortcut Hint (Desktop only) */}
+      {flatMeetings.length > 0 && (
+        <div className="hidden lg:flex items-center justify-between text-[11px] text-muted-foreground/60 px-1 select-none font-mono">
+          <span>Navigate with <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border/80 text-[10px]">↑</kbd> <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border/80 text-[10px]">↓</kbd></span>
+          <span>Press <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border/80 text-[10px]">Enter</kbd> to open details</span>
         </div>
       )}
 

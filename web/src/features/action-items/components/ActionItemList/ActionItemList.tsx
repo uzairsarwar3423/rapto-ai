@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { ActionItemListHeader } from "./ActionItemListHeader";
 import { ActionItemRow } from "../ActionItemRow";
 import { VirtualList } from "@/shared/components/data-display/VirtualList";
@@ -22,6 +22,14 @@ export function ActionItemList({
   onToggleComplete,
 }: ActionItemListProps) {
   const lastSelectedIdxRef = useRef<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const handleSelectToggle = (e: React.MouseEvent<any> | React.KeyboardEvent<any>, id: string, index: number) => {
     if (e.shiftKey && lastSelectedIdxRef.current !== null) {
@@ -32,7 +40,6 @@ export function ActionItemList({
     } else {
       selection.toggle(id);
     }
-    // Update the last selected tracker index
     lastSelectedIdxRef.current = index;
   };
 
@@ -73,7 +80,7 @@ export function ActionItemList({
   return (
     <div
       onKeyDown={handleKeyDown}
-      className="flex flex-col w-full border border-border/40 rounded-lg overflow-hidden bg-background h-[calc(100vh-220px)] min-h-[400px]"
+      className="flex flex-col w-full border border-border/40 rounded-lg overflow-hidden bg-background h-[calc(100vh-230px)] min-h-[420px]"
     >
       <ActionItemListHeader
         selectionState={selection.selectionState}
@@ -88,7 +95,7 @@ export function ActionItemList({
       >
         <VirtualList<ActionItem>
           items={items}
-          estimateSize={() => 36}
+          estimateSize={() => (isMobile ? 66 : 38)}
           getItemKey={(item) => item.id}
           className="h-full w-full"
           renderItem={(item, index) => (

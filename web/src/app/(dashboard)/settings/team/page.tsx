@@ -10,10 +10,10 @@ export default function TeamSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-lg font-bold text-foreground">
+        <h1 className="font-heading text-[18px] sm:text-[20px] font-semibold tracking-[-0.01em] text-foreground leading-[28px]">
           Team Settings
         </h1>
-        <p className="font-sans text-xs text-muted-foreground mt-1">
+        <p className="font-sans text-xs sm:text-sm text-muted-foreground mt-1">
           Manage your organization name, slug URL, timezone defaults, and digest notifications.
         </p>
       </div>

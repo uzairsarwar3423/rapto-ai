@@ -23,9 +23,12 @@ export const CLIENT_EVENTS = {
 
 export const SERVER_EVENTS = {
   // ── Meeting lifecycle (AI pipeline driven) ──────────────────────────────
+  MEETING_CREATED:          'meeting:created',
   MEETING_BOT_JOINING:      'meeting:bot_joining',
   MEETING_RECORDING:        'meeting:recording',
   MEETING_PROCESSING:       'meeting:processing',
+  MEETING_CANCELLED:        'meeting:cancelled',
+  MEETING_DELETED:          'meeting:deleted',
 
   // Emitted by transcribe.worker after /transcripts/cleanup succeeds
   MEETING_TRANSCRIPT_CLEANED: 'meeting:transcript_cleaned',

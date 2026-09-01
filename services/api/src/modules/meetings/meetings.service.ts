@@ -147,6 +147,18 @@ export async function createMeeting(input: CreateMeetingInput) {
   // Invalidate plan cache to reflect the new in-flight meeting
   invalidatePlanCache(teamId).catch(() => {})
 
+  // Emit real-time MEETING_CREATED event
+  try {
+    const { teamRoom } = await import('../../realtime/rooms.manager')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_CREATED, {
+      meeting,
+    })
+  } catch (err) {
+    logger.warn({ meetingId: meeting.id, err }, 'createMeeting: Socket.io emit failed (non-fatal)')
+  }
+
   logger.info(
     { teamId, meetingId: meeting.id, botId, platform },
     '✅ Meeting created successfully'
@@ -216,6 +228,18 @@ export async function createMeetingFromCalendar(input: {
   }
 
   invalidatePlanCache(teamId).catch(() => {})
+
+  // Emit real-time MEETING_CREATED event
+  try {
+    const { teamRoom } = await import('../../realtime/rooms.manager')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_CREATED, {
+      meeting,
+    })
+  } catch (err) {
+    logger.warn({ meetingId: meeting.id, err }, 'createMeetingFromCalendar: Socket.io emit failed (non-fatal)')
+  }
 
   return meeting
 }
@@ -374,6 +398,18 @@ export async function addBotManually(input: AddBotInput) {
   // Invalidate plan cache to reflect the new in-flight meeting
   invalidatePlanCache(teamId).catch(() => {})
 
+  // Emit real-time events for manual bot addition
+  try {
+    const { teamRoom, meetingRoom } = await import('../../realtime/rooms.manager')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_CREATED, { meeting })
+    socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_BOT_JOINING, { meetingId: meeting.id })
+    socketEmitter.to(meetingRoom(meeting.id)).emit(SERVER_EVENTS.MEETING_BOT_JOINING, { meetingId: meeting.id })
+  } catch (err) {
+    logger.warn({ meetingId: meeting.id, err }, 'addBotManually: Socket.io emit failed (non-fatal)')
+  }
+
   logger.info({ teamId, meetingId: meeting.id, botId }, 'Bot added manually')
   return { meeting, message: 'Bot is joining the meeting. Expect it to appear within 30 seconds.' }
 }
@@ -416,6 +452,17 @@ export async function removeBot(id: string, teamId: string) {
 
   // Invalidate plan cache because in-flight meetings count decreased
   invalidatePlanCache(teamId).catch(() => {})
+
+  // Emit real-time MEETING_CANCELLED event
+  try {
+    const { teamRoom, meetingRoom } = await import('../../realtime/rooms.manager')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_CANCELLED, { meetingId: id })
+    socketEmitter.to(meetingRoom(id)).emit(SERVER_EVENTS.MEETING_CANCELLED, { meetingId: id })
+  } catch (err) {
+    logger.warn({ meetingId: id, err }, 'removeBot: Socket.io emit failed (non-fatal)')
+  }
 
   logger.info({ meetingId: id, teamId }, 'Bot removed, meeting cancelled')
   return updated
@@ -461,6 +508,17 @@ export async function deleteMeeting(
   // Invalidate plan cache in case the deleted meeting was in-flight
   invalidatePlanCache(teamId).catch(() => {})
 
+  // Emit real-time MEETING_DELETED event
+  try {
+    const { teamRoom, meetingRoom } = await import('../../realtime/rooms.manager')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_DELETED, { meetingId: id })
+    socketEmitter.to(meetingRoom(id)).emit(SERVER_EVENTS.MEETING_DELETED, { meetingId: id })
+  } catch (err) {
+    logger.warn({ meetingId: id, err }, 'deleteMeeting: Socket.io emit failed (non-fatal)')
+  }
+
   logger.info({ meetingId: id, teamId, deleteTranscript }, 'Meeting deleted')
   return { message: 'Meeting deleted successfully' }
 }
@@ -498,6 +556,50 @@ export async function updateMeetingStatus(
   })
 
   logger.info({ meetingId: meeting.id, from: meeting.status, to: newStatus }, 'Meeting status updated')
+
+  // Real-time broadcast for all status updates
+  try {
+    const { teamRoom, meetingRoom } = await import('../../realtime/rooms.manager')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+
+    const tRoom = teamRoom(meeting.teamId)
+    const mRoom = meetingRoom(meeting.id)
+
+    if (newStatus === 'BOT_JOINING') {
+      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_BOT_JOINING, { meetingId: meeting.id })
+      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_BOT_JOINING, { meetingId: meeting.id })
+    } else if (newStatus === 'RECORDING') {
+      const startedAtStr = updated.startedAt ? updated.startedAt.toISOString() : new Date().toISOString()
+      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_RECORDING, { meetingId: meeting.id, startedAt: startedAtStr })
+      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_RECORDING, { meetingId: meeting.id, startedAt: startedAtStr })
+    } else if (newStatus === 'PROCESSING') {
+      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_PROCESSING, { meetingId: meeting.id })
+      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_PROCESSING, { meetingId: meeting.id })
+    } else if (newStatus === 'DONE') {
+      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_PROCESSED, {
+        meetingId: meeting.id,
+        summary: updated.summary,
+        commitmentCount: updated.commitmentCount,
+        actionItemCount: updated.actionItemCount,
+      })
+      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_PROCESSED, {
+        meetingId: meeting.id,
+        summary: updated.summary,
+        commitmentCount: updated.commitmentCount,
+        actionItemCount: updated.actionItemCount,
+      })
+    } else if (newStatus === 'FAILED') {
+      const errorMsg = (extraData as any)?.processingError || 'Processing failed'
+      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_FAILED, { meetingId: meeting.id, reason: errorMsg })
+      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_FAILED, { meetingId: meeting.id, reason: errorMsg })
+    } else if (newStatus === 'CANCELLED') {
+      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_CANCELLED, { meetingId: meeting.id })
+      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_CANCELLED, { meetingId: meeting.id })
+    }
+  } catch (err) {
+    logger.warn({ meetingId: meeting.id, err }, 'updateMeetingStatus: Socket.io emit failed (non-fatal)')
+  }
 
   // Invalidate plan cache after meeting reaches DONE (meetingsUsed increments)
   if (newStatus === 'DONE') {

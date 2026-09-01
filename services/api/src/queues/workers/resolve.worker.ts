@@ -381,16 +381,16 @@ export const resolveWorker = new Worker<ResolveJobData>(
       }
     }
 
-    // ── STEP 9: Emit Socket.io events ──────────────────────────────────────
     try {
       const { socketEmitter } = await import('../../realtime/socket.emitter')
+      const { meetingRoom } = await import('../../realtime/rooms.manager')
 
       // Team-level event: meeting resolution summary
       const teamEvent = isPartial
         ? SERVER_EVENTS.MEETING_RESOLVED_PARTIAL
         : SERVER_EVENTS.MEETING_RESOLVED
 
-      socketEmitter.to(teamRoom(teamId)).emit(teamEvent, {
+      const resolvePayload = {
         meetingId,
         newCount:         result.new_commitments.length,
         resolvedCount:    result.resolved_updates.length,
@@ -401,7 +401,10 @@ export const resolveWorker = new Worker<ResolveJobData>(
         failedCount:      failedIds.length,
         isPartial,
         stats:            result.stats,
-      })
+      }
+
+      socketEmitter.to(teamRoom(teamId)).emit(teamEvent, resolvePayload)
+      socketEmitter.to(meetingRoom(meetingId)).emit(teamEvent, resolvePayload)
 
       // Per-owner event: notify each commitment owner whose commitment was fulfilled
       // These go to the user's personal room (user:{ownerId}) for in-app notification

@@ -34,9 +34,9 @@ export function AddMeetingModal({ open, onOpenChange }: AddMeetingModalProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-full sm:max-w-[480px] p-6 bg-white dark:bg-zinc-950 border border-border shadow-2xl font-sans rounded-xl overflow-hidden flex flex-col max-h-[90vh]">
-          <DialogHeader className="p-0 mb-6 shrink-0">
-            <DialogTitle className="text-base font-semibold text-foreground font-heading">
+        <DialogContent className="w-[calc(100vw-24px)] sm:max-w-[480px] p-4 sm:p-6 bg-white dark:bg-zinc-950 border border-border shadow-2xl font-sans rounded-xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[88vh] sm:max-h-[90vh]">
+          <DialogHeader className="p-0 mb-4 sm:mb-6 shrink-0">
+            <DialogTitle className="text-base sm:text-lg font-semibold text-foreground font-heading">
               Add meeting
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-1 font-sans">

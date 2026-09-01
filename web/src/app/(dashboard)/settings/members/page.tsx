@@ -10,10 +10,10 @@ export default function MembersSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-lg font-bold text-foreground">
+        <h1 className="font-heading text-[18px] sm:text-[20px] font-semibold tracking-[-0.01em] text-foreground leading-[28px]">
           Team Members
         </h1>
-        <p className="font-sans text-xs text-muted-foreground mt-1">
+        <p className="font-sans text-xs sm:text-sm text-muted-foreground mt-1">
           View active teammates, their commitment completion rates, and manage roles or access.
         </p>
       </div>

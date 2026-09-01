@@ -102,7 +102,7 @@ export function LinearIntegration({ integration, onRefresh }: LinearIntegrationP
           state === "CONNECTED_UNCONFIGURED" && "border-amber-200/60 dark:border-amber-900/30"
         )}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="shrink-0">
               <IntegrationIcon provider="LINEAR" />
@@ -118,13 +118,13 @@ export function LinearIntegration({ integration, onRefresh }: LinearIntegrationP
             </div>
           </div>
 
-          <div className="shrink-0">
+          <div className="shrink-0 self-start sm:self-center">
             {state === "NOT_CONNECTED" && (
               <Button
                 size="sm"
                 onClick={() => connect("LINEAR")}
                 disabled={isConnecting}
-                className="h-8 text-xs font-sans gap-1.5"
+                className="h-8 text-xs font-sans gap-1.5 w-full sm:w-auto"
               >
                 {isConnecting ? (
                   <>
@@ -141,7 +141,7 @@ export function LinearIntegration({ integration, onRefresh }: LinearIntegrationP
             )}
 
             {(state === "CONNECTED_UNCONFIGURED" || state === "CONNECTED_CONFIGURED") && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Button
                   size="sm"
                   variant="outline"
@@ -168,7 +168,7 @@ export function LinearIntegration({ integration, onRefresh }: LinearIntegrationP
                 variant="outline"
                 onClick={() => connect("LINEAR")}
                 disabled={isConnecting}
-                className="h-8 text-xs font-sans gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10"
+                className="h-8 text-xs font-sans gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 w-full sm:w-auto"
               >
                 {isConnecting ? (
                   <>

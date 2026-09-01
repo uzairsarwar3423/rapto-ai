@@ -2,43 +2,16 @@
 
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import axios from 'axios';
 import Cookies from 'js-cookie';
 import { useAuthStore } from '@/features/auth/store/auth.store';
 import { authApi } from '@/features/auth/api/auth.api';
 import { authSync } from '@/features/auth/utils/auth-events';
+import { executeTokenRefresh, isTokenExpiringSoon } from '@/features/auth/utils/auth-refresh';
 import { FullPageSpinner } from '../feedback/FullPageSpinner';
 import { logger } from '@/lib/utils/logger';
 
-// Proactively refresh access token every 12 minutes (since JWT expires in 15 mins)
-const PROACTIVE_REFRESH_INTERVAL_MS = 12 * 60 * 1000;
-
-/**
- * Calls Next.js BFF refresh proxy endpoint (/api/v1/auth/refresh).
- * Returns { accessToken, user } on success, or { is401: boolean } on error.
- */
-async function silentRefresh(): Promise<{ accessToken: string; user: any } | { error: true; is401: boolean }> {
-  try {
-    const response = await axios.post(
-      '/api/v1/auth/refresh',
-      {},
-      {
-        withCredentials: true,
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 10_000,
-      }
-    );
-
-    if (response.status === 200 && response.data?.accessToken) {
-      return { accessToken: response.data.accessToken, user: response.data.user ?? null };
-    }
-
-    return { error: true, is401: response.status === 401 };
-  } catch (err: any) {
-    const status = err?.response?.status;
-    return { error: true, is401: status === 401 };
-  }
-}
+// Proactively check access token freshness every 2 minutes
+const PROACTIVE_CHECK_INTERVAL_MS = 2 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, setAccessToken, setUser, clearAuth, setLoading, setSessionExpired } = useAuthStore();
@@ -54,8 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const existingToken = useAuthStore.getState().accessToken || Cookies.get('rapto_access');
 
-        // Step 1: If access token exists in memory/cookie, attempt getMe()
-        if (existingToken) {
+        // Step 1: If access token exists in memory/cookie and is still fresh, attempt getMe()
+        if (existingToken && !isTokenExpiringSoon(existingToken, 60)) {
           useAuthStore.getState().setAccessToken(existingToken);
           try {
             const me = await authApi.getMe();
@@ -70,8 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Step 2: Access token missing or stale — perform silent refresh using HttpOnly refresh cookie
-        const result = await silentRefresh();
+        // Step 2: Access token missing or expiring soon — perform silent refresh using HttpOnly refresh cookie
+        const result = await executeTokenRefresh();
 
         if (!isMounted) return;
 
@@ -159,15 +132,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      logger.debug('[AuthProvider] Proactive background token refresh...');
-      const result = await silentRefresh();
-
-      if ('accessToken' in result) {
-        setAccessToken(result.accessToken);
-        if (result.user) setUser(result.user);
-        authSync.emit('TOKEN_REFRESHED', { accessToken: result.accessToken, user: result.user });
+      const token = useAuthStore.getState().accessToken;
+      if (isTokenExpiringSoon(token, 180)) {
+        logger.debug('[AuthProvider] Proactive background token refresh for expiring token...');
+        await executeTokenRefresh();
       }
-    }, PROACTIVE_REFRESH_INTERVAL_MS);
+    }, PROACTIVE_CHECK_INTERVAL_MS);
 
     return () => {
       if (intervalRef.current) {
@@ -175,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         intervalRef.current = null;
       }
     };
-  }, [isAuthenticated, setAccessToken, setUser]);
+  }, [isAuthenticated]);
 
   /**
    * Effect 4: Window Visibility & Online Re-connection Refresh
@@ -185,12 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const handleRecheck = async () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        logger.debug('[AuthProvider] Tab visible / re-connected — checking token freshness...');
-        const result = await silentRefresh();
-        if ('accessToken' in result) {
-          setAccessToken(result.accessToken);
-          if (result.user) setUser(result.user);
-          authSync.emit('TOKEN_REFRESHED', { accessToken: result.accessToken, user: result.user });
+        const token = useAuthStore.getState().accessToken;
+        if (isTokenExpiringSoon(token, 120)) {
+          logger.debug('[AuthProvider] Tab visible / re-connected with expiring token — refreshing...');
+          await executeTokenRefresh();
         }
       }
     };
@@ -202,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', handleRecheck);
       window.removeEventListener('online', handleRecheck);
     };
-  }, [isAuthenticated, setAccessToken, setUser]);
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return <FullPageSpinner />;

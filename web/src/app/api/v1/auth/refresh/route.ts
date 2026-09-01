@@ -20,6 +20,24 @@ const REFRESH_COOKIE_OPTIONS = {
 };
 
 /**
+ * Helper to parse a cookie value by name from Express Set-Cookie headers.
+ */
+function extractCookieValue(setCookieHeaders: string | string[] | undefined, name: string): string | null {
+  if (!setCookieHeaders) return null;
+  const headers = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+  for (const header of headers) {
+    const parts = header.split(';');
+    for (const part of parts) {
+      const [key, ...valParts] = part.trim().split('=');
+      if (key === name) {
+        return valParts.join('=');
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * POST /api/v1/auth/refresh
  * Called by the client-side Axios interceptor and AuthProvider to silently
  * refresh the access token using the HttpOnly refresh cookie.
@@ -47,12 +65,16 @@ export async function POST() {
           Cookie: `rapto_refresh=${refreshToken}`,
         },
         validateStatus: () => true,
+        timeout: 10_000,
       }
     );
 
     if (refreshResponse.status !== 200) {
-      // Delete the stale cookie so browser doesn't keep sending it
-      cookieStore.delete('rapto_refresh');
+      // Only delete cookies on explicit 401 (invalid/expired refresh token), not transient 5xx
+      if (refreshResponse.status === 401) {
+        cookieStore.delete('rapto_refresh');
+        cookieStore.delete('rapto_access');
+      }
       return NextResponse.json(
         refreshResponse.data,
         { status: refreshResponse.status }
@@ -69,6 +91,7 @@ export async function POST() {
           Authorization: `Bearer ${accessToken}`,
         },
         validateStatus: () => true,
+        timeout: 10_000,
       }
     );
 
@@ -76,14 +99,7 @@ export async function POST() {
 
     // 3. Extract new refresh token from Set-Cookie header and forward it
     const setCookieHeaders = refreshResponse.headers['set-cookie'];
-    let newRefreshToken = '';
-
-    if (setCookieHeaders && setCookieHeaders.length > 0) {
-      const match = setCookieHeaders[0].match(/rapto_refresh=([^;]+)/);
-      if (match) {
-        newRefreshToken = match[1];
-      }
-    }
+    const newRefreshToken = extractCookieValue(setCookieHeaders, 'rapto_refresh');
 
     const nextResponse = NextResponse.json({
       accessToken,
@@ -94,6 +110,16 @@ export async function POST() {
       // Forward the rotated refresh cookie with correct production attributes
       nextResponse.cookies.set('rapto_refresh', newRefreshToken, REFRESH_COOKIE_OPTIONS);
     }
+
+    // Set the short-lived access token cookie for Server Components (RSC)
+    nextResponse.cookies.set('rapto_access', accessToken, {
+      httpOnly: false,
+      secure: isProd,
+      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+      path: '/',
+      maxAge: 15 * 60, // 15 minutes (matches JWT expiry)
+      ...(isProd ? { domain: '.rapto.cloud' } : {}),
+    });
 
     return nextResponse;
   } catch (error: any) {

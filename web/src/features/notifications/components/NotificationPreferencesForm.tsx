@@ -82,31 +82,31 @@ export function NotificationPreferencesForm() {
 
         {/* Preferences Grid Table */}
         <Card className="border-border/40 bg-card/60 backdrop-blur-sm shadow-xl shadow-black/5 overflow-hidden">
-          <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-5">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground font-sans">
+          <CardHeader className="border-b border-border/40 bg-muted/20 px-4 sm:px-6 py-4 sm:py-5">
+            <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground font-sans">
               Preferences Matrix
             </h2>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-xs sm:text-sm">
               Map notification channels for each system event type.
             </p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="min-w-full overflow-x-auto">
-              <table className="w-full border-collapse text-left">
+              <table className="w-full min-w-[580px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border/40 bg-muted/10 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="px-6 py-4 font-medium">Notification Event Type</th>
-                    <th className="px-6 py-4 text-center font-medium w-32">
+                    <th className="px-4 sm:px-6 py-3.5 sm:py-4 font-medium">Notification Event Type</th>
+                    <th className="px-3 sm:px-6 py-3.5 sm:py-4 text-center font-medium w-28 sm:w-32">
                       <div className="flex items-center justify-center gap-1.5">
                         <Mail className="h-4 w-4" /> Email
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-center font-medium w-32">
+                    <th className="px-3 sm:px-6 py-3.5 sm:py-4 text-center font-medium w-28 sm:w-32">
                       <div className="flex items-center justify-center gap-1.5">
                         <img src="/icons/slack.svg" alt="Slack" className="h-4 w-4 object-contain" /> Slack
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-center font-medium w-32">
+                    <th className="px-3 sm:px-6 py-3.5 sm:py-4 text-center font-medium w-28 sm:w-32">
                       <div className="flex items-center justify-center gap-1.5">
                         <Bell className="h-4 w-4" /> In-App
                       </div>
@@ -132,7 +132,7 @@ export function NotificationPreferencesForm() {
                         key={type.id}
                         className="group hover:bg-muted/10 transition-colors duration-150"
                       >
-                        <td className="px-6 py-4.5">
+                        <td className="px-4 sm:px-6 py-3.5 sm:py-4.5">
                           <div className="font-medium text-foreground text-sm leading-snug">
                             {type.label}
                           </div>
@@ -142,7 +142,7 @@ export function NotificationPreferencesForm() {
                         </td>
 
                         {/* Email Column */}
-                        <td className="px-6 py-4.5 text-center">
+                        <td className="px-3 sm:px-6 py-3.5 sm:py-4.5 text-center">
                           <div className="flex justify-center">
                             <Switch
                               checked={!!isEmailChecked}
@@ -154,7 +154,7 @@ export function NotificationPreferencesForm() {
                         </td>
 
                         {/* Slack Column */}
-                        <td className="px-6 py-4.5 text-center">
+                        <td className="px-3 sm:px-6 py-3.5 sm:py-4.5 text-center">
                           <div className="flex justify-center transition-opacity duration-300">
                             {isSlackConnected ? (
                               <Switch
@@ -184,7 +184,7 @@ export function NotificationPreferencesForm() {
                         </td>
 
                         {/* In-App Column */}
-                        <td className="px-6 py-4.5 text-center">
+                        <td className="px-3 sm:px-6 py-3.5 sm:py-4.5 text-center">
                           <div className="flex justify-center">
                             <Tooltip delayDuration={100}>
                               <TooltipTrigger asChild>

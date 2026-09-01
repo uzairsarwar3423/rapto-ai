@@ -16,7 +16,7 @@ export function MeetingDetailTabs({ meetingId }: { meetingId: string }) {
   const base = `/meetings/${meetingId}`
 
   return (
-    <nav className="flex gap-5 border-b border-border mt-3" aria-label="Meeting sections">
+    <nav className="flex gap-4 sm:gap-6 border-b border-border mt-3 overflow-x-auto scrollbar-none flex-nowrap -mx-4 px-4 sm:mx-0 sm:px-0" aria-label="Meeting sections">
       {TABS.map((tab) => {
         const href = `${base}${tab.href}`
         const isActive = pathname === href
@@ -25,9 +25,9 @@ export function MeetingDetailTabs({ meetingId }: { meetingId: string }) {
             key={tab.href}
             href={href}
             className={cn(
-              'relative h-9 text-sm text-muted-foreground transition-colors duration-120',
+              'relative h-9 text-xs sm:text-sm text-muted-foreground transition-colors duration-120 shrink-0 whitespace-nowrap',
               'hover:text-foreground flex items-center',
-              isActive && 'text-foreground font-medium'
+              isActive && 'text-foreground font-semibold'
             )}
           >
             {tab.label}

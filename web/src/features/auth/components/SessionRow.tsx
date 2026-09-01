@@ -41,7 +41,7 @@ export function SessionRow({ session }: SessionRowProps) {
   });
 
   return (
-    <div className="flex items-center justify-between py-4 border-b border-border last:border-0 hover:bg-surface/10 transition-colors px-2 rounded-xl">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 sm:py-4 border-b border-border last:border-0 hover:bg-surface/10 transition-colors px-2 rounded-xl">
       <div className="flex items-start gap-3">
         {/* Device Icon */}
         <div className="mt-0.5 p-2 bg-surface-hover/50 text-muted rounded-lg shrink-0 border border-border">
@@ -50,7 +50,7 @@ export function SessionRow({ session }: SessionRowProps) {
 
         {/* Details */}
         <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-foreground">
               {browser} on {os}
             </span>
@@ -75,7 +75,9 @@ export function SessionRow({ session }: SessionRowProps) {
 
       {/* Action: Revoke Button if not current session */}
       {!session.isCurrent && (
-        <RevokeSessionButton sessionId={session.id} />
+        <div className="self-end sm:self-center shrink-0">
+          <RevokeSessionButton sessionId={session.id} />
+        </div>
       )}
     </div>
   );

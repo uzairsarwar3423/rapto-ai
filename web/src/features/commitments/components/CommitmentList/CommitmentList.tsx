@@ -10,6 +10,8 @@ import { RowEmptyState } from "@/shared/components/feedback/RowEmptyState";
 import type { Commitment } from "../../types";
 import type { CommitmentAction } from "../commitment-actions.permissions";
 
+import { CommitmentRowSkeleton } from "../CommitmentRowSkeleton";
+
 interface CommitmentListProps {
   commitments: Commitment[];
   isLoading: boolean;
@@ -40,9 +42,22 @@ export function CommitmentList({
       router.push(`/commitments/${commitment.id}`),
   });
 
+  if (isLoading) {
+    return (
+      <div className="border border-border rounded-lg bg-card overflow-hidden shadow-xs font-sans">
+        <CommitmentListHeader />
+        <div className="divide-y divide-border/40">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <CommitmentRowSkeleton key={i} density="compact" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (commitments.length === 0) {
     return (
-      <div className="border border-border rounded-lg bg-card p-8 text-center shadow-xs font-sans">
+      <div className="border border-border rounded-lg bg-card p-6 sm:p-8 text-center shadow-xs font-sans">
         <RowEmptyState
           title={hasActiveFilters ? "No matching commitments" : "No commitments found"}
           subtitle={

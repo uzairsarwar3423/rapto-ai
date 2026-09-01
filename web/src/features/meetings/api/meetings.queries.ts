@@ -32,6 +32,16 @@ export async function fetchMeetingsClient(
 }
 
 /**
+ * Client-side query for single meeting detail.
+ */
+export async function fetchMeetingDetailClient(meetingId: string): Promise<any> {
+  const response = await api.get<{ data: any }>(`/meetings/${meetingId}`, {
+    params: { include: "participants,decisions,blockers" },
+  });
+  return response.data.data;
+}
+
+/**
  * Client-side query for meeting transcript.
  */
 export async function fetchTranscriptClient(meetingId: string): Promise<any> {

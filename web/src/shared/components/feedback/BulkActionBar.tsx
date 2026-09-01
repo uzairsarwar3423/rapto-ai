@@ -97,8 +97,8 @@ export function BulkActionBar({ visible, onDismiss, children }: BulkActionBarPro
       onTransitionEnd={handleTransitionEnd}
       className={cn(
         "fixed bottom-6 left-1/2 -translate-x-1/2 z-40",
-        "flex items-center gap-2 h-10 px-3 rounded-lg border border-zinc-800",
-        "bg-zinc-950 text-zinc-50 shadow-lg shadow-black/40",
+        "flex items-center gap-1.5 sm:gap-2 h-10 px-2.5 sm:px-3 rounded-lg border border-zinc-800",
+        "bg-zinc-950 text-zinc-50 shadow-lg shadow-black/40 max-w-[calc(100vw-24px)] overflow-x-auto no-scrollbar",
         "transition-all duration-140 ease-out",
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"

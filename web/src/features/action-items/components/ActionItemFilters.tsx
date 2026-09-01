@@ -93,7 +93,7 @@ export function ActionItemFilters({ filters, onFiltersChange, onClearAll }: Acti
           <SelectTrigger className="text-xs h-9 border border-border bg-card w-[130px] flex items-center gap-1.5 px-3">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent className="bg-background border border-border shadow-lg" position="popper">
+          <SelectContent className="bg-white dark:bg-zinc-950 border border-border shadow-lg font-sans text-foreground" position="popper">
             <SelectItem value="ALL">All Statuses</SelectItem>
             <SelectItem value="INCOMPLETE">Incomplete</SelectItem>
             <SelectItem value="COMPLETED">Completed</SelectItem>
@@ -116,7 +116,7 @@ export function ActionItemFilters({ filters, onFiltersChange, onClearAll }: Acti
               </span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-48 p-2 bg-background border border-border shadow-lg">
+          <PopoverContent align="start" className="w-48 p-2 bg-white dark:bg-zinc-950 border border-border shadow-lg font-sans text-foreground">
             <h4 className="font-semibold text-2xs uppercase tracking-wider text-muted-foreground mb-1.5 px-2">
               Filter by Priority
             </h4>
@@ -128,7 +128,7 @@ export function ActionItemFilters({ filters, onFiltersChange, onClearAll }: Acti
                     key={p}
                     type="button"
                     onClick={() => handlePriorityToggle(p)}
-                    className="flex items-center justify-between w-full text-left text-xs px-2.5 py-1.5 rounded-md hover:bg-accent/40 text-foreground transition-colors"
+                    className="flex items-center justify-between w-full text-left text-xs px-2.5 py-1.5 rounded-md hover:bg-muted/60 text-foreground transition-colors"
                   >
                     <span>{p.charAt(0) + p.slice(1).toLowerCase()}</span>
                     {checked && <Check className="h-3.5 w-3.5 text-brand shrink-0" />}
@@ -152,7 +152,7 @@ export function ActionItemFilters({ filters, onFiltersChange, onClearAll }: Acti
           <SelectTrigger className="text-xs h-9 border border-border bg-card w-[150px] flex items-center gap-1.5 px-3">
             <SelectValue placeholder="Assignee" />
           </SelectTrigger>
-          <SelectContent className="bg-background border border-border shadow-lg" position="popper">
+          <SelectContent className="bg-white dark:bg-zinc-950 border border-border shadow-lg font-sans text-foreground" position="popper">
             <SelectItem value="ALL">All Assignees</SelectItem>
             {teamMembers.map((member) => (
               <SelectItem key={member.id} value={member.id}>
@@ -177,7 +177,7 @@ export function ActionItemFilters({ filters, onFiltersChange, onClearAll }: Acti
           <SelectTrigger className="text-xs h-9 border border-border bg-card w-[140px] flex items-center gap-1.5 px-3">
             <SelectValue placeholder="Jira Integration" />
           </SelectTrigger>
-          <SelectContent className="bg-background border border-border shadow-lg" position="popper">
+          <SelectContent className="bg-white dark:bg-zinc-950 border border-border shadow-lg font-sans text-foreground" position="popper">
             <SelectItem value="ALL">All Jira Tickets</SelectItem>
             <SelectItem value="SYNCED">Synced with Jira</SelectItem>
             <SelectItem value="UNSYNCED">Not Synced</SelectItem>

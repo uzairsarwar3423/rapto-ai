@@ -96,7 +96,7 @@ export function CommitmentDetailClientPage({
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto py-4 font-sans px-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+    <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto py-3 sm:py-4 font-sans px-3 sm:px-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
       {/* Back Button */}
       <div>
         <Link
@@ -109,16 +109,16 @@ export function CommitmentDetailClientPage({
       </div>
 
       {/* Main Two-Column Detail Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Left Column: Header Card and History Audit Trail (Span 2) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <CommitmentDetailHeader
             commitment={activeCommitment}
             onAction={handleAction}
           />
           
-          <div className="bg-surface/20 backdrop-blur-md border border-border/60 p-6 rounded-xl shadow-xs space-y-6">
+          <div className="bg-surface/20 backdrop-blur-md border border-border/60 p-4 sm:p-6 rounded-xl shadow-xs space-y-4 sm:space-y-6">
             <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/85 select-none">
               Commitment Timeline
             </h2>
@@ -127,8 +127,8 @@ export function CommitmentDetailClientPage({
         </div>
 
         {/* Right Column: Owner Telemetry Circle (Span 1) */}
-        <div className="space-y-6">
-          <div className="bg-surface/20 backdrop-blur-md border border-border/60 p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-6 min-h-[340px] shadow-xs hover:shadow-sm transition-all duration-160">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="bg-surface/20 backdrop-blur-md border border-border/60 p-4 sm:p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-4 sm:space-y-6 min-h-[300px] sm:min-h-[340px] shadow-xs hover:shadow-sm transition-all duration-160">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/85 select-none">
                 Owner Performance

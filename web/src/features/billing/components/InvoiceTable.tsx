@@ -58,19 +58,23 @@ export function InvoiceTable() {
         role="list"
         aria-label="Invoices"
       >
-        <InvoiceTableHeader />
+        <div className="overflow-x-auto">
+          <div className="min-w-[480px]">
+            <InvoiceTableHeader />
 
-        {allInvoices.length === 0 ? (
-          <div className="py-10 text-center text-[13px] font-sans font-normal text-muted-foreground/60 select-none">
-            No invoices yet — they'll appear here after your first billing cycle.
+            {allInvoices.length === 0 ? (
+              <div className="py-10 text-center text-[13px] font-sans font-normal text-muted-foreground/60 select-none">
+                No invoices yet — they'll appear here after your first billing cycle.
+              </div>
+            ) : (
+              <div className="divide-y divide-border/30">
+                {allInvoices.map((invoice) => (
+                  <InvoiceRow key={invoice.id} invoice={invoice} />
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="divide-y divide-border/30">
-            {allInvoices.map((invoice) => (
-              <InvoiceRow key={invoice.id} invoice={invoice} />
-            ))}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Load more — explicit cursor pagination (NOT infinite scroll) */}

@@ -112,7 +112,7 @@ export function TeamSettingsForm() {
   }
 
   return (
-    <div className="max-w-md space-y-6">
+    <div className="max-w-xl space-y-6">
       {/* Authorization Banner */}
       {!isAuthorized && (
         <div className="flex gap-3 rounded-xl p-4 text-xs bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-500" role="alert">
@@ -160,7 +160,7 @@ export function TeamSettingsForm() {
 
         {/* Bot Customization */}
         <div className="space-y-1.5 pt-2 border-t border-border">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-1">
             <label htmlFor="custom-bot-name" className="text-xs font-semibold text-foreground uppercase tracking-wider">
               Bot Customization
             </label>
@@ -294,11 +294,11 @@ export function TeamSettingsForm() {
         </div>
 
         {isAuthorized && (
-          <div className="border-t border-border pt-4 flex items-center gap-3">
+          <div className="border-t border-border pt-4 flex flex-wrap items-center gap-3">
             <button
               type="submit"
               disabled={saveState === 'saving'}
-              className="flex items-center justify-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-brand transition-all hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:bg-muted-subtle disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
+              className="w-full sm:w-auto min-h-[44px] flex items-center justify-center rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-brand transition-all hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:bg-muted-subtle disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
             >
               Save team settings
             </button>

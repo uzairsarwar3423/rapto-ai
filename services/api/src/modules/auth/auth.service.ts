@@ -71,6 +71,25 @@ async function tryAcceptInvitation(userId: string, inviteToken: string): Promise
 }
 
 
+interface RotatedTokenData {
+  accessToken: string
+  refreshToken: string
+  userId: string
+  rotatedAt: number
+}
+
+// In-memory fallback for rotated token grace window (handles single-node/local/redis hiccup)
+const inMemoryRotatedTokens = new Map<string, RotatedTokenData>()
+
+function cleanupInMemoryRotations() {
+  const now = Date.now()
+  for (const [hash, entry] of inMemoryRotatedTokens.entries()) {
+    if (now - entry.rotatedAt > 60_000) {
+      inMemoryRotatedTokens.delete(hash)
+    }
+  }
+}
+
 // A structurally valid cost-12 bcrypt hash of "password" to waste exactly ~300ms
 const BCRYPT_FAKE_HASH = '$2b$12$LpyP0uH6O/5j1Z2/V271uO1bHqT9Doz7mFj2.N8F3H5y7kL.Z.fNu'
 
@@ -248,21 +267,63 @@ export const authService = {
 
   /**
    * Refresh the user's access token, rotating the refresh token.
-   * A small clock-skew grace period (30s) is applied to prevent race conditions
-   * where the client calls refresh fractionally before the server clock ticks over.
+   * Employs single-flight grace windows and token-rotation chaining
+   * to guarantee that concurrent in-flight requests never falsely 401.
    */
   async refresh(req: Request, res: Response) {
-    const refreshToken = req.cookies.rapto_refresh
-    if (!refreshToken) {
-      logger.warn({ ip: req.ip }, 'Refresh attempt with no cookie')
+    const rawRefreshToken = (req.cookies?.rapto_refresh || req.body?.refreshToken) as string | undefined
+    if (!rawRefreshToken || typeof rawRefreshToken !== 'string' || !rawRefreshToken.trim()) {
+      logger.warn({ ip: req.ip }, 'Refresh attempt with no cookie or body token')
       throw new UnauthorizedError('NO_REFRESH_TOKEN', 'No refresh token provided')
     }
 
+    const refreshToken = rawRefreshToken.trim()
     const tokenHash = hashToken(refreshToken)
     const stored = await authRepository.findRefreshToken(tokenHash)
 
     if (!stored) {
-      logger.warn({ ip: req.ip }, 'Refresh attempt with unknown token hash')
+      // Check Redis and in-memory grace cache for recently rotated token
+      let rotatedData: RotatedTokenData | null = null
+
+      try {
+        const cached = await redis.get(`auth:rotated:${tokenHash}`)
+        if (cached) {
+          rotatedData = JSON.parse(cached) as RotatedTokenData
+        }
+      } catch (redisErr) {
+        logger.warn({ err: redisErr }, 'Redis lookup failed for rotated token grace check')
+      }
+
+      if (!rotatedData) {
+        cleanupInMemoryRotations()
+        rotatedData = inMemoryRotatedTokens.get(tokenHash) || null
+      }
+
+      if (rotatedData) {
+        // Follow rotation chain to find the latest active token if further rotations occurred
+        let currentRotation = rotatedData
+        let depth = 0
+        while (depth < 5) {
+          const nextHash = hashToken(currentRotation.refreshToken)
+          let nextRotation: RotatedTokenData | null = null
+          try {
+            const nextCached = await redis.get(`auth:rotated:${nextHash}`)
+            if (nextCached) nextRotation = JSON.parse(nextCached) as RotatedTokenData
+          } catch {}
+          if (!nextRotation) {
+            nextRotation = inMemoryRotatedTokens.get(nextHash) || null
+          }
+          if (!nextRotation) break
+          currentRotation = nextRotation
+          depth++
+        }
+
+        res.cookie('rapto_refresh', currentRotation.refreshToken, COOKIE_OPTIONS)
+        logger.info({ ip: req.ip }, 'Concurrent refresh request satisfied via rotation grace window')
+        return { accessToken: currentRotation.accessToken }
+      }
+
+      logger.warn({ ip: req.ip }, 'Refresh attempt with unknown or revoked token hash')
       throw new UnauthorizedError('INVALID_REFRESH_TOKEN', 'Invalid refresh token')
     }
 
@@ -294,6 +355,29 @@ export const authService = {
       ipAddress: req.ip || null,
       userAgent: req.headers['user-agent'] || null,
     })
+
+    const rotationRecord: RotatedTokenData = {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      userId: user.id,
+      rotatedAt: Date.now(),
+    }
+
+    // Store rotated token mapping in Redis with 60s TTL to protect against concurrent in-flight requests
+    try {
+      await redis.set(
+        `auth:rotated:${tokenHash}`,
+        JSON.stringify(rotationRecord),
+        'EX',
+        60 // 60 seconds grace period
+      )
+    } catch (redisErr) {
+      logger.warn({ err: redisErr }, 'Failed to cache rotated refresh token in Redis')
+    }
+
+    // Store in in-memory fallback cache as well
+    inMemoryRotatedTokens.set(tokenHash, rotationRecord)
+    cleanupInMemoryRotations()
 
     res.cookie('rapto_refresh', newRefreshToken, COOKIE_OPTIONS)
 

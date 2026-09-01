@@ -15,6 +15,7 @@ import { MoreHorizontal, RefreshCw, XCircle, Trash2, Loader2 } from 'lucide-reac
 import { ConfirmModal } from '@/shared/components/feedback/ConfirmModal'
 import { toast } from 'sonner'
 import { reprocessMeetingClient, removeBotClient, deleteMeetingClient } from '../../api/meetings.queries'
+import { queryKeys } from '@/shared/lib/cache/query-keys'
 import type { MeetingDetail } from '../../types'
 
 interface Props {
@@ -39,8 +40,11 @@ export function MeetingDetailActionsMenu({ meeting, userRole = 'ADMIN' }: Props)
     try {
       await reprocessMeetingClient(id)
       toast.success('Meeting reprocessing initiated. Re-extracting commitments and action items...')
-      queryClient.invalidateQueries({ queryKey: ['meetings'] })
-      queryClient.invalidateQueries({ queryKey: ['meeting', id] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.meetings.all() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.meetings.detail(id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.meetings.transcript(id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.commitments.byMeeting(id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.actionItems.byMeeting(id) })
       router.refresh()
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || err.message || 'Failed to reprocess meeting'
@@ -56,8 +60,8 @@ export function MeetingDetailActionsMenu({ meeting, userRole = 'ADMIN' }: Props)
     try {
       await removeBotClient(id)
       toast.success('Bot removed. Meeting cancelled.')
-      queryClient.invalidateQueries({ queryKey: ['meetings'] })
-      queryClient.invalidateQueries({ queryKey: ['meeting', id] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.meetings.all() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.meetings.detail(id) })
       router.refresh()
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || err.message || 'Failed to remove bot'
@@ -73,7 +77,7 @@ export function MeetingDetailActionsMenu({ meeting, userRole = 'ADMIN' }: Props)
     try {
       await deleteMeetingClient(id, true)
       toast.success('Meeting deleted successfully')
-      queryClient.invalidateQueries({ queryKey: ['meetings'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.meetings.all() })
       router.push('/meetings')
       router.refresh()
     } catch (err: any) {

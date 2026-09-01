@@ -36,6 +36,7 @@ export default async function TranscriptPage({ params }: TranscriptPageProps) {
 
   return (
     <TranscriptViewer
+      meetingId={meetingId}
       transcript={transcript}
       meetingStatus={meeting.status}
     />

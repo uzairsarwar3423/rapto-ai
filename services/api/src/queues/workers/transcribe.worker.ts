@@ -227,18 +227,21 @@ export const transcribeWorker = new Worker<TranscribeJobData>(
       'transcribe.worker: pushed to extract queue'
     )
 
-    // ── STEP 7: Emit Socket.io event ────────────────────────────────────────
     try {
       const { socketEmitter } = await import('../../realtime/socket.emitter')
+      const { meetingRoom } = await import('../../realtime/rooms.manager')
       const event = cleanupSuccessful
         ? SERVER_EVENTS.MEETING_TRANSCRIPT_CLEANED
         : SERVER_EVENTS.MEETING_TRANSCRIPT_CLEANUP_DEGRADED
 
-      socketEmitter.to(teamRoom(teamId)).emit(event, {
+      const payload = {
         meetingId,
         cleanupSuccessful,
         fillersRemoved: cleanupMetadata?.total_filler_words_removed ?? 0,
-      })
+      }
+
+      socketEmitter.to(teamRoom(teamId)).emit(event, payload)
+      socketEmitter.to(meetingRoom(meetingId)).emit(event, payload)
     } catch (e) {
       // Socket emit failures are non-fatal — log and continue
       logger.warn({ err: e, meetingId }, 'transcribe.worker: socket emit failed (non-fatal)')

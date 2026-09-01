@@ -104,7 +104,7 @@ export function ProfileForm() {
     .toUpperCase();
 
   return (
-    <div className="max-w-md space-y-6">
+    <div className="max-w-xl space-y-6">
       {errorMessage && (
         <div className="flex gap-3 rounded-xl p-4 text-sm bg-error-subtle/30 border border-error/20 text-error" role="alert">
           <AlertCircle className="h-5 w-5 shrink-0" />
@@ -118,8 +118,8 @@ export function ProfileForm() {
           <span className="text-xs font-semibold text-foreground uppercase tracking-wider block">
             Profile avatar
           </span>
-          <div className="flex items-center gap-4">
-            <div className="relative group">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="relative group self-start sm:self-auto">
               <Avatar className="h-16 w-16 border-2 border-border shadow-inner">
                 {selectedAvatar && <AvatarImage src={selectedAvatar} alt="Profile avatar" />}
                 <AvatarFallback className="bg-brand-subtle text-brand font-heading text-lg font-bold">
@@ -153,7 +153,7 @@ export function ProfileForm() {
           {showAvatarGrid && (
             <div className="mt-3 p-3 bg-surface-2 rounded-xl border border-border space-y-2 animate-in fade-in-0 duration-120">
               <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Select avatar</div>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                 {PRESET_AVATARS.map((url) => {
                   const isSelected = selectedAvatar === url;
                   return (
@@ -168,7 +168,7 @@ export function ProfileForm() {
                         isSelected ? 'border-brand scale-105 ring-2 ring-brand-light' : 'border-border hover:border-muted'
                       }`}
                     >
-                      <img src={url} alt="Avatar option" className="h-10 w-10 rounded-full" />
+                      <img src={url} alt="Avatar option" className="h-10 w-10 sm:h-11 sm:w-11 rounded-full mx-auto" />
                       {isSelected && (
                         <div className="absolute inset-0 bg-brand/20 flex items-center justify-center rounded-full text-white">
                           <Check className="h-4 w-4 bg-brand rounded-full p-0.5" />
@@ -258,11 +258,11 @@ export function ProfileForm() {
           </p>
         </div>
 
-        <div className="border-t border-border pt-4 flex items-center gap-3">
+        <div className="border-t border-border pt-4 flex flex-wrap items-center gap-3">
           <button
             type="submit"
             disabled={saveState === 'saving'}
-            className="flex items-center justify-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-brand transition-all hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:bg-muted-subtle disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
+            className="w-full sm:w-auto min-h-[44px] flex items-center justify-center rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-brand transition-all hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:bg-muted-subtle disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
           >
             Save changes
           </button>

@@ -60,15 +60,15 @@ export function CommitmentActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-40 font-sans p-1 rounded-lg border border-border bg-popover text-popover-foreground shadow-md"
+        className="w-40 font-sans p-1 rounded-lg border border-border bg-white dark:bg-zinc-950 text-foreground shadow-lg animate-in fade-in-0 zoom-in-95 duration-100"
       >
         {/* 1. Mark Fulfilled */}
         {showFulfill && (
           <DropdownMenuItem
             onClick={() => onAction("MARK_FULFILLED")}
-            className="flex items-center gap-1.5 px-2 py-1.5 text-xs cursor-pointer"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer rounded-md text-foreground hover:bg-muted/80 focus:bg-muted/80 transition-colors duration-100"
           >
-            <Check className="h-3.5 w-3.5 text-muted-foreground" />
+            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Mark fulfilled</span>
           </DropdownMenuItem>
         )}
@@ -77,21 +77,21 @@ export function CommitmentActionsMenu({
         {showDefer && (
           <DropdownMenuItem
             onClick={() => onAction("DEFER")}
-            className="flex items-center gap-1.5 px-2 py-1.5 text-xs cursor-pointer"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer rounded-md text-foreground hover:bg-muted/80 focus:bg-muted/80 transition-colors duration-100"
           >
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <Calendar className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
             <span>Defer</span>
           </DropdownMenuItem>
         )}
 
         {/* Separator before destructive action */}
-        {showCancel && (showFulfill || showDefer) && <DropdownMenuSeparator />}
+        {showCancel && (showFulfill || showDefer) && <DropdownMenuSeparator className="my-1 bg-border/60" />}
 
-        {/* 3. Cancel - rendered neutrally in text-foreground as specified */}
+        {/* 3. Cancel */}
         {showCancel && (
           <DropdownMenuItem
             onClick={() => onAction("CANCEL")}
-            className="flex items-center gap-1.5 px-2 py-1.5 text-xs cursor-pointer text-foreground"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer rounded-md text-foreground hover:bg-muted/80 focus:bg-muted/80 transition-colors duration-100"
           >
             <Ban className="h-3.5 w-3.5 text-muted-foreground" />
             <span>Cancel</span>
@@ -99,13 +99,13 @@ export function CommitmentActionsMenu({
         )}
 
         {/* Separator before history if other items exist */}
-        {showHistory && !isOnlyHistory && <DropdownMenuSeparator />}
+        {showHistory && !isOnlyHistory && <DropdownMenuSeparator className="my-1 bg-border/60" />}
 
-        {/* 4. View History / sole fallback item if terminal state */}
+        {/* 4. View History */}
         {showHistory && (
           <DropdownMenuItem
             onClick={() => onAction("VIEW_HISTORY")}
-            className="flex items-center gap-1.5 px-2 py-1.5 text-xs cursor-pointer"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer rounded-md text-foreground hover:bg-muted/80 focus:bg-muted/80 transition-colors duration-100"
           >
             <History className="h-3.5 w-3.5 text-muted-foreground" />
             <span>View history</span>

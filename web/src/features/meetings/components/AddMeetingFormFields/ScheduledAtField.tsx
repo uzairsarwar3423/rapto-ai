@@ -236,20 +236,20 @@ export function ScheduledAtField() {
       <input type="hidden" {...register("scheduledDate")} />
       <input type="hidden" {...register("scheduledTime")} />
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2.5">
         {/* Date Selector */}
         <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
               className={cn(
-                "w-[60%] flex h-10 items-center justify-between rounded-lg border bg-card px-3 text-sm text-foreground shadow-xs transition-all duration-120 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10",
+                "w-full sm:w-[58%] flex h-10 items-center justify-between rounded-lg border bg-card px-3 text-sm text-foreground shadow-xs transition-all duration-120 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10",
                 dateError ? "border-red-500 focus:ring-red-500/10" : "border-zinc-200 dark:border-zinc-800"
               )}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <CalendarIcon className="h-4 w-4 text-muted-foreground/80 shrink-0" />
-                <span className="font-medium text-xs select-none">
+                <span className="font-medium text-xs select-none truncate">
                   {getFormattedDateDisplay()}
                 </span>
               </div>
@@ -260,7 +260,7 @@ export function ScheduledAtField() {
             align="start"
             sideOffset={6}
             disablePortal={true}
-            className="w-auto p-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-lg rounded-xl z-[150]"
+            className="w-[min(calc(100vw-32px),300px)] p-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-lg rounded-xl z-[150]"
           >
             <Calendar
               mode="single"
@@ -276,11 +276,11 @@ export function ScheduledAtField() {
           <PopoverTrigger asChild>
             <div
               className={cn(
-                "w-[40%] flex h-10 items-center justify-between rounded-lg border bg-card px-3 shadow-xs transition-all duration-120 hover:bg-zinc-50 dark:hover:bg-zinc-900 focus-within:ring-2 focus-within:ring-zinc-900/10 dark:focus-within:ring-zinc-100/10",
+                "w-full sm:w-[42%] flex h-10 items-center justify-between rounded-lg border bg-card px-3 shadow-xs transition-all duration-120 hover:bg-zinc-50 dark:hover:bg-zinc-900 focus-within:ring-2 focus-within:ring-zinc-900/10 dark:focus-within:ring-zinc-100/10",
                 timeError ? "border-red-500 focus-within:ring-red-500/10" : "border-zinc-200 dark:border-zinc-800"
               )}
             >
-              <div className="flex items-center gap-2 w-full">
+              <div className="flex items-center gap-2 w-full min-w-0">
                 <Clock className="h-4 w-4 text-muted-foreground/80 shrink-0" />
                 <input
                   ref={timeInputRef}
@@ -304,7 +304,7 @@ export function ScheduledAtField() {
             align="end"
             sideOffset={6}
             disablePortal={true}
-            className="w-48 p-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-lg rounded-xl z-[150] flex flex-col gap-2.5"
+            className="w-[min(calc(100vw-32px),240px)] p-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-lg rounded-xl z-[150] flex flex-col gap-2.5"
           >
             {/* Display header */}
             <div className="text-center py-1.5 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg text-xs font-semibold border border-zinc-100 dark:border-zinc-900 font-mono text-zinc-800 dark:text-zinc-200 select-none">

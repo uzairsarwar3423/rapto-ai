@@ -10,11 +10,20 @@ export const CLIENT_EVENTS = {
 
 export const SERVER_EVENTS = {
   // Meeting lifecycle
+  MEETING_CREATED: "meeting:created",
   MEETING_BOT_JOINING: "meeting:bot_joining",
   MEETING_RECORDING: "meeting:recording",
   MEETING_PROCESSING: "meeting:processing",
+  MEETING_TRANSCRIPT_CLEANED: "meeting:transcript_cleaned",
+  MEETING_TRANSCRIPT_CLEANUP_DEGRADED: "meeting:transcript_cleanup_degraded",
+  MEETING_EXTRACTED: "meeting:extracted",
+  MEETING_EXTRACTED_PARTIAL: "meeting:extracted_partial",
+  MEETING_RESOLVED: "meeting:resolved",
+  MEETING_RESOLVED_PARTIAL: "meeting:resolved_partial",
   MEETING_PROCESSED: "meeting:processed",
   MEETING_FAILED: "meeting:failed",
+  MEETING_CANCELLED: "meeting:cancelled",
+  MEETING_DELETED: "meeting:deleted",
   TRANSCRIPT_TURN: "transcript:turn",
 
   // Commitments

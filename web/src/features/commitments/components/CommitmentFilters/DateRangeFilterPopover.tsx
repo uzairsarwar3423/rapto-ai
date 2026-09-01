@@ -152,9 +152,9 @@ export function DateRangeFilterPopover({
           {!isSelected && <ChevronDown className="h-3.5 w-3.5 opacity-60" />}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0 bg-white dark:bg-zinc-950 border border-border shadow-lg rounded-lg font-sans flex flex-col md:flex-row overflow-hidden animate-in fade-in-0 slide-in-from-top-1.5 duration-150">
+      <PopoverContent align="start" className="w-auto p-0 bg-white dark:bg-zinc-950 border border-border shadow-lg rounded-lg font-sans flex flex-col md:flex-row overflow-hidden animate-in fade-in-0 slide-in-from-top-1.5 duration-150 max-w-[calc(100vw-32px)]">
         {/* Presets side menu with hover intentions */}
-        <div className="flex flex-row md:flex-col gap-0.5 border-b md:border-b-0 md:border-r border-border p-1.5 bg-zinc-50 dark:bg-zinc-900/50 min-w-36 shrink-0 select-none">
+        <div className="flex flex-row md:flex-col gap-0.5 border-b md:border-b-0 md:border-r border-border p-1.5 bg-zinc-50 dark:bg-zinc-900/50 min-w-36 shrink-0 select-none overflow-x-auto no-scrollbar">
           <span className="hidden md:block text-3xs font-semibold uppercase tracking-wider text-muted-foreground/80 px-2 py-1.5 font-sans">
             Quick Ranges
           </span>

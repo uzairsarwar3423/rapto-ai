@@ -71,7 +71,7 @@ export function IntegrationRow({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "grid grid-cols-[24px_1fr_auto_auto_32px] items-center gap-3 px-4 py-3 select-none",
+        "grid grid-cols-[24px_1fr_auto_32px] sm:grid-cols-[24px_1fr_auto_auto_32px] items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 select-none",
         "focus-visible:outline-none focus-visible:bg-muted/40",
         comingSoon
           ? "opacity-50 cursor-not-allowed"
@@ -87,17 +87,23 @@ export function IntegrationRow({
       <IntegrationIcon provider={providerId} />
 
       {/* Col 2: Info (Truncated description) */}
-      <div className="flex flex-col min-w-0">
+      <div className="flex flex-col min-w-0 pr-1">
         <span className="text-[13px] font-sans font-medium text-foreground leading-[20px]">
           {name}
         </span>
         <span className="text-[12px] font-sans font-normal text-muted-foreground/60 leading-[18px] truncate">
           {description}
         </span>
+        {/* On mobile only: show last synced or reconnect hint under description */}
+        {!comingSoon && isConnected && lastSyncedAt && (
+          <span className="sm:hidden text-[10px] font-sans text-muted-foreground/50 tabular-nums mt-0.5">
+            Synced <RelativeTime date={lastSyncedAt} />
+          </span>
+        )}
       </div>
 
       {/* Col 3: Status Badge */}
-      <div className="flex items-center">
+      <div className="flex items-center shrink-0">
         {comingSoon ? (
           <span className="text-[10px] font-sans font-normal text-muted-foreground/50 border border-muted/20 px-1.5 py-0.5 rounded-md uppercase tracking-wider bg-muted/10">
             Soon
@@ -107,8 +113,8 @@ export function IntegrationRow({
         )}
       </div>
 
-      {/* Col 4: Secondary Content */}
-      <div className="flex items-center pl-2">
+      {/* Col 4: Secondary Content (Desktop & Tablet) */}
+      <div className="hidden sm:flex items-center pl-2">
         {!comingSoon && (
           <>
             {isConnected && lastSyncedAt && (

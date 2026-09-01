@@ -18,7 +18,7 @@ export function OverdueAlert({
   if (overdueCount === 0 || currentStatus === "MISSED") return null;
 
   return (
-    <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs font-sans px-4 py-2.5 rounded-lg flex items-center justify-between gap-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+    <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs font-sans px-3.5 sm:px-4 py-2.5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 shrink-0 text-destructive/90" />
         <span className="font-medium">
@@ -28,7 +28,7 @@ export function OverdueAlert({
       <button
         type="button"
         onClick={() => onStatusChange("MISSED")}
-        className="flex items-center gap-1 font-semibold text-destructive hover:underline cursor-pointer select-none whitespace-nowrap"
+        className="flex items-center gap-1 font-semibold text-destructive hover:underline cursor-pointer select-none whitespace-nowrap self-end sm:self-auto"
       >
         <span>View missed</span>
         <ArrowRight className="h-3.5 w-3.5" />
