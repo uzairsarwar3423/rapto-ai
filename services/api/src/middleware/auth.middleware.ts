@@ -18,6 +18,12 @@ export async function requireAuth(
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.split(' ')[1]
+  } else if (typeof req.query?.token === 'string' && req.query.token.trim()) {
+    token = req.query.token.trim()
+  } else if (typeof req.query?.access_token === 'string' && req.query.access_token.trim()) {
+    token = req.query.access_token.trim()
+  } else if (req.cookies?.rapto_access) {
+    token = req.cookies.rapto_access
   }
 
   if (!token) {

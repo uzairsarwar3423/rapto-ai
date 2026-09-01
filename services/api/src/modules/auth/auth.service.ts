@@ -979,10 +979,12 @@ export const authService = {
   /**
    * Google Calendar OAuth Initiate.
    */
-  async googleCalendarInit(userId: string, res: Response) {
+  async googleCalendarInit(userId: string, req: Request, res: Response) {
     const state = crypto.randomBytes(32).toString('hex')
+    const context = req.query?.context === 'onboarding' ? 'onboarding' : 'settings'
+    const redisValue = JSON.stringify({ userId, context, provider: 'GOOGLE_CALENDAR' })
     // Store in Redis (TTL 10 min) linking state to the user ID
-    await redis.set(`oauth:state:calendar:${state}`, userId, 'EX', 600)
+    await redis.set(`oauth:state:calendar:${state}`, redisValue, 'EX', 600)
 
     // Use a dedicated calendar redirect URI if configured, otherwise fall back
     // to the generic Google redirect URI. The same URI MUST be used in both
@@ -1003,12 +1005,18 @@ export const authService = {
       prompt: 'consent',
     })
 
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+
     logger.info(
       { clientId: env.GOOGLE_CLIENT_ID, redirectUri: calendarRedirectUri },
       'googleCalendarInit: generated authorization URL'
     )
 
-    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
+    if (req.headers.accept?.includes('application/json') || req.xhr || req.query?.format === 'json') {
+      return res.status(200).json({ success: true, data: { authUrl } })
+    }
+
+    res.redirect(authUrl)
   },
 
   /**
@@ -1030,12 +1038,20 @@ export const authService = {
     }
 
     // Verify state
-    const userId = await redis.get(`oauth:state:calendar:${query.state}`)
-    if (!userId) {
+    const storedState = await redis.get(`oauth:state:calendar:${query.state}`)
+    if (!storedState) {
       return res.redirect(`${frontendUrl}/onboarding/connect-calendar?error=state_mismatch`)
     }
     // Delete state (one-time use)
     await redis.del(`oauth:state:calendar:${query.state}`)
+
+    let userId = storedState
+    let context = 'settings'
+    try {
+      const parsed = JSON.parse(storedState)
+      if (parsed.userId) userId = parsed.userId
+      if (parsed.context) context = parsed.context
+    } catch (_) {}
 
     try {
       // MUST match the redirect_uri used in googleCalendarInit exactly.
@@ -1102,13 +1118,9 @@ export const authService = {
         },
       })
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { onboardingCompleted: true }
-      })
-      const redirectUrl = user?.onboardingCompleted
-        ? `${frontendUrl}/settings/integrations?connected=GOOGLE_CALENDAR`
-        : `${frontendUrl}/onboarding/connect-calendar?connected=true`
+      const redirectUrl = context === 'onboarding'
+        ? `${frontendUrl}/onboarding/connect-calendar?connected=true`
+        : `${frontendUrl}/settings/integrations?connected=GOOGLE_CALENDAR`
 
       res.redirect(redirectUrl)
     } catch (error: any) {

@@ -463,6 +463,11 @@ export const connectCalendarController = async (req: Request, res: Response, nex
         const providerClient = calendarProviderRegistry.getProvider(providerName)
         
         const authUrl = providerClient.getAuthorizationUrl(state, userId)
+
+        if (req.headers.accept?.includes('application/json') || req.xhr || req.query.format === 'json') {
+            return res.status(200).json({ success: true, data: { authUrl } })
+        }
+
         res.redirect(authUrl)
     } catch (e) {
         next(e)

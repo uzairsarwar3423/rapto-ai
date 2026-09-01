@@ -10,13 +10,17 @@ export async function fetchIntegrationsClient(): Promise<IntegrationsListRespons
   return response.data;
 }
 
-export async function initiateOAuthConnectClient(provider: string): Promise<string> {
+export async function initiateOAuthConnectClient(
+  provider: string,
+  context?: 'settings' | 'onboarding'
+): Promise<string> {
   const endpoint = provider.toLowerCase().replace(/_/g, '-');
+  const params = context ? { context } : undefined;
   const response = await api.get<{ 
     success?: boolean; 
     data?: { authUrl: string }; 
     authUrl?: string 
-  }>(`/integrations/${endpoint}/connect`);
+  }>(`/integrations/${endpoint}/connect`, { params });
   
   const authUrl = response.data?.data?.authUrl || response.data?.authUrl;
   if (!authUrl) {

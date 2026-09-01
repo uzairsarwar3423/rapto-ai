@@ -58,7 +58,7 @@ export const useConnectCalendarStep = (onSuccess: () => void) => {
     setIsRedirecting(true);
     setTimeout(async () => {
       try {
-        await connect("GOOGLE_CALENDAR");
+        await connect("GOOGLE_CALENDAR", "onboarding");
       } catch (err) {
         setIsRedirecting(false);
       }

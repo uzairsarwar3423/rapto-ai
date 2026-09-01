@@ -85,7 +85,7 @@ export const authController = {
    * Endpoint: GET /auth/google-calendar
    */
   googleCalendarInit: asyncHandler(async (req, res) => {
-    await authService.googleCalendarInit(req.user!.id, res)
+    await authService.googleCalendarInit(req.user!.id, req, res)
   }),
 
   /**
