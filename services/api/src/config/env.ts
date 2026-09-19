@@ -22,9 +22,16 @@ const envSchema = z.object({
     JWT_ACCESS_SECRET: z.string().default('vocaply_default_production_jwt_secret_key_32_bytes!!'),
     JWT_REFRESH_SECRET: z.string().default('vocaply_default_production_jwt_refresh_key_32_bytes!'),
 
+    // Admin Auth Secrets (distinct audience and secrets from customer app)
+    ADMIN_JWT_SECRET: z.string().default('rapto_admin_super_secret_jwt_key_2026_production_grade_32b!'),
+    ADMIN_CHALLENGE_JWT_SECRET: z.string().default('rapto_admin_challenge_jwt_key_2026_production_grade_32b!'),
+    COOKIE_DOMAIN: z.string().optional(),
+
     APP_URL: z.string().default('https://app.rapto.cloud'),
     FRONTEND_URL: z.string().optional().default('https://app.rapto.cloud'),
     API_URL: z.string().optional().default('https://api.rapto.cloud'),
+    // Admin dashboard (standalone rapto-dashboard repo — different origin)
+    ADMIN_DASHBOARD_URL: z.string().optional().default('http://localhost:3001'),
 
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),

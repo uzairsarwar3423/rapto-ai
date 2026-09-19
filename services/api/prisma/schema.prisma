@@ -935,3 +935,104 @@ model WaitlistEntry {
 
   @@map("waitlist_entries")
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// ADMIN DASHBOARD (Growth Dashboard — standalone rapto-dashboard repo)
+// These 4 tables + 1 enum are consumed exclusively by the internal admin
+// dashboard. They live here because they share the same Postgres instance,
+// the same Prisma client, and the same Redis as the rest of the platform.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum AdminRole {
+  SUPER_ADMIN
+  FINANCE
+  SUPPORT
+  READONLY
+}
+
+model AdminUser {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String
+  passwordHash    String
+  role            AdminRole @default(READONLY)
+  mfaEnabled      Boolean   @default(false)
+  totpSecretEnc   String?
+  lastLoginAt     DateTime?
+  disabledAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  auditLogEntries AdminAuditLog[]
+  refreshTokens   AdminRefreshToken[]
+
+  @@map("admin_users")
+}
+
+model AdminRefreshToken {
+  id             String    @id @default(cuid())
+  adminUserId    String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  ipAddress      String?
+  userAgent      String?
+  lastUsedAt     DateTime?
+  reuseDetectedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  adminUser      AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+  @@map("admin_refresh_tokens")
+}
+
+model AdminAuditLog {
+  id           String     @id @default(cuid())
+  adminUserId  String?
+  action       String
+  targetType   String?
+  targetId     String?
+  metadata     Json       @default("{}")
+  ipAddress    String?
+  createdAt    DateTime   @default(now())
+
+  adminUser    AdminUser? @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+  @@map("admin_audit_log")
+}
+
+model PlatformMetricsDaily {
+  date                  DateTime @id @db.Date
+  totalRevenueCents     BigInt   @default(0)
+  mrrCents              BigInt   @default(0)
+  arrCents              BigInt   @default(0)
+  newMrrCents           BigInt   @default(0)
+  expansionMrrCents     BigInt   @default(0)
+  contractionMrrCents   BigInt   @default(0)
+  churnedMrrCents       BigInt   @default(0)
+  activeSubscriptions   Int      @default(0)
+  newTeams              Int      @default(0)
+  churnedTeams          Int      @default(0)
+  totalTeams            Int      @default(0)
+  totalUsers            Int      @default(0)
+  arpuCents             Int      @default(0)
+  logoChurnRate         Float    @default(0)
+  revenueChurnRate      Float    @default(0)
+  computedAt            DateTime @default(now())
+
+  @@map("platform_metrics_daily")
+}
+
+model CohortRetentionSnapshot {
+  cohortMonth    DateTime @db.Date
+  periodIndex    Int
+  retainedTeams  Int
+  retainedPct    Float
+  computedAt     DateTime @default(now())
+
+  @@id([cohortMonth, periodIndex])
+  @@map("cohort_retention_snapshots")
+}

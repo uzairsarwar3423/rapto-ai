@@ -21,7 +21,9 @@ const STATIC_ALLOWED_ORIGINS = [
     'https://app.rapto.cloud',
     'https://rapto.cloud',
     'https://www.rapto.cloud',
+    'https://admin.rapto.cloud',      // ← Growth Dashboard (production)
     'http://localhost:3000',
+    'http://localhost:3001',           // ← Growth Dashboard (local dev, port 3001)
     'http://localhost:5000',
 ]
 

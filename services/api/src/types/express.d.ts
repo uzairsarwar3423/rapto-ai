@@ -11,6 +11,11 @@ declare global {
                 email: string
             }
             teamId?: string | null
+            adminUser?: {
+                id: string
+                role: string
+                mfaVerified?: boolean
+            }
         }
     }
 }
