@@ -4,6 +4,8 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { WorkspaceSwitcher } from "@/components/shared/workspace/WorkspaceSwitcher";
 import { useUIStore } from "@/store/ui.store";
+import type { Workspace } from "@/components/shared/workspace/types";
+import { cn } from "@/lib/utils";
 
 interface Team {
   id?: string;
@@ -12,15 +14,21 @@ interface Team {
   plan?: string;
 }
 
-interface SidebarTeamSwitcherProps {
+export interface SidebarTeamSwitcherProps {
   team: Team | null;
   collapsed: boolean;
   onInviteOpened?: () => void;
+  onWorkspaceSelected?: (workspace: Workspace) => void;
+  className?: string;
+  mode?: "auto" | "modal" | "popover" | "drawer";
 }
 
 export function SidebarTeamSwitcher({
   collapsed,
   onInviteOpened,
+  onWorkspaceSelected,
+  className,
+  mode = "auto",
 }: SidebarTeamSwitcherProps) {
   const router = useRouter();
   const setInviteModalOpen = useUIStore((state) => state.setInviteModalOpen);
@@ -30,14 +38,20 @@ export function SidebarTeamSwitcher({
     setInviteModalOpen(true);
   };
 
+  const handleSelectWorkspace = (ws: Workspace) => {
+    onWorkspaceSelected?.(ws);
+  };
+
   return (
-    <div className="p-2 flex items-center justify-center select-none">
+    <div className={cn("p-2 flex items-center justify-center select-none w-full", className)}>
       <WorkspaceSwitcher
         collapsed={collapsed}
+        onSelect={handleSelectWorkspace}
         onOpenSettings={() => router.push("/settings/team")}
         onInviteMembers={handleInviteMembers}
         side="right"
         align="start"
+        mode={mode}
       />
     </div>
   );

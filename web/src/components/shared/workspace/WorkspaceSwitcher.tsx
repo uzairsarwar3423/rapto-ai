@@ -9,18 +9,45 @@ import {
   UserPlus,
   Search,
   Loader2,
+  X,
+  Building2,
+  ArrowRight,
 } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerClose,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/shared/useMediaQuery";
 import type { Workspace } from "./types";
 import { useWorkspaces } from "./useWorkspaces";
 import { toast } from "sonner";
 
-interface WorkspaceSwitcherProps {
+export interface WorkspaceSwitcherProps {
   workspaces?: Workspace[];
   activeId?: string;
   onSelect?: (workspace: Workspace) => void;
@@ -31,11 +58,20 @@ interface WorkspaceSwitcherProps {
   className?: string;
   side?: "right" | "bottom" | "top" | "left";
   align?: "start" | "center" | "end";
+  /**
+   * Presentation mode:
+   * - "auto" (default): Swipeable Bottom Sheet Drawer on mobile (<768px), anchored Popover on desktop.
+   * - "modal": Centered Dialog on desktop, Bottom Sheet Drawer on mobile.
+   * - "popover": Forces Popover across all viewports.
+   * - "drawer": Forces Bottom Sheet Drawer across all viewports.
+   */
+  mode?: "auto" | "modal" | "popover" | "drawer";
 }
 
 /**
  * Enterprise Principal SaaS Workspace Switcher Component
- * Linear, Vercel, and Raycast inspired design language.
+ * Fully responsive across Mobile, Tablet, and Desktop viewports.
+ * Inspired by Linear, Vercel, Slack, and Apple HIG design systems.
  */
 export function WorkspaceSwitcher({
   workspaces: customWorkspaces,
@@ -48,9 +84,13 @@ export function WorkspaceSwitcher({
   className = "",
   side = "right",
   align = "start",
+  mode = "auto",
 }: WorkspaceSwitcherProps) {
   const { workspaces: realWorkspaces, isLoading: isRealLoading } = useWorkspaces();
   const workspaces = customWorkspaces || realWorkspaces;
+
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const [mounted, setMounted] = useState(false);
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -59,6 +99,10 @@ export function WorkspaceSwitcher({
   );
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Sync active item when workspaces update from API
   useEffect(() => {
@@ -83,16 +127,17 @@ export function WorkspaceSwitcher({
     );
   }, [workspaces, search]);
 
-  // Focus search input on popover open
+  // Focus search input on open
   useEffect(() => {
     if (open) {
       setSearch("");
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = setTimeout(() => inputRef.current?.focus(), 60);
+      return () => clearTimeout(timer);
     }
   }, [open]);
 
-  // Keyboard shortcut listener (⌘K toggle, Arrow navigation, Enter select)
+  // Keyboard shortcut listener (⌘K toggle, Arrow navigation, Enter select, ⌘1-9)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -118,6 +163,14 @@ export function WorkspaceSwitcher({
         handleSelect(filteredWorkspaces[selectedIndex]);
       } else if (e.key === "Escape") {
         setOpen(false);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        setOpen(false);
+        if (onCreateNew) onCreateNew();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        setOpen(false);
+        if (onOpenSettings) onOpenSettings();
       } else if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "9") {
         const index = parseInt(e.key, 10) - 1;
         if (workspaces[index]) {
@@ -129,7 +182,7 @@ export function WorkspaceSwitcher({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, filteredWorkspaces, selectedIndex, workspaces]);
+  }, [open, filteredWorkspaces, selectedIndex, workspaces, onCreateNew, onOpenSettings]);
 
   const handleSelect = (ws: Workspace) => {
     setSelectedId(ws.id);
@@ -154,77 +207,514 @@ export function WorkspaceSwitcher({
     return typeof logo === "string" && logo.trim().length > 0;
   };
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Switch workspace"
-          className={cn(
-            "group relative flex items-center gap-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/80 text-left transition-all duration-150 ease-out select-none cursor-pointer outline-none",
-            "hover:bg-zinc-50 dark:hover:bg-zinc-900/80 hover:border-zinc-300 dark:hover:border-zinc-700/80",
-            "focus-visible:ring-2 focus-visible:ring-brand dark:focus-visible:ring-brand",
-            collapsed ? "h-9 w-9 justify-center p-0" : "h-10 w-full px-2.5 py-1.5",
-            className
-          )}
-        >
-          {/* Team Icon Avatar Badge (Rapto Brand Green Palette) */}
-          <div
-            className={cn(
-              "relative flex shrink-0 items-center justify-center rounded-md font-sans font-bold text-white shadow-xs transition-transform duration-150 group-hover:scale-[1.02] overflow-hidden bg-brand",
-              collapsed ? "h-6 w-6 text-[11px]" : "h-7 w-7 text-[12px]"
-            )}
-            style={{ backgroundColor: "hsl(149, 61%, 28%)" }}
-          >
-            {hasValidLogo(activeWorkspace?.logo) ? (
-              <img
-                src={activeWorkspace?.logo}
-                alt={activeWorkspace?.name || "Workspace logo"}
-                className="h-full w-full rounded-md object-cover"
-              />
-            ) : (
-              <span className="text-white font-bold tracking-normal leading-none select-none">
-                {getFirstWordInitial(activeWorkspace?.name || "Rapto")}
-              </span>
-            )}
-            <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-zinc-950" />
-          </div>
+  // Determine effective rendering presentation mode
+  const effectiveMode = useMemo(() => {
+    if (!mounted) return "popover";
+    if (mode === "drawer") return "drawer";
+    if (mode === "modal") return isMobile ? "drawer" : "modal";
+    if (mode === "popover") return "popover";
+    // "auto" mode:
+    return isMobile ? "drawer" : "popover";
+  }, [mounted, mode, isMobile]);
 
-          {/* Trigger Text (Expanded state) */}
-          {!collapsed && (
-            <div className="flex flex-1 items-center justify-between min-w-0">
-              <div className="flex flex-col min-w-0 pr-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="truncate text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                    {activeWorkspace?.name}
-                  </span>
-                  <span className="shrink-0 rounded-xs bg-brand-subtle dark:bg-brand/20 px-1 py-0.2 text-[9px] font-bold text-brand dark:text-brand-dark uppercase tracking-wider">
-                    {activeWorkspace?.plan}
-                  </span>
-                </div>
-                <span className="truncate text-[10.5px] font-normal text-zinc-500 dark:text-zinc-400">
-                  {activeWorkspace?.role} • {activeWorkspace?.membersCount} member{activeWorkspace?.membersCount !== 1 ? "s" : ""}
+  /**
+   * Trigger Button Element
+   * Responsive:
+   * - In collapsed mode: Square icon button with status badge and Tooltip.
+   * - In expanded mode: Full width with avatar, title, plan badge, member count, shortcut, and chevron.
+   */
+  const renderTriggerButton = () => {
+    const trigger = (
+      <button
+        type="button"
+        aria-label={`Switch workspace. Active: ${activeWorkspace?.name || "Workspace"}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className={cn(
+          "group relative flex items-center gap-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/80 text-left transition-all duration-150 ease-out select-none cursor-pointer outline-none",
+          "hover:bg-zinc-50 dark:hover:bg-zinc-900/80 hover:border-zinc-300 dark:hover:border-zinc-700/80",
+          "focus-visible:ring-2 focus-visible:ring-brand dark:focus-visible:ring-brand",
+          "active:scale-[0.98] touch-manipulation",
+          collapsed ? "h-9 w-9 justify-center p-0" : "h-10 w-full px-2.5 py-1.5",
+          className
+        )}
+      >
+        {/* Team Icon Avatar Badge */}
+        <div
+          className={cn(
+            "relative flex shrink-0 items-center justify-center rounded-md font-sans font-bold text-white shadow-xs transition-transform duration-150 group-hover:scale-[1.02] overflow-hidden bg-brand",
+            collapsed ? "h-6 w-6 text-[11px]" : "h-7 w-7 text-[12px]"
+          )}
+          style={{
+            backgroundColor: activeWorkspace?.isPersonal
+              ? "hsl(149, 51%, 36%)"
+              : "hsl(149, 61%, 28%)",
+          }}
+        >
+          {hasValidLogo(activeWorkspace?.logo) ? (
+            <img
+              src={activeWorkspace?.logo}
+              alt={activeWorkspace?.name || "Workspace logo"}
+              className="h-full w-full rounded-md object-cover"
+            />
+          ) : (
+            <span className="text-white font-bold tracking-normal leading-none select-none">
+              {getFirstWordInitial(activeWorkspace?.name || "Rapto")}
+            </span>
+          )}
+          <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-zinc-950" />
+        </div>
+
+        {/* Trigger Text (Expanded state) */}
+        {!collapsed && (
+          <div className="flex flex-1 items-center justify-between min-w-0">
+            <div className="flex flex-col min-w-0 pr-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="truncate text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 max-w-[110px] sm:max-w-[130px]">
+                  {activeWorkspace?.name}
+                </span>
+                <span className="shrink-0 rounded-xs bg-brand-subtle dark:bg-brand/20 px-1 py-0.2 text-[9px] font-bold text-brand dark:text-brand-dark uppercase tracking-wider">
+                  {activeWorkspace?.plan}
                 </span>
               </div>
+              <span className="truncate text-[10.5px] font-normal text-zinc-500 dark:text-zinc-400">
+                {activeWorkspace?.role} • {activeWorkspace?.membersCount} member{activeWorkspace?.membersCount !== 1 ? "s" : ""}
+              </span>
+            </div>
 
-              <div className="flex items-center gap-1 shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300">
-                <kbd className="hidden sm:inline-flex items-center text-[9.5px] font-mono font-medium text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800/60 px-1 py-0.5 rounded border border-zinc-200/60 dark:border-zinc-700/50">
-                  ⌘K
-                </kbd>
-                <ChevronsUpDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+            <div className="flex items-center gap-1 shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300">
+              <kbd className="hidden sm:inline-flex items-center text-[9.5px] font-mono font-medium text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800/60 px-1 py-0.5 rounded border border-zinc-200/60 dark:border-zinc-700/50">
+                ⌘K
+              </kbd>
+              <ChevronsUpDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+            </div>
+          </div>
+        )}
+      </button>
+    );
+
+    // Provide helpful desktop tooltip when collapsed in icon mode
+    if (collapsed && !open) {
+      return (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+            <TooltipContent side="right" sideOffset={10} className="flex items-center gap-1.5 py-1 px-2.5 text-xs">
+              <span className="font-medium">{activeWorkspace?.name || "Switch workspace"}</span>
+              <kbd className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-1 py-0.2 rounded border border-zinc-700">⌘K</kbd>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return trigger;
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 1. MOBILE BOTTOM SHEET DRAWER (Mobile < 768px)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (effectiveMode === "drawer") {
+    return (
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerTrigger asChild>{renderTriggerButton()}</DrawerTrigger>
+        <DrawerContent className="max-h-[90dvh] flex flex-col bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 rounded-t-2xl p-0 gap-0 outline-none z-[70]">
+          {/* Header */}
+          <DrawerHeader className="px-5 pt-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/80 text-left flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand border border-brand/20">
+                <Building2 className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <DrawerTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  Switch Workspace
+                </DrawerTitle>
+                <DrawerDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {workspaces.length} workspace{workspaces.length !== 1 ? "s" : ""} available
+                </DrawerDescription>
               </div>
             </div>
-          )}
-        </button>
-      </PopoverTrigger>
+            <DrawerClose asChild>
+              <button
+                type="button"
+                aria-label="Close"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </DrawerClose>
+          </DrawerHeader>
 
-      {/* Popover Command Menu */}
+          {/* Search Box - Sticky */}
+          <div className="px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30">
+            <div className="relative flex items-center">
+              <Search className="absolute left-3 h-4 w-4 text-zinc-400" />
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Search workspaces..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSelectedIndex(0);
+                }}
+                /* text-base prevents iOS Safari auto-zoom bug on input focus */
+                className="w-full h-10 pl-9 pr-16 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 text-base sm:text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 text-xs font-medium text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Workspaces List with WCAG touch targets (>= 48px) */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5 custom-scrollbar touch-pan-y">
+            <div className="flex items-center justify-between px-1 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              <span>Workspaces ({filteredWorkspaces.length})</span>
+              {isRealLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400" />}
+            </div>
+
+            {filteredWorkspaces.length === 0 ? (
+              <div className="py-8 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                No workspace found matching &ldquo;{search}&rdquo;
+              </div>
+            ) : (
+              filteredWorkspaces.map((ws) => {
+                const isActive = ws.id === selectedId;
+                return (
+                  <button
+                    key={ws.id}
+                    type="button"
+                    onClick={() => handleSelect(ws)}
+                    className={cn(
+                      "group relative flex w-full items-center justify-between rounded-xl p-3 text-left transition-all duration-150 outline-none cursor-pointer active:scale-[0.99] touch-manipulation min-h-[54px]",
+                      isActive
+                        ? "bg-brand/10 border border-brand/30 text-zinc-900 dark:text-zinc-100 ring-1 ring-brand/20"
+                        : "bg-zinc-50/80 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/70 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white shadow-2xs overflow-hidden"
+                        style={{
+                          backgroundColor: ws.isPersonal
+                            ? "hsl(149, 51%, 36%)"
+                            : "hsl(149, 61%, 28%)",
+                        }}
+                      >
+                        {hasValidLogo(ws.logo) ? (
+                          <img
+                            src={ws.logo}
+                            alt={ws.name}
+                            className="h-full w-full rounded-lg object-cover"
+                          />
+                        ) : (
+                          <span className="text-white font-bold leading-none select-none">
+                            {getFirstWordInitial(ws.name)}
+                          </span>
+                        )}
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-zinc-950" />
+                      </div>
+
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                            {ws.name}
+                          </span>
+                          {ws.isPersonal && (
+                            <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                              Personal
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal">
+                          {ws.membersCount} member{ws.membersCount !== 1 ? "s" : ""} • {ws.role}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={cn(
+                          "text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border",
+                          ws.plan === "Enterprise"
+                            ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 border-transparent font-bold"
+                            : ws.plan === "Pro"
+                            ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60"
+                            : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border-zinc-200/60 dark:border-zinc-700/60"
+                        )}
+                      >
+                        {ws.plan}
+                      </span>
+
+                      {isActive ? (
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white shadow-2xs">
+                          <Check className="h-3 w-3 stroke-[3]" />
+                        </div>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Quick Action Commands (Ergonomic Thumb Reach) */}
+          <div className="border-t border-zinc-100 dark:border-zinc-800/80 p-3 bg-zinc-50/70 dark:bg-zinc-900/50 space-y-2 pb-safe pb-4">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                if (onCreateNew) onCreateNew();
+                else toast.info("Opening Create Workspace dialog...");
+              }}
+              className="flex w-full h-11 items-center justify-between rounded-xl px-3.5 text-xs font-medium text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition cursor-pointer active:scale-[0.99] touch-manipulation"
+            >
+              <div className="flex items-center gap-2.5">
+                <Plus className="h-4 w-4 text-brand" />
+                <span>Create new workspace</span>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+            </button>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  if (onOpenSettings) onOpenSettings();
+                  else toast.info("Navigating to Workspace Settings...");
+                }}
+                className="flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition cursor-pointer active:scale-[0.99] touch-manipulation"
+              >
+                <Settings className="h-3.5 w-3.5 text-zinc-500" />
+                <span>Settings</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  if (onInviteMembers) onInviteMembers();
+                  else toast.info("Opening Invite Teammates sheet...");
+                }}
+                className="flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition cursor-pointer active:scale-[0.99] touch-manipulation"
+              >
+                <UserPlus className="h-3.5 w-3.5 text-zinc-500" />
+                <span>Invite</span>
+              </button>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 2. CENTERED MODAL DIALOG (When mode="modal" on Desktop)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (effectiveMode === "modal") {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>{renderTriggerButton()}</DialogTrigger>
+        <DialogContent
+          showCloseButton={true}
+          className="sm:max-w-[440px] p-0 gap-0 overflow-hidden border border-zinc-200/90 dark:border-zinc-800/90 shadow-2xl rounded-2xl bg-white dark:bg-zinc-950 outline-none"
+        >
+          <DialogHeader className="px-5 pt-4 pb-3 border-b border-zinc-100 dark:border-zinc-800/80 text-left">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand border border-brand/20">
+                <Building2 className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <DialogTitle className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                  Switch Workspace
+                </DialogTitle>
+                <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Select a team or manage your workspaces.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Search Header */}
+          <div className="relative flex items-center border-b border-zinc-100 dark:border-zinc-800/80 px-3.5 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-zinc-400" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Search workspaces..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setSelectedIndex(0);
+              }}
+              className="w-full bg-transparent px-2.5 py-1 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="text-[10px] font-medium text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 px-1 cursor-pointer"
+              >
+                Clear
+              </button>
+            ) : (
+              <kbd className="text-[9px] font-mono text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200/60 dark:border-zinc-800">
+                ESC
+              </kbd>
+            )}
+          </div>
+
+          {/* Workspaces List */}
+          <div className="max-h-[280px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+            {filteredWorkspaces.map((ws, idx) => {
+              const isActive = ws.id === selectedId;
+              const isFocused = idx === selectedIndex;
+
+              return (
+                <button
+                  key={ws.id}
+                  type="button"
+                  onClick={() => handleSelect(ws)}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  className={cn(
+                    "group relative flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs transition-colors duration-150 outline-none cursor-pointer",
+                    isActive
+                      ? "bg-zinc-100/90 dark:bg-zinc-900/90 font-medium text-zinc-900 dark:text-zinc-100"
+                      : isFocused
+                      ? "bg-zinc-100/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100"
+                      : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900/40"
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold text-white shadow-2xs overflow-hidden"
+                      style={{
+                        backgroundColor: ws.isPersonal
+                          ? "hsl(149, 51%, 36%)"
+                          : "hsl(149, 61%, 28%)",
+                      }}
+                    >
+                      {hasValidLogo(ws.logo) ? (
+                        <img src={ws.logo} alt={ws.name} className="h-full w-full rounded-lg object-cover" />
+                      ) : (
+                        <span className="text-white font-bold leading-none select-none">
+                          {getFirstWordInitial(ws.name)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-xs font-medium tracking-tight">
+                          {ws.name}
+                        </span>
+                        {ws.isPersonal && (
+                          <span className="text-[9px] font-normal px-1 py-0.2 rounded bg-zinc-200/60 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                            Personal
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal">
+                        {ws.membersCount} member{ws.membersCount !== 1 ? "s" : ""} • {ws.role}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={cn(
+                        "text-[9.5px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border",
+                        ws.plan === "Enterprise"
+                          ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 border-transparent font-bold"
+                          : ws.plan === "Pro"
+                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60"
+                          : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border-zinc-200/60 dark:border-zinc-700/60"
+                      )}
+                    >
+                      {ws.plan}
+                    </span>
+
+                    {isActive ? (
+                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-brand text-white">
+                        <Check className="h-2.5 w-2.5 stroke-[3]" />
+                      </div>
+                    ) : ws.shortcut ? (
+                      <kbd className="hidden sm:inline-flex text-[9px] font-mono text-zinc-400 dark:text-zinc-500">
+                        {ws.shortcut}
+                      </kbd>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick Actions Footer */}
+          <div className="border-t border-zinc-100 dark:border-zinc-800/80 p-2 bg-zinc-50/50 dark:bg-zinc-950/50 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                if (onCreateNew) onCreateNew();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5 text-zinc-500" />
+              <span>Create workspace</span>
+            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  if (onOpenSettings) onOpenSettings();
+                }}
+                className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                title="Workspace settings (⌘,)"
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  if (onInviteMembers) onInviteMembers();
+                }}
+                className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                title="Invite members"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 3. ANCHORED COMMAND POPOVER (Desktop / Tablet >= 768px)
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{renderTriggerButton()}</PopoverTrigger>
+
       <PopoverContent
         side={side}
         align={align}
-        sideOffset={6}
+        sideOffset={8}
+        avoidCollisions={true}
+        collisionPadding={12}
         className={cn(
-          "w-[320px] p-0 rounded-xl border border-zinc-200/90 dark:border-zinc-800/90 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl shadow-2xl shadow-black/10 dark:shadow-black/60 overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 outline-none"
+          "w-[320px] max-w-[calc(100vw-24px)] p-0 rounded-xl border border-zinc-200/90 dark:border-zinc-800/90 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl shadow-2xl shadow-black/10 dark:shadow-black/60 overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 outline-none z-50"
         )}
       >
         {/* Search Header */}
@@ -289,10 +779,12 @@ export function WorkspaceSwitcher({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div
-                      className={cn(
-                        "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[12px] font-bold text-white shadow-2xs bg-brand overflow-hidden"
-                      )}
-                      style={{ backgroundColor: ws.isPersonal ? "hsl(149, 51%, 36%)" : "hsl(149, 61%, 28%)" }}
+                      className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[12px] font-bold text-white shadow-2xs bg-brand overflow-hidden"
+                      style={{
+                        backgroundColor: ws.isPersonal
+                          ? "hsl(149, 51%, 36%)"
+                          : "hsl(149, 61%, 28%)",
+                      }}
                     >
                       {hasValidLogo(ws.logo) ? (
                         <img

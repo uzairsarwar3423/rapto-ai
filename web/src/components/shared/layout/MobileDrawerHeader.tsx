@@ -43,7 +43,12 @@ export function MobileDrawerHeader({ team, onClose }: MobileDrawerHeaderProps) {
       </div>
 
       {/* Team Switcher Row */}
-      <SidebarTeamSwitcher team={team} collapsed={false} onInviteOpened={onClose} />
+      <SidebarTeamSwitcher
+        team={team}
+        collapsed={false}
+        onInviteOpened={onClose}
+        onWorkspaceSelected={onClose}
+      />
     </div>
   );
 }
