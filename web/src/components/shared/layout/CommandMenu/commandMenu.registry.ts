@@ -7,9 +7,11 @@ import {
   BarChart3,
   Settings,
   Plus,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUIStore } from "@/store/ui.store";
 
 export interface CommandItem {
   id: string;
@@ -81,5 +83,14 @@ export const actionCommands: CommandItem[] = [
     icon: Plus,
     shortcut: ["mod", "N"],
     perform: () => toast.info("Coming Day 32"),
+  },
+  {
+    id: "action-invite-members",
+    label: "Invite teammates",
+    group: "Actions",
+    icon: UserPlus,
+    shortcut: ["mod", "I"],
+    synonyms: ["invite", "members", "team", "teammates", "add member"],
+    perform: () => useUIStore.getState().setInviteModalOpen(true),
   },
 ];

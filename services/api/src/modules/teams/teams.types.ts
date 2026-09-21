@@ -118,6 +118,7 @@ export interface InviteResult {
   alreadyInvited: string[]
   failed: string[]
   inviteLink: string
+  inviteLinks?: Record<string, string>
 }
 
 export interface AcceptInvitationResponse {

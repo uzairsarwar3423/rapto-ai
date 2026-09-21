@@ -436,12 +436,14 @@ async function inviteMembers(
   if (!inviter) throw new AppError('USER_NOT_FOUND', 404, 'Inviter not found')
 
   // STEP 4 — Process each email
-  const results = {
-    invited: [] as string[],
-    alreadyMember: [] as string[],
-    alreadyInvited: [] as string[],
-    failed: [] as string[],
+  const results: Omit<InviteResult, 'inviteLink'> & { inviteLinks: Record<string, string> } = {
+    invited: [],
+    alreadyMember: [],
+    alreadyInvited: [],
+    failed: [],
+    inviteLinks: {},
   }
+  let lastInviteLink: string | null = null
 
   const frontendUrl = getFrontendUrl()
 
@@ -483,6 +485,8 @@ async function inviteMembers(
 
       // e. Dispatch team invite email (Industry-standard non-blocking direct send + BullMQ worker queue with Redis idempotency lock)
       const joinUrl = `${frontendUrl}/invite/${rawToken}`
+      lastInviteLink = joinUrl
+      results.inviteLinks[email] = joinUrl
       const dedupKey = `email:sent:invite:${tokenHash}`
 
       // Acquire Redis idempotency lock to prevent duplicate email dispatches (10 min TTL)
@@ -546,8 +550,8 @@ async function inviteMembers(
     'Invitation batch processed'
   )
 
-  // STEP 6 — Build general share link (scaffold for Day 20)
-  const inviteLink = `${frontendUrl}/teams/${team.slug}/join`
+  // STEP 6 — Return real token invite link for direct sharing (or general join link fallback)
+  const inviteLink = lastInviteLink || `${frontendUrl}/teams/${team.slug}/join`
 
   return { ...results, inviteLink }
 }

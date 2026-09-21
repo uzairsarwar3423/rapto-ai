@@ -16,6 +16,7 @@ const CommandMenu = dynamic(
   { ssr: false }
 );
 
+import { InviteMemberModal } from "@/features/team/components/InviteMemberModal";
 import { User } from "@/features/auth/types/auth.types";
 
 /**
@@ -87,6 +88,7 @@ export function AppShell({
       </div>
 
       <CommandMenu />
+      <InviteMemberModal teamName={team?.name} />
 
       {/* MobileNav — fixed bottom bar, shown below SIDEBAR_BREAKPOINT */}
       <MobileNav onOpenDrawer={openDrawer} />

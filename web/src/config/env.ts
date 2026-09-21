@@ -3,6 +3,7 @@ import { z } from "zod";
 const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url().optional().default("https://api.rapto.cloud"),
   API_URL: z.string().url().optional(),
+  NEXT_PUBLIC_APP_URL: z.string().url().optional().default("https://app.rapto.cloud"),
   NEXT_PUBLIC_PADDLE_ENVIRONMENT: z.string().optional(),
   NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: z.string().optional(),
 });
@@ -10,6 +11,7 @@ const envSchema = z.object({
 const parsedEnv = envSchema.safeParse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   API_URL: process.env.API_URL,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_PADDLE_ENVIRONMENT: process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT,
   NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
 });
@@ -26,4 +28,31 @@ export const env = {
   ...parsedEnv.data,
   // Fallback API_URL to NEXT_PUBLIC_API_URL for client-side usage
   API_URL: parsedEnv.data.API_URL || parsedEnv.data.NEXT_PUBLIC_API_URL,
+  APP_URL: parsedEnv.data.NEXT_PUBLIC_APP_URL || "https://app.rapto.cloud",
 };
+
+/**
+ * Returns the canonical frontend application URL.
+ * In production, always returns 'https://app.rapto.cloud'.
+ * In local dev (localhost), returns local origin for testing.
+ */
+export function getAppUrl(): string {
+  if (process.env.NODE_ENV === "production") {
+    return env.APP_URL || "https://app.rapto.cloud";
+  }
+
+  if (typeof window !== "undefined") {
+    const isLocalhost =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.endsWith(".local");
+
+    if (!isLocalhost) {
+      return "https://app.rapto.cloud";
+    }
+
+    return window.location.origin;
+  }
+
+  return env.APP_URL || "https://app.rapto.cloud";
+}
