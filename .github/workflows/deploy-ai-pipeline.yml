@@ -67,7 +67,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: 🏗️ Build & Push Multi-Stage Production Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./services/ai-pipeline
           file: ./services/ai-pipeline/Dockerfile

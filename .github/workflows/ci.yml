@@ -1,22 +1,44 @@
-name: Continuous Integration — Integration Test Gate
+name: Continuous Integration — Quality & Test Gate
 
 on:
   push:
     branches: [ main, develop ]
-  pull_request:
     paths:
-      - 'services/api/src/modules/integrations/**'
-      - 'services/api/src/services/calendar-sync.service.ts'
-      - 'services/api/src/services/token-refresh.service.ts'
-      - 'services/api/src/services/integration-health.service.ts'
-      - 'services/api/src/queues/workers/integrate.worker.ts'
-      - 'services/api/src/queues/workers/calendar-sync.worker.ts'
-      - 'services/api/src/queues/workers/token-refresh.worker.ts'
-      - 'services/api/tests/integration/**'
+      - 'services/api/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'services/api/**'
+      - '.github/workflows/ci.yml'
 
 jobs:
+  api-typecheck-and-build:
+    name: 🔍 API Typecheck & Compile Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: 'services/api/package-lock.json'
+
+      - name: Install API Dependencies
+        run: npm ci --prefix services/api
+
+      - name: Generate Prisma Client
+        run: npm run prisma:generate --prefix services/api
+
+      - name: Validate TypeScript Compilation
+        run: npm run build --prefix services/api
+
   integrations-test:
     name: Integrations & Cross-Provider E2E Tests
+    needs: api-typecheck-and-build
     runs-on: ubuntu-latest
 
     services:

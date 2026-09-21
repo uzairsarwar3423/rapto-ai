@@ -1,0 +1,20 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Dependencies
+node_modules/
+
+# Build & Logs
+dist/
+build/
+coverage/
+*.log
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

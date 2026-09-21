@@ -42,6 +42,7 @@ import type {
   TeamSettings,
   TeamUsage,
   MemberSummary,
+  InviteResult,
 } from './teams.types'
 import { IN_FLIGHT_STATUSES } from '../meetings/meetings.service.state'
 
