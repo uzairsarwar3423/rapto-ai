@@ -945,3 +945,71 @@ order by "receivedAt" desc limit 30;
 -- 0 rows = Paddle never delivered (check the notification destination/events/secret).
 -- NEEDS_ATTENTION with "different Paddle subscription" = this bug, via the webhook path.
 ```
+
+
+---
+
+# U. Incident: Paddle Customer-Portal cancellation not reflected (2026-11-03)
+
+## U.1 What Paddle actually does (official docs read this session; payload examples marked where only a summary was available)
+- **Portal cancel is a scheduled change, not an immediate cancel.** "When customers cancel using the portal, Paddle creates a scheduled change against the subscription to cancel at the end of the current billing period." (`/build/subscriptions/cancel-subscriptions`). `past_due` / `paused` subscriptions are cancelled **immediately**.
+- **At scheduling:** event **`subscription.updated`**; `status` stays **`active`**; `scheduled_change = {action:"cancel", effective_at, resume_at:null}`; `effective_at` equals the period end; `next_billed_at` becomes `null`; `canceled_at` is `null`; `current_billing_period` is unchanged.
+- **At the effective date:** `status` → `canceled`, event **`subscription.canceled`** (the simulator also shows a `subscription.updated` with status `canceled` first). The canceled payload has `canceled_at` set and `current_billing_period = null`, `next_billed_at = null`.
+- **Immediate cancel:** same canceled payload at once.
+- **Undo:** removing the scheduled change (documented as `subscription.updated`; the exact event for undo was summary-sourced). "You can't reinstate a canceled subscription."
+- **Not documented in the pages read:** cancellation timing for a *trialing* subscription (the code therefore treats it like any scheduled change and never assumes it is immediate), and whether the portal's end-of-period behavior is configurable.
+
+**So the event responsible for synchronizing a portal cancellation is `subscription.updated` (scheduled), and `subscription.canceled` is the event at the effective date.** Growth access *continuing after the portal click* is correct Paddle behavior, not a bug.
+
+## U.2 What I verified in the existing code (executed, with documented payload shapes)
+Before changing anything I wrote 21 regression tests using the documented payloads. **17 passed on the existing code**: the scheduled cancel (`subscription.updated`) was persisted (`cancelAtPeriodEnd=true`, status `active`, effective date in `currentPeriodEnd`, `cancelledAt=null`) and Growth access continued; the `subscription.canceled` event moved the team to Free with `canceled_at` stored; read-time entitlement flipped at the exact effective instant; duplicates, stale events, DB failure and re-purchase were all handled. **I therefore could not reproduce a failure of the webhook→DB path with faithful payloads.** The four failures found were genuine defects, listed below.
+
+## U.3 Defects found and fixed
+| # | Defect (evidence) | Fix |
+|---|---|---|
+| 1 | **The billing UI could not show a cancellation at all.** `BillingView` rendered a **hard-coded "Active" badge** and always "Renews on <date>"; it never read `cancelAtPeriodEnd`, `status=trialing`, or past-due. A customer who cancelled would see "Growth / Active / Renews on …" no matter what the backend stored. (Likely what was observed: "continues displaying Growth" with no cancellation indicator.) | Badge now comes from the server's subscription (`Active / Trialing / Cancelling / Past due`, none for Free); label shows "Cancels on <date> — you keep access until then" using the server's `currentPeriodEnd`; trial label from server `trialEnd`. No frontend-only state. |
+| 2 | The realtime event `billing:plan_updated` refetched `["billing"]`, `["team"]`, `["teams"]`, `["auth"]` but **not** the `["subscription"]` query used by the billing page, so a webhook-driven change did not appear until a manual refetch. | Realtime handler also invalidates `["subscription"]`. |
+| 3 | **Mapper turned a `canceled` payload that carried a future billing period into "active + cancelling"** (a rule I added in an earlier phase on an unverified assumption). Paddle's docs say canceled ⇒ `current_billing_period = null`; if a period were ever attached, this rule would have **kept Growth after a real cancellation**. | `status = canceled` is trusted as "access ended"; only `scheduled_change.action = cancel` on a live subscription means "cancelling" (also never set on a cancelled status). |
+| 4 | When the **sweeper** (not the webhook) ended a scheduled cancellation it stored **the time the cron ran** as `cancelledAt`. | Stored as the **effective date** (`currentPeriodEnd`) via one conditional, locked `UPDATE`; Paddle's own `canceled_at` overwrites it when `subscription.canceled` arrives. |
+| 5 | A scheduled cancel whose `effective_at` differs from the period end would be silent. | Alert `billing.cancel_effective_date_mismatch`; access stays bounded by the stored period end. |
+
+No schema change and no migration: the existing fields already carry the required information — `status`, `cancelAtPeriodEnd` (scheduled), `currentPeriodEnd` (effective date; Paddle documents `effective_at == period end`), `cancelledAt` (actual cancellation time), `currentPeriodStart`, `trialEnd`, `paddleSubscriptionId`, `lastEventOccurredAt`, `updatedAt`. History is kept (`SUBSCRIPTION_REPLACED` audit rows; nothing deleted).
+
+## U.4 How each scenario is handled
+| Paddle state | Stored | Effective plan |
+|---|---|---|
+| active | `active`, `cancelAtPeriodEnd=false` | Growth |
+| trialing | `trialing` | Growth until `trialEnd` |
+| scheduled cancellation (portal) | `active`/`trialing`, `cancelAtPeriodEnd=true`, `currentPeriodEnd` = effective date, `cancelledAt=null` | **Growth until the effective instant** (read-time, exact), then Free |
+| cancel effective (`subscription.canceled`) | `cancelled`, `cancelledAt = canceled_at`, last period kept | Free |
+| immediate cancel | same | Free immediately |
+| effective date reached but webhook late/lost | read-time entitlement already Free; 5-minute sweeper persists `cancelled` with `cancelledAt` = effective date; hourly reconciliation/ `/billing/sync` confirm against Paddle | Free |
+| scheduled cancel removed | `cancelAtPeriodEnd=false` | Growth |
+| old cancelled subscription vs newer live one | the newer live subscription is authoritative; the old event is `PROCESSED` as superseded | Growth |
+Idempotency/ordering/atomicity are the existing mechanisms (inbox `eventId UNIQUE`, `occurred_at` guard, advisory lock, single writer); cache invalidation happens only after the commit.
+
+## U.5 Tests executed (real Postgres; Paddle SDK object faked; no real subscription touched)
+`tests/integration/billing-cancellation.db.test.ts` — **21 tests, all pass**: portal scheduled cancel (state, API fields, Growth retained); effective-date mismatch alert; undo; boundary at `end − 1 ms` vs `end`; sweeper without any webhook (cancelledAt = effective date); `subscription.canceled` real shape (no period) → Free + timestamps + email; `updated(canceled)` before `canceled`; immediate cancel and stale-period-attached payload; trial scheduled cancel then cancel; duplicate delivery (1 audit, 1 email); stale `updated` after `canceled`; DB failure → `FAILED`, no partial state, retry completes; old cancel vs new subscription; other team unaffected; cache invalidated only after the commit and the quota gate uses Free immediately; manual sync (scheduled, already-effective, plain active); re-purchase after cancellation with history kept. `paddle-mapper` updated for the corrected rule. **Full billing set: 12 suites, 291 tests, all pass.** Web type-check: no errors in the touched billing/realtime files.
+**Not tested:** the browser rendering of the new badge/label; real Paddle sandbox (no portal click was performed); production data.
+
+## U.6 What I could not determine — and how to find it
+Because the backend path works with documented payloads, **the production cause is not provable from the repository.** The remaining candidates, each checkable with read-only queries:
+1. **Webhooks not reaching us / event types not subscribed.** The Paddle notification destination must include `subscription.updated` and `subscription.canceled`.
+2. **Events received but not applied** (e.g. mismatch flagged before the adoption fix, or `FAILED`).
+3. **UI only** (defects 1–2 above).
+```sql
+-- What do we hold for the team?
+select "paddleSubscriptionId", status, plan, "cancelAtPeriodEnd", "currentPeriodEnd", "cancelledAt", "lastEventOccurredAt", "updatedAt"
+from subscriptions where "teamId" = '<team id>';
+
+-- Did the cancellation events arrive and what happened to them?
+select "eventType", status, attempts, "lastError", "occurredAt", "receivedAt"
+from paddle_webhook_events
+where "teamId" = '<team id>' and "eventType" in ('subscription.updated','subscription.canceled')
+order by "receivedAt" desc limit 20;
+-- no rows  ⇒ Paddle did not deliver (destination/events/secret).  FAILED / NEEDS_ATTENTION ⇒ read lastError.
+```
+In Paddle → Developer tools → Notifications, check the delivery log for these two events on the customer's cancellation. Then `POST /api/v1/billing/sync` (admin) reconciles from Paddle regardless of webhooks.
+
+## U.7 Deployment
+Deploy the image (API + web); **no migration, no new environment variable.** Ensure the Paddle notification destination includes `subscription.updated` and `subscription.canceled` (§P.5). After deploy, an admin can press Sync to refresh any team whose state was missed.

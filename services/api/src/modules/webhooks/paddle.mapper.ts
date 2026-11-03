@@ -132,19 +132,16 @@ export function extractSubscriptionData(
     throw new UnresolvableEventError('Subscription payload without id/customer_id')
   }
 
-  let status = mapPaddleSubscriptionStatus(data.status)
-  let cancelAtPeriodEnd = data.scheduled_change?.action === 'cancel'
+  // Paddle semantics (developer.paddle.com, cancel guide): a portal / default API cancellation is a SCHEDULED change —
+  // status stays "active" and scheduled_change.action = "cancel". Status "canceled" means the cancellation has taken
+  // effect and access has ended (current_billing_period is null); it is never reinterpreted as "still paid-through".
+  const status = mapPaddleSubscriptionStatus(data.status)
+  const cancelAtPeriodEnd = status !== SubscriptionStatus.cancelled && data.scheduled_change?.action === 'cancel'
   const cancelledAt = parsePaddleDate(data.canceled_at)
 
   const period = data.current_billing_period
   const currentPeriodStart = parsePaddleDate(period?.starts_at ?? data.started_at ?? data.first_billed_at)
   let currentPeriodEnd = parsePaddleDate(period?.ends_at ?? data.next_billed_at)
-
-  // Cancellation that Paddle reports while a paid period is still running ⇒ keep access through that period.
-  if (status === SubscriptionStatus.cancelled && currentPeriodEnd && currentPeriodEnd > now) {
-    status = SubscriptionStatus.active
-    cancelAtPeriodEnd = true
-  }
 
   const item = data.items?.[0]
   const trialDates = item?.trial_dates ?? data.trial_dates

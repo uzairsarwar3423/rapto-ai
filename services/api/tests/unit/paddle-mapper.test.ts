@@ -82,11 +82,11 @@ describe('paddle.mapper', () => {
       expect(d.currency).toBe('usd')
     })
 
-    it('a cancellation reported while a paid period is still running keeps access through that period', () => {
+    it('status "canceled" means access ended — it is never reinterpreted as paid-through, even with a period attached', () => {
       const end = new Date(now.getTime() + 10 * DAY)
       const d = extractSubscriptionData(subscription({ id: 'sub_c', status: 'canceled', periodStart: now, periodEnd: end }), PlanType.STARTER, 'month', now)
-      expect(d.status).toBe(SubscriptionStatus.active)
-      expect(d.cancelAtPeriodEnd).toBe(true)
+      expect(d.status).toBe(SubscriptionStatus.cancelled)
+      expect(d.cancelAtPeriodEnd).toBe(false)
     })
 
     it('a cancellation with no running period is a real cancellation', () => {

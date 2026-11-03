@@ -439,11 +439,15 @@ export async function expireTeamEntitlement(teamId: string, now: Date = new Date
     })
     if (trial.count > 0) transitioned = 'trial_expired'
 
-    const cancelled = await tx.subscription.updateMany({
-      where: { teamId, status: SubscriptionStatus.active, cancelAtPeriodEnd: true, currentPeriodEnd: { lte: now } },
-      data: { status: SubscriptionStatus.cancelled, cancelAtPeriodEnd: false, cancelledAt: now },
-    })
-    if (cancelled.count > 0) transitioned = 'cancel_period_ended'
+    // The scheduled cancellation took effect at the period end: record THAT instant as the cancellation time (Paddle's own
+    // canceled_at replaces it when subscription.canceled arrives). Conditional, so repeats and racing webhooks are no-ops.
+    const cancelled = await tx.$executeRaw`
+      UPDATE subscriptions
+         SET status = 'cancelled'::"SubscriptionStatus", "cancelAtPeriodEnd" = false,
+             "cancelledAt" = "currentPeriodEnd", "updatedAt" = NOW()
+       WHERE "teamId" = ${teamId} AND status = 'active'::"SubscriptionStatus"
+         AND "cancelAtPeriodEnd" = true AND "currentPeriodEnd" <= ${now}`
+    if (cancelled > 0) transitioned = 'cancel_period_ended'
 
     const { entitlement, changed } = await syncTeamPlan(tx, teamId, now)
     if (transitioned === 'none' && changed) transitioned = 'plan_resynced'

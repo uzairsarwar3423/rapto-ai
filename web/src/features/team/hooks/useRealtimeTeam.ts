@@ -115,6 +115,7 @@ export function useRealtimeTeam() {
     const handleBillingUpdated = () => {
       // Invalidate all billing-related queries
       queryClient.invalidateQueries({ queryKey: ["billing"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       // Team and user contexts might also change with billing
       queryClient.invalidateQueries({ queryKey: ["team"] });
       queryClient.invalidateQueries({ queryKey: ["teams"] });

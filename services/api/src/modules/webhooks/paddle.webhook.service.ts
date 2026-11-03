@@ -293,6 +293,16 @@ async function handleSubscriptionEvent(
   const { planId, interval } = resolvePlan(data)
   const subData = extractSubscriptionData(data, planId, interval)
 
+  // Documented invariant: a scheduled cancel's effective_at equals the current period end. If Paddle ever sends a
+  // different date, access is still bounded by the stored period end — make the discrepancy visible, never silent.
+  const effectiveAt = parsePaddleDate(data.scheduled_change?.effective_at)
+  if (subData.cancelAtPeriodEnd && effectiveAt && subData.currentPeriodEnd && Math.abs(effectiveAt.getTime() - subData.currentPeriodEnd.getTime()) > 60_000) {
+    logger.warn(
+      { eventId, paddleSubscriptionId: subData.paddleSubscriptionId, effectiveAt, currentPeriodEnd: subData.currentPeriodEnd, alert: 'billing.cancel_effective_date_mismatch' },
+      '[paddle.webhook.service] scheduled cancellation effective_at differs from the billing period end'
+    )
+  }
+
   // Grace is for customers who have actually paid before. A trial whose first charge fails never paid anything,
   // so it must not receive a 7-day premium window (REQUIRES BUSINESS CONFIRMATION — see audit report).
   let gracePeriodEnd: Date | undefined

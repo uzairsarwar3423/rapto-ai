@@ -90,6 +90,7 @@ export function BillingView() {
       fetchSubscription() as unknown as Promise<{
         status?: string;
         trialEnd?: string | null;
+        currentPeriodEnd?: string | null;
         cancelAtPeriodEnd?: boolean;
       } | null>,
     enabled: !!team,
@@ -215,10 +216,13 @@ export function BillingView() {
               >
                 {planName}
               </h2>
-              {/* Active badge — rendered the same way as integrations badges */}
-              <span className="inline-flex items-center justify-center text-[11px] font-sans font-medium uppercase tracking-[0.02em] text-muted-foreground/80 border border-muted/30 px-2 py-0.5 h-5 rounded-md select-none">
-                Active
-              </span>
+              {/* Status badge from the SERVER's subscription state: Active / Trialing / Cancelling / Past due. Free has none. */}
+              {team.plan !== "FREE" && (
+                <PlanStatusBadge
+                  status={(subscription?.status ?? "active") as any}
+                  cancelAtPeriodEnd={!!subscription?.cancelAtPeriodEnd}
+                />
+              )}
             </div>
 
             {/* Row 2: Price */}
@@ -248,7 +252,7 @@ export function BillingView() {
                 {subscription?.status === "trialing"
                   ? `Free trial ends ${formatRenewalDate(subscription?.trialEnd ?? team.usage.billingCycleEnd) ?? renewalDate}`
                   : subscription?.cancelAtPeriodEnd
-                  ? `Cancels on ${renewalDate}`
+                  ? `Cancels on ${formatRenewalDate(subscription?.currentPeriodEnd ?? team.usage.billingCycleEnd) ?? renewalDate} — you keep access until then`
                   : `Renews on ${renewalDate}`}
               </p>
             )}
