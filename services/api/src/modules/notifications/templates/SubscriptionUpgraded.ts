@@ -2,7 +2,9 @@ import { renderEmailLayout } from './shared/EmailLayout'
 import { renderEmailButton } from './shared/EmailButton'
 import { renderEmailCard } from './shared/EmailCard'
 import { renderEmailFooter } from './shared/EmailFooter'
+import { renderEmailHeading, renderEmailText, renderEmailMuted, renderEmailDetails, renderEmailList, renderEmailEyebrow, link, strong } from './shared/EmailContent'
 import { EmailColors, EmailTypography } from './shared/email-tokens'
+import { esc } from './shared/email-escape'
 
 export interface SubscriptionUpgradedProps {
   customerName?: string
@@ -59,82 +61,39 @@ export function renderSubscriptionUpgradedHtml(props: SubscriptionUpgradedProps)
     unsubscribeToken,
   } = props
 
-  const greeting = customerName ? `Hi ${customerName},` : 'Hello,'
+  const greeting = customerName ? `Hi ${strong(customerName)},` : 'Hello,'
   const normalizedNewPlan = newPlanName.toUpperCase()
   const featureList = features || DEFAULT_FEATURES[normalizedNewPlan] || DEFAULT_FEATURES.GROWTH
 
-  const cardHtml = `
-    <div style="text-align: center; padding: 4px 0 12px 0;">
-      <span style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: ${EmailColors.textMuted};">Workspace Plan Upgrade</span>
-      <div style="font-size: 22px; font-weight: 700; color: ${EmailColors.stateSuccessText}; margin-top: 4px;">
-        ${oldPlanName} &rarr; <span style="text-decoration: underline;">${newPlanName}</span>
-      </div>
-    </div>
+  const planChangeHtml =
+    renderEmailEyebrow('Workspace plan upgrade', EmailColors.stateSuccessText) +
+    `<p class="em-heading" style="margin: 0 0 12px 0; font-family: ${EmailTypography.fontFamily}; font-size: 20px; line-height: 28px; font-weight: ${EmailTypography.fontWeightSemiBold}; color: ${EmailColors.textHeadline};">${esc(oldPlanName)} &rarr; ${esc(newPlanName)}</p>` +
+    renderEmailDetails([
+      { label: 'Workspace', value: teamName, strong: true },
+      { label: 'New tier', value: `${newPlanName} (${billingInterval})`, strong: true },
+      { label: 'Billing amount', value: amountPaid, strong: true },
+      { label: 'Effective date', value: effectiveDate },
+    ])
 
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin-top: 8px;">
-      <tr>
-        <td style="padding: 8px 0; font-size: 14px; color: ${EmailColors.textMuted}; font-family: ${EmailTypography.fontFamily}; border-bottom: 1px dashed ${EmailColors.borderDivider};">Workspace</td>
-        <td align="right" style="padding: 8px 0; font-size: 14px; font-weight: 600; color: ${EmailColors.textHeadline}; font-family: ${EmailTypography.fontFamily}; border-bottom: 1px dashed ${EmailColors.borderDivider};">${teamName}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; font-size: 14px; color: ${EmailColors.textMuted}; font-family: ${EmailTypography.fontFamily}; border-bottom: 1px dashed ${EmailColors.borderDivider};">New Tier</td>
-        <td align="right" style="padding: 8px 0; font-size: 14px; font-weight: 700; color: ${EmailColors.brandPrimary}; font-family: ${EmailTypography.fontFamily}; border-bottom: 1px dashed ${EmailColors.borderDivider};">${newPlanName} (${billingInterval})</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; font-size: 14px; color: ${EmailColors.textMuted}; font-family: ${EmailTypography.fontFamily}; border-bottom: 1px dashed ${EmailColors.borderDivider};">Billing Amount</td>
-        <td align="right" style="padding: 8px 0; font-size: 15px; font-weight: 700; color: ${EmailColors.textHeadline}; font-family: ${EmailTypography.fontFamily}; border-bottom: 1px dashed ${EmailColors.borderDivider};">${amountPaid}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; font-size: 14px; color: ${EmailColors.textMuted}; font-family: ${EmailTypography.fontFamily};">Effective Date</td>
-        <td align="right" style="padding: 8px 0; font-size: 14px; color: ${EmailColors.textHeadline}; font-family: ${EmailTypography.fontFamily};">${effectiveDate}</td>
-      </tr>
-    </table>
-  `
-
-  const featureItemsHtml = featureList
-    .map(
-      (feat) => `
-    <tr style="vertical-align: top;">
-      <td style="padding: 4px 8px 4px 0; font-size: 14px; color: ${EmailColors.stateSuccessText}; font-weight: bold;">✓</td>
-      <td style="padding: 4px 0; font-size: 14px; color: ${EmailColors.textBody}; font-family: ${EmailTypography.fontFamily};">${feat}</td>
-    </tr>`
-    )
-    .join('')
-
-  const content = `
-    <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">🎉 Upgrade Confirmed!</h2>
-    <p style="margin-bottom: 16px;">${greeting}</p>
-    <p style="margin-bottom: 20px;">
-      Great news! Workspace <strong>${teamName}</strong> has been successfully upgraded to the <strong>${newPlanName}</strong> plan. All new limits and premium features are now active for your entire team.
-    </p>
-
-    ${renderEmailCard({ contentHtml: cardHtml, variant: 'success' })}
-
-    <div style="margin-top: 24px; padding: 16px; background-color: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px;">
-      <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: ${EmailColors.textHeadline};">Unlocked in ${newPlanName}:</p>
-      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-        ${featureItemsHtml}
-      </table>
-    </div>
-
-    <div style="margin-top: 28px; text-align: center;">
-      ${renderEmailButton({ href: dashboardUrl, label: 'Explore New Features', variant: 'primary' })}
-    </div>
-
-    <p style="font-size: 13px; color: ${EmailColors.textMuted}; margin-top: 28px; line-height: 1.5;">
-      Need help setting up integrations or onboarding your team? Reach out to <a href="mailto:support@rapto.cloud" style="color: ${EmailColors.brandPrimary};">support@rapto.cloud</a> and our team will assist you.
-    </p>
-  `
-
-  const footer = renderEmailFooter({
-    notificationType: 'SUBSCRIPTION_UPGRADED',
-    unsubscribeToken,
-  })
+  const content = [
+    renderEmailHeading('Upgrade Confirmed'),
+    renderEmailText(greeting),
+    renderEmailText(
+      `Workspace ${strong(teamName)} has been upgraded to the ${strong(newPlanName)} plan. All new limits and premium features are now active for your entire team.`
+    ),
+    renderEmailCard({ contentHtml: planChangeHtml, variant: 'success' }),
+    renderEmailEyebrow(`Unlocked in ${newPlanName}`),
+    renderEmailList(featureList.map((f) => esc(f)), '&#10003;', EmailColors.stateSuccessText),
+    renderEmailButton({ href: dashboardUrl, label: 'Explore New Features', variant: 'primary', align: 'left' }),
+    renderEmailMuted(
+      `Need help setting up integrations or onboarding your team? Reach out to ${link('mailto:support@rapto.cloud', 'support@rapto.cloud')} and our team will assist you.`
+    ),
+  ].join('')
 
   return renderEmailLayout({
     title: `Upgrade Confirmed: ${teamName} is now on ${newPlanName}`,
     previewText: `${teamName} has been upgraded to ${newPlanName}. New limits and features are active!`,
     childrenHtml: content,
-    footerHtml: footer,
+    footerHtml: renderEmailFooter({ notificationType: 'SUBSCRIPTION_UPGRADED', unsubscribeToken }),
   })
 }

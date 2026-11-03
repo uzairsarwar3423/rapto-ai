@@ -1,26 +1,32 @@
 /**
  * Email Design System — Token Definitions
- * Single source of truth for email styling parameters: typography, color palette, and spacing.
- * Standardized based on SaaS transactional email best practices (Linear, Stripe, Vercel, GitHub, Notion).
+ * Single source of truth for email styling: colour, typography, spacing, brand assets.
+ *
+ * Design language: premium minimalist SaaS (Vercel / Linear / Stripe): white page, zinc neutrals, hairline borders,
+ * one accent (Rapto emerald) used for the primary action and the logo dot. Colours chosen for WCAG AA contrast.
  */
 
 export const EmailColors = {
-  // Brand tokens
-  brandPrimary: '#10B981', // Rapto primary emerald green
+  // Brand
+  brandPrimary: '#10B981',  // Rapto emerald (logo dot, accents)
+  brandAction: '#047857',   // Emerald 700 — primary button background: white text = 5.5:1 (AA)
+  brandActionBorder: '#065F46',
   brandHover: '#059669',
   brandLight: '#ECFDF5',
+  brandText: '#047857',     // accent TEXT on white (links) — AA
 
   // Neutral palette
-  bgOuter: '#F4F4F5', // Light neutral outer background (Zinc 100)
-  bgCard: '#FFFFFF',  // White inner card background
-  textHeadline: '#18181B', // Dark charcoal headline (Zinc 900)
-  textBody: '#3F3F46',     // Readable neutral body text (Zinc 700)
-  textMuted: '#71717A',    // Subtitle & secondary text (Zinc 500)
-  textFooter: '#A1A1AA',   // Footer microcopy text (Zinc 400)
-  borderCard: '#E4E4E7',   // Soft card border (Zinc 200)
-  borderDivider: '#F4F4F5',// Soft horizontal divider line
+  bgOuter: '#FFFFFF',       // page background (clean white)
+  bgCard: '#FFFFFF',
+  bgSubtle: '#FAFAFA',      // information cards / stat tiles (Zinc 50)
+  textHeadline: '#18181B',  // Zinc 900
+  textBody: '#3F3F46',      // Zinc 700  (10.4:1 on white)
+  textMuted: '#71717A',     // Zinc 500  (4.8:1 on white — AA)
+  textFooter: '#71717A',
+  borderCard: '#E4E4E7',    // Zinc 200 hairline
+  borderDivider: '#EDEDEF',
 
-  // State colors (Stripe-style: communicate state, not decoration)
+  // State colours — communicate state, not decoration
   stateWarningBg: '#FFFBEB',
   stateWarningBorder: '#F59E0B',
   stateWarningText: '#92400E',
@@ -39,13 +45,17 @@ export const EmailColors = {
 } as const
 
 export const EmailTypography = {
-  fontFamily: `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`,
-  fontSizeTitle: '20px',
+  // System stack: web fonts are not reliable in Gmail/Outlook. Arial is the Outlook-desktop fallback.
+  fontFamily: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`,
+  monoFamily: `ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace`,
+  fontSizeTitle: '22px',
   fontSizeHeading: '16px',
-  fontSizeBody: '14px',
-  fontSizeSmall: '12px',
-  lineHeightTitle: '28px',
-  lineHeightBody: '22px',
+  fontSizeBody: '15px',
+  fontSizeSmall: '13px',
+  fontSizeMicro: '12px',
+  lineHeightTitle: '30px',
+  lineHeightBody: '24px',
+  lineHeightSmall: '20px',
   fontWeightRegular: '400',
   fontWeightMedium: '500',
   fontWeightSemiBold: '600',
@@ -53,11 +63,25 @@ export const EmailTypography = {
 } as const
 
 export const EmailSpacing = {
-  containerMaxWidth: '580px',
-  paddingCard: '32px 28px',
-  paddingCardMobile: '24px 16px',
+  containerMaxWidth: '600px',
+  containerWidth: 600,
+  paddingCard: '32px 0 8px 0',
+  paddingCardMobile: '24px 0 8px 0',
   paddingButton: '12px 24px',
   borderRadiusCard: '8px',
-  borderRadiusButton: '6px',
-  borderRadiusCallout: '6px',
+  borderRadiusButton: '8px',
+  borderRadiusCallout: '8px',
+} as const
+
+/**
+ * Brand image assets. They are served by the Rapto web app from /public/email (static, unauthenticated) and must be
+ * reachable over absolute HTTPS from the recipient's mail client. PNG, not SVG: Gmail and Outlook do not render SVG.
+ * Files are 3× the displayed size for high-DPI screens; the display size is fixed with width/height attributes.
+ */
+export const EmailAssets = {
+  logoPath: '/email/rapto-logo.png',            // dark wordmark, transparent — for light backgrounds
+  logoWhitePath: '/email/rapto-logo-white.png', // white wordmark, transparent — for dark mode
+  logoDisplayWidth: 96,
+  logoDisplayHeight: 39,                         // 288×116 source → 96×38.7
+  logoAlt: 'Rapto',
 } as const

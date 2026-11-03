@@ -1,8 +1,8 @@
 import { renderEmailLayout } from './shared/EmailLayout'
 import { renderEmailButton } from './shared/EmailButton'
 import { renderEmailFooter } from './shared/EmailFooter'
-import { renderEmailCard } from './shared/EmailCard'
-import { EmailColors, EmailTypography, EmailSpacing } from './shared/email-tokens'
+import { renderEmailHeading, renderEmailText, renderEmailMuted, renderEmailSteps, renderEmailEyebrow, link, strong } from './shared/EmailContent'
+import { renderEmailDivider } from './shared/EmailDivider'
 
 export interface OnboardingStep {
   step: number
@@ -57,77 +57,32 @@ export function renderOwnerWelcomeHtml(props: OwnerWelcomeProps): string {
     supportEmail = 'support@rapto.cloud',
   } = props
 
-  const checklistItemsHtml = checklist
-    .map((item) => {
-      const isCompleted = item.completed
-      const badgeBg = isCompleted ? EmailColors.stateSuccessBg : EmailColors.bgOuter
-      const badgeBorder = isCompleted ? EmailColors.stateSuccessBorder : EmailColors.borderCard
-      const badgeText = isCompleted ? EmailColors.stateSuccessText : EmailColors.brandPrimary
-
-      return `
-      <tr>
-        <td style="padding: 12px 0; border-bottom: 1px solid ${EmailColors.borderDivider};">
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td width="36" valign="top" style="padding-right: 12px;">
-                <div style="width: 28px; height: 28px; border-radius: 50%; background-color: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${badgeText}; font-weight: ${EmailTypography.fontWeightBold}; font-size: 13px; text-align: center; line-height: 28px; font-family: ${EmailTypography.fontFamily};">
-                  ${isCompleted ? '✓' : item.step}
-                </div>
-              </td>
-              <td valign="top">
-                <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: ${EmailTypography.fontWeightSemiBold}; color: ${EmailColors.textHeadline}; font-family: ${EmailTypography.fontFamily};">
-                  ${item.title}
-                </p>
-                <p style="margin: 0; font-size: 13px; color: ${EmailColors.textMuted}; line-height: 1.4; font-family: ${EmailTypography.fontFamily};">
-                  ${item.description}
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>`
-    })
-    .join('')
-
-  const cardHtml = `
-<p style="margin: 0 0 12px 0; font-size: 15px; font-weight: ${EmailTypography.fontWeightSemiBold}; color: ${EmailColors.textHeadline};">
-  🚀 Quick Setup Checklist
-</p>
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-  ${checklistItemsHtml}
-</table>`
-
-  const content = `
-<h2 class="email-headline-text" style="margin: 0 0 8px 0; font-size: 22px; font-weight: 700; color: ${EmailColors.textHeadline}; letter-spacing: -0.5px;">
-  Welcome to Rapto, ${ownerName}! 👋
-</h2>
-<p style="margin: 0 0 20px 0; font-size: 15px; color: ${EmailColors.textBody}; line-height: 1.5;">
-  Your workspace <strong>${workspaceName}</strong> is fully set up and ready to go. Rapto automatically transforms raw team meeting conversations into actionable summaries, commitments, and tracked deliverables.
-</p>
-
-${renderEmailCard({ contentHtml: cardHtml, variant: 'neutral' })}
-
-${renderEmailButton({ href: dashboardUrl, label: 'Go to Dashboard →', variant: 'primary' })}
-
-<div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid ${EmailColors.borderDivider};">
-  <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: ${EmailTypography.fontWeightMedium}; color: ${EmailColors.textHeadline};">
-    💡 Need assistance getting started?
-  </p>
-  <p style="margin: 0; font-size: 13px; color: ${EmailColors.textMuted}; line-height: 1.5;">
-    Our engineering and customer success teams are here for you. Simply reply directly to this email or reach out to <a href="mailto:${supportEmail}" style="color: ${EmailColors.brandPrimary}; text-decoration: underline;">${supportEmail}</a> anytime.
-  </p>
-</div>`
-
-  const footer = renderEmailFooter({
-    notificationType: 'OWNER_WELCOME_EMAIL',
-    unsubscribeToken,
-  })
+  const content = [
+    renderEmailHeading(`Welcome to Rapto, ${ownerName}`),
+    renderEmailText(
+      `Your workspace ${strong(workspaceName)} is set up and ready. Rapto turns raw team meeting conversations into actionable summaries, commitments, and tracked deliverables.`
+    ),
+    renderEmailEyebrow('Quick setup'),
+    renderEmailSteps(
+      checklist.map((item) => ({
+        index: item.completed ? '✓' : item.step,
+        title: item.title,
+        description: item.description,
+      }))
+    ),
+    renderEmailButton({ href: dashboardUrl, label: 'Go to Dashboard', variant: 'primary', align: 'left' }),
+    renderEmailDivider(),
+    renderEmailText(strong('Need help getting started?')),
+    renderEmailMuted(
+      `Reply directly to this email or reach out to ${link(`mailto:${supportEmail}`, supportEmail)} anytime — our team is here to help.`
+    ),
+  ].join('')
 
   return renderEmailLayout({
     title: `Welcome to Rapto - ${workspaceName} is ready!`,
     previewText: `Hi ${ownerName}, welcome to Rapto! Your workspace ${workspaceName} is ready.`,
     childrenHtml: content,
-    footerHtml: footer,
+    footerHtml: renderEmailFooter({ notificationType: 'OWNER_WELCOME_EMAIL', unsubscribeToken }),
   })
 }
 

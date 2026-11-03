@@ -1,7 +1,10 @@
 import { renderEmailLayout } from './shared/EmailLayout'
 import { renderEmailButton } from './shared/EmailButton'
 import { renderEmailFooter } from './shared/EmailFooter'
-import { EmailColors } from './shared/email-tokens'
+import { renderEmailCard } from './shared/EmailCard'
+import { renderEmailHeading, renderEmailText, renderEmailLinkFallback, strong } from './shared/EmailContent'
+import { EmailColors, EmailTypography } from './shared/email-tokens'
+import { esc } from './shared/email-escape'
 
 export interface DeadlineReminderProps {
   name: string
@@ -14,45 +17,39 @@ export function renderDeadlineReminderHtml(props: DeadlineReminderProps): string
   const { name, commitments, actionUrl, unsubscribeToken } = props
 
   const itemsHtml = commitments
-    .map(
-      (c) => `
-<li style="margin-bottom: 12px; padding: 12px 16px; background-color: ${EmailColors.bgOuter}; border-radius: 6px; list-style-type: none; border-left: 3px solid ${EmailColors.brandPrimary};">
-  <strong style="color: ${EmailColors.textHeadline};">"${c.text}"</strong><br />
-  <span style="font-size: 12px; color: ${EmailColors.textMuted};">Due date: ${new Date(c.dueDate).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })}</span>
-</li>`
-    )
+    .map((c, i) => {
+      const due = new Date(c.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      const rule = i === commitments.length - 1 ? '' : `border-bottom: 1px solid ${EmailColors.borderDivider};`
+      return `
+<tr>
+  <td class="em-row-border" style="padding: 10px 0; ${rule} font-family: ${EmailTypography.fontFamily};">
+    <p class="em-strong" style="margin: 0 0 2px 0; font-size: 14px; line-height: 20px; font-weight: ${EmailTypography.fontWeightSemiBold}; color: ${EmailColors.textHeadline};">&ldquo;${esc(c.text)}&rdquo;</p>
+    <p class="em-muted" style="margin: 0; font-size: 13px; line-height: 18px; color: ${EmailColors.textMuted};">Due date: ${esc(due)}</p>
+  </td>
+</tr>`
+    })
     .join('')
 
-  const content = `
-<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">Upcoming Commitment Deadlines</h2>
-<p>Hi ${name},</p>
-<p>This is a friendly reminder that you have <strong>${commitments.length}</strong> commitment${commitments.length === 1 ? '' : 's'} coming due today or tomorrow:</p>
-
-<ul style="padding: 0; margin: 20px 0;">
-  ${itemsHtml}
-</ul>
-
-<p>Completing your commitments on time maintains your Accountability Score and keeps your team aligned.</p>
-
-${renderEmailButton({ href: actionUrl, label: 'View My Commitments', variant: 'primary' })}
-
-<p style="font-size: 13px; color: ${EmailColors.textMuted}; margin-top: 24px;">
-  Direct link: <a href="${actionUrl}" style="color: ${EmailColors.brandPrimary}; word-break: break-all;">${actionUrl}</a>
-</p>`
-
-  const footer = renderEmailFooter({
-    notificationType: 'DEADLINE_REMINDER',
-    unsubscribeToken,
+  const listHtml = renderEmailCard({
+    variant: 'neutral',
+    contentHtml: `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">${itemsHtml}</table>`,
   })
 
+  const count = commitments.length
+  const content = [
+    renderEmailHeading('Upcoming Commitment Deadlines'),
+    renderEmailText(`Hi ${strong(name)},`),
+    renderEmailText(`This is a friendly reminder that you have ${strong(count)} commitment${count === 1 ? '' : 's'} coming due today or tomorrow:`),
+    listHtml,
+    renderEmailText('Completing your commitments on time maintains your Accountability Score and keeps your team aligned.'),
+    renderEmailButton({ href: actionUrl, label: 'View My Commitments', variant: 'primary', align: 'left' }),
+    renderEmailLinkFallback(actionUrl, 'Direct link:'),
+  ].join('')
+
   return renderEmailLayout({
-    title: `Reminder: You have ${commitments.length} commitments due soon`,
+    title: `Reminder: You have ${count} commitments due soon`,
     previewText: `Upcoming commitment deadline reminder`,
     childrenHtml: content,
-    footerHtml: footer,
+    footerHtml: renderEmailFooter({ notificationType: 'DEADLINE_REMINDER', unsubscribeToken }),
   })
 }

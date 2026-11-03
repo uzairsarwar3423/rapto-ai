@@ -2,7 +2,8 @@ import { renderEmailLayout } from './shared/EmailLayout'
 import { renderEmailButton } from './shared/EmailButton'
 import { renderEmailFooter } from './shared/EmailFooter'
 import { renderEmailCard } from './shared/EmailCard'
-import { EmailColors, EmailTypography, EmailSpacing } from './shared/email-tokens'
+import { renderEmailDivider } from './shared/EmailDivider'
+import { renderEmailHeading, renderEmailText, renderEmailMuted, renderEmailDetails, renderEmailSteps, renderEmailEyebrow, link, strong } from './shared/EmailContent'
 
 export interface TeamCapability {
   icon: string
@@ -46,7 +47,9 @@ const DEFAULT_CAPABILITIES: TeamCapability[] = [
 ]
 
 /**
- * Render HTML version of Team Member Welcome Email
+ * Render HTML version of Team Member Welcome Email.
+ * (`capabilities[].icon` remains part of the data contract and the plain-text version; the HTML design intentionally
+ * uses numbered rows instead of emoji, which render inconsistently across mail clients.)
  */
 export function renderTeamMemberWelcomeHtml(props: TeamMemberWelcomeProps): string {
   const {
@@ -60,85 +63,32 @@ export function renderTeamMemberWelcomeHtml(props: TeamMemberWelcomeProps): stri
     supportEmail = 'support@rapto.cloud',
   } = props
 
-  const capabilitiesHtml = capabilities
-    .map(
-      (cap) => `
-      <tr>
-        <td style="padding: 10px 0; border-bottom: 1px solid ${EmailColors.borderDivider};">
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td width="32" valign="top" style="padding-right: 12px; font-size: 18px;">
-                ${cap.icon}
-              </td>
-              <td valign="top">
-                <p style="margin: 0 0 2px 0; font-size: 14px; font-weight: ${EmailTypography.fontWeightSemiBold}; color: ${EmailColors.textHeadline}; font-family: ${EmailTypography.fontFamily};">
-                  ${cap.title}
-                </p>
-                <p style="margin: 0; font-size: 13px; color: ${EmailColors.textMuted}; line-height: 1.4; font-family: ${EmailTypography.fontFamily};">
-                  ${cap.description}
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>`
-    )
-    .join('')
-
-  const cardHtml = `
-<div style="margin-bottom: 12px;">
-  <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; background-color: ${EmailColors.brandLight}; color: ${EmailColors.brandHover}; font-size: 12px; font-weight: ${EmailTypography.fontWeightSemiBold};">
-    Role: ${role}
-  </span>
-</div>
-<p style="margin: 0; font-size: 14px; color: ${EmailColors.textHeadline}; font-weight: ${EmailTypography.fontWeightMedium};">
-  You’ve joined <strong>${workspaceName}</strong> workspace on Rapto!
-</p>
-<p style="margin: 4px 0 0 0; font-size: 13px; color: ${EmailColors.textMuted};">
-  Invited by <strong>${inviterName}</strong>
-</p>`
-
-  const capabilitiesCardHtml = `
-<p style="margin: 0 0 12px 0; font-size: 15px; font-weight: ${EmailTypography.fontWeightSemiBold}; color: ${EmailColors.textHeadline};">
-  What you can do in ${workspaceName}
-</p>
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-  ${capabilitiesHtml}
-</table>`
-
-  const content = `
-<h2 class="email-headline-text" style="margin: 0 0 8px 0; font-size: 22px; font-weight: 700; color: ${EmailColors.textHeadline}; letter-spacing: -0.5px;">
-  Welcome to the team, ${memberName}! 🎉
-</h2>
-<p style="margin: 0 0 20px 0; font-size: 15px; color: ${EmailColors.textBody}; line-height: 1.5;">
-  You now have full access to the <strong>${workspaceName}</strong> workspace on Rapto.
-</p>
-
-${renderEmailCard({ contentHtml: cardHtml, variant: 'neutral' })}
-
-${renderEmailCard({ contentHtml: capabilitiesCardHtml, variant: 'neutral' })}
-
-${renderEmailButton({ href: dashboardUrl, label: 'Open Dashboard →', variant: 'primary' })}
-
-<div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid ${EmailColors.borderDivider};">
-  <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: ${EmailTypography.fontWeightMedium}; color: ${EmailColors.textHeadline};">
-    Questions or need assistance?
-  </p>
-  <p style="margin: 0; font-size: 13px; color: ${EmailColors.textMuted}; line-height: 1.5;">
-    Reach out to your workspace administrator <strong>${inviterName}</strong> or contact Rapto support at <a href="mailto:${supportEmail}" style="color: ${EmailColors.brandPrimary}; text-decoration: underline;">${supportEmail}</a>.
-  </p>
-</div>`
-
-  const footer = renderEmailFooter({
-    notificationType: 'TEAM_MEMBER_WELCOME_EMAIL',
-    unsubscribeToken,
-  })
+  const content = [
+    renderEmailHeading(`Welcome to the team, ${memberName}`),
+    renderEmailText(`You now have full access to the ${strong(workspaceName)} workspace on Rapto.`),
+    renderEmailCard({
+      variant: 'neutral',
+      contentHtml: renderEmailDetails([
+        { label: 'Workspace', value: workspaceName, strong: true },
+        { label: 'Role', value: role },
+        { label: 'Invited by', value: inviterName },
+      ]),
+    }),
+    renderEmailEyebrow(`What you can do in ${workspaceName}`),
+    renderEmailSteps(capabilities.map((cap, i) => ({ index: i + 1, title: cap.title, description: cap.description }))),
+    renderEmailButton({ href: dashboardUrl, label: 'Open Dashboard', variant: 'primary', align: 'left' }),
+    renderEmailDivider(),
+    renderEmailText(strong('Questions or need assistance?')),
+    renderEmailMuted(
+      `Reach out to your workspace administrator ${strong(inviterName)} or contact Rapto support at ${link(`mailto:${supportEmail}`, supportEmail)}.`
+    ),
+  ].join('')
 
   return renderEmailLayout({
     title: `Welcome to ${workspaceName} on Rapto`,
     previewText: `Hi ${memberName}, welcome to ${workspaceName}! ${inviterName} has invited you to join the team.`,
     childrenHtml: content,
-    footerHtml: footer,
+    footerHtml: renderEmailFooter({ notificationType: 'TEAM_MEMBER_WELCOME_EMAIL', unsubscribeToken }),
   })
 }
 

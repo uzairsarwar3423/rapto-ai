@@ -1,4 +1,5 @@
-import { EmailColors, EmailTypography } from './email-tokens'
+import { EmailColors, EmailTypography, EmailSpacing } from './email-tokens'
+import { esc, safeUrl } from './email-escape'
 
 export interface EmailButtonProps {
   href: string
@@ -7,51 +8,59 @@ export interface EmailButtonProps {
   align?: 'left' | 'center' | 'full'
 }
 
+interface ButtonTheme {
+  bg: string
+  text: string
+  border: string
+}
+
+const THEMES: Record<NonNullable<EmailButtonProps['variant']>, ButtonTheme> = {
+  // primary / brand: Rapto emerald, deep enough for AA contrast with white text (5.5:1)
+  primary: { bg: EmailColors.brandAction, text: '#FFFFFF', border: EmailColors.brandActionBorder },
+  brand: { bg: EmailColors.brandAction, text: '#FFFFFF', border: EmailColors.brandActionBorder },
+  dark: { bg: '#18181B', text: '#FFFFFF', border: '#18181B' },
+  outline: { bg: '#FFFFFF', text: '#18181B', border: '#D4D4D8' },
+  danger: { bg: '#DC2626', text: '#FFFFFF', border: '#B91C1C' },
+  warning: { bg: '#F59E0B', text: '#18181B', border: '#D97706' },
+}
+
 /**
- * Production-grade Bulletproof Email CTA Button (Vercel / Resend / Stripe level design).
+ * Bulletproof CTA button.
  *
- * FIXES CRITICAL BUG: Does NOT wrap non-Outlook HTML in `<!--[if !mso]><!-->` conditional
- * comments which were causing Brevo/Gmail HTML sanitizers to strip the button completely.
+ * Why this shape: the colour, border and PADDING live on the <td> (Outlook's Word engine ignores padding and
+ * background on <a>), the <a> fills the cell with its own padding for every other client, and the background is set
+ * three ways (bgcolor attribute, inline background-color, border) so it survives style stripping and forced
+ * dark-mode inversion. Text colour is set on the <a> AND an inner <span> so link-colour overrides (Gmail iOS, Apple
+ * Data Detectors) cannot recolour it. No box-shadow, no flexbox, no external CSS, no conditional-comment wrapper
+ * (an earlier version wrapped the button in `<!--[if !mso]>` and Brevo's sanitizer removed it entirely).
  *
- * Uses inline-block anchor inside a presentation table with mso-padding fallback.
- * Works natively in 100% of email clients (Gmail, Apple Mail, Outlook, Yahoo, Brevo).
+ * Outlook desktop renders the same solid rectangle; only the rounded corners degrade to square (VML would be needed
+ * for those and was deliberately not used — it requires conditional comments around the button, which previously
+ * caused the sanitizer problem).
  */
 export function renderEmailButton(props: EmailButtonProps): string {
   const { href, label, variant = 'brand', align = 'center' } = props
+  const t = THEMES[variant] ?? THEMES.brand
+  const url = safeUrl(href)
+  const text = esc(label)
+  const radius = EmailSpacing.borderRadiusButton
+  const full = align === 'full'
+  const cellAlign = align === 'left' ? 'left' : 'center'
+  const font = EmailTypography.fontFamily
 
-  let bgColor = '#10B981'
-  let textColor = '#FFFFFF'
-  let borderColor = '#059669'
-
-  if (variant === 'dark') {
-    bgColor = '#090D16'
-    textColor = '#FFFFFF'
-    borderColor = '#1F2937'
-  } else if (variant === 'outline') {
-    bgColor = '#FFFFFF'
-    textColor = '#18181B'
-    borderColor = '#E4E4E7'
-  } else if (variant === 'danger') {
-    bgColor = '#EF4444'
-    textColor = '#FFFFFF'
-    borderColor = '#DC2626'
-  } else if (variant === 'warning') {
-    bgColor = '#F59E0B'
-    textColor = '#18181B'
-    borderColor = '#D97706'
-  }
-
-  const tableAlign = align === 'left' ? 'left' : align === 'full' ? 'center' : 'center'
-  const widthAttr = align === 'full' ? 'width="100%"' : ''
-  const displayStyle = align === 'full' ? 'display: block; text-align: center;' : 'display: inline-block;'
-
+  // An outer full-width table + aligned cell positions the button WITHOUT `align` on the button table itself:
+  // `<table align="left">` floats, and the following paragraphs would wrap beside the button.
   return `
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" ${widthAttr} style="margin: 28px 0; border-collapse: separate; width: ${align === 'full' ? '100%' : 'auto'};">
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
   <tr>
-    <td align="${tableAlign}" style="border-radius: 8px; background-color: ${bgColor};">
-      <a href="${href}" target="_blank" class="email-btn-cta" style="background-color: ${bgColor}; color: ${textColor}; border: 1px solid ${borderColor}; border-radius: 8px; font-family: ${EmailTypography.fontFamily}; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; ${displayStyle} letter-spacing: -0.2px; line-height: 1.4; -webkit-text-size-adjust: none; box-shadow: 0 4px 14px rgba(16,185,129,0.3); text-align: center;">
-        ${label}
-      </a>
+    <td align="${cellAlign}" style="padding: 12px 0 16px 0;">
+      <table role="presentation" class="em-btn-table" border="0" cellpadding="0" cellspacing="0" ${full ? 'width="100%"' : ''} style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; ${full ? 'width: 100%;' : ''}">
+        <tr>
+          <td align="center" bgcolor="${t.bg}" class="em-btn-cell" style="background-color: ${t.bg}; border: 1px solid ${t.border}; border-radius: ${radius}; mso-padding-alt: 12px 28px;">
+            <a href="${url}" target="_blank" class="em-btn-link" style="display: inline-block; padding: 12px 28px; font-family: ${font}; font-size: 15px; line-height: 20px; font-weight: 600; color: ${t.text}; text-decoration: none; border-radius: ${radius}; mso-line-height-rule: exactly; -webkit-text-size-adjust: none; text-align: center;"><span class="em-btn-text" style="color: ${t.text}; text-decoration: none;">${text}</span></a>
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>`

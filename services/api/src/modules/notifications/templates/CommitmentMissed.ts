@@ -2,7 +2,9 @@ import { renderEmailLayout } from './shared/EmailLayout'
 import { renderEmailButton } from './shared/EmailButton'
 import { renderEmailCard } from './shared/EmailCard'
 import { renderEmailFooter } from './shared/EmailFooter'
-import { EmailColors } from './shared/email-tokens'
+import { renderEmailHeading, renderEmailText, renderEmailLinkFallback, renderEmailBadge, strong } from './shared/EmailContent'
+import { EmailColors, EmailTypography } from './shared/email-tokens'
+import { esc } from './shared/email-escape'
 
 export interface CommitmentMissedProps {
   name: string
@@ -14,41 +16,27 @@ export interface CommitmentMissedProps {
 
 export function renderCommitmentMissedHtml(props: CommitmentMissedProps): string {
   const { name, commitmentText, dueDate, actionUrl, unsubscribeToken } = props
-  const dueStr = new Date(dueDate).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const dueStr = new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
-  const cardHtml = `
-<p style="margin: 0; font-weight: 600; color: ${EmailColors.stateWarningText};">⚠️ Overdue Commitment</p>
-<p style="margin: 8px 0 0 0; font-weight: 600; color: ${EmailColors.textHeadline}; font-size: 15px;">"${commitmentText}"</p>
-<p style="margin: 4px 0 0 0; font-size: 12px; color: ${EmailColors.stateWarningText};">Was due on: ${dueStr}</p>`
+  const cardHtml =
+    `<p style="margin: 0 0 10px 0;">${renderEmailBadge('Overdue', 'warning')}</p>` +
+    `<p class="em-strong" style="margin: 0 0 6px 0; font-family: ${EmailTypography.fontFamily}; font-size: 15px; line-height: 22px; font-weight: ${EmailTypography.fontWeightSemiBold}; color: ${EmailColors.textHeadline};">&ldquo;${esc(commitmentText)}&rdquo;</p>` +
+    `<p style="margin: 0; font-family: ${EmailTypography.fontFamily}; font-size: 13px; line-height: 18px; color: ${EmailColors.stateWarningText};">Was due on ${esc(dueStr)}</p>`
 
-  const content = `
-<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: ${EmailColors.textHeadline};">Commitment Overdue Alert</h2>
-<p>Hi ${name},</p>
-<p>You missed the scheduled deadline for the following commitment:</p>
-
-${renderEmailCard({ contentHtml: cardHtml, variant: 'warning' })}
-
-<p>Updating your commitment status or requesting a deadline adjustment keeps your workspace team up to date.</p>
-
-${renderEmailButton({ href: actionUrl, label: 'Resolve Commitment', variant: 'warning' })}
-
-<p style="font-size: 13px; color: ${EmailColors.textMuted}; margin-top: 24px;">
-  Direct link: <a href="${actionUrl}" style="color: ${EmailColors.brandPrimary}; word-break: break-all;">${actionUrl}</a>
-</p>`
-
-  const footer = renderEmailFooter({
-    notificationType: 'COMMITMENT_MISSED',
-    unsubscribeToken,
-  })
+  const content = [
+    renderEmailHeading('Commitment Overdue Alert'),
+    renderEmailText(`Hi ${strong(name)},`),
+    renderEmailText('You missed the scheduled deadline for the following commitment:'),
+    renderEmailCard({ contentHtml: cardHtml, variant: 'warning' }),
+    renderEmailText('Updating your commitment status or requesting a deadline adjustment keeps your workspace team up to date.'),
+    renderEmailButton({ href: actionUrl, label: 'Resolve Commitment', variant: 'primary', align: 'left' }),
+    renderEmailLinkFallback(actionUrl, 'Direct link:'),
+  ].join('')
 
   return renderEmailLayout({
     title: `⚠️ Commitment Overdue: Action required`,
     previewText: `Commitment "${commitmentText}" is past its due date`,
     childrenHtml: content,
-    footerHtml: footer,
+    footerHtml: renderEmailFooter({ notificationType: 'COMMITMENT_MISSED', unsubscribeToken }),
   })
 }

@@ -1,5 +1,6 @@
 import { EmailColors, EmailTypography, EmailSpacing } from './email-tokens'
-import { getFrontendUrl } from '../../email.service'
+import { renderEmailBrandLogo } from './EmailBrandLogo'
+import { esc } from './email-escape'
 
 export interface EmailLayoutProps {
   title: string
@@ -9,159 +10,132 @@ export interface EmailLayoutProps {
 }
 
 /**
- * Outer wrapper for all Rapto transactional emails.
- * Table-based 580px responsive layout with full Dark Mode support and email client compatibility.
+ * Outer wrapper for every Rapto transactional email.
+ *
+ * Engineered for real mail clients, not browsers:
+ *  • Table layout. The page background is set on a full-width table (bgcolor attribute + inline style) because Outlook
+ *    ignores <body> padding/background. Centering and the 600px cap use align="center" + max-width, with an
+ *    Outlook-only "ghost table" so the 600px width is honoured by the Word engine.
+ *  • Every critical style is inline. The <style> block only adds progressive enhancement: dark mode
+ *    (prefers-color-scheme, plus Outlook.com's [data-ogsc]/[data-ogsb]) and mobile tweaks.
+ *  • Explicit background colours everywhere so forced dark-mode inversion keeps the intended contrast.
+ *  • Hidden preheader text for inbox previews. Title and preview text are escaped.
  */
 export function renderEmailLayout(props: EmailLayoutProps): string {
   const { title, previewText, childrenHtml, footerHtml } = props
+  const font = EmailTypography.fontFamily
+  const width = EmailSpacing.containerWidth
 
   return `<!DOCTYPE html>
-<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
+  <meta name="x-apple-disable-message-reformatting" />
   <meta name="color-scheme" content="light dark" />
   <meta name="supported-color-schemes" content="light dark" />
-  <title>${title}</title>
-  ${previewText ? `<meta name="description" content="${previewText}" />` : ''}
+  <title>${esc(title)}</title>
   <!--[if mso]>
   <noscript>
     <xml>
       <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
         <o:PixelsPerInch>96</o:PixelsPerInch>
       </o:OfficeDocumentSettings>
     </xml>
   </noscript>
   <![endif]-->
   <style>
-    :root {
-      color-scheme: light dark;
-      supported-color-schemes: light dark;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100% !important;
-      background-color: ${EmailColors.bgOuter};
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
-    }
-    table, td {
-      mso-table-lspace: 0pt;
-      mso-table-rspace: 0pt;
-    }
-    img {
-      border: 0;
-      height: auto;
-      line-height: 100%;
-      outline: none;
-      text-decoration: none;
-      -ms-interpolation-mode: bicubic;
-    }
-    p { margin: 0 0 16px 0; }
-    a { color: ${EmailColors.brandPrimary}; text-decoration: none; }
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+    a { text-decoration: none; }
+    a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
+    u + #body a { color: inherit; text-decoration: none; font-size: inherit; font-family: inherit; font-weight: inherit; line-height: inherit; }
 
-    .email-btn-cta:hover {
-      opacity: 0.92 !important;
+    /* ── Mobile ── */
+    @media only screen and (max-width: 620px) {
+      .em-pad { padding: 24px 20px !important; }
+      .em-container { width: 100% !important; max-width: 100% !important; }
+      .em-btn-table { width: 100% !important; }
+      .em-btn-link { display: block !important; padding: 14px 20px !important; }
+      .em-stack { display: block !important; width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; padding-bottom: 12px !important; }
     }
 
-    /* Dark Mode Media Query overrides */
+    /* ── Dark mode (Apple Mail, iOS Mail, Outlook.com, Outlook apps). Gmail applies its own inversion. ── */
     @media (prefers-color-scheme: dark) {
-      body, .email-outer-bg {
-        background-color: #0B0F19 !important;
-      }
-      .email-card-bg {
-        background-color: #111827 !important;
-        border-color: #1F2937 !important;
-      }
-      .email-header-border {
-        border-bottom-color: #1F2937 !important;
-      }
-      .email-headline-text {
-        color: #F9FAFB !important;
-      }
-      .email-body-text {
-        color: #D1D5DB !important;
-      }
-      .email-muted-text {
-        color: #9CA3AF !important;
-      }
-      .email-inner-card {
-        background-color: #1F2937 !important;
-        border-color: #374151 !important;
-      }
-      .email-btn-cta {
-        background-color: #10B981 !important;
-        color: #FFFFFF !important;
-        border-color: #059669 !important;
-        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4) !important;
-      }
+      body, .em-bg { background-color: #09090B !important; }
+      .em-heading, .em-strong { color: #FAFAFA !important; }
+      .em-text { color: #D4D4D8 !important; }
+      .em-muted { color: #A1A1AA !important; }
+      .em-link { color: #34D399 !important; }
+      .em-card { background-color: #18181B !important; border-color: #27272A !important; }
+      .em-card-warning { background-color: #1F1A0E !important; border-color: #3F2F0B !important; }
+      .em-card-danger { background-color: #1F1214 !important; border-color: #451A1D !important; }
+      .em-card-success { background-color: #0E1F18 !important; border-color: #14412F !important; }
+      .em-border-bg { background-color: #27272A !important; }
+      .em-row-border { border-color: #27272A !important; }
+      .em-logo-light { display: none !important; max-height: 0 !important; overflow: hidden !important; }
+      .em-logo-dark { display: block !important; max-height: none !important; overflow: visible !important; }
     }
-
-    /* Mobile responsiveness */
-    @media only screen and (max-width: 600px) {
-      .email-card-padding {
-        padding: 24px 16px !important;
-      }
-      .email-container {
-        width: 100% !important;
-      }
-      .email-btn-cta {
-        display: block !important;
-        width: 100% !important;
-        text-align: center !important;
-        box-sizing: border-box !important;
-      }
-    }
+    /* Outlook.com dark mode */
+    [data-ogsb] .em-bg { background-color: #09090B !important; }
+    [data-ogsc] .em-heading, [data-ogsc] .em-strong { color: #FAFAFA !important; }
+    [data-ogsc] .em-text { color: #D4D4D8 !important; }
+    [data-ogsc] .em-muted { color: #A1A1AA !important; }
+    [data-ogsc] .em-link { color: #34D399 !important; }
+    [data-ogsb] .em-card { background-color: #18181B !important; }
+    [data-ogsb] .em-border-bg { background-color: #27272A !important; }
   </style>
 </head>
-<body class="email-outer-bg" style="background-color: ${EmailColors.bgOuter}; margin: 0; padding: 32px 12px; font-family: ${EmailTypography.fontFamily}; color: ${EmailColors.textBody};">
-  ${previewText ? `<div style="display: none; max-height: 0px; overflow: hidden; opacity: 0; mso-hide: all;">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : ''}
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+<body id="body" class="em-bg" bgcolor="${EmailColors.bgOuter}" style="margin: 0; padding: 0; background-color: ${EmailColors.bgOuter}; font-family: ${font}; color: ${EmailColors.textBody};">
+  ${
+    previewText
+      ? `<div style="display: none; font-size: 1px; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all;">${esc(previewText)}${'&nbsp;&zwnj;'.repeat(40)}</div>`
+      : ''
+  }
+  <table role="presentation" class="em-bg" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="${EmailColors.bgOuter}" style="background-color: ${EmailColors.bgOuter};">
     <tr>
-      <td align="center">
-        <!-- Main Container Card -->
-        <table role="presentation" class="email-container email-card-bg" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: ${EmailSpacing.containerMaxWidth}; background-color: ${EmailColors.bgCard}; border: 1px solid ${EmailColors.borderCard}; border-radius: ${EmailSpacing.borderRadiusCard}; border-collapse: separate; overflow: hidden;">
-          
-          <!-- Header Bar with Brand Wordmark -->
+      <td align="center" class="em-pad" style="padding: 40px 16px;">
+        <!--[if mso]><table role="presentation" border="0" cellpadding="0" cellspacing="0" width="${width}" align="center"><tr><td><![endif]-->
+        <table role="presentation" class="em-container" border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%; max-width: ${EmailSpacing.containerMaxWidth}; margin: 0 auto;">
+
+          <!-- Header: logo -->
           <tr>
-            <td class="email-header-border" style="padding: 24px 32px 16px 32px; border-bottom: 1px solid ${EmailColors.borderDivider};">
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td>
-                    <a href="${getFrontendUrl()}" target="_blank" style="text-decoration: none;">
-                      <span class="email-headline-text" style="font-size: 22px; font-weight: ${EmailTypography.fontWeightBold}; color: ${EmailColors.textHeadline}; letter-spacing: -0.5px; font-family: ${EmailTypography.fontFamily}; display: inline-block;">
-                        Rapt<span style="position: relative; display: inline-block;">o<span style="position: absolute; top: 3px; right: -5px; width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px rgba(34,197,94,0.8);"></span></span>
-                      </span>
-                    </a>
-                  </td>
-                </tr>
-              </table>
+            <td align="left" style="padding: 0 0 20px 0;">
+              ${renderEmailBrandLogo()}
             </td>
           </tr>
-
-          <!-- Main Body Content -->
           <tr>
-            <td class="email-card-padding email-body-text" style="padding: ${EmailSpacing.paddingCard}; font-size: ${EmailTypography.fontSizeBody}; line-height: ${EmailTypography.lineHeightBody}; color: ${EmailColors.textBody}; font-family: ${EmailTypography.fontFamily};">
+            <td height="1" bgcolor="${EmailColors.borderCard}" class="em-border-bg" style="height: 1px; line-height: 1px; font-size: 1px; mso-line-height-rule: exactly; background-color: ${EmailColors.borderCard};">&nbsp;</td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td class="em-text" align="left" style="padding: ${EmailSpacing.paddingCard}; font-family: ${font}; font-size: ${EmailTypography.fontSizeBody}; line-height: ${EmailTypography.lineHeightBody}; color: ${EmailColors.textBody};">
               ${childrenHtml}
             </td>
           </tr>
-
-          <!-- Optional Footer Inside Card -->
-          ${footerHtml ? `
+          ${
+            footerHtml
+              ? `
+          <!-- Footer -->
           <tr>
-            <td style="padding: 0 32px 24px 32px; font-family: ${EmailTypography.fontFamily};">
+            <td align="left" style="padding: 16px 0 0 0; font-family: ${font};">
               ${footerHtml}
             </td>
-          </tr>
-          ` : ''}
-
+          </tr>`
+              : ''
+          }
         </table>
+        <!--[if mso]></td></tr></table><![endif]-->
       </td>
     </tr>
   </table>
 </body>
 </html>`
 }
-

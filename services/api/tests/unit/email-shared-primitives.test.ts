@@ -32,7 +32,9 @@ describe('Email Shared Primitives', () => {
 
       expect(html).toContain('href="https://app.rapto.cloud/action"')
       expect(html).toContain('Click Me')
-      expect(html).toContain('background-color: #10B981')
+      // solid brand background on the <td> (bgcolor attr + inline style) — AA contrast with white text
+      expect(html).toContain('bgcolor="#047857"')
+      expect(html).toContain('background-color: #047857')
     })
 
     it('renders warning variant button', () => {
@@ -44,6 +46,7 @@ describe('Email Shared Primitives', () => {
 
       expect(html).toContain('Fix Issue')
       expect(html).toContain('background-color: #F59E0B')
+      expect(html).toContain('bgcolor="#F59E0B"')
     })
   })
 
@@ -55,14 +58,16 @@ describe('Email Shared Primitives', () => {
       })
 
       expect(html).toContain('Important Notice')
-      expect(html).toContain('border-left: 4px solid #F59E0B')
+      expect(html).toContain('border-left: 3px solid #F59E0B')
     })
   })
 
   describe('EmailDivider', () => {
     it('renders muted horizontal rule', () => {
       const html = renderEmailDivider()
-      expect(html).toContain('<hr')
+      // table-based hairline (an <hr> renders inconsistently in Outlook/Gmail)
+      expect(html).not.toContain('<hr')
+      expect(html).toContain('height="1"')
       expect(html).toContain('margin: 24px 0')
     })
   })
