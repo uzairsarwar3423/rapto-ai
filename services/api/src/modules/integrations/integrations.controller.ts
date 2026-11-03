@@ -514,6 +514,13 @@ export const calendarCallbackController = async (req: Request, res: Response, ne
         
         await integrationsService.completeCalendarConnect(userId, providerName, code)
         
+        try {
+            const { calendarSyncQueue } = await import('../../queues/queue.client')
+            await calendarSyncQueue.add('sync-user-calendar', { userId })
+        } catch (queueErr: any) {
+            logger.warn({ userId, err: queueErr?.message }, 'Failed to enqueue initial calendar sync job')
+        }
+
         const redirectUrl = context === 'onboarding'
             ? `${frontendUrl}/onboarding/connect-calendar?connected=true`
             : `${frontendUrl}/settings/integrations?connected=${providerName}`

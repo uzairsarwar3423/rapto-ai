@@ -1091,6 +1091,16 @@ export const authService = {
       const refreshTokenEnc = refresh_token ? encrypt(refresh_token) : null
       const tokenExpiresAt = new Date(Date.now() + (expires_in || 3600) * 1000)
 
+      // Disable other calendar providers to enforce single-active calendar provider rule
+      await prisma.userIntegration.updateMany({
+        where: {
+          userId,
+          provider: { not: 'GOOGLE_CALENDAR' },
+          syncEnabled: true,
+        },
+        data: { syncEnabled: false },
+      })
+
       // Store / Update user integration in database
       await prisma.userIntegration.upsert({
         where: {
@@ -1117,6 +1127,14 @@ export const authService = {
           lastError: null,
         },
       })
+
+      // Trigger immediate initial calendar sync
+      try {
+        const { calendarSyncQueue } = await import('../../queues/queue.client')
+        await calendarSyncQueue.add('sync-user-calendar', { userId })
+      } catch (queueErr: any) {
+        logger.warn({ userId, err: queueErr?.message }, 'Failed to enqueue initial calendar sync job')
+      }
 
       const redirectUrl = context === 'onboarding'
         ? `${frontendUrl}/onboarding/connect-calendar?connected=true`

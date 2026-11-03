@@ -132,7 +132,7 @@ class Settings(BaseSettings):
                 )
 
             or_key_val = self.openai_api_key.get_secret_value().lower()
-            if or_key_val in known_bad or or_key_val.startswith("your-") or or_key_val.startswith("sk-proj"):
+            if or_key_val in known_bad or or_key_val.startswith("your-") or or_key_val.startswith("sk-proj-your"):
                 raise ValueError(
                     "OPENAI_API_KEY in production must be a real API key, not a placeholder"
                 )

@@ -66,7 +66,7 @@ export function SettingsSidebar() {
               return (
                 <span
                   key={item.href}
-                  className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-sans text-muted-foreground/40 bg-muted/20 cursor-default shrink-0"
+                  className="flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-sans text-muted-foreground/40 cursor-default shrink-0"
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0 opacity-50" />
                   <span>{item.label}</span>
@@ -84,13 +84,18 @@ export function SettingsSidebar() {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-all duration-150',
+                  'flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs whitespace-nowrap shrink-0 transition-all duration-150',
                   active
-                    ? 'bg-foreground text-background font-semibold shadow-xs'
-                    : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40'
+                    ? 'font-medium bg-surface-hover text-foreground'
+                    : 'font-normal text-muted-foreground hover:bg-surface-hover/80 hover:text-foreground'
                 )}
               >
-                <Icon className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-background' : 'text-muted-foreground')} />
+                <Icon
+                  className={cn(
+                    'h-3.5 w-3.5 shrink-0 transition-colors duration-150',
+                    active ? 'text-foreground/80' : 'text-muted-foreground/70'
+                  )}
+                />
                 <span>{item.label}</span>
               </Link>
             );
@@ -117,9 +122,9 @@ export function SettingsSidebar() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="flex items-center justify-between h-8 px-2 rounded-lg text-[13px] font-sans text-muted-foreground/50 cursor-default">
-                          <span className="flex items-center gap-2">
-                            <Icon className="h-3.5 w-3.5 shrink-0 opacity-50" />
+                        <span className="flex items-center justify-between h-8.5 px-2.5 rounded-lg text-[13px] font-sans text-muted-foreground/40 cursor-default">
+                          <span className="flex items-center gap-2.5">
+                            <Icon className="h-4 w-4 shrink-0 opacity-50" />
                             <span>{item.label}</span>
                           </span>
                           <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 normal-case font-normal select-none">
@@ -144,14 +149,14 @@ export function SettingsSidebar() {
                   className={cn(
                     'group flex items-center gap-2.5 h-8.5 px-2.5 rounded-lg text-[13px] font-sans transition-all duration-150',
                     active
-                      ? 'font-medium bg-muted text-foreground shadow-2xs'
-                      : 'font-normal text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      ? 'font-medium bg-surface-hover text-foreground'
+                      : 'font-normal text-muted-foreground hover:bg-surface-hover/80 hover:text-foreground'
                   )}
                 >
                   <Icon
                     className={cn(
-                      'h-4 w-4 shrink-0 transition-colors',
-                      active ? 'text-foreground' : 'text-muted-foreground/70 group-hover:text-foreground'
+                      'h-4 w-4 shrink-0 transition-colors duration-150',
+                      active ? 'text-foreground/80' : 'text-muted-foreground/70 group-hover:text-foreground'
                     )}
                   />
                   <span>{item.label}</span>

@@ -121,10 +121,19 @@ export class GoogleCalendarProvider implements CalendarProvider {
     }
 
     public async exchangeCodeForTokens(code: string): Promise<OAuthTokenResult> {
+        const clientId = this.config.clientId
+        const clientSecret = this.config.clientSecret
+        if (!clientId || !clientSecret) {
+            throw new IntegrationError(
+                'GOOGLE_CALENDAR',
+                'Google OAuth credentials (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) are missing in environment'
+            )
+        }
+
         try {
             const params = new URLSearchParams({
-                client_id: this.config.clientId,
-                client_secret: this.config.clientSecret,
+                client_id: clientId,
+                client_secret: clientSecret,
                 code,
                 grant_type: 'authorization_code',
                 redirect_uri: this.config.redirectUri,
@@ -144,16 +153,30 @@ export class GoogleCalendarProvider implements CalendarProvider {
                 expiresAt: new Date(Date.now() + response.data.expires_in * 1000)
             }
         } catch (error: any) {
+            if (error instanceof IntegrationError) throw error
             this.handleOAuthError(error, 'AUTH_CODE_INVALID')
-            throw new IntegrationError('GOOGLE_CALENDAR', 'Failed to exchange code')
+            throw new IntegrationError('GOOGLE_CALENDAR', 'Failed to exchange code: ' + (error.message || 'unknown error'))
         }
     }
 
     public async refreshAccessToken(refreshToken: string): Promise<OAuthTokenResult> {
+        if (!refreshToken) {
+            throw new IntegrationError('GOOGLE_CALENDAR', 'Refresh token is missing or empty')
+        }
+
+        const clientId = this.config.clientId
+        const clientSecret = this.config.clientSecret
+        if (!clientId || !clientSecret) {
+            throw new IntegrationError(
+                'GOOGLE_CALENDAR',
+                'Google OAuth credentials (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) are missing in environment'
+            )
+        }
+
         try {
             const params = new URLSearchParams({
-                client_id: this.config.clientId,
-                client_secret: this.config.clientSecret,
+                client_id: clientId,
+                client_secret: clientSecret,
                 refresh_token: refreshToken,
                 grant_type: 'refresh_token',
             })
@@ -172,11 +195,16 @@ export class GoogleCalendarProvider implements CalendarProvider {
                 expiresAt: new Date(Date.now() + response.data.expires_in * 1000)
             }
         } catch (error: any) {
+            if (error instanceof IntegrationError) throw error
             if (error.response?.status === 400 && error.response?.data?.error === 'invalid_grant') {
-                throw new IntegrationError('GOOGLE_CALENDAR', 'GOOGLE_REFRESH_TOKEN_REVOKED')
+                const desc = error.response?.data?.error_description
+                throw new IntegrationError(
+                    'GOOGLE_CALENDAR',
+                    desc ? `GOOGLE_REFRESH_TOKEN_REVOKED (${desc})` : 'GOOGLE_REFRESH_TOKEN_REVOKED'
+                )
             }
             this.handleOAuthError(error, 'TOKEN_REFRESH_FAILED')
-            throw new IntegrationError('GOOGLE_CALENDAR', 'Failed to refresh token')
+            throw new IntegrationError('GOOGLE_CALENDAR', 'Failed to refresh token: ' + (error.message || 'unknown error'))
         }
     }
 
@@ -257,10 +285,16 @@ export class GoogleCalendarProvider implements CalendarProvider {
     }
 
     private handleOAuthError(error: any, fallbackErrorCode: string) {
-        if (error.response?.status === 400 && error.response?.data?.error === 'invalid_grant') {
-            throw new IntegrationError('GOOGLE_CALENDAR', 'GOOGLE_AUTH_CODE_INVALID')
+        if (error instanceof IntegrationError) throw error
+        const errorData = error.response?.data
+        const errorDescription = errorData?.error_description || error.message || ''
+        const errorCode = errorData?.error || fallbackErrorCode
+        const detailedMessage = errorDescription ? `${errorCode} (${errorDescription})` : errorCode
+
+        if (error.response?.status === 400 && errorCode === 'invalid_grant') {
+            throw new IntegrationError('GOOGLE_CALENDAR', `GOOGLE_AUTH_CODE_INVALID: ${detailedMessage}`)
         }
-        throw new IntegrationError('GOOGLE_CALENDAR', error.response?.data?.error || fallbackErrorCode)
+        throw new IntegrationError('GOOGLE_CALENDAR', detailedMessage)
     }
 
     private handleApiError(error: any) {

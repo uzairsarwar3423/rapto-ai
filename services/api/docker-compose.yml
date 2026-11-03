@@ -1,22 +1,27 @@
-version: '3.8'
-
 services:
   api:
+    build: .
     image: rapto-ai:latest
-    container_name: rapto-api
-    network_mode: "host"
+    ports:
+      - "${PORT:-5000}:5000"
     env_file:
       - .env
     restart: unless-stopped
-    # The default command in Dockerfile is "npm start", but we define it here for clarity
-    command: ["npm", "start"]
+    command: ["node", "dist/server.js"]
+    networks:
+      - app-network
 
   worker:
+    build: .
     image: rapto-ai:latest
-    container_name: rapto-worker
-    network_mode: "host"
     env_file:
       - .env
     restart: unless-stopped
-    # Override the default command to run the worker instead
-    command: ["npm", "run", "start:worker"]
+    command: ["node", "dist/worker.js"]
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    name: rapto-app-network
+    external: true

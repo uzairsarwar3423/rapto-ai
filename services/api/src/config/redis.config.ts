@@ -48,7 +48,7 @@ function resolveRedisOptions(): RedisConnectionOptions {
 
   // ── Priority 1: REDIS_HOST explicitly set ───────────────────────────────────
   const envHost = process.env.REDIS_HOST
-  if (envHost && !isLocalhost(envHost)) {
+  if (envHost) {
     return {
       host: envHost,
       port: parseInt(process.env.REDIS_PORT ?? '6379', 10),

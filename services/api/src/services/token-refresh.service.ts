@@ -10,6 +10,7 @@
  */
 
 import { prisma } from '../db/client'
+import { redis } from '../config/redis'
 import { encrypt, decrypt } from '../utils/crypto'
 import { addSeconds } from 'date-fns'
 import { getProvider } from '../modules/integrations/providers/provider.registry'
@@ -123,7 +124,7 @@ export async function getValidAccessToken(
     const expiresAt = integration.tokenExpiresAt
 
     // Proactive refresh if token expires within 30 minutes (or has no known expiry)
-    const needsRefresh = expiresAt && expiresAt.getTime() - now.getTime() < 30 * 60 * 1000
+    const needsRefresh = !expiresAt || (expiresAt.getTime() - now.getTime() < 30 * 60 * 1000)
 
     if (!needsRefresh) {
         return decrypt(integration.accessTokenEnc)
@@ -139,40 +140,64 @@ export async function getValidAccessToken(
 
     const provider = integration.provider
 
-    // ─── Calendar Integrations (user-level or team-level) ────────────────────────
-    const calendarProviders = ['GOOGLE_CALENDAR', 'OUTLOOK_CALENDAR']
-    if (calendarProviders.includes(provider)) {
-        const { calendarProviderRegistry } = await import('../modules/integrations/providers/calendar-provider.registry')
-        const providerClient = calendarProviderRegistry.getProvider(provider as any)
-
-        const plainRefreshToken = decrypt(integration.refreshTokenEnc)
-        const refreshResult = await providerClient.refreshAccessToken(plainRefreshToken)
-        const newAccessTokenEnc = encrypt(refreshResult.accessToken)
-
-        const updateData: any = {
-            accessTokenEnc: newAccessTokenEnc,
-            tokenExpiresAt: refreshResult.expiresAt ?? null,
-            consecutiveErrors: 0,
-            lastError: null,
+    // Distributed lock to prevent concurrent workers from performing parallel refreshes
+    const lockKey = `lock:token-refresh:${provider}:${integration.id}`
+    let hasLock = false
+    try {
+        if (redis.status === 'ready') {
+            const acquired = await redis.set(lockKey, '1', 'EX', 15, 'NX')
+            if (acquired) {
+                hasLock = true
+            } else {
+                // Another worker is currently refreshing this token; wait briefly and return updated token
+                await new Promise((resolve) => setTimeout(resolve, 1500))
+                const refreshed = isTeamLevel
+                    ? await prisma.teamIntegration.findUnique({ where: { id: integration.id } })
+                    : await prisma.userIntegration.findUnique({ where: { id: integration.id } })
+                if (refreshed?.accessTokenEnc) {
+                    return decrypt(refreshed.accessTokenEnc)
+                }
+            }
         }
-        if (refreshResult.refreshToken) {
-            updateData.refreshTokenEnc = encrypt(refreshResult.refreshToken)
-        }
-
-        if (isTeamLevel) {
-            await prisma.teamIntegration.update({
-                where: { id: integration.id },
-                data: updateData,
-            })
-        } else {
-            await prisma.userIntegration.update({
-                where: { id: integration.id },
-                data: updateData,
-            })
-        }
-
-        return refreshResult.accessToken
+    } catch (redisErr) {
+        logger.warn({ err: (redisErr as any)?.message }, 'token-refresh: Redis lock unavailable, continuing with refresh')
     }
+
+    try {
+        // ─── Calendar Integrations (user-level or team-level) ────────────────────────
+        const calendarProviders = ['GOOGLE_CALENDAR', 'OUTLOOK_CALENDAR']
+        if (calendarProviders.includes(provider)) {
+            const { calendarProviderRegistry } = await import('../modules/integrations/providers/calendar-provider.registry')
+            const providerClient = calendarProviderRegistry.getProvider(provider as any)
+
+            const plainRefreshToken = decrypt(integration.refreshTokenEnc)
+            const refreshResult = await providerClient.refreshAccessToken(plainRefreshToken)
+            const newAccessTokenEnc = encrypt(refreshResult.accessToken)
+
+            const updateData: any = {
+                accessTokenEnc: newAccessTokenEnc,
+                tokenExpiresAt: refreshResult.expiresAt ?? null,
+                consecutiveErrors: 0,
+                lastError: null,
+            }
+            if (refreshResult.refreshToken) {
+                updateData.refreshTokenEnc = encrypt(refreshResult.refreshToken)
+            }
+
+            if (isTeamLevel) {
+                await prisma.teamIntegration.update({
+                    where: { id: integration.id },
+                    data: updateData,
+                })
+            } else {
+                await prisma.userIntegration.update({
+                    where: { id: integration.id },
+                    data: updateData,
+                })
+            }
+
+            return refreshResult.accessToken
+        }
 
     // ─── All team-level providers (JIRA, SLACK, LINEAR, NOTION) ─────────────
     const teamProviders: TeamProvider[] = ['JIRA', 'SLACK', 'LINEAR', 'NOTION']
@@ -217,14 +242,21 @@ export async function getValidAccessToken(
             },
         })
 
-        return refreshResult.accessToken
-    }
+            return refreshResult.accessToken
+        }
 
-    throw new AppError(
-        'PROVIDER_NOT_SUPPORTED',
-        501,
-        `Unsupported provider for token refresh: ${provider}`
-    )
+        throw new AppError(
+            'PROVIDER_NOT_SUPPORTED',
+            501,
+            `Unsupported provider for token refresh: ${provider}`
+        )
+    } finally {
+        if (hasLock && redis.status === 'ready') {
+            try {
+                await redis.del(lockKey)
+            } catch (_) {}
+        }
+    }
 }
 
 

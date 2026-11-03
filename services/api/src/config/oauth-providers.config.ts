@@ -6,19 +6,43 @@ export const oauthProvidersConfig = {
         tokenUrl: 'https://oauth2.googleapis.com/token',
         revokeUrl: 'https://oauth2.googleapis.com/revoke',
         scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
-        clientId: env.GOOGLE_CLIENT_ID || '',
-        clientSecret: env.GOOGLE_CLIENT_SECRET || '',
-        redirectUri: env.GOOGLE_CALENDAR_REDIRECT_URI || env.GOOGLE_CALENDAR_CALLBACK_URL || `${env.API_URL || env.APP_URL}/api/v1/auth/google-calendar/callback`,
+        get clientId(): string {
+            return process.env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID || ''
+        },
+        get clientSecret(): string {
+            return process.env.GOOGLE_CLIENT_SECRET || env.GOOGLE_CLIENT_SECRET || ''
+        },
+        get redirectUri(): string {
+            return (
+                process.env.GOOGLE_CALENDAR_REDIRECT_URI ||
+                process.env.GOOGLE_CALENDAR_CALLBACK_URL ||
+                env.GOOGLE_CALENDAR_REDIRECT_URI ||
+                env.GOOGLE_CALENDAR_CALLBACK_URL ||
+                `${process.env.API_URL || env.API_URL || process.env.APP_URL || env.APP_URL}/api/v1/auth/google-calendar/callback`
+            )
+        },
     },
     OUTLOOK_CALENDAR: {
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
         tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
         revokeUrl: '',
         scopes: ['Calendars.Read', 'offline_access', 'openid', 'profile', 'email'],
-        clientId: env.OUTLOOK_CLIENT_ID || '',
-        clientSecret: env.OUTLOOK_CLIENT_SECRET || '',
-        redirectUri: env.OUTLOOK_CALLBACK_URL || `${env.API_URL || env.APP_URL}/api/v1/integrations/outlook-calendar/callback`,
-        tenantId: env.OUTLOOK_TENANT_ID || 'common',
+        get clientId(): string {
+            return process.env.OUTLOOK_CLIENT_ID || env.OUTLOOK_CLIENT_ID || ''
+        },
+        get clientSecret(): string {
+            return process.env.OUTLOOK_CLIENT_SECRET || env.OUTLOOK_CLIENT_SECRET || ''
+        },
+        get redirectUri(): string {
+            return (
+                process.env.OUTLOOK_CALLBACK_URL ||
+                env.OUTLOOK_CALLBACK_URL ||
+                `${process.env.API_URL || env.API_URL || process.env.APP_URL || env.APP_URL}/api/v1/integrations/outlook-calendar/callback`
+            )
+        },
+        get tenantId(): string {
+            return process.env.OUTLOOK_TENANT_ID || env.OUTLOOK_TENANT_ID || 'common'
+        },
     },
     // Placeholders for future integrations
     JIRA: {

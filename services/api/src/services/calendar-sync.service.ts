@@ -64,10 +64,37 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
 
         const provider = calendarProviderRegistry.getProvider(integration.provider)
 
-        eventsResult = await provider.listEvents(accessToken, {
-            calendarId,
-            syncToken: integration.nextSyncToken || undefined
-        })
+        let currentAccessToken = accessToken
+        try {
+            eventsResult = await provider.listEvents(currentAccessToken, {
+                calendarId,
+                syncToken: integration.nextSyncToken || undefined
+            })
+        } catch (fetchErr: any) {
+            const isAuthError = fetchErr.message?.includes('TOKEN_INVALID') || fetchErr.statusCode === 401
+            if (isAuthError && integration.refreshTokenEnc) {
+                logger.warn({ userId, provider: integration.provider }, 'calendar-sync: token invalid on fetch, performing in-flight token refresh')
+                const { tokenRefreshService } = await import('./token-refresh.service')
+                const refreshOutcome = await tokenRefreshService.refreshUserIntegration(integration)
+                if (refreshOutcome.success) {
+                    const freshIntegration = await integrationsRepository.findActiveCalendarIntegration(userId)
+                    if (freshIntegration) {
+                        const { decrypt } = await import('../utils/crypto')
+                        currentAccessToken = decrypt(freshIntegration.accessTokenEnc)
+                        eventsResult = await provider.listEvents(currentAccessToken, {
+                            calendarId,
+                            syncToken: freshIntegration.nextSyncToken || undefined
+                        })
+                    } else {
+                        throw fetchErr
+                    }
+                } else {
+                    throw fetchErr
+                }
+            } else {
+                throw fetchErr
+            }
+        }
 
         if (eventsResult.fullResyncRequired) {
             logger.warn({ userId }, 'calendar-sync.sync_token_expired_or_invalid')
@@ -79,7 +106,7 @@ export async function syncUserCalendar(userId: string): Promise<CalendarSyncResu
                 data: { nextSyncToken: null }
             })
             
-            eventsResult = await provider.listEvents(accessToken, {
+            eventsResult = await provider.listEvents(currentAccessToken, {
                 calendarId,
                 syncToken: undefined
             })
