@@ -376,6 +376,39 @@ async function upsertInvoiceTx(
   })
 }
 
+/**
+ * Paddle reports that the subscription we track is DEAD (cancelled) while our row still says live. Record that fact so
+ * a newer live subscription can replace it. Conditional + locked: only touches the row if it still points at that exact
+ * Paddle subscription and is still live locally; the plan is re-derived and an audit row keeps the history.
+ */
+export async function retireDeadSubscription(
+  teamId: string,
+  paddleSubscriptionId: string,
+  cancelledAt: Date | null,
+  now: Date = new Date()
+): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    await lockTeamBilling(tx, teamId)
+    const res = await tx.subscription.updateMany({
+      where: {
+        teamId,
+        paddleSubscriptionId,
+        status: { in: [SubscriptionStatus.active, SubscriptionStatus.trialing, SubscriptionStatus.past_due, SubscriptionStatus.paused] },
+      },
+      data: { status: SubscriptionStatus.cancelled, cancelAtPeriodEnd: false, cancelledAt: cancelledAt ?? now },
+    })
+    if (res.count === 0) return false
+    await syncTeamPlan(tx, teamId, now)
+    await createBillingAuditLog({
+      teamId,
+      eventType: 'system.reconcile',
+      action: 'SUBSCRIPTION_RETIRED_DEAD_IN_PADDLE',
+      payload: { paddleSubscriptionId, at: now.toISOString() },
+    }, tx)
+    return true
+  }, { timeout: 15_000 })
+}
+
 // ── Time-driven expiry (cron / read-repair) ───────────────────────────────────
 
 export interface ExpiryResult {

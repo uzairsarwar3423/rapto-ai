@@ -187,8 +187,12 @@ describe('Payment lifecycle', () => {
     await activatePaid(t, newSub) // re-subscribed
     expect((await getTeam(t.id)).plan).toBe(PlanType.STARTER)
 
+    // Paddle truth: the NEW subscription is live. The late cancel belongs to the superseded one.
+    const live = subscription({ id: newSub, status: 'active', customerId: t.paddleCustomerId!, teamId: t.id, periodStart: new Date(), periodEnd: ahead(30 * DAY) })
+    paddleMock.subscriptions.get.mockResolvedValue(live)
+    paddleMock.subscriptions.list.mockReturnValue({ next: async () => [live] })
     const late = await deliver(envelope('subscription.canceled', subscription({ id: oldSub, status: 'canceled', customerId: t.paddleCustomerId!, teamId: t.id, periodEnd: null }), { occurredAt: ago(1000) }))
-    expect(late.status).toBe('NEEDS_ATTENTION')
+    expect(late.status).toBe('PROCESSED') // a superseded subscription's event is not an operator problem
     expect((await getSub(t.id))?.paddleSubscriptionId).toBe(newSub)
     expect((await getTeam(t.id)).plan).toBe(PlanType.STARTER)
   })
@@ -199,12 +203,18 @@ describe('Payment lifecycle', () => {
     const second = uid('sub')
     await activatePaid(t, first)
 
-    const r = await deliver(envelope('subscription.created', subscription({ id: second, status: 'active', customerId: t.paddleCustomerId!, teamId: t.id, periodStart: new Date(), periodEnd: ahead(30 * DAY), priceId: PRICES.BUSINESS_M })))
+    // Paddle truth: BOTH are live — a genuine duplicate.
+    const liveFirst = subscription({ id: first, status: 'active', customerId: t.paddleCustomerId!, teamId: t.id, periodStart: new Date(), periodEnd: ahead(30 * DAY) })
+    const liveSecond = subscription({ id: second, status: 'active', customerId: t.paddleCustomerId!, teamId: t.id, periodStart: new Date(), periodEnd: ahead(30 * DAY), priceId: PRICES.BUSINESS_M })
+    paddleMock.subscriptions.get.mockResolvedValue(liveFirst)
+    paddleMock.subscriptions.list.mockReturnValue({ next: async () => [liveFirst, liveSecond] })
+
+    const r = await deliver(envelope('subscription.created', liveSecond))
     expect(r.status).toBe('NEEDS_ATTENTION')
     expect((await getSub(t.id))?.paddleSubscriptionId).toBe(first)
     expect((await getSub(t.id))?.plan).toBe(PlanType.STARTER)
     const row = await prisma.paddleWebhookEvent.findFirstOrThrow({ where: { teamId: t.id, status: 'NEEDS_ATTENTION' } })
-    expect(row.lastError).toMatch(/different Paddle subscription/)
+    expect(row.lastError).toMatch(/different live Paddle subscription/)
   })
 
   it('duplicate transaction prevention: unique paddleTransactionId across teams and replays', async () => {

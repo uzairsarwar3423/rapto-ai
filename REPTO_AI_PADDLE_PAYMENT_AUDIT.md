@@ -872,3 +872,76 @@ Keys can be edited in the Paddle dashboard after creation; a key's permissions a
 4. Check logs: no `alert: billing.paddle_credentials_or_permissions`; request log lines now show `teamId`/`userId`.
 5. From outside: `curl -i -X OPTIONS https://api.rapto.cloud/api/v1/billing/checkout -H "Origin: https://app.rapto.cloud" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: authorization,content-type"` → expect `204` and `access-control-allow-origin: https://app.rapto.cloud`. If a failing call still lacks CORS headers, inspect `server:` / `cf-ray` to see whether a CDN substitutes error pages.
 6. Teams whose stored `paddleCustomerId` came from sandbox are healed automatically on their next checkout (stale-customer replacement).
+
+
+---
+
+# T. Incident: paid Growth trial, application still shows Free (2026-11-03)
+
+**Evidence supplied:** checkout `200` (`txn_…` created); `billing.duplicate_subscription` alert with **one** id (`sub_01m6h1v8…`); `POST /billing/sync` → `200` after ~3 s; team still Free; "caches invalidated" logged more than once.
+
+## T.1 What was proven, and what was not
+**Proven by executing a reproduction against the code as it was (9 of 18 new tests failed, with exactly the production symptoms):**
+- When the team **already has a stored subscription row that Paddle reports as cancelled/ended** (typically an earlier trial) and the customer then buys a **new** subscription, `reconcileTeamFromPaddle` treated the *dead stored subscription* as authoritative, applied its (cancelled) state, and then reported the customer's **new, live** subscription as an **"additional live subscription"** — the `billing.duplicate_subscription` alert — instead of adopting it. The team stayed Free. Repeating the sync produced the same result forever (the stored row never changed).
+- When the stored row was still *locally* "live" but stale, the **webhook** for the new subscription hit the `subscription_mismatch` guard and was parked as `NEEDS_ATTENTION` instead of being applied — so webhook delivery could not repair it either.
+- `/billing/sync` answered **HTTP 200** even when Paddle could not be reached or when the Paddle subscription could not be mapped, so the UI and logs reported "success" while nothing was persisted.
+
+**Not observable from here:** the actual production rows and webhook inbox for team `cmtgr1gi3000cl308adp45rdh`. The diagnosis above is the only code path that produces *this exact combination* (alert with a single id that is the new subscription + `200` sync + Free), but it must be confirmed with the read-only queries in T.7 before anyone concludes the production data matches. A second possibility the logs cannot exclude — two genuinely live subscriptions — is handled correctly now (see T.3) and the queries below distinguish the two.
+
+## T.2 Answers to the questions asked
+1. **Exact root cause:** the reconcile/adoption logic (introduced in Phase 2) could not replace a dead stored subscription with the customer's new live one, and the webhook guard (`subscription_mismatch`) had no way to ask Paddle which of the two is real. The stored-subscription-always-wins rule was wrong.
+2. **Why checkout succeeded but the DB stayed on Free:** checkout only creates a Paddle transaction; entitlement comes from the Subscription row. That row could not be switched to the new subscription (above), and `/billing/sync` hid the failure behind a `200`.
+3. **Webhook failure or sync-logic failure?** Both paths shared the same defect (a dead/stale stored subscription blocks adoption). Whether Paddle's webhook for this purchase was received at all is **unknown** — check T.7 query 3 and Paddle's notification log.
+4. **The duplicate alert:** `ids` is the list of live Paddle subscriptions **other than the one chosen as authoritative**. Because the dead stored one was chosen, the *new* subscription was listed as the "duplicate". **It was not a second subscription.** `trialing` counts as live (correct: Paddle bills it). Cancelled/expired subscriptions are not listed (the list call filters to `active, trialing, past_due, paused`).
+5. **Records involved (redacted):** one `subscriptions` row for the team (`teamId` is UNIQUE) holding the **old** `paddleSubscriptionId`; the new Paddle subscription had no row. Related tables: `teams.paddleCustomerId`, `invoices`, `billing_audit_logs`, `paddle_webhook_events`.
+6. **Repeated cache invalidation:** harmless. Each state-change path (`reconcile`, webhook handler, `/sync`, checkout callback) calls `invalidatePlanCache`; `DEL` on a missing key is idempotent. One call was a genuine duplicate (`syncSubscription` invalidated again after reconcile already had) — removed. The plan is derived from the database at read time, so a stale cache cannot override a newer row; the cache TTL is also capped at the entitlement boundary.
+
+## T.3 Fix (smallest correction to the existing architecture; no schema change, no new tables)
+| Change | Where |
+|---|---|
+| `chooseAuthoritativeSubscription()` — the tracked subscription wins **only while Paddle says it is live**; otherwise the customer's live subscription replaces it; among several live ones: `active > trialing > past_due > paused`, then newest. **Only the extra live ones are reported as duplicates**, and nothing is ever cancelled. | `subscription-lifecycle.service.ts` |
+| If our row says live but Paddle says the tracked subscription is dead, it is **retired** (conditional, locked, audited as `SUBSCRIPTION_RETIRED_DEAD_IN_PADDLE`) before the new one is applied. History is preserved (`SUBSCRIPTION_REPLACED` audit row); no record is deleted. | `billing.repository.ts#retireDeadSubscription` |
+| Webhook mismatch no longer guesses: it **reconciles with Paddle**. Adopted ⇒ `PROCESSED`; event for a superseded subscription ⇒ `PROCESSED`; a genuine second live subscription ⇒ `NEEDS_ATTENTION` + alert; Paddle unreachable ⇒ the event is **retried**, not dropped. | `paddle.webhook.service.ts#resolveOutcome` |
+| `/billing/sync` is **truthful**: `200` + `outcome` (`synced` / `no_change` / `no_subscription`) with `plan`, `status`, `subscriptionId`, `trialEnd`; **`503`** `BILLING_SYNC_UNAVAILABLE` if Paddle cannot be read; **`409`** `BILLING_SYNC_UNRESOLVED` if the subscription cannot be mapped/applied (alert logged). A structured `reconcile decision` log records stored vs Paddle ids and statuses. | `billing.service.ts`, `subscription-lifecycle.service.ts` |
+| Cache invalidation happens once, strictly **after** the commit. | `subscription-lifecycle.service.ts` |
+| Frontend never infers a plan from checkout success: the success banner shows only when the **server** reports a paid plan; otherwise "confirming your subscription…"; post-checkout sync retries the **server** reconciliation (6 × 3 s); the plan card shows **"Free trial ends <date>"** from the server's `status=trialing`/`trialEnd`. | `web/.../billing.api.ts`, `useCheckout.ts`, `BillingView.tsx` |
+
+Trialing is a paid entitlement: `resolveEntitlement` grants the subscription's plan while `status = trialing` and `trialEnd > now` (Growth limits: 120 meetings / 25 members), enforced by the quota middleware, invites, integrations, usage and team APIs — asserted by tests below.
+
+## T.4 Tests executed (real Postgres; Paddle SDK object faked; no live calls)
+New suite `tests/integration/billing-subscription-adoption.db.test.ts` — **18 tests, all pass after the fix (9 failed before it, reproducing the incident):** dead stored subscription adopted without a duplicate alert; repeated syncs idempotent; locally-live-but-stale row + webhook for the new subscription adopted; genuine second live subscription flagged (`ids` = extras only, tracked kept, no cancel call); no stored row + one live Paddle subscription adopted; sync outcomes over HTTP (200 synced with Growth limits visible through `/subscription` and `/usage`, 503 Paddle down, 200 `no_subscription`, 409 unmappable price); 6 concurrent reconciliations → one row, one replacement audit; trialing Growth enforced by `checkMeetingLimit` (and the same usage blocked on Free); Free→Growth webhooks (transaction, trialing, created, duplicate delivery, any order) → one row; trial → active; cancellation → Free; replacement of an ended subscription keeps history; failed persistence → event `FAILED` and retryable, no partial state; cache invalidated only after the row is visible, repeats harmless.
+Two older tests were updated because the mismatch path now consults Paddle. **Full billing set in one invocation: 11 suites, 270 tests, all pass.** Web type-check: no errors in `features/billing`.
+**Not tested:** real Paddle responses/sandbox, the production database, browser rendering of the new banner/label.
+
+## T.5 Remaining risks
+- Teams already stuck (same cause) are healed by **any** successful reconcile: the admin "Sync" button, the post-checkout sync, or a webhook retry. They are **not** found automatically by the hourly job (it targets stale-live and recently-ended rows). Run the read-only query T.7-2 to list candidates, then have each team admin press Sync, or run the sync for them.
+- Whether Paddle delivers the webhooks to the configured URL is still an operations question (§P.5).
+- The trial/payment-method policy questions in §P are unchanged.
+
+## T.6 Deployment and verification
+1. Deploy the image — **no migration, no new environment variable**.
+2. For the affected team: have its admin open Billing and press **Sync** (or call `POST /api/v1/billing/sync`). Expected response: `200 {"outcome":"synced","plan":"GROWTH","status":"trialing","subscriptionId":"sub_01m6h1v8…","trialEnd":…}`. A `503` means Paddle was unreachable (retry); a `409` means an operator must look (alert `billing.reconcile_failed`).
+3. Logs: a `[lifecycle] reconcile decision` line showing `stored` (old, dead) → `chosen` (the new subscription); **no** `billing.duplicate_subscription`.
+4. Verify in Paddle that the customer has exactly one live subscription; **do not cancel anything** unless the business decides to.
+
+## T.7 Read-only diagnostics (run as-is; they only SELECT)
+```sql
+-- 1. What does our DB hold for the team? (expect the OLD subscription id and a dead status)
+select "paddleSubscriptionId", status, plan, "billingInterval", "trialEnd", "currentPeriodEnd",
+       "cancelledAt", "lastEventOccurredAt", "updatedAt"
+from subscriptions where "teamId" = 'cmtgr1gi3000cl308adp45rdh';
+
+-- 2. Teams that look like this one (customer exists, subscription missing or dead, plan Free)
+select t.id, t."paddleCustomerId", s."paddleSubscriptionId", s.status, s."updatedAt"
+from teams t left join subscriptions s on s."teamId" = t.id
+where t."paddleCustomerId" is not null and t.plan = 'FREE'
+  and (s.id is null or s.status in ('cancelled','refunded','paused','unpaid','incomplete','incomplete_expired'));
+
+-- 3. Did the webhooks for the new subscription arrive, and what happened to them?
+select "eventType", status, attempts, "lastError", "occurredAt", "receivedAt"
+from paddle_webhook_events
+where payload::text like '%sub_01m6h1v8bq3cxndr5h000zp6x4%' or "teamId" = 'cmtgr1gi3000cl308adp45rdh'
+order by "receivedAt" desc limit 30;
+-- 0 rows = Paddle never delivered (check the notification destination/events/secret).
+-- NEEDS_ATTENTION with "different Paddle subscription" = this bug, via the webhook path.
+```

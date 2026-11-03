@@ -421,13 +421,39 @@ export async function getInvoicePdf(teamId: string, invoiceId: string): Promise<
   }
 }
 
+export interface SyncResponse {
+  synced: boolean
+  outcome: 'synced' | 'no_change' | 'no_subscription'
+  plan: PlanType
+  status?: SubscriptionStatus
+  subscriptionId?: string
+  trialEnd?: Date | null
+  currentPeriodEnd?: Date | null
+}
+
 /**
  * Manual reconciliation with Paddle for this team (also called automatically after checkout.completed).
- * Paddle is the source of truth: handles activation AND cancellation/pause/past_due. Never resets usage
- * unless a genuinely new billing period started.
+ * Paddle is the source of truth. The HTTP result is TRUTHFUL:
+ *   200  the database now agrees with Paddle (synced | no_change) or Paddle genuinely has no live subscription
+ *   503  Paddle could not be read — nothing was verified
+ *   409  Paddle returned a subscription we could not map or persist (needs an operator; alert logged)
+ * It never resets usage unless a genuinely new billing period started.
  */
-export async function syncSubscription(teamId: string): Promise<{ synced: boolean; plan: PlanType }> {
-  const result = await reconcileTeamFromPaddle(teamId)
-  await invalidatePlanCache(teamId)
-  return { synced: result.synced, plan: result.plan }
+export async function syncSubscription(teamId: string): Promise<SyncResponse> {
+  const r = await reconcileTeamFromPaddle(teamId)
+  if (r.outcome === 'paddle_unavailable') {
+    throw new AppError('BILLING_SYNC_UNAVAILABLE', 503, 'Could not reach the payment provider to verify your subscription. Please try again shortly.')
+  }
+  if (r.outcome === 'unmappable' || r.outcome === 'not_applied') {
+    throw new AppError('BILLING_SYNC_UNRESOLVED', 409, 'Your subscription was found but could not be applied automatically. Our team has been notified.')
+  }
+  return {
+    synced: r.synced,
+    outcome: r.outcome,
+    plan: r.plan,
+    status: r.status,
+    subscriptionId: r.subscriptionId,
+    trialEnd: r.trialEnd,
+    currentPeriodEnd: r.currentPeriodEnd,
+  }
 }

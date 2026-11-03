@@ -142,14 +142,42 @@ async function enqueueBillingJob(jobName: string, jobData: object, jobId: string
   await notifyQueue.add(jobName, jobData, { jobId })
 }
 
-function outcomeFor(result: ApplySubscriptionResult, teamId: string, eventType: string): ProcessOutcome {
+/**
+ * Turn the persistence result into an inbox outcome.
+ *
+ * subscription_mismatch means OUR stored subscription differs from the one in the event. The stored row may be stale
+ * (e.g. an old trial Paddle already cancelled) — and then the event is the customer's NEW subscription that must be
+ * adopted. Paddle, not our possibly-stale row, decides: reconcile, then classify.
+ */
+async function resolveOutcome(
+  result: ApplySubscriptionResult,
+  teamId: string,
+  eventType: string,
+  eventSubscriptionId: string | undefined,
+  eventIsDead: boolean
+): Promise<ProcessOutcome> {
   if (result.applied) return { status: 'PROCESSED', teamId }
   if (result.reason === 'stale_event') return { status: 'PROCESSED', teamId, note: 'stale event ignored (older than applied state)' }
+
+  const { reconcileTeamFromPaddle } = await import('../billing/subscription-lifecycle.service')
+  const r = await reconcileTeamFromPaddle(teamId)
+  if (r.outcome === 'paddle_unavailable') {
+    // Cannot decide without Paddle: retry later rather than guessing or dropping.
+    throw new Error(`subscription mismatch for team ${teamId}: Paddle unavailable, will retry`)
+  }
+  await invalidatePlanCache(teamId)
+
+  if (eventSubscriptionId && r.subscriptionId === eventSubscriptionId && r.synced) {
+    return { status: 'PROCESSED', teamId, note: 'adopted via Paddle reconciliation (stored subscription was stale)' }
+  }
+  if (eventIsDead) {
+    return { status: 'PROCESSED', teamId, note: 'event for a superseded subscription; the current subscription is unaffected' }
+  }
   logger.error(
-    { teamId, eventType, alert: 'billing.subscription_mismatch' },
-    '[paddle.webhook.service] ALERT: event for a different Paddle subscription than the live one — not applied'
+    { teamId, eventType, eventSubscriptionId, trackedSubscriptionId: r.subscriptionId, alert: 'billing.subscription_mismatch' },
+    '[paddle.webhook.service] ALERT: a different LIVE Paddle subscription than the tracked one — not applied'
   )
-  return { status: 'NEEDS_ATTENTION', teamId, note: 'event belongs to a different Paddle subscription than the live one on this team' }
+  return { status: 'NEEDS_ATTENTION', teamId, note: 'event belongs to a different live Paddle subscription than the tracked one on this team' }
 }
 
 // ── transaction.completed ─────────────────────────────────────────────────────
@@ -250,7 +278,7 @@ async function handleTransactionCompleted(data: any, eventId: string): Promise<P
   }
 
   logger.info({ eventId, transactionId, teamId, planId, applied: result.applied, periodAdvanced: result.periodAdvanced }, '[paddle.webhook.service][transaction.completed] done')
-  return outcomeFor(result, teamId, 'transaction.completed')
+  return resolveOutcome(result, teamId, 'transaction.completed', paddleSubscriptionId, false)
 }
 
 // ── subscription.* ────────────────────────────────────────────────────────────
@@ -346,7 +374,7 @@ async function handleSubscriptionEvent(
     }
   }
 
-  return outcomeFor(result, teamId, eventType)
+  return resolveOutcome(result, teamId, eventType, subData.paddleSubscriptionId, subData.status === SubscriptionStatus.cancelled)
 }
 
 // ── adjustment.* (refunds, chargebacks, credits) ──────────────────────────────

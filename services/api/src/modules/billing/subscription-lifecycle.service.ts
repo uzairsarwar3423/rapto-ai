@@ -22,7 +22,7 @@ import { getTeamEntitlement } from './entitlement.service'
 import { countInboxByStatus, findRedrivableEvents } from '../webhooks/paddle.inbox.repository'
 import { processInboxEvent } from '../webhooks/paddle.event-processor'
 import { withTimeout } from '../../utils/with-timeout'
-import { entityToSnake, extractSubscriptionData, resolvePlan } from '../webhooks/paddle.mapper'
+import { entityToSnake, extractSubscriptionData, parsePaddleDate, resolvePlan } from '../webhooks/paddle.mapper'
 
 const PADDLE_CALL_TIMEOUT_MS = 8_000
 const LIVE_PADDLE_STATUSES = ['active', 'trialing', 'past_due', 'paused'] as const
@@ -49,11 +49,58 @@ async function withCronLock<T>(name: string, ttlSeconds: number, fn: () => Promi
 
 // ── Reconcile one team against Paddle ─────────────────────────────────────────
 
+export type ReconcileOutcome =
+  | 'synced'              // DB changed to match Paddle
+  | 'no_change'           // DB already matched Paddle
+  | 'no_subscription'     // Paddle has nothing live (and nothing to repair) for this customer
+  | 'paddle_unavailable'  // could not read Paddle — NOTHING was verified
+  | 'unmappable'          // Paddle returned a subscription we cannot map (unconfigured price, bad payload)
+  | 'not_applied'         // mapped, but refused by the persistence guards
+
 export interface ReconcileResult {
+  /** true only when the DB is known to agree with Paddle after this call (synced / no_change). */
   synced: boolean
+  outcome: ReconcileOutcome
   plan: PlanType
   status?: SubscriptionStatus
+  subscriptionId?: string
+  trialEnd?: Date | null
+  currentPeriodEnd?: Date | null
   anomalies: string[]
+}
+
+const LIVE_STATUS_PRIORITY: Record<string, number> = { active: 0, trialing: 1, past_due: 2, paused: 3 }
+const isLivePaddleStatus = (s: unknown) => typeof s === 'string' && s in LIVE_STATUS_PRIORITY
+
+/**
+ * Which Paddle subscription is THE subscription for this team?
+ *
+ *  1. The one we already track — but only while Paddle still considers it LIVE.
+ *  2. Otherwise a stored subscription that is dead in Paddle (cancelled / expired trial) must NOT win: the customer's
+ *     new live subscription replaces it (this is "Free → Growth" after an earlier trial).
+ *  3. Among several live ones prefer active > trialing > past_due > paused, then the newest.
+ *
+ * `extras` are the OTHER live subscriptions — only these are genuine duplicates.
+ */
+export function chooseAuthoritativeSubscription(
+  storedSnap: any | null,
+  liveFromList: any[]
+): { chosen: any | null; extras: any[] } {
+  const storedLive = storedSnap && isLivePaddleStatus(storedSnap.status) ? storedSnap : null
+  const liveById = new Map<string, any>()
+  for (const s of liveFromList) if (isLivePaddleStatus(s.status)) liveById.set(s.id, s)
+  if (storedLive) liveById.set(storedLive.id, storedLive)
+
+  if (storedLive) {
+    return { chosen: storedLive, extras: [...liveById.values()].filter((s) => s.id !== storedLive.id) }
+  }
+  const ranked = [...liveById.values()].sort(
+    (a, b) =>
+      LIVE_STATUS_PRIORITY[a.status] - LIVE_STATUS_PRIORITY[b.status] ||
+      String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''))
+  )
+  if (ranked.length > 0) return { chosen: ranked[0], extras: ranked.slice(1) }
+  return { chosen: storedSnap, extras: [] } // nothing live: apply the stored subscription's real (dead) state
 }
 
 export async function reconcileTeamFromPaddle(teamId: string): Promise<ReconcileResult> {
@@ -61,74 +108,132 @@ export async function reconcileTeamFromPaddle(teamId: string): Promise<Reconcile
   const team = await prisma.team.findUnique({ where: { id: teamId }, select: { id: true, paddleCustomerId: true } })
   const stored = await billingRepo.findFullSubscriptionByTeam(teamId)
 
-  if (!team || (!team.paddleCustomerId && !stored)) {
+  const effective = async (
+    extra: Omit<ReconcileResult, 'plan' | 'anomalies' | 'synced'> & { synced?: boolean }
+  ): Promise<ReconcileResult> => {
     const ent = await getTeamEntitlement(teamId)
-    return { synced: false, plan: ent.plan, anomalies }
+    return { ...extra, synced: extra.synced ?? false, plan: ent.plan, anomalies }
+  }
+
+  if (!team || (!team.paddleCustomerId && !stored)) {
+    return effective({ outcome: 'no_subscription' })
   }
 
   const { paddle } = await import('../../services/paddle.client')
-  const customerId = stored?.paddleCustomerId ?? team.paddleCustomerId!
+  const customerIds = [...new Set([team.paddleCustomerId, stored?.paddleCustomerId].filter(Boolean) as string[])]
 
-  let snapshot: any | null = null
-
-  // 1. The subscription we already track: authoritative read by ID.
+  // 1. The subscription we track, read by id (authoritative for ITS state).
+  let storedSnap: any | null = null
   if (stored) {
     try {
-      snapshot = entityToSnake(await withTimeout(paddle.subscriptions.get(stored.paddleSubscriptionId), PADDLE_CALL_TIMEOUT_MS, 'paddle.subscriptions.get'))
+      storedSnap = entityToSnake(
+        await withTimeout(paddle.subscriptions.get(stored.paddleSubscriptionId), PADDLE_CALL_TIMEOUT_MS, 'paddle.subscriptions.get')
+      )
     } catch (err: any) {
-      if (err?.code !== 'not_found') {
-        logger.error({ err: err.message, teamId }, '[lifecycle] Paddle read failed — keeping local state')
-        const ent = await getTeamEntitlement(teamId)
-        return { synced: false, plan: ent.plan, status: stored.status, anomalies: ['paddle_unavailable'] }
+      if (err?.code === 'not_found') {
+        anomalies.push('stored_subscription_not_found_in_paddle')
+      } else {
+        logger.error({ err: err.message, teamId, alert: 'billing.reconcile_paddle_unavailable' }, '[lifecycle] Paddle read failed — nothing verified')
+        return effective({ outcome: 'paddle_unavailable', status: stored.status, subscriptionId: stored.paddleSubscriptionId })
       }
-      anomalies.push('stored_subscription_not_found_in_paddle')
     }
   }
 
-  // 2. Any other live subscription for this customer (covers "no stored sub" and duplicate-subscription detection).
-  let liveOthers: any[] = []
+  // 2. Every live subscription of this customer.
+  let listed: any[] = []
+  let listFailed = false
   try {
     const page = await withTimeout(
-      paddle.subscriptions.list({ customerId: [customerId], status: [...LIVE_PADDLE_STATUSES] as any }).next(),
+      paddle.subscriptions.list({ customerId: customerIds, status: [...LIVE_PADDLE_STATUSES] as any }).next(),
       PADDLE_CALL_TIMEOUT_MS,
       'paddle.subscriptions.list'
     )
-    liveOthers = (page ?? []).map((s: any) => entityToSnake(s)).filter((s: any) => s.id !== stored?.paddleSubscriptionId)
+    listed = (page ?? []).map((s: any) => entityToSnake(s))
   } catch (err: any) {
-    logger.warn({ err: err.message, teamId }, '[lifecycle] Paddle list failed — duplicate detection skipped')
+    listFailed = true
+    logger.warn({ err: err.message, teamId }, '[lifecycle] Paddle list failed')
+  }
+  const storedIsLive = storedSnap && isLivePaddleStatus(storedSnap.status)
+  if (listFailed && !storedIsLive) {
+    // Cannot tell whether a newer live subscription exists — do not pretend we verified anything.
+    return effective({ outcome: 'paddle_unavailable', status: stored?.status, subscriptionId: stored?.paddleSubscriptionId })
   }
 
-  if (!snapshot && liveOthers.length > 0) {
-    snapshot = liveOthers.shift()
-  }
-  if (liveOthers.length > 0) {
-    anomalies.push(`additional_live_paddle_subscriptions:${liveOthers.map((s) => s.id).join(',')}`)
-    logger.error({ teamId, ids: liveOthers.map((s) => s.id), alert: 'billing.duplicate_subscription' }, '[lifecycle] ALERT: customer has more than one live Paddle subscription')
-  }
-
-  if (!snapshot) {
-    const ent = await getTeamEntitlement(teamId)
-    return { synced: false, plan: ent.plan, status: stored?.status, anomalies }
+  // 3. Decide, then report duplicates ONLY when more than one subscription is genuinely live.
+  const { chosen, extras } = chooseAuthoritativeSubscription(storedSnap, listed)
+  if (extras.length > 0) {
+    anomalies.push(`additional_live_paddle_subscriptions:${extras.map((s) => s.id).join(',')}`)
+    logger.error(
+      { teamId, tracked: chosen?.id, ids: extras.map((s) => s.id), alert: 'billing.duplicate_subscription' },
+      '[lifecycle] ALERT: customer has more than one live Paddle subscription (ids = the extra ones; none was cancelled)'
+    )
   }
 
-  try {
-    const { planId, interval } = resolvePlan(snapshot)
-    const data = extractSubscriptionData(snapshot, planId, interval)
-    const result = await billingRepo.applySubscriptionState({
+  logger.info(
+    {
       teamId,
-      data,
-      source: 'sync',
-      audit: { eventType: 'system.reconcile', action: 'RECONCILED_FROM_PADDLE', payload: { paddleSubscriptionId: data.paddleSubscriptionId, status: data.status, anomalies } },
-    })
-    if (!result.applied) anomalies.push(result.reason ?? 'not_applied')
-    await invalidatePlanCache(teamId)
-    const ent = await getTeamEntitlement(teamId)
-    return { synced: result.applied, plan: ent.plan, status: data.status, anomalies }
-  } catch (err: any) {
-    logger.error({ err: err.message, teamId, alert: 'billing.reconcile_failed' }, '[lifecycle] could not map Paddle subscription')
-    const ent = await getTeamEntitlement(teamId)
-    return { synced: false, plan: ent.plan, anomalies: [...anomalies, `unmappable:${err.message}`] }
+      stored: stored ? { id: stored.paddleSubscriptionId, status: stored.status } : null,
+      paddleStored: storedSnap ? { id: storedSnap.id, status: storedSnap.status } : null,
+      paddleLive: listed.map((s) => ({ id: s.id, status: s.status })),
+      chosen: chosen ? { id: chosen.id, status: chosen.status } : null,
+    },
+    '[lifecycle] reconcile decision'
+  )
+
+  if (!chosen) return effective({ outcome: 'no_subscription', status: stored?.status, subscriptionId: stored?.paddleSubscriptionId })
+
+  // 3b. Our row says "live" but Paddle says the tracked subscription is dead: retire it first, otherwise the guards
+  //     rightly refuse to replace a live-looking subscription with a different one.
+  if (
+    stored && chosen.id !== stored.paddleSubscriptionId && storedSnap && !isLivePaddleStatus(storedSnap.status) &&
+    isLiveSubscriptionStatus(stored.status)
+  ) {
+    await billingRepo.retireDeadSubscription(teamId, stored.paddleSubscriptionId, parsePaddleDate(storedSnap.canceled_at) ?? null)
   }
+
+  // 4. Map and persist through the single writer.
+  let data
+  try {
+    const { planId, interval } = resolvePlan(chosen)
+    data = extractSubscriptionData(chosen, planId, interval)
+  } catch (err: any) {
+    logger.error({ err: err.message, teamId, paddleSubscriptionId: chosen.id, alert: 'billing.reconcile_failed' }, '[lifecycle] could not map Paddle subscription')
+    anomalies.push(`unmappable:${err.message}`)
+    return effective({ outcome: 'unmappable', subscriptionId: chosen.id })
+  }
+
+  const before = stored
+  const result = await billingRepo.applySubscriptionState({
+    teamId,
+    data,
+    source: 'sync',
+    audit: { eventType: 'system.reconcile', action: 'RECONCILED_FROM_PADDLE', payload: { paddleSubscriptionId: data.paddleSubscriptionId, status: data.status, anomalies } },
+  })
+  if (!result.applied) {
+    anomalies.push(result.reason ?? 'not_applied')
+    return effective({ outcome: 'not_applied', status: data.status, subscriptionId: data.paddleSubscriptionId })
+  }
+
+  // Cache invalidation strictly AFTER the commit above.
+  await invalidatePlanCache(teamId)
+
+  const after = await billingRepo.findFullSubscriptionByTeam(teamId)
+  const changed =
+    !before ||
+    before.paddleSubscriptionId !== after?.paddleSubscriptionId ||
+    before.status !== after?.status ||
+    before.plan !== after?.plan ||
+    before.currentPeriodEnd?.getTime() !== after?.currentPeriodEnd?.getTime() ||
+    before.trialEnd?.getTime() !== after?.trialEnd?.getTime() ||
+    before.cancelAtPeriodEnd !== after?.cancelAtPeriodEnd
+  return effective({
+    synced: true,
+    outcome: changed ? 'synced' : 'no_change',
+    status: after?.status,
+    subscriptionId: after?.paddleSubscriptionId,
+    trialEnd: after?.trialEnd ?? null,
+    currentPeriodEnd: after?.currentPeriodEnd ?? null,
+  })
 }
 
 // ── Entitlement sync (trial expiry etc.) ──────────────────────────────────────

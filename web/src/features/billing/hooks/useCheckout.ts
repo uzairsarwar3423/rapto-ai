@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createCheckoutSession, syncSubscription } from "../api/billing.api";
+import { createCheckoutSession, syncUntilSubscribed } from "../api/billing.api";
 import { initializePaddle, Paddle } from "@paddle/paddle-js";
 
 type CheckoutState = "idle" | "redirecting" | "error";
@@ -44,7 +44,7 @@ export function useCheckout(): UseCheckoutReturn {
         if (event.name === "checkout.completed") {
           console.log("🎉 Paddle payment completed successfully — automatically syncing subscription");
           try {
-            await syncSubscription();
+            await syncUntilSubscribed();
           } catch (syncErr) {
             console.warn("⚠️ Auto-sync on checkout completion failed, falling back to query invalidation:", syncErr);
           }

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, CheckCircle2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +15,7 @@ import { BillingPortalButton } from "./BillingPortalButton";
 import { UsageProgressRow } from "./UsageProgressRow";
 import { PlanComparisonSheet } from "./PlanComparisonSheet";
 import { InvoiceTable } from "./InvoiceTable";
-import { syncSubscription } from "../api/billing.api";
+import { syncSubscription, syncUntilSubscribed, fetchSubscription } from "../api/billing.api";
 import { PLAN_DISPLAY_NAMES } from "../data/plan-features.config";
 import type { PlanId } from "../types";
 import { cn } from "@/lib/utils";
@@ -83,6 +83,19 @@ export function BillingView() {
     searchParams.get("success") === "true" ||
     searchParams.get("checkout") === "success";
 
+  // Real subscription state from the server (status / trial dates). Never inferred from the checkout redirect.
+  const { data: subscription } = useQuery({
+    queryKey: ["subscription", team?.id],
+    queryFn: () =>
+      fetchSubscription() as unknown as Promise<{
+        status?: string;
+        trialEnd?: string | null;
+        cancelAtPeriodEnd?: boolean;
+      } | null>,
+    enabled: !!team,
+    staleTime: 15 * 1000,
+  });
+
   const syncMutation = useMutation({
     mutationFn: syncSubscription,
     onSuccess: () => {
@@ -94,7 +107,7 @@ export function BillingView() {
   // Auto-sync on successful checkout return
   React.useEffect(() => {
     if (isCheckoutSuccess) {
-      syncSubscription()
+      syncUntilSubscribed()
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ["team"] });
           queryClient.invalidateQueries({ queryKey: ["subscription"] });
@@ -172,11 +185,21 @@ export function BillingView() {
   return (
     <>
       <div className="space-y-6">
-        {isCheckoutSuccess && (
+        {isCheckoutSuccess && team.plan !== "FREE" && (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-5 w-5 shrink-0" />
             <div className="text-sm font-medium">
-              Payment successful! Your subscription and quota limits have been upgraded.
+              {subscription?.status === "trialing"
+                ? "Your free trial has started. Your plan and quota limits are now active."
+                : "Payment successful! Your subscription and quota limits have been upgraded."}
+            </div>
+          </div>
+        )}
+        {/* The server has not confirmed the subscription yet — do not claim an upgrade the backend has not granted. */}
+        {isCheckoutSuccess && team.plan === "FREE" && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+            <div className="text-sm font-medium">
+              We are confirming your subscription with the payment provider. This usually takes a few seconds — this page will update automatically.
             </div>
           </div>
         )}
@@ -222,7 +245,11 @@ export function BillingView() {
                 className="font-sans font-normal text-muted-foreground leading-[16px] mt-1"
                 style={{ fontSize: "12px" }}
               >
-                Renews on {renewalDate}
+                {subscription?.status === "trialing"
+                  ? `Free trial ends ${formatRenewalDate(subscription?.trialEnd ?? team.usage.billingCycleEnd) ?? renewalDate}`
+                  : subscription?.cancelAtPeriodEnd
+                  ? `Cancels on ${renewalDate}`
+                  : `Renews on ${renewalDate}`}
               </p>
             )}
 

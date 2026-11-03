@@ -72,7 +72,37 @@ export async function cancelSubscription(): Promise<void> {
   await api.post(`/billing/cancel`);
 }
 
-export async function syncSubscription(): Promise<{ synced: boolean; plan: string }> {
+export interface SyncResult {
+  synced: boolean;
+  /** synced | no_change | no_subscription (errors are HTTP 503 / 409 and reject the promise) */
+  outcome?: string;
+  plan: string;
+  status?: string;
+  subscriptionId?: string;
+  trialEnd?: string | null;
+}
+
+/** One server-side reconciliation with Paddle. The server is the only authority on the plan. */
+export async function syncSubscription(): Promise<SyncResult> {
   const { data } = await api.post(`/billing/sync`);
   return data;
+}
+
+/**
+ * Right after checkout Paddle may not have the subscription visible yet (or the webhook is still in flight).
+ * Retry the SERVER reconciliation a few times; never infer the plan from checkout success on the client.
+ * Resolves with the last server answer (plan may still be FREE if Paddle has nothing yet).
+ */
+export async function syncUntilSubscribed(attempts = 6, delayMs = 3000): Promise<SyncResult | null> {
+  let last: SyncResult | null = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      last = await syncSubscription();
+      if (last.plan && last.plan !== "FREE") return last;
+    } catch {
+      // 503 (Paddle unreachable) / 409 (needs operator): keep retrying; the final state is whatever the server says
+    }
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
+  }
+  return last;
 }
