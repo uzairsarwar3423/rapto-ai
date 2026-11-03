@@ -53,14 +53,24 @@ export interface PaddleTransactionResult {
 
 // ── Customer Management ────────────────────────────────────────────────────────
 
+async function persistCustomerIdIfUnset(teamId: string, paddleCustomerId: string): Promise<string> {
+  // Compare-and-set: never overwrite a customer id a concurrent request already stored for this team.
+  const res = await prisma.team.updateMany({ where: { id: teamId, paddleCustomerId: null }, data: { paddleCustomerId } })
+  if (res.count === 1) return paddleCustomerId
+  const current = await prisma.team.findUnique({ where: { id: teamId }, select: { paddleCustomerId: true } })
+  return current?.paddleCustomerId ?? paddleCustomerId
+}
+
 /**
  * Get or create a Paddle customer for the given team.
  *
- * Algorithm:
- *   1. If team.paddleCustomerId exists → return it directly (zero API call)
- *   2. Else → create Paddle customer → persist ID on team → return it
+ *   1. team.paddleCustomerId exists → return it. NO verification call: `customers.get` needs the `customer.read`
+ *      API-key permission, adds a round trip to every checkout, and a missing permission surfaced as a failed
+ *      checkout. If the stored id is stale (deleted, or from another Paddle environment) the transaction create
+ *      reports `not_found` for that id and the caller recovers via replaceStaleCustomer().
+ *   2. otherwise create the customer (needs `customer.write`) and persist the id with a compare-and-set.
  *
- * This guarantees zero duplicate customers across all re-subscription attempts.
+ * Permanent errors (permission, validation) are rethrown untouched — they are never retried or masked.
  */
 export async function getOrCreatePaddleCustomer(
   teamId: string,
@@ -73,93 +83,59 @@ export async function getOrCreatePaddleCustomer(
   })
 
   if (team?.paddleCustomerId) {
-    try {
-      // Verify the customer still exists in Paddle
-      await paddle.customers.get(team.paddleCustomerId)
-      logger.debug({ teamId, paddleCustomerId: team.paddleCustomerId }, '[paddle.client] Reusing existing Paddle customer')
-      return team.paddleCustomerId
-    } catch (err: any) {
-      if (err?.code === 'not_found') {
-        logger.warn({ teamId, paddleCustomerId: team.paddleCustomerId }, '[paddle.client] Customer not found in Paddle. Proceeding to create a new one.')
-      } else {
-        throw err
-      }
-    }
+    logger.debug({ teamId, paddleCustomerId: team.paddleCustomerId }, '[paddle.client] Reusing stored Paddle customer')
+    return team.paddleCustomerId
   }
 
+  return createCustomerForTeam(teamId, email, name)
+}
+
+async function createCustomerForTeam(teamId: string, email: string, name: string): Promise<string> {
   try {
-    // Create new Paddle customer
-    const customer = await paddle.customers.create({
-      email,
-      name,
-    })
-
-    const paddleCustomerId = customer.id
-
-    // Persist customer ID to team
-    try {
-      await prisma.team.update({
-        where: { id: teamId },
-        data: { paddleCustomerId },
-      })
-      logger.info({ teamId, paddleCustomerId }, '[paddle.client] Created and persisted new Paddle customer')
-    } catch (dbErr: any) {
-      logger.error({ err: dbErr.message, teamId, paddleCustomerId }, '[paddle.client] Failed to persist paddleCustomerId on team')
-    }
-
-    return paddleCustomerId
+    const customer = await paddle.customers.create({ email, name })
+    const stored = await persistCustomerIdIfUnset(teamId, customer.id)
+    logger.info({ teamId, paddleCustomerId: stored }, '[paddle.client] Created Paddle customer')
+    return stored
   } catch (err: any) {
-    if (err.code === 'customer_already_exists') {
-      logger.warn({ teamId, email, err: err.message }, '[paddle.client] Customer already exists in Paddle.')
-      
-      let paddleCustomerId: string | undefined
+    if (err?.code !== 'customer_already_exists') throw err
 
-      // Extract from Paddle's error detail: "customer email conflicts with customer of id ctm_..."
-      const match = err.detail?.match(/customer of id (ctm_[a-zA-Z0-9]+)/)
-      if (match && match[1]) {
-        paddleCustomerId = match[1]
-        logger.info({ teamId, paddleCustomerId }, '[paddle.client] Recovered existing Paddle customer from error detail')
-      }
-
-      // Fallback: fetch by email
-      if (!paddleCustomerId) {
-        try {
-          logger.info({ teamId, email }, '[paddle.client] Detail regex failed, fetching customer by email')
-          const collection = paddle.customers.list({ email: [email] })
-          const customers = await collection.next()
-          
-          if (customers && customers.length > 0) {
-            // Ensure exact email match
-            const exactMatch = customers.find(c => c.email.toLowerCase() === email.toLowerCase())
-            if (exactMatch) {
-              paddleCustomerId = exactMatch.id
-              logger.info({ teamId, paddleCustomerId }, '[paddle.client] Recovered existing Paddle customer via list fetch')
-            }
-          }
-        } catch (searchErr: any) {
-          logger.error({ err: searchErr.message }, '[paddle.client] Failed to fetch customer by email')
-        }
-      }
-
-      if (paddleCustomerId) {
-        // Persist recovered ID
-        try {
-          await prisma.team.update({
-            where: { id: teamId },
-            data: { paddleCustomerId },
-          })
-          logger.info({ teamId, paddleCustomerId }, '[paddle.client] Persisted recovered Paddle customer on team')
-        } catch (dbErr: any) {
-          logger.warn({ err: dbErr.message, teamId, paddleCustomerId }, '[paddle.client] Could not persist paddleCustomerId, proceeding with valid customer')
-        }
-
-        return paddleCustomerId
-      }
+    // Email is unique in Paddle (case-insensitive) and archived customers still count: reuse the existing one.
+    let existingId: string | undefined = err.detail?.match(/(ctm_[a-zA-Z0-9]+)/)?.[1]
+    let existingStatus: string | undefined
+    if (!existingId) {
+      const page = await paddle.customers.list({ email: [email], status: ['active', 'archived'] as any }).next()
+      const exact = (page ?? []).find((c) => c.email.toLowerCase() === email.toLowerCase())
+      existingId = exact?.id
+      existingStatus = exact?.status
     }
-    
-    // If not handled, re-throw
-    throw err
+    if (!existingId) throw err
+
+    if (existingStatus === 'archived') {
+      await paddle.customers.update(existingId, { status: 'active' })
+    }
+    const stored = await persistCustomerIdIfUnset(teamId, existingId)
+    logger.info({ teamId, paddleCustomerId: stored }, '[paddle.client] Reused existing Paddle customer found by email')
+    return stored
   }
+}
+
+/**
+ * The stored customer id is unusable (Paddle says it does not exist — typically an id from the other Paddle
+ * environment or a deleted customer). Detach it from the team (only if it is still the stale value) and create
+ * a fresh customer. Billing history for the old id stays in our Invoice/Subscription tables untouched.
+ */
+export async function replaceStaleCustomer(
+  teamId: string,
+  staleCustomerId: string,
+  email: string,
+  name: string
+): Promise<string> {
+  await prisma.team.updateMany({ where: { id: teamId, paddleCustomerId: staleCustomerId }, data: { paddleCustomerId: null } })
+  logger.warn(
+    { teamId, staleCustomerId, alert: 'billing.stale_paddle_customer' },
+    '[paddle.client] Stored Paddle customer id is unknown to Paddle — creating a replacement'
+  )
+  return getOrCreatePaddleCustomer(teamId, email, name)
 }
 
 // ── Transaction (Checkout) ─────────────────────────────────────────────────────

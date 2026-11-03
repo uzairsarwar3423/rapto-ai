@@ -50,7 +50,8 @@ export function requestLogger() {
 
                 userId: (req as any).user?.id ?? null,
 
-                teamId: (req as any).team?.id ?? null,
+                // injectTenant sets req.teamId (there is no req.team); fall back to the JWT claim for routes without injectTenant.
+                teamId: (req as any).teamId ?? (req as any).user?.teamId ?? null,
             })
         })
 

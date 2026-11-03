@@ -125,6 +125,10 @@ export function errorMiddleware(
     /**
      * Final response
      */
+    if (err instanceof AppError && statusCode === 429 && typeof err.details?.retryAfter === 'number') {
+        res.setHeader('Retry-After', String(err.details.retryAfter))
+    }
+
     return res.status(statusCode).json({
         success: false,
         requestId,

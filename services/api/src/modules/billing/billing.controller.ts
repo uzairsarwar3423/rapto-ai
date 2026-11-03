@@ -44,6 +44,7 @@ export async function createCheckoutController(
       requesterName,
       planId,
       interval,
+      requestId: String(req.headers['x-request-id'] ?? ''),
     })
 
     res.status(200).json(result)

@@ -795,3 +795,80 @@ Code-level correctness is now evidenced by executed tests against a real databas
 4. Wire `alert:` log lines to an alerting channel.
 
 *End of Phase 2 record.*
+
+
+---
+
+# S. Incident: checkout 403 → 502 → "CORS error" (2026-11-03)
+
+**Production symptom:** every plan selection failed. API log: `ApiError … CustomersResource.get() … forbidden / 403`, response `502 PADDLE_CHECKOUT_FAILED "Unable to initialize billing customer"`, browser: "blocked by CORS policy … No Access-Control-Allow-Origin header".
+
+## S.1 Root cause of the 403
+- The failing call is `paddle.customers.get(team.paddleCustomerId)` — the **pre-checkout "verify the stored customer still exists" call** in `getOrCreatePaddleCustomer` (`paddle.client.ts`, old line ~56). It runs only when the team **already has** a stored `paddleCustomerId`, which matches the log.
+- Paddle's documentation (read this session, `/errors/shared/forbidden`): `403 forbidden` = "the authentication method you used doesn't have permission to perform that request" — a **valid key that lacks the permission** (here `customer.read`), including keys created before Paddle added new permissions (new permissions are **not** auto-applied to existing keys). `GET /customers/{id}` requires `customer.read`.
+- **What I could and could not verify.** I have no access to the production key or Paddle account, so I could not read the key's permission set. The evidence points to a missing permission on the live key, not a sandbox/live mix-up: a customer id from the *other* environment is documented to return **404 `not_found`**, not 403. A wrong-environment *key* is also possible, but the docs read do not state what status that returns. **Confirm in Paddle → Developer tools → Authentication: the key's permissions, and that it is a `pdl_live_…` key** (never print the key itself).
+- The code's own comment ("zero API call") was wrong: the function made an extra Paddle call on every checkout, creating a hard dependency on a permission nothing else needed.
+
+## S.2 Why 502
+`createCheckoutSession` wrapped *every* customer-initialization failure into `AppError('PADDLE_CHECKOUT_FAILED', 502, …)`. The SDK's `ApiError` has **no HTTP status field** (`type, code, detail, documentationUrl, errors, retryAfter` only), so existing checks such as `err.status === 404` could never be true and nothing could distinguish 401/403/404/422/429/5xx. A permission problem on **our** key was reported to the user as a gateway error.
+
+## S.3 CORS — secondary, a symptom
+- The app's CORS configuration is correct: `cors()` is the first middleware (before body parsing, logging, routes and the error handler); `https://app.rapto.cloud` is in the static allow-list; the nginx config adds **no** CORS headers and does not intercept upstream errors (`proxy_intercept_errors` unset).
+- Executed test: preflight `OPTIONS /billing/checkout` → 204 with `Access-Control-Allow-Origin: https://app.rapto.cloud` (never `*`), credentials, Authorization header allowed; the header is **also present on 503, 429, 409/422 and 401 responses**; an unlisted origin gets none.
+- So an error response **produced by the API** carries CORS headers. The browser saw none, which means the response it received was **not the API's**: the most likely explanation is an edge/CDN layer in front of `api.rapto.cloud` replacing an origin **502** with its own error page (CDNs commonly do this for 502/504 — e.g. Cloudflare), which has no CORS headers; the browser then reports a CORS failure. **I could not verify this from the repository** — the repo shows only the nginx config. Verify with `curl -i -H "Origin: https://app.rapto.cloud" …` against a failing path and look at the `server:`/`cf-ray` headers.
+- **Mitigation implemented:** the API no longer returns 502/504 for provider problems (see S.4), so the edge no longer substitutes its own page. Also note nginx's `limit_req` rejects with a bare 503 that carries no CORS headers (a separate potential source of the same misleading browser message).
+
+## S.4 Changes (files)
+| File | Change |
+|---|---|
+| `src/services/paddle.errors.ts` (new) | Classifies SDK `ApiError` by `code`/`type` into permission / not_found / conflict / validation / rate_limited / upstream / timeout / network; preserves upstream code/type/detail/retryAfter for logs; **redacts** credential-shaped text and caps length; maps to safe client errors; never 502/504. |
+| `src/services/paddle.client.ts` | `getOrCreatePaddleCustomer` **no longer calls `customers.get`**; the stored id is trusted. Customer creation persists with a **compare-and-set** (`updateMany … WHERE paddleCustomerId IS NULL`) so a racing request cannot overwrite; `customer_already_exists` reuses the existing customer (searches `active,archived`, reactivates an archived one — per Paddle docs email is unique and archived customers still count); new `replaceStaleCustomer`. |
+| `src/modules/billing/billing.service.ts` | Customer init, transaction create, plan change, portal and cancel use the classifier. A stale stored customer (Paddle `not_found` **naming that customer**) is replaced and the transaction retried once; a `not_found` for anything else (e.g. `PADDLE_PRICE_*` from the wrong environment) is a **503 configuration alert**, not a missing-customer fix. Request context (`requestId`, `userId`, `teamId`, `operation`) added to logs. |
+| `src/modules/billing/subscription-lifecycle.service.ts` | Pre-checkout duplicate-subscription guard: if the key lacks `subscription.read` (403) the guard is **degraded with an alert** instead of blocking all checkouts; network/5xx still **fail closed**. |
+| `src/middleware/request-logger.middleware.ts` | **`teamId: null` was a logging bug**, not an auth inconsistency: `injectTenant` sets `req.teamId`, the logger read `req.team?.id` (never set). It now logs `req.teamId`. |
+| `src/app.ts` | The later `X-Request-ID` middleware overwrote the id the logger had recorded, so the id returned to the client never matched the logs; it no longer overwrites. |
+| `src/middleware/error.middleware.ts` | Sets `Retry-After` for 429 AppErrors. |
+| `src/modules/billing/billing.controller.ts` | Passes the request id into the service. |
+| Tests | `tests/unit/paddle-errors.test.ts` (30), `tests/integration/paddle-customer-checkout.db.test.ts` (35); two earlier HTTP assertions changed from 502 to 503. |
+
+No database schema change. No new environment variables. Pricing, plan ids, subscription logic and billing ownership are unchanged.
+
+## S.5 Status mapping now returned to the browser
+| Paddle failure | HTTP | App code |
+|---|---|---|
+| 403 `forbidden`, `authentication_*`, `invalid_token` (our credentials/permissions) | **503** | `BILLING_UNAVAILABLE` + `alert: billing.paddle_credentials_or_permissions` |
+| 429 `too_many_requests` | **429** + `Retry-After` | `BILLING_RATE_LIMITED` |
+| 422/400 validation | **422** | `BILLING_REQUEST_INVALID` |
+| 409 conflict | **409** | `BILLING_CONFLICT` |
+| 404 for the stored customer | recovered transparently (new customer) | — |
+| 404 for any other id (price) | **503** + `alert: billing.price_or_entity_not_found_in_paddle` | `BILLING_UNAVAILABLE` |
+| Paddle 5xx / timeout / network | **503** | `BILLING_UPSTREAM_UNAVAILABLE` |
+
+503 is used instead of 502/504 deliberately (S.3). Permission errors are **never retried** (one Paddle call, asserted by test).
+
+## S.6 Tests executed (real Postgres + real routes/auth/CORS/error middleware; only the Paddle SDK object faked, throwing genuine `ApiError`s)
+All of the following **passed**: existing customer reused with `customers.get` forbidden-and-never-called; new customer created and persisted once; returning customer; all 6 plan×interval combinations map to the configured price ids; stale/sandbox customer replaced and retried; price-not-found not mistaken for a stale customer; `customer_already_exists` (id from detail; archived reactivated via list); 3 concurrent first checkouts → one `200`, two `409`, one customer; compare-and-set against a racing writer; insufficient permissions (`forbidden`) → 503, no customer/subscription/invoice state, structured alert with requestId/userId/teamId/operation/upstream code and **no credential text in any log**; invalid credentials (`authentication_malformed`, `invalid_token`, `authentication_missing`) → 503; 429 → 429 + `Retry-After` + CORS; 422; 5xx and network → 503; duplicate-guard degraded on 403 and fail-closed on 5xx; OPTIONS preflight; CORS headers on success, 503, 4xx and 401; unlisted origin gets no header; request log carries `teamId`/`userId`/`requestId`; `X-Request-ID` consistent.
+
+Full billing set run in one invocation: 252 tests, 249 passed. The 3 failures were two obsolete 502 assertions (updated to 503) and one cold-start timing flake in the webhook test (module warm-up added). After those edits I re-ran only the two affected suites (54/54 passed); I did **not** re-run all 10 suites together afterwards.
+
+**Not tested / cannot be tested here:** the real production key's permissions; real Paddle responses for a sandbox key against the live URL (undocumented); the edge/CDN behavior; any live checkout (no live transaction or charge was created).
+
+## S.7 Required Paddle API-key permissions (from Paddle's permissions docs)
+| Operation | Permission |
+|---|---|
+| Create customer / find by email (list) | `customer.write` / `customer.read` |
+| Create transaction (checkout) | `transaction.write` |
+| Pre-checkout duplicate guard, sync, reconciliation (`subscriptions.list/get`) | `subscription.read` |
+| Plan change, cancel (`subscriptions.update/cancel`) | `subscription.write` |
+| Customer portal | `customer_portal_session.write` |
+| Invoice PDF | `transaction.read` |
+
+Keys can be edited in the Paddle dashboard after creation; a key's permissions are not auto-extended when Paddle adds new ones. `customer.read` is **no longer required for checkout** (it is only used when a customer must be found by email).
+
+## S.8 Deployment and verification
+1. Deploy the image (no migration, no env change). **Also fix the key**: in Paddle → Developer tools → Authentication, confirm the **live** key (`pdl_live_…`) has the permissions above; rotate it if needed, update `PADDLE_API_KEY` on the server, then `docker compose up -d`.
+2. Confirm `PADDLE_ENVIRONMENT=production`, `PADDLE_CLIENT_TOKEN` is a `live_…` token, and `PADDLE_PRICE_*` are **live** price ids (do not print the values into shared logs).
+3. Try a Growth checkout in the app and stop at the Paddle overlay — do **not** complete a live payment unless intended.
+4. Check logs: no `alert: billing.paddle_credentials_or_permissions`; request log lines now show `teamId`/`userId`.
+5. From outside: `curl -i -X OPTIONS https://api.rapto.cloud/api/v1/billing/checkout -H "Origin: https://app.rapto.cloud" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: authorization,content-type"` → expect `204` and `access-control-allow-origin: https://app.rapto.cloud`. If a failing call still lacks CORS headers, inspect `server:` / `cf-ray` to see whether a CDN substitutes error pages.
+6. Teams whose stored `paddleCustomerId` came from sandbox are healed automatically on their next checkout (stale-customer replacement).

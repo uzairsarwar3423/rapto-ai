@@ -132,7 +132,8 @@ app.use(ipRateLimiter)
 
 // ── X-Request-ID ──────────────────────────────────────────────────────────────
 app.use((_req, res, next) => {
-    res.setHeader('X-Request-ID', crypto.randomUUID())
+    // requestLogger already set the id that appears in the logs; do not replace it, or clients and logs disagree.
+    if (!res.getHeader('x-request-id')) res.setHeader('X-Request-ID', crypto.randomUUID())
     next()
 })
 

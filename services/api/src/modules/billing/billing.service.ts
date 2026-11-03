@@ -20,6 +20,7 @@ import { withTimeout } from '../../utils/with-timeout'
 import { getTeamEntitlement } from './entitlement.service'
 import { entityToSnake, extractSubscriptionData } from '../webhooks/paddle.mapper'
 import { reconcileTeamFromPaddle, assertNoLiveSubscriptionInPaddle } from './subscription-lifecycle.service'
+import { classifyPaddleError, handlePaddleFailure, type PaddleErrorContext } from '../../services/paddle.errors'
 import * as paddleClient from '../../services/paddle.client'
 import * as billingRepo from './billing.repository'
 import { isLiveSubscriptionStatus } from './entitlement'
@@ -93,6 +94,8 @@ interface CheckoutParams {
   requesterName: string
   planId: PlanType
   interval: 'month' | 'year'
+  /** Correlation id of the HTTP request, for structured logs. */
+  requestId?: string
 }
 
 /**
@@ -103,7 +106,8 @@ interface CheckoutParams {
  *   - Validates planId against an explicit server-side allow-list.
  */
 export async function createCheckoutSession(params: CheckoutParams): Promise<CheckoutResult> {
-  const { teamId, requesterEmail, requesterName, planId, interval } = params
+  const { teamId, userId, requesterEmail, requesterName, planId, interval, requestId } = params
+  const ctx = (operation: string): PaddleErrorContext => ({ operation, requestId, userId, teamId })
 
   // 1. Validate planId against allow-list (FREE and ENTERPRISE not allowed via self-serve checkout)
   const checkoutablePlans: PlanType[] = [PlanType.STARTER, PlanType.GROWTH, PlanType.BUSINESS]
@@ -165,8 +169,7 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
           'paddle.subscriptions.update'
         )
       } catch (err: any) {
-        logger.error({ err: err?.message || err, teamId, paddleSubscriptionId: existingSub.paddleSubscriptionId }, '[billing.service] Failed to update Paddle subscription plan')
-        throw new AppError('PADDLE_SUBSCRIPTION_UPDATE_FAILED', 502, 'Unable to change the subscription plan right now. Please try again.')
+        throw handlePaddleFailure(err, ctx('subscriptions.update'), 'PADDLE_SUBSCRIPTION_UPDATE_FAILED')
       }
 
       // Local mirror is updated from Paddle's RESPONSE through the same single writer the webhooks use.
@@ -200,28 +203,56 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
     // 5. New purchase / re-subscription
     let paddleCustomerId: string
     try {
-      paddleCustomerId = await paddleClient.getOrCreatePaddleCustomer(teamId, requesterEmail, requesterName)
-    } catch (err) {
-      logger.error({ err, teamId }, '[billing.service] Failed to get/create Paddle customer')
-      throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to initialize billing customer')
+      paddleCustomerId = await withTimeout(
+        paddleClient.getOrCreatePaddleCustomer(teamId, requesterEmail, requesterName),
+        PADDLE_CALL_TIMEOUT_MS,
+        'paddle.customers.create'
+      )
+    } catch (err: any) {
+      throw handlePaddleFailure(err, ctx('customers.getOrCreate'), 'PADDLE_CHECKOUT_FAILED')
     }
 
     // 5b. Ground truth check: never start a second paid subscription for a customer Paddle already bills.
     //     (Covers DB drift, lost webhooks, a second browser tab after the lock expired, past_due/paused states.)
-    await assertNoLiveSubscriptionInPaddle(teamId, paddleCustomerId)
+    await assertNoLiveSubscriptionInPaddle(teamId, paddleCustomerId, { requestId, userId })
 
     // 6. Create Paddle transaction (customData carries teamId/planId — trust anchor)
-    let result: CheckoutResult
-    try {
-      result = await withTimeout(
-        paddleClient.createTransaction({ priceId, customerId: paddleCustomerId, teamId, planId, interval }),
+    const createTxn = (customerId: string) =>
+      withTimeout(
+        paddleClient.createTransaction({ priceId, customerId, teamId, planId, interval }),
         PADDLE_CALL_TIMEOUT_MS,
         'paddle.transactions.create'
       )
+
+    let result: CheckoutResult
+    try {
+      try {
+        result = await createTxn(paddleCustomerId)
+      } catch (err: any) {
+        // The stored customer id is unknown to Paddle (deleted, or created in the OTHER Paddle environment).
+        // "not found" is only treated as a stale customer when Paddle names THAT customer — a missing price
+        // (wrong PADDLE_PRICE_* for this environment) must stay an error.
+        const failure = classifyPaddleError(err)
+        if (failure.kind === 'not_found' && failure.detail?.includes(paddleCustomerId)) {
+          const replacement = await paddleClient.replaceStaleCustomer(teamId, paddleCustomerId, requesterEmail, requesterName)
+          result = await createTxn(replacement)
+        } else {
+          throw err
+        }
+      }
     } catch (err: any) {
-      // Provider detail goes to the log only — never to the client.
-      logger.error({ err: err?.message, teamId, planId, interval }, '[billing.service] Paddle createTransaction failed')
-      throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to create checkout session. Please try again.')
+      // A "not found" that is NOT the customer means one of OUR identifiers (almost always PADDLE_PRICE_* from the
+      // wrong Paddle environment) is unknown to Paddle. That is a deployment configuration error, not a missing
+      // billing record for the user: report it as unavailable and alert operations.
+      if (classifyPaddleError(err).kind === 'not_found') {
+        logger.error(
+          { ...ctx('transactions.create'), planId, interval, priceId, paddleDetail: classifyPaddleError(err).detail, alert: 'billing.price_or_entity_not_found_in_paddle' },
+          '[billing.service] Paddle does not know a configured id (check PADDLE_PRICE_* and PADDLE_ENVIRONMENT)'
+        )
+        throw new AppError('BILLING_UNAVAILABLE', 503, 'Billing is temporarily unavailable. Our team has been notified.')
+      }
+      // Upstream detail goes to the structured log only — never to the client.
+      throw handlePaddleFailure(err, ctx('transactions.create'), 'PADDLE_CHECKOUT_FAILED')
     }
 
     logger.info({ teamId, planId, interval, transactionId: result.transactionId }, '[billing.service] Checkout session created')
@@ -255,11 +286,11 @@ export async function createPortalSession(teamId: string): Promise<PortalResult>
   try {
     portalUrl = await paddleClient.createCustomerPortalSession(teamRecord.paddleCustomerId)
   } catch (err: any) {
-    logger.error({ err, teamId }, '[billing.service] Failed to create portal session')
-    if (err?.code === 'not_found' || err?.status === 404) {
+    const failure = classifyPaddleError(err)
+    if (failure.kind === 'not_found') {
       throw new AppError('NO_BILLING_ACCOUNT', 404, 'Billing account not found on payment provider. Please complete a checkout first.')
     }
-    throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to create billing portal session')
+    throw handlePaddleFailure(err, { operation: 'customerPortalSessions.create', teamId }, 'BILLING_PORTAL_FAILED')
   }
 
   return { portalUrl }
@@ -351,8 +382,7 @@ export async function cancelSubscription(teamId: string): Promise<{ success: boo
       'paddle.subscriptions.cancel'
     )
   } catch (err: any) {
-    logger.error({ err: err.message, teamId, paddleSubId: sub.paddleSubscriptionId }, 'Paddle cancel failed')
-    throw new AppError('PADDLE_CANCEL_FAILED', 502, 'Failed to cancel the subscription. Please try again.')
+    throw handlePaddleFailure(err, { operation: 'subscriptions.cancel', teamId }, 'PADDLE_CANCEL_FAILED')
   }
 
   try {

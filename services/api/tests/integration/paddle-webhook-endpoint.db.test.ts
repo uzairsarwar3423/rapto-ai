@@ -49,6 +49,8 @@ const queueAdd = billingWebhookQueue.add as jest.Mock
 
 beforeAll(async () => {
   await resetBillingTables()
+  // Warm the lazily-imported Paddle client so cold ts-jest compilation does not eat the SDK's 5 s signature window.
+  await import('../../src/services/paddle.client')
 })
 beforeEach(() => jest.clearAllMocks())
 afterAll(async () => {

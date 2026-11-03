@@ -278,8 +278,13 @@ export { isLiveSubscriptionStatus }
  * Refuse to start a new paid subscription when Paddle already bills this customer.
  * Fails CLOSED: if Paddle cannot be queried we cannot prove it is safe, and a duplicate charge is worse than a retry.
  */
-export async function assertNoLiveSubscriptionInPaddle(teamId: string, paddleCustomerId: string): Promise<void> {
+export async function assertNoLiveSubscriptionInPaddle(
+  teamId: string,
+  paddleCustomerId: string,
+  ctx: { requestId?: string; userId?: string } = {}
+): Promise<void> {
   const { AppError } = await import('../../utils/errors')
+  const { classifyPaddleError, logPaddleFailure, toClientError } = await import('../../services/paddle.errors')
   const { paddle } = await import('../../services/paddle.client')
 
   let live: any[]
@@ -291,8 +296,18 @@ export async function assertNoLiveSubscriptionInPaddle(teamId: string, paddleCus
     )
     live = page ?? []
   } catch (err: any) {
-    logger.error({ err: err.message, teamId }, '[lifecycle] cannot verify existing subscriptions with Paddle — refusing to start checkout')
-    throw new AppError('BILLING_TEMPORARILY_UNAVAILABLE', 503, 'Billing is temporarily unavailable. Please try again in a moment.')
+    const failure = classifyPaddleError(err)
+    logPaddleFailure(failure, { operation: 'subscriptions.list(pre-checkout)', teamId, ...ctx })
+    if (failure.kind === 'permission') {
+      // The API key lacks `subscription.read` (or is invalid). That is a deterministic operations problem, not
+      // evidence of a duplicate; blocking every checkout on it would stop all revenue. The local-mirror guard
+      // (past_due / paused / active checks above) still applies and the alert tells operations to fix the key.
+      // transactions.create below fails loudly if the key is genuinely unusable.
+      logger.error({ teamId, alert: 'billing.duplicate_guard_degraded' }, '[lifecycle] Paddle duplicate-subscription check skipped: API key lacks permission')
+      return
+    }
+    // Network / 5xx / 429: cannot prove it is safe ⇒ fail CLOSED (a duplicate charge is worse than a retry).
+    throw failure.kind === 'rate_limited' ? toClientError(failure, 'BILLING_ERROR') : new AppError('BILLING_TEMPORARILY_UNAVAILABLE', 503, 'Billing is temporarily unavailable. Please try again in a moment.')
   }
 
   if (live.length > 0) {

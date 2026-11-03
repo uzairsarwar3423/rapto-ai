@@ -203,10 +203,10 @@ describe('Checkout — price integrity, duplicates and failures', () => {
     expect(clientMock.createTransaction).toHaveBeenCalledTimes(1)
   })
 
-  it('failed checkout: Paddle error → 502 with a sanitized message (no provider internals leaked)', async () => {
+  it('failed checkout: Paddle error → 503 (never 502/504 — edge proxies replace those and strip CORS headers) with a sanitized message', async () => {
     clientMock.createTransaction.mockRejectedValue(Object.assign(new Error('Paddle Error: api_key pdl_sdbx_SECRET invalid at https://sandbox-api.paddle.com/transactions'), { code: 'forbidden' }))
     const res = await request(app).post('/api/v1/billing/checkout').set(bearer(A.admin)).send({ planId: 'STARTER', interval: 'month' })
-    expect(res.status).toBe(502)
+    expect(res.status).toBe(503)
     expect(JSON.stringify(res.body)).not.toMatch(/pdl_|sandbox-api|api_key/i)
   })
 
@@ -262,7 +262,7 @@ describe('Checkout — price integrity, duplicates and failures', () => {
     await giveActiveSub(A.team.id, A.team.paddleCustomerId)
     clientMock.updateSubscriptionPlan.mockRejectedValue(new Error('boom'))
     const res = await request(app).post('/api/v1/billing/checkout').set(bearer(A.admin)).send({ planId: 'GROWTH', interval: 'month' })
-    expect(res.status).toBe(502)
+    expect(res.status).toBe(503)
     expect((await prisma.team.findUniqueOrThrow({ where: { id: A.team.id } })).plan).toBe(PlanType.STARTER)
   })
 })
