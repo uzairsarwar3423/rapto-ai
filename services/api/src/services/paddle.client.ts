@@ -214,6 +214,7 @@ export interface UpdateSubscriptionPlanParams {
   priceId: string
   planId: string
   interval: 'month' | 'year'
+  teamId: string
 }
 
 /**
@@ -223,7 +224,7 @@ export interface UpdateSubscriptionPlanParams {
 export async function updateSubscriptionPlan(
   params: UpdateSubscriptionPlanParams
 ) {
-  const { paddleSubscriptionId, priceId, planId, interval } = params
+  const { paddleSubscriptionId, priceId, planId, interval, teamId } = params
 
   const updatedSubscription = await paddle.subscriptions.update(paddleSubscriptionId, {
     items: [
@@ -233,7 +234,9 @@ export async function updateSubscriptionPlan(
       },
     ],
     prorationBillingMode: 'prorated_immediately',
+    // custom_data is sent in full on every update: teamId is the webhook trust anchor and must never be dropped.
     customData: {
+      teamId,
       planId,
       interval,
     },

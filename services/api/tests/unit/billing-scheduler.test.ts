@@ -52,8 +52,6 @@ describe('scheduler — runBillingCycleResetCron', () => {
   it('resets meetingsUsed for Free tier teams whose cycle has completed', async () => {
     ;(prisma.team.findMany as jest.Mock)
       .mockResolvedValueOnce([{ id: 'team_free_1' }, { id: 'team_free_2' }]) // Free teams
-      .mockResolvedValueOnce([]) // Expired grace period teams
-    ;(prisma.subscription.findMany as jest.Mock).mockResolvedValueOnce([]) // Scheduled cancellations
 
     await runBillingCycleResetCron()
 
@@ -77,49 +75,13 @@ describe('scheduler — runBillingCycleResetCron', () => {
     expect(invalidatePlanCache).toHaveBeenCalledWith('team_free_2')
   })
 
-  it('downgrades teams with expired grace periods to FREE', async () => {
-    ;(prisma.team.findMany as jest.Mock)
-      .mockResolvedValueOnce([]) // Free teams
-      .mockResolvedValueOnce([{ id: 'team_past_due_1' }]) // Expired grace period
-    ;(prisma.subscription.findMany as jest.Mock).mockResolvedValueOnce([])
+  it('no longer mutates paid plans or subscriptions: grace / cancellation / trial expiry are owned by runEntitlementSync (see billing-payment-lifecycle.db.test.ts)', async () => {
+    ;(prisma.team.findMany as jest.Mock).mockResolvedValue([])
 
     await runBillingCycleResetCron()
 
-    expect(prisma.team.update).toHaveBeenCalledWith({
-      where: { id: 'team_past_due_1' },
-      data: {
-        plan: 'FREE',
-        gracePeriodEnd: null,
-      },
-    })
-    expect(invalidatePlanCache).toHaveBeenCalledWith('team_past_due_1')
-  })
-
-  it('executes period-end scheduled cancellations', async () => {
-    ;(prisma.team.findMany as jest.Mock)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-    ;(prisma.subscription.findMany as jest.Mock).mockResolvedValueOnce([
-      { teamId: 'team_cancelling_1', paddleSubscriptionId: 'sub_cancelling_1' },
-    ])
-
-    await runBillingCycleResetCron()
-
-    expect(prisma.subscription.update).toHaveBeenCalledWith({
-      where: { paddleSubscriptionId: 'sub_cancelling_1' },
-      data: expect.objectContaining({
-        status: 'cancelled',
-        cancelAtPeriodEnd: false,
-      }),
-    })
-
-    expect(prisma.team.update).toHaveBeenCalledWith({
-      where: { id: 'team_cancelling_1' },
-      data: {
-        plan: 'FREE',
-        billingCycleEnd: null,
-      },
-    })
-    expect(invalidatePlanCache).toHaveBeenCalledWith('team_cancelling_1')
+    expect(prisma.subscription.findMany).not.toHaveBeenCalled()
+    expect(prisma.subscription.update).not.toHaveBeenCalled()
+    expect(prisma.team.update).not.toHaveBeenCalled()
   })
 })

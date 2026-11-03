@@ -2,7 +2,20 @@ import type { Request, Response } from 'express'
 import { logger } from '../../config/logger'
 import { redis } from '../../config/redis'
 import { billingWebhookQueue } from '../../queues/queue.client'
+import { INBOX_STATUS, recordIncomingEvent } from './paddle.inbox.repository'
+import { parsePaddleDate } from './paddle.mapper'
 
+/**
+ * POST /webhooks/paddle
+ *
+ *   1. Verify the Paddle-Signature over the RAW body with the official SDK (HMAC-SHA256, 5 s timestamp window).
+ *   2. Persist the event in Postgres (paddle_webhook_events, UNIQUE event_id).  ← durability point
+ *   3. Best-effort enqueue for immediate processing.
+ *   4. Reply 200.
+ *
+ * HTTP 200 therefore means "durably stored", not "processed". If step 2 fails we return 500 and Paddle
+ * redelivers. If step 3 fails the event is still safe: the redrive sweeper re-enqueues it.
+ */
 export async function handlePaddleWebhook(req: Request, res: Response): Promise<void> {
   const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET
 
@@ -12,33 +25,22 @@ export async function handlePaddleWebhook(req: Request, res: Response): Promise<
     return
   }
 
-  // ── Step 1: Validate raw body + signature header presence ──────────────────
-  const signatureHeader = req.headers['paddle-signature'] as string
-  const rawBody = (req as any).rawBody as Buffer
+  const signatureHeader = req.headers['paddle-signature'] as string | undefined
+  const rawBody = (req as any).rawBody as Buffer | undefined
 
   if (!signatureHeader || !rawBody) {
-    logger.warn(
-      { hasSignature: !!signatureHeader, hasRawBody: !!rawBody, ip: req.ip },
-      '[paddle.webhook.controller] REJECTED: missing Paddle-Signature header or raw body'
-    )
+    logger.warn({ hasSignature: !!signatureHeader, hasRawBody: !!rawBody, ip: req.ip }, '[paddle.webhook.controller] REJECTED: missing Paddle-Signature header or raw body')
     res.status(400).json({ error: 'Invalid request' })
     return
   }
 
-  // ── Step 2: Cryptographic signature verification via official Paddle SDK ───
   let event: any
   try {
     const { paddle } = await import('../../services/paddle.client')
-    event = await paddle.webhooks.unmarshal(
-      rawBody.toString('utf8'),
-      PADDLE_WEBHOOK_SECRET,
-      signatureHeader
-    )
+    event = await paddle.webhooks.unmarshal(rawBody.toString('utf8'), PADDLE_WEBHOOK_SECRET, signatureHeader)
   } catch (err: any) {
-    logger.error(
-      { err: err.message, ip: req.ip, signatureHeader: signatureHeader.substring(0, 40) },
-      '[paddle.webhook.controller] SECURITY: Paddle signature verification FAILED — invalid signature or misconfigured secret'
-    )
+    // Never log any part of the signature/secret.
+    logger.error({ err: err.message, ip: req.ip }, '[paddle.webhook.controller] SECURITY: signature verification FAILED')
     res.status(400).json({ error: 'PADDLE_WEBHOOK_INVALID_SIGNATURE' })
     return
   }
@@ -46,62 +48,54 @@ export async function handlePaddleWebhook(req: Request, res: Response): Promise<
   const eventId = (event?.eventId || event?.event_id || event?.id) as string | undefined
   const eventType = (event?.eventType || event?.event_type || event?.type) as string | undefined
 
-  // Paddle sends a ping when first saving webhook URL in the dashboard
   if (!eventId && !eventType) {
-    logger.info(
-      { eventKeys: Object.keys(event || {}), ip: req.ip },
-      '[paddle.webhook.controller] Received Paddle test/ping webhook — acknowledging'
-    )
+    logger.info({ ip: req.ip }, '[paddle.webhook.controller] Paddle test/ping webhook — acknowledging')
     res.status(200).json({ received: true })
     return
   }
-
   if (!eventId || !eventType) {
-    logger.warn(
-      { eventKeys: Object.keys(event || {}), ip: req.ip },
-      '[paddle.webhook.controller] Webhook payload missing eventId or eventType — rejecting'
-    )
+    logger.warn({ ip: req.ip }, '[paddle.webhook.controller] Webhook payload missing eventId or eventType — rejecting')
     res.status(400).json({ error: 'Malformed event' })
     return
   }
 
-  // Record last webhook receipt timestamp for monitoring
+  // Persist the verified RAW payload (snake_case, exactly as Paddle sent it), not the SDK object.
+  let payload: unknown
   try {
-    await redis.set('paddle:last_webhook_received_at', Date.now().toString())
-  } catch (err: any) {
-    logger.warn({ err: err.message }, '[paddle.webhook.controller] Failed to update last_webhook_received_at metric')
+    payload = JSON.parse(rawBody.toString('utf8'))
+  } catch {
+    res.status(400).json({ error: 'Malformed JSON' })
+    return
+  }
+  const occurredAt = parsePaddleDate((payload as any)?.occurred_at ?? event?.occurredAt) ?? null
+
+  let recorded: { created: boolean; status: string }
+  try {
+    recorded = await recordIncomingEvent({ eventId, eventType, occurredAt, payload })
+  } catch (dbErr: any) {
+    logger.error({ err: dbErr.message, eventId, eventType, alert: 'billing.webhook_persist_failed' }, '[paddle.webhook.controller] ❌ could not persist webhook — returning 500 so Paddle retries')
+    res.status(500).json({ error: 'Failed to persist webhook event' })
+    return
   }
 
-  // ── Step 3: Enqueue into persistent BullMQ queue with deterministic jobId ──
-  // Exactly-once processing guarantee: BullMQ rejects duplicate active/waiting jobIds
-  // and retains failed jobs durably across container restarts without losing events.
+  redis.set('paddle:last_webhook_received_at', Date.now().toString()).catch(() => undefined)
+
+  if (!recorded.created && (recorded.status === INBOX_STATUS.PROCESSED || recorded.status === INBOX_STATUS.IGNORED)) {
+    logger.info({ eventId, eventType }, '[paddle.webhook.controller] duplicate delivery of an already-processed event — acknowledged')
+    res.status(200).json({ received: true, eventId, duplicate: true })
+    return
+  }
+
   try {
-    const jobId = `paddle-evt:${eventId}`
+    // BullMQ forbids ':' in custom job IDs (it rejects the add) — keep this colon-free.
     await billingWebhookQueue.add(
       'process-paddle-event',
-      {
-        event,
-        eventId,
-        eventType,
-        receivedAt: new Date().toISOString(),
-      },
-      {
-        jobId,
-      }
+      { eventId, eventType, receivedAt: new Date().toISOString() },
+      { jobId: `paddle-evt-${eventId}` }
     )
-
-    logger.info(
-      { eventId, eventType, jobId, ip: req.ip },
-      '[paddle.webhook.controller] ✅ Event verified and durably queued for processing'
-    )
-
-    // Fast-ack to Paddle now that the event is safely persisted in Redis queue
-    res.status(200).json({ received: true, eventId })
   } catch (queueErr: any) {
-    logger.error(
-      { err: queueErr.message, eventId, eventType },
-      '[paddle.webhook.controller] ❌ Failed to persist webhook event into BullMQ queue'
-    )
-    res.status(500).json({ error: 'Failed to persist webhook event' })
+    logger.error({ err: queueErr.message, eventId, eventType }, '[paddle.webhook.controller] enqueue failed — event is stored, redrive sweeper will pick it up')
   }
+
+  res.status(200).json({ received: true, eventId })
 }

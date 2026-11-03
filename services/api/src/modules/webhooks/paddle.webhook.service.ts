@@ -1,799 +1,422 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// paddle.webhook.service.ts — Paddle event handlers (run by billing-webhook.worker from the durable inbox)
+//
+// Guarantees:
+//   • Idempotent: every handler can run N times for the same event and converge on the same state
+//     (inbox claim + unique keys + state-based repository functions).
+//   • Order-safe: subscription.* events are compared with Subscription.lastEventOccurredAt; events for a
+//     different Paddle subscription never overwrite a live one.
+//   • Fail loud: anything that cannot be mapped throws — transient errors are retried, permanent ones are
+//     surfaced as NEEDS_ATTENTION. Nothing is silently dropped.
+//   • Team.plan is never taken from the payload; it is derived from the subscription via resolveEntitlement().
+//
+// Event policy (verified against Paddle docs):
+//   transaction.completed  → payment captured AND processed → activation / renewal / invoice
+//   transaction.paid       → IGNORED (completed always follows; handling both double-applied side effects)
+//   transaction.billed     → IGNORED (invoice issued, NOT paid)
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { PlanType, SubscriptionStatus } from '@prisma/client'
 import { logger } from '../../config/logger'
 import { notifyQueue } from '../../queues/queue.client'
-import { getPlanFromPriceId, getPlanPriceCents } from '../../config/plans.config'
-import * as billingRepo from '../billing/billing.repository'
+import { prisma } from '../../db/client'
 import { invalidatePlanCache } from '../../middleware/plan-limits.middleware'
-import type { PaddleWebhookCustomData, UpsertSubscriptionData } from '../billing/billing.types'
+import * as billingRepo from '../billing/billing.repository'
+import type { ApplySubscriptionResult } from '../billing/billing.repository'
+import type { UpsertSubscriptionData } from '../billing/billing.types'
+import {
+  UnresolvableEventError,
+  extractSubscriptionData,
+  mapPaddleSubscriptionStatus,
+  parseMinorAmount,
+  parsePaddleDate,
+  resolvePlan,
+  toSnake,
+} from './paddle.mapper'
 
-export async function processEvent(event: any, eventId: string, eventType: string): Promise<void> {
-  const data = event.data || event
+// Re-exported for existing importers / tests.
+export { extractSubscriptionData, mapPaddleSubscriptionStatus, parseMinorAmount, parsePaddleDate, UnresolvableEventError }
+
+export interface ProcessOutcome {
+  status: 'PROCESSED' | 'IGNORED' | 'NEEDS_ATTENTION'
+  teamId?: string | null
+  note?: string
+}
+
+const IGNORED_EVENT_TYPES = new Set(['transaction.paid', 'transaction.billed'])
+
+export async function processEvent(rawEvent: any, eventId: string, eventType: string): Promise<ProcessOutcome> {
+  const event = toSnake<any>(rawEvent)
+  const data = toSnake<any>(event.data ?? event)
+  const occurredAt = parsePaddleDate(event.occurred_at) ?? null
 
   logger.info({ eventId, eventType }, '[paddle.webhook.service] ▶ Processing event')
 
+  if (IGNORED_EVENT_TYPES.has(eventType)) {
+    return { status: 'IGNORED', note: `${eventType} is intentionally not acted on` }
+  }
+
   switch (eventType) {
     case 'transaction.completed':
-    case 'transaction.paid':
-    case 'transaction.billed':
-      await handleTransactionCompleted(data, eventId)
-      break
+      return handleTransactionCompleted(data, eventId)
+
     case 'subscription.created':
     case 'subscription.imported':
-      await handleSubscriptionCreated(data, eventId)
-      break
-    case 'subscription.updated':
     case 'subscription.activated':
-    case 'subscription.resumed':
-      await handleSubscriptionUpdated(data, eventId)
-      break
     case 'subscription.trialing':
-      await handleSubscriptionTrialing(data, eventId)
-      break
-    case 'subscription.canceled':
-    case 'subscription.cancelled':
-      await handleSubscriptionCanceled(data, eventId)
-      break
+    case 'subscription.updated':
+    case 'subscription.resumed':
     case 'subscription.past_due':
-      await handleSubscriptionPastDue(data, eventId)
-      break
     case 'subscription.paused':
-      await handleSubscriptionPaused(data, eventId)
-      break
+    case 'subscription.canceled':
+      return handleSubscriptionEvent(data, eventId, eventType, occurredAt)
+
     case 'adjustment.created':
     case 'adjustment.updated':
-      await handleAdjustmentCreated(data, eventId)
-      break
+      return handleAdjustment(data, eventId, eventType)
+
     case 'transaction.payment_failed':
-      await handleTransactionPaymentFailed(data, eventId)
-      break
+      return handleTransactionPaymentFailed(data, eventId)
+
     default:
-      logger.info({ eventType, eventId }, '[paddle.webhook.service] Unhandled or informative event type — skipping')
+      logger.info({ eventType, eventId }, '[paddle.webhook.service] Unhandled event type — recorded, no action')
+      return { status: 'IGNORED', note: `unhandled event type ${eventType}` }
   }
 }
 
-export function parsePaddleDate(val: any): Date | undefined {
-  if (!val) return undefined
-  if (val instanceof Date) return isNaN(val.getTime()) ? undefined : val
-  if (typeof val === 'number') {
-    const ms = val < 1e11 ? val * 1000 : val
-    const d = new Date(ms)
-    return isNaN(d.getTime()) ? undefined : d
+// ── Team resolution (DB errors PROPAGATE so the event is retried, never dropped) ──
+
+async function resolveTeamId(data: any): Promise<string> {
+  const customTeamId: string | undefined = data.custom_data?.teamId ?? data.custom_data?.team_id
+  const subscriptionId: string | undefined =
+    data.subscription_id ?? (typeof data.id === 'string' && data.id.startsWith('sub_') ? data.id : undefined)
+  const transactionId: string | undefined =
+    data.transaction_id ?? (typeof data.id === 'string' && data.id.startsWith('txn_') ? data.id : undefined)
+  const customerId: string | undefined = data.customer_id
+
+  // 1. Our own record of this Paddle subscription is the strongest anchor.
+  if (subscriptionId) {
+    const sub = await prisma.subscription.findUnique({ where: { paddleSubscriptionId: subscriptionId }, select: { teamId: true } })
+    if (sub) return sub.teamId
   }
-  if (typeof val === 'string') {
-    const trimmed = val.trim()
-    if (!trimmed) return undefined
-    const d = new Date(trimmed)
-    return isNaN(d.getTime()) ? undefined : d
+  // 2. Invoice for this transaction.
+  if (transactionId) {
+    const inv = await prisma.invoice.findUnique({ where: { paddleTransactionId: transactionId }, select: { teamId: true } })
+    if (inv) return inv.teamId
   }
-  return undefined
+  // 3. custom_data.teamId — set server-side when WE created the transaction (webhooks are signature-verified).
+  if (customTeamId) {
+    const team = await prisma.team.findUnique({ where: { id: customTeamId }, select: { id: true } })
+    if (team) return team.id
+    throw new UnresolvableEventError(`custom_data.teamId ${customTeamId} does not exist`)
+  }
+  // 4. Customer ID, only when it identifies exactly one team.
+  if (customerId) {
+    const teams = await prisma.team.findMany({ where: { paddleCustomerId: customerId }, select: { id: true }, take: 2 })
+    if (teams.length === 1) return teams[0].id
+    if (teams.length > 1) throw new UnresolvableEventError(`customer ${customerId} is shared by multiple teams`)
+  }
+  throw new UnresolvableEventError('Cannot resolve team for event')
 }
 
-export function mapPaddleSubscriptionStatus(paddleStatus: string): SubscriptionStatus {
-  switch ((paddleStatus || '').toLowerCase()) {
-    case 'active':             return SubscriptionStatus.active
-    case 'trialing':          return SubscriptionStatus.trialing
-    case 'past_due':          return SubscriptionStatus.past_due
-    case 'paused':            return SubscriptionStatus.paused
-    case 'canceled':
-    case 'cancelled':         return SubscriptionStatus.cancelled
-    case 'unpaid':            return SubscriptionStatus.unpaid
-    case 'incomplete':        return SubscriptionStatus.incomplete
-    case 'incomplete_expired':return SubscriptionStatus.incomplete_expired
-    case 'refunded':          return SubscriptionStatus.refunded
-    default:
-      logger.warn({ paddleStatus }, '[paddle.webhook.service] Unknown Paddle subscription status — defaulting to active')
-      return SubscriptionStatus.active
-  }
-}
+// ── Side effects after a committed state change ──────────────────────────────
 
-export function parseMinorAmount(amountRaw: any): number {
-  if (amountRaw === null || amountRaw === undefined) return 0
-  const num = Number(amountRaw)
-  if (isNaN(num)) return 0
-  return Math.round(num)
-}
-
-export function extractSubscriptionData(
-  data: any,
-  resolvedPlan: PlanType | null,
-  interval: 'month' | 'year'
-): UpsertSubscriptionData {
-  const paddleSubscriptionId = (data.id || data.subscriptionId || data.subscription_id) as string
-  const paddleCustomerId     = (data.customerId || data.customer_id) as string
-  const rawStatus            = (data.status as string) || 'active'
-  const status               = mapPaddleSubscriptionStatus(rawStatus)
-  const plan                 = resolvedPlan ?? PlanType.FREE
-
-  const items = data.items || []
-  const price = items?.[0]?.price
-  const priceId = price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id || undefined
-
-  const currentBillingPeriod = data.currentBillingPeriod || data.current_billing_period
-  const billingPeriod = data.billingPeriod || data.billing_period
-  const periodSource = currentBillingPeriod || billingPeriod
-
-  let currentPeriodStart = parsePaddleDate(
-    periodSource?.startsAt || periodSource?.starts_at || data.started_at || data.first_billed_at || data.created_at
-  )
-  let currentPeriodEnd = parsePaddleDate(
-    periodSource?.endsAt || periodSource?.ends_at || data.next_billed_at
-  )
-
-  // Defensive Trial Dates Resolution
-  const trialDates = data.trialDates || data.trial_dates || items?.[0]?.trial_dates || data.details?.line_items?.[0]?.trial_dates
-  const trialPeriodConfig = items?.[0]?.price?.trial_period || items?.[0]?.price?.trialPeriod
-  const trialDays = trialPeriodConfig?.interval === 'day' ? Number(trialPeriodConfig?.frequency || 14) : 14
-
-  const isTrial = status === SubscriptionStatus.trialing || Boolean(trialDates) || (rawStatus === 'trialing' || rawStatus === 'trial') || Boolean(trialPeriodConfig)
-
-  let trialStart = parsePaddleDate(trialDates?.startsAt || trialDates?.starts_at)
-  let trialEnd = parsePaddleDate(trialDates?.endsAt || trialDates?.ends_at)
-
-  if (isTrial) {
-    if (!trialStart) trialStart = currentPeriodStart || parsePaddleDate(data.started_at || data.created_at) || new Date()
-    if (!trialEnd) trialEnd = parsePaddleDate(data.next_billed_at) || (currentPeriodEnd && currentPeriodEnd.getTime() - trialStart.getTime() <= (trialDays + 2) * 86400000 ? currentPeriodEnd : new Date(trialStart.getTime() + trialDays * 24 * 60 * 60 * 1000))
-    if (!currentPeriodStart && trialStart) currentPeriodStart = trialStart
-    if (!currentPeriodEnd && trialEnd) currentPeriodEnd = trialEnd
-  }
-
-  // Defensive Unit Amount Resolution
-  const unitPrice = price?.unitPrice || price?.unit_price
-  let unitAmount: number | undefined = undefined
-
-  if (unitPrice?.amount) {
-    unitAmount = parseMinorAmount(unitPrice.amount)
-  }
-  if (unitAmount === undefined || unitAmount === 0) {
-    const lineItemAmount = data.details?.line_items?.[0]?.unit_totals?.total || data.details?.line_items?.[0]?.price?.unit_price?.amount
-    if (lineItemAmount) unitAmount = parseMinorAmount(lineItemAmount)
-  }
-  if (unitAmount === undefined || unitAmount === 0) {
-    const recurringTotal = data.recurring_transaction_details?.totals?.subtotal || data.recurring_transaction_details?.totals?.total
-    if (recurringTotal) unitAmount = parseMinorAmount(recurringTotal)
-  }
-  if (unitAmount === undefined || unitAmount === 0) {
-    const rawTotal = data.details?.totals?.subtotal || data.details?.totals?.total
-    if (rawTotal) unitAmount = parseMinorAmount(rawTotal)
-  }
-  if (unitAmount === undefined || unitAmount === 0) {
-    unitAmount = getPlanPriceCents(plan, interval)
-  }
-
-  const currency = (
-    data.currencyCode ||
-    data.currency_code ||
-    unitPrice?.currencyCode ||
-    unitPrice?.currency_code ||
-    'usd'
-  ).toLowerCase()
-
-  const scheduledChange = data.scheduledChange || data.scheduled_change
-  const cancelAtPeriodEnd = Boolean(
-    scheduledChange?.action === 'cancel' ||
-    data.cancel_at_period_end ||
-    data.cancelAtPeriodEnd
-  )
-
-  const canceledAt = parsePaddleDate(data.canceledAt || data.canceled_at)
-
-  return {
-    paddleSubscriptionId,
-    paddleCustomerId,
-    paddlePriceId: priceId,
-    plan,
-    billingInterval: interval,
-    status,
-    currentPeriodStart,
-    currentPeriodEnd,
-    cancelAtPeriodEnd,
-    cancelledAt: canceledAt,
-    trialStart,
-    trialEnd,
-    unitAmount,
-    currency,
-  }
-}
-
-async function resolveTeamAndPlan(data: any): Promise<{
-  teamId: string | null
-  planId: PlanType | null
-  interval: 'month' | 'year'
-}> {
-  const customData = (data.customData || data.custom_data) as PaddleWebhookCustomData | undefined
-  let teamId: string | null = customData?.teamId || (customData as any)?.team_id || null
-
-  const paddleSubscriptionId = (data.subscriptionId || data.subscription_id || (typeof data.id === 'string' && data.id.startsWith('sub_') ? data.id : undefined)) as string | undefined
-  const paddleTransactionId = (data.transactionId || data.transaction_id || (typeof data.id === 'string' && data.id.startsWith('txn_') ? data.id : undefined)) as string | undefined
-  const paddleCustomerId = (data.customerId || data.customer_id) as string | undefined
-
-  const { prisma } = await import('../../db/client')
-
-  // 1. Primary DB Anchor: Check Subscription by paddleSubscriptionId (Guaranteed Unique)
-  if (!teamId && paddleSubscriptionId && paddleSubscriptionId.startsWith('sub_')) {
-    try {
-      const sub = await prisma.subscription.findUnique({
-        where: { paddleSubscriptionId },
-        select: { teamId: true, plan: true, billingInterval: true },
-      })
-      if (sub) {
-        teamId = sub.teamId
-        logger.info({ paddleSubscriptionId, teamId }, '[paddle.webhook.service] resolveTeamAndPlan: teamId resolved via subscription record')
-      }
-    } catch (err: any) {
-      logger.error({ err: err.message, paddleSubscriptionId }, '[paddle.webhook.service] resolveTeamAndPlan: Subscription lookup failed')
-    }
-  }
-
-  // 2. Secondary DB Anchor: Check Invoice by transaction ID
-  if (!teamId && paddleTransactionId && paddleTransactionId.startsWith('txn_')) {
-    try {
-      const invoice = await prisma.invoice.findUnique({
-        where: { paddleTransactionId },
-        select: { teamId: true },
-      })
-      if (invoice) {
-        teamId = invoice.teamId
-        logger.info({ paddleTransactionId, teamId }, '[paddle.webhook.service] resolveTeamAndPlan: teamId resolved via invoice transaction record')
-      }
-    } catch (err: any) {
-      logger.error({ err: err.message, paddleTransactionId }, '[paddle.webhook.service] resolveTeamAndPlan: Invoice lookup failed')
-    }
-  }
-
-  // 3. Last Resort Fallback: paddleCustomerId (ONLY if unique match exists across teams)
-  if (!teamId && paddleCustomerId) {
-    try {
-      const teams = await prisma.team.findMany({
-        where: { paddleCustomerId },
-        select: { id: true },
-      })
-      if (teams.length === 1) {
-        teamId = teams[0].id
-        logger.info({ paddleCustomerId, teamId }, '[paddle.webhook.service] resolveTeamAndPlan: teamId resolved via unique paddleCustomerId match')
-      } else if (teams.length > 1) {
-        logger.error(
-          { paddleCustomerId, matchCount: teams.length },
-          '[paddle.webhook.service] resolveTeamAndPlan: Ambiguous paddleCustomerId shared across multiple teams — aborting unsafe fallback'
-        )
-      }
-    } catch (err: any) {
-      logger.error({ err: err.message, paddleCustomerId }, '[paddle.webhook.service] resolveTeamAndPlan: DB lookup failed')
-    }
-  }
-
-  let planId: PlanType | null = null
-  const customPlan = customData?.planId as PlanType | undefined
-  if (customPlan && Object.values(PlanType).includes(customPlan)) {
-    planId = customPlan
-  }
-
-  const items = data.items || []
-  const priceId = items?.[0]?.price?.id || items?.[0]?.price_id || data.details?.line_items?.[0]?.price_id
-  const priceMatch = priceId ? getPlanFromPriceId(priceId) : undefined
-
-  if (!planId && priceMatch) {
-    planId = priceMatch.planId
-    logger.info(
-      { priceId, planId },
-      '[paddle.webhook.service] resolveTeamAndPlan: planId resolved via priceId lookup fallback'
-    )
-  }
-
-  const interval = priceMatch?.interval ?? (customData?.interval ?? 'month')
-  return { teamId, planId, interval }
-}
-
-async function enqueueBillingJob(
-  jobName: string,
-  jobData: object,
-  jobId: string,
-  context: { eventId: string; teamId: string; transactionId?: string }
-): Promise<void> {
+async function afterStateChange(teamId: string, result: ApplySubscriptionResult): Promise<void> {
+  await invalidatePlanCache(teamId)
   try {
-    await notifyQueue.add(jobName, jobData, { jobId })
-    logger.info(
-      { jobName, jobId, ...context },
-      `[paddle.webhook.service] ✅ Billing job enqueued: ${jobName}`
-    )
-  } catch (queueErr: any) {
-    logger.error(
-      { err: queueErr.message, jobName, jobId, jobData, ...context },
-      `[paddle.webhook.service] ⚠️ Failed to enqueue ${jobName}`
-    )
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+    socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
+      teamId,
+      plan: result.entitlement?.plan,
+      reason: result.entitlement?.reason,
+      updatedAt: new Date().toISOString(),
+    })
+  } catch (err: any) {
+    logger.warn({ err: err.message, teamId }, '[paddle.webhook.service] socket emit failed (non-fatal)')
   }
 }
 
-async function handleTransactionCompleted(data: any, eventId: string): Promise<void> {
-  const { teamId, planId, interval } = await resolveTeamAndPlan(data)
+/** Deterministic job IDs (BullMQ forbids ':' in custom IDs) ⇒ replays can never send a second email. Failure propagates ⇒ job retries. */
+async function enqueueBillingJob(jobName: string, jobData: object, jobId: string): Promise<void> {
+  await notifyQueue.add(jobName, jobData, { jobId })
+}
 
-  if (!teamId || !planId) {
-    logger.error(
-      { transactionId: data.id, teamId, planId, customData: data.customData || data.custom_data },
-      '[paddle.webhook.service][transaction.completed] ❌ Cannot resolve teamId or planId — ABORTING'
-    )
-    return
-  }
+function outcomeFor(result: ApplySubscriptionResult, teamId: string, eventType: string): ProcessOutcome {
+  if (result.applied) return { status: 'PROCESSED', teamId }
+  if (result.reason === 'stale_event') return { status: 'PROCESSED', teamId, note: 'stale event ignored (older than applied state)' }
+  logger.error(
+    { teamId, eventType, alert: 'billing.subscription_mismatch' },
+    '[paddle.webhook.service] ALERT: event for a different Paddle subscription than the live one — not applied'
+  )
+  return { status: 'NEEDS_ATTENTION', teamId, note: 'event belongs to a different Paddle subscription than the live one on this team' }
+}
 
-  const paddleSubscriptionId = (data.subscriptionId || data.subscription_id) as string
-  const paddleCustomerId     = (data.customerId || data.customer_id) as string
-  const transactionId        = data.id as string
+// ── transaction.completed ─────────────────────────────────────────────────────
 
-  const billingPeriod = data.billingPeriod || data.billing_period || data.currentBillingPeriod || data.current_billing_period
-  let periodStart = parsePaddleDate(billingPeriod?.startsAt || billingPeriod?.starts_at) || new Date()
-  const defaultPeriodDays = interval === 'year' ? 365 : 30
-  let periodEnd   = parsePaddleDate(billingPeriod?.endsAt || billingPeriod?.ends_at) || new Date(Date.now() + defaultPeriodDays * 24 * 60 * 60 * 1000)
+async function handleTransactionCompleted(data: any, eventId: string): Promise<ProcessOutcome> {
+  const transactionId = data.id as string
+  const paddleSubscriptionId: string | undefined = data.subscription_id ?? undefined
+  const paddleCustomerId: string = data.customer_id
+  const teamId = await resolveTeamId(data)
 
   const totals = data.details?.totals
   const amountPaidCents = parseMinorAmount(totals?.total)
-  const currency        = (data.currencyCode || data.currency_code || 'usd').toLowerCase()
+  const currency = String(data.currency_code ?? 'usd').toLowerCase()
+  const billingPeriod = data.billing_period
+  const periodStart = parsePaddleDate(billingPeriod?.starts_at)
+  const periodEnd = parsePaddleDate(billingPeriod?.ends_at)
 
-  logger.info(
-    { eventId, transactionId, teamId, planId, interval, amountPaidCents, currency, paddleSubscriptionId },
-    '[paddle.webhook.service][transaction.completed] ▶ Starting DB transaction'
-  )
+  const invoiceData = totals
+    ? {
+        paddleTransactionId: transactionId,
+        paddleCustomerId,
+        amountDue: amountPaidCents,
+        amountPaid: amountPaidCents,
+        amountRefunded: 0,
+        currency,
+        status: 'paid',
+        periodStart,
+        periodEnd,
+        paidAt: parsePaddleDate(data.billed_at) ?? parsePaddleDate(data.updated_at) ?? undefined,
+      }
+    : null
 
-  const items = data.items || []
-  const unitPrice = items?.[0]?.price?.unitPrice || items?.[0]?.price?.unit_price
-  let calculatedUnitAmount = unitPrice?.amount ? parseMinorAmount(unitPrice.amount) : undefined
-  if (!calculatedUnitAmount || calculatedUnitAmount === 0) {
-    const rawSubtotal = totals?.subtotal ? parseMinorAmount(totals.subtotal) : 0
-    const rawTotal = totals?.total ? parseMinorAmount(totals.total) : 0
-    calculatedUnitAmount = rawSubtotal > 0 ? rawSubtotal : (rawTotal > 0 ? rawTotal : getPlanPriceCents(planId, interval))
-  }
-  const paddlePriceId = items?.[0]?.price?.id || (items?.[0] as any)?.price_id || data.details?.line_items?.[0]?.price_id || undefined
-
-  // Determine if this transaction is for a trialing subscription ($0 transaction on paid plan or explicit trial dates/status)
-  const isPaidPlan = planId === PlanType.STARTER || planId === PlanType.GROWTH || planId === PlanType.BUSINESS
-  const trialPeriodConfig = items?.[0]?.price?.trial_period || items?.[0]?.price?.trialPeriod
-  const trialDays = trialPeriodConfig?.interval === 'day' ? Number(trialPeriodConfig?.frequency || 14) : 14
-
-  const isTrialTransaction = Boolean(
-    data.trial_dates ||
-    data.trialDates ||
-    trialPeriodConfig ||
-    data.status === 'trialing' ||
-    data.status === 'trial' ||
-    (amountPaidCents === 0 && isPaidPlan)
-  )
-  const status = isTrialTransaction ? SubscriptionStatus.trialing : SubscriptionStatus.active
-
-  // Defensive Trial Dates Resolution
-  const trialDates = data.trialDates || data.trial_dates || items?.[0]?.trial_dates || data.details?.line_items?.[0]?.trial_dates
-  let trialStart = parsePaddleDate(trialDates?.startsAt || trialDates?.starts_at)
-  let trialEnd   = parsePaddleDate(trialDates?.endsAt || trialDates?.ends_at)
-  if (isTrialTransaction) {
-    if (!trialStart) trialStart = periodStart || new Date()
-    if (!trialEnd) {
-      trialEnd = (periodEnd && periodEnd > trialStart && (periodEnd.getTime() - trialStart.getTime()) <= (trialDays + 2) * 86400000)
-        ? periodEnd
-        : new Date(trialStart.getTime() + trialDays * 24 * 60 * 60 * 1000)
-    }
-    periodStart = trialStart
-    periodEnd = trialEnd
+  // A transaction that is not tied to a subscription grants no entitlement; just keep the receipt.
+  if (!paddleSubscriptionId) {
+    if (invoiceData) await billingRepo.upsertInvoice(teamId, transactionId, invoiceData)
+    return { status: 'PROCESSED', teamId, note: 'transaction without subscription: invoice recorded only' }
   }
 
-  const subData: UpsertSubscriptionData | null = paddleSubscriptionId ? {
+  const { planId, interval } = resolvePlan(data)
+
+  // Used only when no subscription row exists yet (transaction processed before subscription.created).
+  const trialConfig = data.items?.[0]?.price?.trial_period
+  const inferredStatus =
+    trialConfig || (amountPaidCents === 0 && planId !== PlanType.FREE)
+      ? SubscriptionStatus.trialing
+      : SubscriptionStatus.active
+  const trialDays = trialConfig?.interval === 'day' ? Number(trialConfig.frequency) || 14 : 14
+  const start = periodStart ?? new Date()
+
+  const subData: UpsertSubscriptionData = {
     paddleSubscriptionId,
     paddleCustomerId,
-    paddlePriceId,
+    paddlePriceId: data.items?.[0]?.price?.id ?? data.items?.[0]?.price_id,
     plan: planId,
     billingInterval: interval,
-    status,
+    status: inferredStatus,
     currentPeriodStart: periodStart,
     currentPeriodEnd: periodEnd,
     cancelAtPeriodEnd: false,
-    trialStart,
-    trialEnd,
-    unitAmount: calculatedUnitAmount,
+    trialStart: inferredStatus === SubscriptionStatus.trialing ? start : undefined,
+    trialEnd: inferredStatus === SubscriptionStatus.trialing ? (periodEnd ?? new Date(start.getTime() + trialDays * 86_400_000)) : undefined,
+    unitAmount: data.items?.[0]?.price?.unit_price?.amount ? parseMinorAmount(data.items[0].price.unit_price.amount) : undefined,
     currency,
-  } : null
-
-  const invoiceData = totals ? {
-    paddleTransactionId: transactionId,
-    paddleCustomerId,
-    amountDue:  amountPaidCents,
-    amountPaid: amountPaidCents,
-    amountRefunded: 0,
-    currency,
-    status: 'paid',
-    periodStart,
-    periodEnd,
-    hostedInvoiceUrl: data.invoice_url ?? (data.hostedInvoiceUrl || null),
-    paidAt: new Date(),
-  } : null
-
-  await billingRepo.activateSubscriptionTransaction(
-    teamId,
-    planId,
-    subData,
-    invoiceData,
-    periodStart,
-    periodEnd
-  )
-
-  await billingRepo.createBillingAuditLog({
-    teamId,
-    eventId,
-    eventType: 'transaction.completed',
-    action: 'ACTIVATE_SUBSCRIPTION',
-    payload: { transactionId, planId, interval, amountPaidCents, currency, status },
-  })
-
-  await invalidatePlanCache(teamId)
-
-  try {
-    const { socketEmitter } = await import('../../realtime/socket.emitter')
-    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
-    socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
-      teamId,
-      plan: planId,
-      status,
-      updatedAt: new Date().toISOString(),
-    })
-  } catch (err: any) {
-    logger.warn({ err: err.message, teamId }, '[paddle.webhook.service] Failed to emit billing socket event')
   }
 
-  await enqueueBillingJob(
-    'billing-confirmation',
-    {
-      type: 'BILLING_CONFIRMATION',
-      teamId,
-      planId,
-      metadata: {
-        amountPaid:      amountPaidCents ? `$${(amountPaidCents / 100).toFixed(2)}` : undefined,
-        currency,
-        billingInterval: interval,
-        invoiceId:       transactionId,
-        hostedInvoiceUrl: data.invoice_url ?? (data.hostedInvoiceUrl || null),
-        planId,
-      },
+  const result = await billingRepo.applySubscriptionState({
+    teamId,
+    data: subData,
+    source: 'webhook_transaction',
+    invoice: invoiceData,
+    audit: {
+      eventId,
+      eventType: 'transaction.completed',
+      action: 'TRANSACTION_COMPLETED',
+      payload: { transactionId, planId, interval, amountPaidCents, currency },
     },
-    `billing-confirmation:${transactionId}`,
-    { eventId, teamId, transactionId }
-  )
-
-  logger.info(
-    { eventId, transactionId, teamId, planId, interval, amountPaidCents },
-    '[paddle.webhook.service][transaction.completed] ✅ COMPLETE — subscription record synced, email queued'
-  )
-}
-
-async function handleSubscriptionCreated(data: any, eventId: string): Promise<void> {
-  const { teamId, planId: resolvedPlan, interval } = await resolveTeamAndPlan(data)
-  const paddleSubscriptionId = (data.id || data.subscriptionId || data.subscription_id) as string
-
-  if (!teamId) {
-    logger.warn(
-      { eventId, subscriptionId: paddleSubscriptionId },
-      '[paddle.webhook.service][subscription.created] Cannot resolve teamId — skipping'
-    )
-    return
-  }
-
-  const subData = extractSubscriptionData(data, resolvedPlan, interval)
-
-  if (subData.status === SubscriptionStatus.active || subData.status === SubscriptionStatus.trialing) {
-    await billingRepo.updateSubscriptionTransaction(teamId, subData.plan, subData)
-    await invalidatePlanCache(teamId)
-  } else {
-    await billingRepo.upsertSubscription(teamId, subData)
-  }
-
-  await billingRepo.createBillingAuditLog({
-    teamId,
-    eventId,
-    eventType: 'subscription.created',
-    action: 'SUBSCRIPTION_CREATED',
-    payload: { paddleSubscriptionId, planId: subData.plan, status: subData.status, trialStart: subData.trialStart, trialEnd: subData.trialEnd, unitAmount: subData.unitAmount },
   })
 
-  // Emit real-time socket event
-  try {
-    const { socketEmitter } = await import('../../realtime/socket.emitter')
-    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
-    socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
-      teamId,
-      plan: subData.plan,
-      status: subData.status,
-      updatedAt: new Date().toISOString(),
-    })
-  } catch (err: any) {
-    logger.warn({ err: err.message, teamId }, '[paddle.webhook.service] Failed to emit billing socket event')
-  }
+  if (result.applied || result.reason === 'stale_event') await afterStateChange(teamId, result)
 
-  if (subData.status === SubscriptionStatus.trialing) {
+  if (result.applied && amountPaidCents > 0) {
     await enqueueBillingJob(
-      'trial-started',
-      { type: 'TRIAL_STARTED', teamId, trialEndsAt: subData.trialEnd },
-      `trial-started:${paddleSubscriptionId}`,
-      { eventId, teamId }
-    )
-  }
-}
-
-async function handleSubscriptionTrialing(data: any, eventId: string): Promise<void> {
-  await handleSubscriptionCreated(data, eventId)
-}
-
-async function handleSubscriptionUpdated(data: any, eventId: string): Promise<void> {
-  const { teamId, planId: resolvedPlan, interval } = await resolveTeamAndPlan(data)
-  const subscriptionId = (data.id || data.subscriptionId || data.subscription_id) as string
-
-  if (!teamId) {
-    logger.warn(
-      { eventId, subscriptionId },
-      '[paddle.webhook.service][subscription.updated] Cannot resolve teamId — skipping'
-    )
-    return
-  }
-
-  const subData = extractSubscriptionData(data, resolvedPlan, interval)
-
-  if (subData.status === SubscriptionStatus.active || subData.status === SubscriptionStatus.trialing) {
-    await billingRepo.updateSubscriptionTransaction(teamId, subData.plan, subData)
-    await invalidatePlanCache(teamId)
-
-    await enqueueBillingJob(
-      'subscription-upgraded',
+      'billing-confirmation',
       {
-        type: 'SUBSCRIPTION_UPGRADED',
+        type: 'BILLING_CONFIRMATION',
         teamId,
-        planId: subData.plan,
+        planId,
         metadata: {
-          newPlanName:     subData.plan,
+          amountPaid: `$${(amountPaidCents / 100).toFixed(2)}`,
+          currency,
           billingInterval: interval,
-          amountPaid: subData.unitAmount
-            ? `$${(subData.unitAmount / 100).toFixed(2)}`
-            : undefined,
+          invoiceId: transactionId,
+          planId,
         },
       },
-      `subscription-upgraded:${eventId}`,
-      { eventId, teamId }
+      `billing-confirmation-${transactionId}`
     )
-  } else {
-    // For non-active states (past_due, paused, canceled), update subscription row & adjust team plan atomically
-    await billingRepo.updateSubscriptionTransaction(teamId, subData.plan, subData)
-    await invalidatePlanCache(teamId)
   }
 
-  await billingRepo.createBillingAuditLog({
-    teamId,
-    eventId,
-    eventType: 'subscription.updated',
-    action: 'SUBSCRIPTION_UPDATED',
-    payload: { subscriptionId, newPlan: subData.plan, status: subData.status, trialStart: subData.trialStart, trialEnd: subData.trialEnd, unitAmount: subData.unitAmount },
-  })
-
-  // Emit real-time socket event
-  try {
-    const { socketEmitter } = await import('../../realtime/socket.emitter')
-    const { SERVER_EVENTS } = await import('../../realtime/socket.events')
-    socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
-      teamId,
-      plan: subData.plan,
-      status: subData.status,
-      updatedAt: new Date().toISOString(),
-    })
-  } catch (err: any) {
-    logger.warn({ err: err.message, teamId }, '[paddle.webhook.service] Failed to emit billing socket event')
-  }
+  logger.info({ eventId, transactionId, teamId, planId, applied: result.applied, periodAdvanced: result.periodAdvanced }, '[paddle.webhook.service][transaction.completed] done')
+  return outcomeFor(result, teamId, 'transaction.completed')
 }
 
-async function handleSubscriptionPastDue(data: any, eventId: string): Promise<void> {
-  const { teamId } = await resolveTeamAndPlan(data)
-  const subscriptionId = data.id as string
+// ── subscription.* ────────────────────────────────────────────────────────────
 
-  if (!teamId) return
+async function handleSubscriptionEvent(
+  data: any,
+  eventId: string,
+  eventType: string,
+  occurredAt: Date | null
+): Promise<ProcessOutcome> {
+  const teamId = await resolveTeamId(data)
+  const { planId, interval } = resolvePlan(data)
+  const subData = extractSubscriptionData(data, planId, interval)
 
-  const { prisma } = await import('../../db/client')
-  // Mark grace period (7 days)
-  const gracePeriodEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  // Grace is for customers who have actually paid before. A trial whose first charge fails never paid anything,
+  // so it must not receive a 7-day premium window (REQUIRES BUSINESS CONFIRMATION — see audit report).
+  let gracePeriodEnd: Date | undefined
+  if (subData.status === SubscriptionStatus.past_due) {
+    const everPaid = await prisma.invoice.count({ where: { teamId, amountPaid: { gt: 0 } }, take: 1 })
+    if (everPaid === 0) gracePeriodEnd = new Date(0)
+  }
 
-  await prisma.team.update({
-    where: { id: teamId },
-    data: { gracePeriodEnd },
-  })
-
-  await prisma.subscription.updateMany({
-    where: { paddleSubscriptionId: subscriptionId },
-    data: { status: SubscriptionStatus.past_due },
-  })
-
-  await billingRepo.createBillingAuditLog({
+  const result = await billingRepo.applySubscriptionState({
     teamId,
-    eventId,
-    eventType: 'subscription.past_due',
-    action: 'SET_PAST_DUE_GRACE_PERIOD',
-    payload: { subscriptionId, gracePeriodEnd },
-  })
-
-  await enqueueBillingJob(
-    'payment-failed',
-    {
-      type: 'PAYMENT_FAILED',
-      teamId,
-      metadata: { subscriptionId, gracePeriodEnd: gracePeriodEnd.toISOString() },
+    data: subData,
+    source: 'webhook_subscription',
+    occurredAt,
+    gracePeriodEnd,
+    audit: {
+      eventId,
+      eventType,
+      action: `SUBSCRIPTION_${eventType.split('.')[1].toUpperCase()}`,
+      payload: {
+        paddleSubscriptionId: subData.paddleSubscriptionId,
+        plan: subData.plan,
+        status: subData.status,
+        trialStart: subData.trialStart,
+        trialEnd: subData.trialEnd,
+        currentPeriodEnd: subData.currentPeriodEnd,
+        cancelAtPeriodEnd: subData.cancelAtPeriodEnd,
+        effectivePlan: undefined,
+      },
     },
-    `payment-past-due:${subscriptionId}:${Date.now()}`,
-    { eventId, teamId }
-  )
-}
-
-async function handleSubscriptionPaused(data: any, eventId: string): Promise<void> {
-  const { teamId } = await resolveTeamAndPlan(data)
-  const subscriptionId = data.id as string
-
-  if (!teamId) return
-
-  const { prisma } = await import('../../db/client')
-  await prisma.subscription.updateMany({
-    where: { paddleSubscriptionId: subscriptionId },
-    data: { status: SubscriptionStatus.paused },
   })
 
-  await billingRepo.downgradeTeamToFree(teamId)
-  await invalidatePlanCache(teamId)
+  if (result.applied) {
+    await afterStateChange(teamId, result)
 
-  await billingRepo.createBillingAuditLog({
-    teamId,
-    eventId,
-    eventType: 'subscription.paused',
-    action: 'SUBSCRIPTION_PAUSED',
-    payload: { subscriptionId },
-  })
-}
-
-async function handleSubscriptionResumed(data: any, eventId: string): Promise<void> {
-  await handleSubscriptionUpdated(data, eventId)
-}
-
-async function handleSubscriptionCanceled(data: any, eventId: string): Promise<void> {
-  const { teamId } = await resolveTeamAndPlan(data)
-  const subscriptionId = data.id as string
-
-  if (!teamId) {
-    logger.warn(
-      { eventId, subscriptionId },
-      '[paddle.webhook.service][subscription.canceled] Cannot resolve teamId — skipping'
-    )
-    return
+    const subId = subData.paddleSubscriptionId
+    if (subData.status === SubscriptionStatus.trialing && (eventType === 'subscription.created' || eventType === 'subscription.trialing')) {
+      await enqueueBillingJob(
+        'trial-started',
+        { type: 'TRIAL_STARTED', teamId, trialEndsAt: subData.trialEnd },
+        `trial-started-${subId}`
+      )
+    }
+    if (
+      result.planChanged && result.previousPlan && result.previousPlan !== PlanType.FREE &&
+      result.entitlement && result.entitlement.plan !== PlanType.FREE && eventType === 'subscription.updated'
+    ) {
+      await enqueueBillingJob(
+        'subscription-upgraded',
+        {
+          type: 'SUBSCRIPTION_UPGRADED',
+          teamId,
+          planId: result.entitlement.plan,
+          metadata: {
+            newPlanName: result.entitlement.plan,
+            billingInterval: interval,
+            amountPaid: subData.unitAmount ? `$${(subData.unitAmount / 100).toFixed(2)}` : undefined,
+          },
+        },
+        `subscription-upgraded-${eventId}`
+      )
+    }
+    if (eventType === 'subscription.canceled') {
+      await enqueueBillingJob(
+        'subscription-cancelled',
+        { type: 'SUBSCRIPTION_CANCELLED', teamId, metadata: { cancelledAt: (subData.cancelledAt ?? new Date()).toISOString() } },
+        `subscription-cancelled-${eventId}`
+      )
+    }
+    if (subData.status === SubscriptionStatus.past_due) {
+      await enqueueBillingJob(
+        'payment-failed',
+        {
+          type: 'PAYMENT_FAILED',
+          teamId,
+          metadata: { subscriptionId: subId, gracePeriodEnd: gracePeriodEnd && gracePeriodEnd.getTime() > 0 ? gracePeriodEnd.toISOString() : undefined },
+        },
+        `payment-failed-${subId}-${eventId}`
+      )
+    }
   }
 
-  const canceledAtRaw = data.canceledAt || data.canceled_at
-  const cancelledAt   = canceledAtRaw ? new Date(canceledAtRaw) : new Date()
-  const currentBillingPeriod = data.currentBillingPeriod || data.current_billing_period
-  const periodEnd = currentBillingPeriod?.endsAt || currentBillingPeriod?.ends_at
-    ? new Date(currentBillingPeriod.endsAt || currentBillingPeriod.ends_at)
-    : null
-
-  const isImmediate = !periodEnd || periodEnd <= new Date()
-
-  try {
-    await billingRepo.markSubscriptionCancelled(subscriptionId, cancelledAt)
-  } catch (err: any) {
-    logger.warn(
-      { eventId, err: err.message, subscriptionId },
-      '[paddle.webhook.service][subscription.canceled] Subscription row not found — skipping markCancelled (non-fatal)'
-    )
-  }
-
-  if (isImmediate) {
-    await billingRepo.downgradeTeamToFree(teamId)
-    await invalidatePlanCache(teamId)
-  }
-
-  await billingRepo.createBillingAuditLog({
-    teamId,
-    eventId,
-    eventType: 'subscription.canceled',
-    action: isImmediate ? 'CANCEL_IMMEDIATE' : 'SCHEDULE_CANCEL_PERIOD_END',
-    payload: { subscriptionId, cancelledAt, periodEnd, isImmediate },
-  })
-
-  await enqueueBillingJob(
-    'subscription-cancelled',
-    { type: 'SUBSCRIPTION_CANCELLED', teamId, metadata: { cancelledAt: cancelledAt.toISOString() } },
-    `subscription-cancelled:${eventId}`,
-    { eventId, teamId }
-  )
-
-  logger.info(
-    { eventId, subscriptionId, teamId, isImmediate },
-    '[paddle.webhook.service][subscription.canceled] ✅ Subscription cancellation recorded'
-  )
+  return outcomeFor(result, teamId, eventType)
 }
 
-async function handleAdjustmentCreated(data: any, eventId: string): Promise<void> {
-  const transactionId = (data.transactionId || data.transaction_id) as string
-  const adjustmentId  = (data.id || data.adjustmentId) as string
-  const amountRefunded = parseMinorAmount(data.totals?.total ?? data.amount)
-  const currency       = (data.currencyCode || data.currency_code) ?? 'usd'
-  const reason         = data.reason || 'customer_refund'
-  const status         = data.status || 'completed'
+// ── adjustment.* (refunds, chargebacks, credits) ──────────────────────────────
 
-  // The authoritative owner of a refund is ALWAYS the team that owns the original invoice transaction
-  let teamId: string | null = null
+async function handleAdjustment(data: any, eventId: string, eventType: string): Promise<ProcessOutcome> {
+  const transactionId = data.transaction_id as string
+  const adjustmentId = data.id as string
+  const action = String(data.action ?? 'refund')
+  const status = String(data.status ?? 'pending_approval')
+  const currency = String(data.currency_code ?? 'usd').toLowerCase()
+  const amount = parseMinorAmount(data.totals?.total ?? data.amount)
+
+  // Owner of a refund is ALWAYS the team that owns the original invoice. Missing invoice ⇒ transaction.completed
+  // has not been processed yet ⇒ throw so the event is retried instead of being lost.
   const invoice = await billingRepo.findInvoiceByTransactionId(transactionId)
-  if (invoice) {
-    teamId = invoice.teamId
-  } else {
-    const resolved = await resolveTeamAndPlan(data)
-    teamId = resolved.teamId
-  }
+  if (!invoice) throw new Error(`Adjustment ${adjustmentId}: invoice for ${transactionId} not recorded yet (will retry)`)
+  const teamId = invoice.teamId
 
-  if (!teamId) {
-    logger.error({ transactionId, adjustmentId, eventId }, '[paddle.webhook.service] Refund adjustment received for untracked invoice / team')
-    return
-  }
-
-  await processRefundForTeam(teamId, transactionId, adjustmentId, amountRefunded, currency, reason, status, eventId)
-}
-
-async function processRefundForTeam(
-  teamId: string,
-  transactionId: string,
-  adjustmentId: string,
-  amountRefunded: number,
-  currency: string,
-  reason: string,
-  status: string,
-  eventId: string
-): Promise<void> {
-  const { isFullRefund } = await billingRepo.processRefundAdjustmentTransaction({
+  const result = await billingRepo.processAdjustmentTransaction({
     teamId,
     paddleTransactionId: transactionId,
     paddleAdjustmentId: adjustmentId,
-    amountRefunded,
-    currency,
-    reason,
+    action,
     status,
+    amount,
+    currency,
+    reason: data.reason,
   })
 
   await billingRepo.createBillingAuditLog({
     teamId,
     eventId,
-    eventType: 'adjustment.created',
-    action: isFullRefund ? 'FULL_REFUND_DOWNGRADE' : 'PARTIAL_REFUND',
-    payload: { adjustmentId, transactionId, amountRefunded, currency, isFullRefund },
+    eventType,
+    action: result.entitlementRevoked ? 'REFUND_ACCESS_REVOKED' : `ADJUSTMENT_${action.toUpperCase()}_${status.toUpperCase()}`,
+    payload: { adjustmentId, transactionId, action, status, amount, currency, totalRefunded: result.totalRefunded, isFullRefund: result.isFullRefund },
   })
 
   await invalidatePlanCache(teamId)
 
-  logger.info(
-    { teamId, transactionId, adjustmentId, amountRefunded, isFullRefund },
-    '[paddle.webhook.service] ✅ Refund adjustment processed successfully'
-  )
-}
-
-async function handleTransactionPaymentFailed(data: any, eventId: string): Promise<void> {
-  const { teamId } = await resolveTeamAndPlan(data)
-  const transactionId = data.id as string
-
-  if (!teamId) {
-    logger.warn(
-      { eventId, transactionId },
-      '[paddle.webhook.service][transaction.payment_failed] Cannot resolve teamId — skipping'
+  if (result.needsReconcile) {
+    // A previously revoked refund was rejected/reversed: let Paddle's state restore the subscription.
+    const { reconcileTeamFromPaddle } = await import('../billing/subscription-lifecycle.service')
+    await reconcileTeamFromPaddle(teamId).catch((err) =>
+      logger.error({ err: err.message, teamId }, '[paddle.webhook.service] post-reversal reconcile failed')
     )
-    return
   }
 
-  const totals       = data.details?.totals
-  const currencyCode = (data.currencyCode || data.currency_code) ?? 'usd'
-  const amountDueCents = parseMinorAmount(totals?.total)
+  if ((action === 'chargeback' || action === 'chargeback_warning') && status !== 'rejected') {
+    logger.error({ teamId, adjustmentId, action, status, alert: 'billing.dispute' }, '[paddle.webhook.service] ALERT: dispute / chargeback received')
+    return { status: 'NEEDS_ATTENTION', teamId, note: `${action} (${status}) on ${transactionId}` }
+  }
+  return { status: 'PROCESSED', teamId }
+}
 
-  logger.warn(
-    { eventId, transactionId, teamId, amountDueCents, currencyCode },
-    '[paddle.webhook.service][transaction.payment_failed] ▶ Payment failed — recording invoice and queuing alert'
-  )
+// ── transaction.payment_failed ────────────────────────────────────────────────
+
+async function handleTransactionPaymentFailed(data: any, eventId: string): Promise<ProcessOutcome> {
+  const teamId = await resolveTeamId(data)
+  const transactionId = data.id as string
+  const currency = String(data.currency_code ?? 'usd').toLowerCase()
+  const totals = data.details?.totals
+  const amountDueCents = parseMinorAmount(totals?.total)
 
   if (totals) {
     await billingRepo.upsertInvoice(teamId, transactionId, {
-      paddleCustomerId: (data.customerId || data.customer_id) as string,
-      amountDue:  amountDueCents,
+      paddleCustomerId: data.customer_id,
+      amountDue: amountDueCents,
       amountPaid: 0,
-      currency:   currencyCode,
-      status:     'past_due',
+      currency,
+      status: 'past_due',
     })
   }
 
@@ -802,7 +425,7 @@ async function handleTransactionPaymentFailed(data: any, eventId: string): Promi
     eventId,
     eventType: 'transaction.payment_failed',
     action: 'RECORD_PAYMENT_FAILURE',
-    payload: { transactionId, amountDueCents, currencyCode },
+    payload: { transactionId, amountDueCents, currency },
   })
 
   await enqueueBillingJob(
@@ -811,12 +434,10 @@ async function handleTransactionPaymentFailed(data: any, eventId: string): Promi
       type: 'PAYMENT_FAILED',
       teamId,
       transactionId,
-      metadata: {
-        amountDue: amountDueCents ? `$${(amountDueCents / 100).toFixed(2)}` : undefined,
-        currency:  currencyCode,
-      },
+      metadata: { amountDue: amountDueCents ? `$${(amountDueCents / 100).toFixed(2)}` : undefined, currency },
     },
-    `payment-failed:${transactionId}`,
-    { eventId, teamId, transactionId }
+    `payment-failed-${transactionId}`
   )
+  return { status: 'PROCESSED', teamId }
 }
+

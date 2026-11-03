@@ -5,6 +5,14 @@ import * as paddleClient from '../../src/services/paddle.client'
 import { redis } from '../../src/config/redis'
 
 jest.mock('../../src/modules/billing/billing.repository')
+jest.mock('../../src/modules/billing/subscription-lifecycle.service', () => ({
+  assertNoLiveSubscriptionInPaddle: jest.fn().mockResolvedValue(undefined),
+  reconcileTeamFromPaddle: jest.fn(),
+}))
+jest.mock('../../src/modules/billing/entitlement.service', () => ({
+  getTeamEntitlement: jest.fn().mockResolvedValue({ plan: 'STARTER', reason: 'active', validUntil: null }),
+  getEffectivePlan: jest.fn().mockResolvedValue('STARTER'),
+}))
 jest.mock('../../src/services/paddle.client')
 jest.mock('../../src/config/redis', () => ({
   redis: {

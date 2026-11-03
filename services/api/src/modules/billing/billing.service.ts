@@ -16,8 +16,15 @@ import { redis } from '../../config/redis'
 import { PLAN_LIMITS, PADDLE_PRICE_MAP } from '../../config/plans.config'
 import { invalidatePlanCache } from '../../middleware/plan-limits.middleware'
 import { IN_FLIGHT_STATUSES } from '../meetings/meetings.service.state'
+import { withTimeout } from '../../utils/with-timeout'
+import { getTeamEntitlement } from './entitlement.service'
+import { entityToSnake, extractSubscriptionData } from '../webhooks/paddle.mapper'
+import { reconcileTeamFromPaddle, assertNoLiveSubscriptionInPaddle } from './subscription-lifecycle.service'
 import * as paddleClient from '../../services/paddle.client'
 import * as billingRepo from './billing.repository'
+import { isLiveSubscriptionStatus } from './entitlement'
+
+const PADDLE_CALL_TIMEOUT_MS = 8_000
 import type {
   CheckoutResult,
   PortalResult,
@@ -127,111 +134,70 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
   }
 
   try {
-    // 4. Check for existing subscription in local DB mirror
+    // 4. Existing subscription in the local mirror
     const existingSub = await billingRepo.findFullSubscriptionByTeam(teamId)
-    const activeStatuses: SubscriptionStatus[] = [SubscriptionStatus.active, SubscriptionStatus.trialing]
 
-    if (existingSub && activeStatuses.includes(existingSub.status)) {
-      // 4a. If team ALREADY has an active/trialing subscription for the EXACT SAME plan -> 409 Conflict
-      if (existingSub.plan === planId && existingSub.billingInterval === interval) {
-        logger.warn(
-          { teamId, planId, paddleSubscriptionId: existingSub.paddleSubscriptionId, status: existingSub.status },
-          '[billing.service] Checkout rejected: Team already has an active subscription for requested plan and interval'
-        )
+    if (existingSub && isLiveSubscriptionStatus(existingSub.status)) {
+      // 4a. past_due / paused: Paddle refuses plan updates in these states and a NEW checkout would create a second,
+      //     parallel subscription. The customer must fix the payment method / resume in the Paddle portal.
+      if (existingSub.status === SubscriptionStatus.past_due || existingSub.status === SubscriptionStatus.paused) {
         throw new AppError(
-          'ACTIVE_SUBSCRIPTION_EXISTS',
+          'SUBSCRIPTION_NEEDS_ATTENTION',
           409,
-          `Team already has an active subscription for the '${planId}' plan (${interval}ly)`
+          `Your subscription is ${existingSub.status === SubscriptionStatus.past_due ? 'past due' : 'paused'}. Please update your payment method or resume it from the billing portal.`
         )
       }
 
-      // 4b. Plan Change (e.g. STARTER -> GROWTH): Update existing Paddle subscription
-      logger.info(
-        {
-          teamId,
-          currentPlan: existingSub.plan,
-          newPlan: planId,
-          paddleSubscriptionId: existingSub.paddleSubscriptionId,
-        },
-        '[billing.service] Existing active subscription found — updating Paddle subscription'
-      )
+      // 4b. Same plan + interval → 409
+      if (existingSub.plan === planId && existingSub.billingInterval === interval && !existingSub.cancelAtPeriodEnd) {
+        logger.warn({ teamId, planId, paddleSubscriptionId: existingSub.paddleSubscriptionId, status: existingSub.status }, '[billing.service] Checkout rejected: active subscription already on requested plan')
+        throw new AppError('ACTIVE_SUBSCRIPTION_EXISTS', 409, `Team already has an active subscription for the '${planId}' plan (${interval}ly)`)
+      }
+
+      // 4c. Plan change: update the existing Paddle subscription in place
+      logger.info({ teamId, currentPlan: existingSub.plan, newPlan: planId, paddleSubscriptionId: existingSub.paddleSubscriptionId }, '[billing.service] updating Paddle subscription plan')
 
       let updatedSub: any
       try {
-        updatedSub = await paddleClient.updateSubscriptionPlan({
-          paddleSubscriptionId: existingSub.paddleSubscriptionId,
-          priceId,
-          planId,
-          interval,
-        })
+        updatedSub = await withTimeout(
+          paddleClient.updateSubscriptionPlan({ paddleSubscriptionId: existingSub.paddleSubscriptionId, priceId, planId, interval, teamId }),
+          PADDLE_CALL_TIMEOUT_MS,
+          'paddle.subscriptions.update'
+        )
       } catch (err: any) {
-        logger.error(
-          { err: err?.message || err, teamId, paddleSubscriptionId: existingSub.paddleSubscriptionId },
-          '[billing.service] Failed to update Paddle subscription plan'
-        )
-        throw new AppError(
-          'PADDLE_SUBSCRIPTION_UPDATE_FAILED',
-          502,
-          `Paddle Error: ${err?.message || 'Unable to update existing subscription plan'}`
-        )
+        logger.error({ err: err?.message || err, teamId, paddleSubscriptionId: existingSub.paddleSubscriptionId }, '[billing.service] Failed to update Paddle subscription plan')
+        throw new AppError('PADDLE_SUBSCRIPTION_UPDATE_FAILED', 502, 'Unable to change the subscription plan right now. Please try again.')
       }
 
-      // Only update local state if Paddle returns active or trialing status
-      if (updatedSub?.status === 'active' || updatedSub?.status === 'trialing') {
-        const currentBillingPeriod = updatedSub.currentBillingPeriod || updatedSub.current_billing_period
-        const periodStart = currentBillingPeriod?.startsAt ? new Date(currentBillingPeriod.startsAt) : undefined
-        const periodEnd   = currentBillingPeriod?.endsAt ? new Date(currentBillingPeriod.endsAt) : undefined
-
-        const trialDates = updatedSub.trialDates || updatedSub.trial_dates
-        const trialStart = trialDates?.startsAt ? new Date(trialDates.startsAt) : undefined
-        const trialEnd   = trialDates?.endsAt ? new Date(trialDates.endsAt) : undefined
-
-        const rawUnit = updatedSub.items?.[0]?.price?.unitPrice?.amount || updatedSub.items?.[0]?.price?.unit_price?.amount
-        const { getPlanPriceCents } = await import('../../config/plans.config')
-        const unitAmount = rawUnit ? Number(rawUnit) : getPlanPriceCents(planId, interval)
-
-        const currency = (updatedSub.currencyCode || updatedSub.currency_code || 'usd').toLowerCase()
-        const cancelAtPeriodEnd = Boolean(updatedSub.scheduledChange?.action === 'cancel' || updatedSub.scheduled_change?.action === 'cancel')
-
-        await billingRepo.updateSubscriptionTransaction(teamId, planId, {
-          paddleSubscriptionId: existingSub.paddleSubscriptionId,
-          paddleCustomerId: existingSub.paddleCustomerId,
-          paddlePriceId: priceId,
-          plan: planId,
-          billingInterval: interval,
-          status: updatedSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
-          currentPeriodStart: periodStart,
-          currentPeriodEnd: periodEnd,
-          cancelAtPeriodEnd,
-          trialStart,
-          trialEnd,
-          unitAmount,
-          currency,
-        })
-        await invalidatePlanCache(teamId)
-
-        // Emit real-time socket event
-        try {
-          const { socketEmitter } = await import('../../realtime/socket.emitter')
-          const { SERVER_EVENTS } = await import('../../realtime/socket.events')
-          socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
-            teamId,
-            plan: planId,
-            status: updatedSub.status === 'trialing' ? SubscriptionStatus.trialing : SubscriptionStatus.active,
-            updatedAt: new Date().toISOString(),
-          })
-        } catch (err: any) {
-          logger.warn({ err: err.message, teamId }, '[billing.service] Failed to emit socket event on plan update')
-        }
+      // Local mirror is updated from Paddle's RESPONSE through the same single writer the webhooks use.
+      // The following subscription.updated webhook is then an idempotent no-op / refinement.
+      const snapshot = entityToSnake<any>(updatedSub)
+      const data = extractSubscriptionData(snapshot, planId, interval)
+      const applied = await billingRepo.applySubscriptionState({
+        teamId,
+        data,
+        source: 'checkout',
+        audit: { eventType: 'subscription.plan_change_requested', action: 'PLAN_CHANGED', payload: { from: existingSub.plan, to: planId, interval, paddleSubscriptionId: existingSub.paddleSubscriptionId } },
+      })
+      await invalidatePlanCache(teamId)
+      try {
+        const { socketEmitter } = await import('../../realtime/socket.emitter')
+        const { SERVER_EVENTS } = await import('../../realtime/socket.events')
+        socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, { teamId, plan: applied.entitlement?.plan ?? planId, updatedAt: new Date().toISOString() })
+      } catch (err: any) {
+        logger.warn({ err: err.message, teamId }, '[billing.service] socket emit failed (non-fatal)')
       }
 
       return {
         transactionId: existingSub.paddleSubscriptionId,
         checkoutUrl: null,
+        updated: true,
+        plan: applied.entitlement?.plan ?? planId,
+        status: data.status,
       }
     }
 
-    // 5. New Purchase / Renewal (no active subscription exists)
+    // 5. New purchase / re-subscription
     let paddleCustomerId: string
     try {
       paddleCustomerId = await paddleClient.getOrCreatePaddleCustomer(teamId, requesterEmail, requesterName)
@@ -240,20 +206,22 @@ export async function createCheckoutSession(params: CheckoutParams): Promise<Che
       throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to initialize billing customer')
     }
 
+    // 5b. Ground truth check: never start a second paid subscription for a customer Paddle already bills.
+    //     (Covers DB drift, lost webhooks, a second browser tab after the lock expired, past_due/paused states.)
+    await assertNoLiveSubscriptionInPaddle(teamId, paddleCustomerId)
+
     // 6. Create Paddle transaction (customData carries teamId/planId — trust anchor)
     let result: CheckoutResult
     try {
-      result = await paddleClient.createTransaction({
-        priceId,
-        customerId: paddleCustomerId,
-        teamId,
-        planId,
-        interval,
-      })
+      result = await withTimeout(
+        paddleClient.createTransaction({ priceId, customerId: paddleCustomerId, teamId, planId, interval }),
+        PADDLE_CALL_TIMEOUT_MS,
+        'paddle.transactions.create'
+      )
     } catch (err: any) {
-      logger.error({ err, teamId, planId, interval }, '[billing.service] Paddle createTransaction failed')
-      const paddleErrorMessage = err?.message || 'Unable to create checkout session'
-      throw new AppError('PADDLE_CHECKOUT_FAILED', 502, `Paddle Error: ${paddleErrorMessage}`)
+      // Provider detail goes to the log only — never to the client.
+      logger.error({ err: err?.message, teamId, planId, interval }, '[billing.service] Paddle createTransaction failed')
+      throw new AppError('PADDLE_CHECKOUT_FAILED', 502, 'Unable to create checkout session. Please try again.')
     }
 
     logger.info({ teamId, planId, interval, transactionId: result.transactionId }, '[billing.service] Checkout session created')
@@ -300,18 +268,22 @@ export async function createPortalSession(teamId: string): Promise<PortalResult>
 // ── Subscription ──────────────────────────────────────────────────────────────
 
 /**
- * Get subscription details from local mirror (never a live Paddle API call).
- * Returns null if team is on the free plan naturally (no subscription row).
+ * Subscription as the customer is entitled to see it, from the local mirror (never a live Paddle call).
+ * Returns null when the team is effectively on the Free plan — including an EXPIRED TRIAL, an ended cancellation,
+ * a refund or an exhausted payment grace window — so the UI cannot keep showing a paid plan the backend no longer grants.
  */
 export async function getSubscription(teamId: string): Promise<SubscriptionDetail | null> {
-  return billingRepo.findSubscriptionByTeam(teamId)
+  const [row, entitlement] = await Promise.all([
+    billingRepo.findSubscriptionByTeam(teamId),
+    getTeamEntitlement(teamId),
+  ])
+  if (!row) return null
+  if (entitlement.plan === PlanType.FREE) return null
+  return { ...row, plan: entitlement.plan }
 }
 
 // ── Invoices ──────────────────────────────────────────────────────────────────
 
-/**
- * Get paginated invoices from local mirror.
- */
 export async function getInvoices(
   teamId: string,
   cursor: string | null,
@@ -322,19 +294,12 @@ export async function getInvoices(
 
 // ── Usage ──────────────────────────────────────────────────────────────────────
 
-/**
- * Get current usage for a team.
- */
 export async function getUsage(teamId: string): Promise<UsageDetail> {
   const { prisma } = await import('../../db/client')
-  const [teamData, inFlightMeetings] = await Promise.all([
+  const [teamData, inFlightMeetings, entitlement] = await Promise.all([
     billingRepo.getTeamForUsage(teamId),
-    prisma.meeting.count({
-      where: {
-        teamId,
-        status: { in: IN_FLIGHT_STATUSES },
-      },
-    }),
+    prisma.meeting.count({ where: { teamId, status: { in: IN_FLIGHT_STATUSES } } }),
+    getTeamEntitlement(teamId),
   ])
 
   if (!teamData) {
@@ -348,31 +313,26 @@ export async function getUsage(teamId: string): Promise<UsageDetail> {
     }
   }
 
-  const plan = teamData.plan
+  const limits = PLAN_LIMITS[entitlement.plan]
   const meetingsUsed = teamData.meetingsUsed + inFlightMeetings
-  const membersCount = teamData._count.members
-  const billingCycleEnd = teamData.billingCycleEnd ?? null
-
-  const limits = PLAN_LIMITS[plan]
   const meetingsLimit = limits.meetings
-  const membersLimit = limits.members
-
-  const percentUsed = meetingsLimit === -1
-    ? -1
-    : Math.min(100, Math.round((meetingsUsed / meetingsLimit) * 100))
+  const percentUsed = meetingsLimit === -1 ? -1 : Math.min(100, Math.round((meetingsUsed / meetingsLimit) * 100))
 
   return {
     meetingsUsed,
     meetingsLimit,
-    membersCount,
-    membersLimit,
-    billingCycleEnd,
+    membersCount: teamData._count.members,
+    membersLimit: limits.members,
+    billingCycleEnd: entitlement.plan === PlanType.FREE ? null : teamData.billingCycleEnd ?? null,
     percentUsed,
   }
 }
 
 /**
- * Cancel the team's active subscription at period end via Paddle SDK.
+ * Cancel the team's subscription at period end (for a trial: at trial end) via Paddle.
+ * Idempotent: repeating the call on an already-scheduled cancellation succeeds without another Paddle write.
+ * Paddle success and local-mirror failure are reported separately — Paddle is the source of truth, and the
+ * subscription.updated webhook (or reconciliation) repairs a failed local write.
  */
 export async function cancelSubscription(teamId: string): Promise<{ success: boolean; cancelAt: Date | null }> {
   const sub = await billingRepo.findFullSubscriptionByTeam(teamId)
@@ -380,174 +340,64 @@ export async function cancelSubscription(teamId: string): Promise<{ success: boo
     throw new AppError('NO_ACTIVE_SUBSCRIPTION', 400, 'No active subscription found to cancel.')
   }
 
+  const cancelAt = (sub.status === SubscriptionStatus.trialing ? sub.trialEnd : sub.currentPeriodEnd) ?? sub.currentPeriodEnd ?? null
+  if (sub.cancelAtPeriodEnd) return { success: true, cancelAt }
+
   try {
     const { paddle } = await import('../../services/paddle.client')
-    await paddle.subscriptions.cancel(sub.paddleSubscriptionId, {
-      effectiveFrom: 'next_billing_period',
-    })
+    await withTimeout(
+      paddle.subscriptions.cancel(sub.paddleSubscriptionId, { effectiveFrom: 'next_billing_period' }),
+      PADDLE_CALL_TIMEOUT_MS,
+      'paddle.subscriptions.cancel'
+    )
+  } catch (err: any) {
+    logger.error({ err: err.message, teamId, paddleSubId: sub.paddleSubscriptionId }, 'Paddle cancel failed')
+    throw new AppError('PADDLE_CANCEL_FAILED', 502, 'Failed to cancel the subscription. Please try again.')
+  }
 
-    const currentPeriodEnd = sub.currentPeriodEnd ?? new Date()
-
+  try {
     const { prisma } = await import('../../db/client')
-    await prisma.subscription.update({
-      where: { teamId },
-      data: {
-        cancelAtPeriodEnd: true,
-      },
-    })
-
+    await prisma.subscription.update({ where: { teamId }, data: { cancelAtPeriodEnd: true } })
     await billingRepo.createBillingAuditLog({
       teamId,
       eventType: 'subscription.cancel_requested',
       action: 'SCHEDULE_CANCEL_PERIOD_END',
       payload: { paddleSubscriptionId: sub.paddleSubscriptionId, effectiveFrom: 'next_billing_period' },
     })
-
     await invalidatePlanCache(teamId)
-
-    return { success: true, cancelAt: currentPeriodEnd }
   } catch (err: any) {
-    logger.error({ err: err.message, teamId, paddleSubId: sub.paddleSubscriptionId }, 'Paddle cancel failed')
-    throw new AppError('PADDLE_CANCEL_FAILED', 502, `Failed to cancel subscription: ${err.message}`)
+    logger.error({ err: err.message, teamId, alert: 'billing.local_write_failed_after_paddle' }, 'Paddle cancel succeeded but the local mirror update failed — webhook/reconciliation will repair')
   }
+
+  return { success: true, cancelAt }
 }
 
 /**
- * Retrieve Paddle Invoice PDF download URL or hosted invoice link.
+ * Invoice PDF link. Ownership is enforced by (id, teamId); the URL is fetched from Paddle on demand because
+ * it is short-lived and must not be stored.
  */
 export async function getInvoicePdf(teamId: string, invoiceId: string): Promise<{ url: string | null }> {
   const { prisma } = await import('../../db/client')
-  const invoice = await prisma.invoice.findFirst({
-    where: { id: invoiceId, teamId },
-  })
-
-  if (!invoice) {
-    throw new AppError('INVOICE_NOT_FOUND', 404, 'Invoice not found')
-  }
-
-  if (invoice.hostedInvoiceUrl) {
-    return { url: invoice.hostedInvoiceUrl }
-  }
+  const invoice = await prisma.invoice.findFirst({ where: { id: invoiceId, teamId } })
+  if (!invoice) throw new AppError('INVOICE_NOT_FOUND', 404, 'Invoice not found')
 
   try {
     const { paddle } = await import('../../services/paddle.client')
-    const txn = await paddle.transactions.get(invoice.paddleTransactionId)
-    const pdfUrl = (txn as any).invoice_url ?? (txn as any).details?.invoice_url ?? invoice.hostedInvoiceUrl
-    return { url: pdfUrl ?? invoice.hostedInvoiceUrl }
+    const pdf = await withTimeout(paddle.transactions.getInvoicePDF(invoice.paddleTransactionId), PADDLE_CALL_TIMEOUT_MS, 'paddle.transactions.getInvoicePDF')
+    return { url: pdf.url ?? invoice.hostedInvoiceUrl ?? null }
   } catch (err: any) {
-    logger.warn({ err: err.message, invoiceId }, 'Failed to fetch PDF URL from Paddle API')
-    return { url: invoice.hostedInvoiceUrl }
+    logger.warn({ err: err.message, invoiceId }, 'Failed to fetch invoice PDF URL from Paddle API')
+    return { url: invoice.hostedInvoiceUrl ?? null }
   }
 }
 
 /**
- * Direct Paddle Subscription Reconciliation / Manual Sync Endpoint.
- * Checks Paddle API directly for the team's customer ID and updates local DB state.
+ * Manual reconciliation with Paddle for this team (also called automatically after checkout.completed).
+ * Paddle is the source of truth: handles activation AND cancellation/pause/past_due. Never resets usage
+ * unless a genuinely new billing period started.
  */
 export async function syncSubscription(teamId: string): Promise<{ synced: boolean; plan: PlanType }> {
-  const { prisma } = await import('../../db/client')
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
-    select: { id: true, plan: true, paddleCustomerId: true },
-  })
-
-  if (!team?.paddleCustomerId) {
-    await invalidatePlanCache(teamId)
-    return { synced: false, plan: team?.plan ?? PlanType.FREE }
-  }
-
-  try {
-    const { paddle } = await import('../../services/paddle.client')
-    const { getPlanFromPriceId, getPlanPriceCents } = await import('../../config/plans.config')
-
-    const collection = paddle.subscriptions.list({
-      customerId: [team.paddleCustomerId],
-      status: ['active', 'trialing'],
-    })
-
-    const activeSubs = await collection.next()
-
-    if (activeSubs && activeSubs.length > 0) {
-      const activeSub = activeSubs[0]
-      const priceId = activeSub.items?.[0]?.price?.id
-      const priceMatch = priceId ? getPlanFromPriceId(priceId) : undefined
-
-      const customPlan = (activeSub.customData || (activeSub as any).custom_data)?.planId as PlanType | undefined
-      const resolvedPlan = customPlan && Object.values(PlanType).includes(customPlan)
-        ? customPlan
-        : priceMatch?.planId
-
-      if (resolvedPlan) {
-        const interval = priceMatch?.interval ?? ((activeSub.customData as any)?.interval ?? 'month')
-        const currentBillingPeriod = activeSub.currentBillingPeriod || (activeSub as any).current_billing_period
-        const periodStart = currentBillingPeriod?.startsAt ? new Date(currentBillingPeriod.startsAt) : new Date()
-        const periodEnd   = currentBillingPeriod?.endsAt ? new Date(currentBillingPeriod.endsAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-
-        const trialDates = (activeSub as any).trialDates || (activeSub as any).trial_dates
-        const trialPeriodConfig = (activeSub.items?.[0] as any)?.price?.trial_period || (activeSub.items?.[0] as any)?.price?.trialPeriod
-        const isTrialing = activeSub.status === 'trialing' || Boolean(trialDates) || Boolean(trialPeriodConfig)
-
-        const status = isTrialing ? SubscriptionStatus.trialing : SubscriptionStatus.active
-
-        let trialStart = trialDates?.startsAt ? new Date(trialDates.startsAt) : undefined
-        let trialEnd   = trialDates?.endsAt ? new Date(trialDates.endsAt) : undefined
-        if (isTrialing) {
-          if (!trialStart) trialStart = periodStart
-          if (!trialEnd) trialEnd = (activeSub as any).next_billed_at ? new Date((activeSub as any).next_billed_at) : new Date(trialStart.getTime() + 14 * 24 * 60 * 60 * 1000)
-        }
-
-        const rawUnit = activeSub.items?.[0]?.price?.unitPrice?.amount || (activeSub.items?.[0] as any)?.price?.unit_price?.amount
-        const unitAmount = rawUnit ? Number(rawUnit) : getPlanPriceCents(resolvedPlan, interval)
-
-        const currency = (activeSub.currencyCode || (activeSub as any).currency_code || 'usd').toLowerCase()
-        const cancelAtPeriodEnd = Boolean(activeSub.scheduledChange?.action === 'cancel' || (activeSub as any).scheduled_change?.action === 'cancel')
-
-        await billingRepo.activateSubscriptionTransaction(
-          teamId,
-          resolvedPlan,
-          {
-            paddleSubscriptionId: activeSub.id,
-            paddleCustomerId: team.paddleCustomerId,
-            paddlePriceId: priceId,
-            plan: resolvedPlan,
-            billingInterval: interval,
-            status,
-            currentPeriodStart: periodStart,
-            currentPeriodEnd: periodEnd,
-            cancelAtPeriodEnd,
-            trialStart,
-            trialEnd,
-            unitAmount,
-            currency,
-          },
-          null,
-          periodStart,
-          periodEnd
-        )
-
-        await invalidatePlanCache(teamId)
-
-        // Emit real-time socket event
-        try {
-          const { socketEmitter } = await import('../../realtime/socket.emitter')
-          const { SERVER_EVENTS } = await import('../../realtime/socket.events')
-          socketEmitter.to(`team:${teamId}`).emit(SERVER_EVENTS.BILLING_PLAN_UPDATED, {
-            teamId,
-            plan: resolvedPlan,
-            status,
-            updatedAt: new Date().toISOString(),
-          })
-        } catch (err: any) {
-          logger.warn({ err: err.message, teamId }, '[billing.service] Failed to emit socket event on sync')
-        }
-
-        return { synced: true, plan: resolvedPlan }
-      }
-    }
-  } catch (err: any) {
-    logger.error({ err: err?.message || err, teamId }, '[billing.service] Failed to sync subscription from Paddle API')
-  }
-
+  const result = await reconcileTeamFromPaddle(teamId)
   await invalidatePlanCache(teamId)
-  return { synced: false, plan: team.plan }
+  return { synced: result.synced, plan: result.plan }
 }

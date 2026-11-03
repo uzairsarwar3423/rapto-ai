@@ -68,11 +68,8 @@ export class IntegrationsService {
         // Enforce plan integration limits (e.g. Free tier = 1 integration)
         const { prisma } = await import('../../db/client')
         const { PLAN_LIMITS } = await import('../../config/plans.config')
-        const team = await prisma.team.findUnique({
-            where: { id: teamId },
-            select: { plan: true },
-        })
-        const plan = team?.plan ?? 'FREE'
+        const { getEffectivePlan } = await import('../billing/entitlement.service')
+        const plan = await getEffectivePlan(teamId)
         const limit = PLAN_LIMITS[plan]?.integrations ?? 1
 
         if (limit !== -1) {
@@ -514,23 +511,8 @@ export class IntegrationsService {
 
         let plainAccessToken: string
         try {
-            const { decrypt, encrypt } = await import('../../utils/crypto')
-            const { calendarProviderRegistry } = await import('./providers/calendar-provider.registry')
-            const providerClient = calendarProviderRegistry.getProvider(provider)
-            const now = new Date()
-            if (integration.tokenExpiresAt && integration.tokenExpiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
-                if (!integration.refreshTokenEnc) throw new Error('No refresh token')
-                const refreshResult = await providerClient.refreshAccessToken(integration.refreshTokenEnc)
-                const newAccessTokenEnc = encrypt(refreshResult.accessToken)
-                const newExpiresAt = refreshResult.expiresAt
-                await prisma.userIntegration.update({
-                    where: { id: integration.id },
-                    data: { accessTokenEnc: newAccessTokenEnc, tokenExpiresAt: newExpiresAt }
-                })
-                plainAccessToken = refreshResult.accessToken
-            } else {
-                plainAccessToken = decrypt(integration.accessTokenEnc)
-            }
+            const { getValidAccessToken } = await import('../../services/token-refresh.service')
+            plainAccessToken = await getValidAccessToken(integration as any, false)
         } catch (refreshErr: any) {
             await prisma.userIntegration.update({
                 where: { id: integration.id },

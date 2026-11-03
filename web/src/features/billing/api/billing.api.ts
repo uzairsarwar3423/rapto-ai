@@ -51,7 +51,14 @@ export async function createBillingPortalSession(): Promise<string> {
 export async function createCheckoutSession(
   planId: string,
   interval: "month" | "year"
-): Promise<{ transactionId: string; checkoutUrl: string | null }> {
+): Promise<{
+  transactionId: string;
+  checkoutUrl: string | null;
+  /** true when an existing subscription was changed in place (no checkout UI needed) */
+  updated?: boolean;
+  plan?: string;
+  status?: string;
+}> {
   const { data } = await api.post(`/billing/checkout`, {
     planId,
     interval,

@@ -3,7 +3,8 @@
 //
 // Middleware discipline per endpoint (from Day 23 spec):
 //   GET  /plans      → requireAuth only (pre-onboarding accessible)
-//   POST /checkout   → requireAuth + injectTenant + requireRole(ADMIN) + idempotency + validate
+//   POST /checkout   → requireAuth + injectTenant + requireRole(ADMIN) + per-workspace rate limit + validate
+//   POST /portal|/cancel|/sync → same chain (rate limited: 10/min per workspace)
 //   POST /portal     → requireAuth + injectTenant + requireRole(ADMIN)
 //   GET  /subscription → requireAuth + injectTenant
 //   GET  /invoices   → requireAuth + injectTenant + requireRole(ADMIN) + validate(pagination)
@@ -15,6 +16,7 @@ import { requireAuth } from '../../middleware/auth.middleware'
 import { injectTenant } from '../../middleware/tenant.middleware'
 import { requireRole } from '../../middleware/role.middleware'
 import { validate } from '../../middleware/validate.middleware'
+import { billingMutationRateLimiter } from '../../middleware/rate-limit.middleware'
 import {
   getPlansController,
   createCheckoutController,
@@ -50,6 +52,7 @@ router.post(
   requireAuth,
   injectTenant,
   requireRole('ADMIN'),
+  billingMutationRateLimiter,
   validate({ body: checkoutSchema }),
   createCheckoutController
 )
@@ -61,6 +64,7 @@ router.post(
   requireAuth,
   injectTenant,
   requireRole('ADMIN'),
+  billingMutationRateLimiter,
   createPortalController
 )
 
@@ -80,6 +84,7 @@ router.post(
   requireAuth,
   injectTenant,
   requireRole('ADMIN'),
+  billingMutationRateLimiter,
   cancelSubscriptionController
 )
 
@@ -90,6 +95,7 @@ router.post(
   requireAuth,
   injectTenant,
   requireRole('ADMIN'),
+  billingMutationRateLimiter,
   syncSubscriptionController
 )
 

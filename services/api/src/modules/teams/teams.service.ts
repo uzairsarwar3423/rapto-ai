@@ -11,6 +11,8 @@
 
 import crypto from 'crypto'
 import { PlanType, UserRole } from '@prisma/client'
+import { getTeamEntitlement } from '../billing/entitlement.service'
+import { ttlSecondsUntil } from '../billing/entitlement'
 import { teamsRepository } from './teams.repository'
 import { notifyQueue } from '../../queues/queue.client'
 import { emailService } from '../notifications/email.service'
@@ -270,7 +272,9 @@ async function getTeamWithMembers(teamId: string): Promise<TeamDetailResponse> {
   const sortedMembers = sortMembersByRole(team.members)
 
   // STEP 4 — Build usage object
-  const plan = team.plan as PlanType
+  // Effective plan (server clock): an expired trial / ended cancellation is Free even if Team.plan has not been persisted yet.
+  const entitlement = await getTeamEntitlement(teamId)
+  const plan = entitlement.plan as PlanType
   const limits = PLAN_LIMITS[plan]
   const membersCount = sortedMembers.length
   const meetingsUsed = team.meetingsUsed + inFlightMeetings
@@ -318,7 +322,7 @@ async function getTeamWithMembers(teamId: string): Promise<TeamDetailResponse> {
     id: team.id,
     name: team.name,
     slug: team.slug,
-    plan: team.plan,
+    plan,
     settings,
     usage,
     members,
@@ -328,7 +332,8 @@ async function getTeamWithMembers(teamId: string): Promise<TeamDetailResponse> {
   }
 
   // STEP 7 — Cache result
-  await cacheSet(CK.teamDetail(teamId), TEAM_DETAIL_TTL, result)
+  // Cache must not outlive the entitlement boundary (e.g. the exact instant a trial ends).
+  await cacheSet(CK.teamDetail(teamId), ttlSecondsUntil(entitlement.validUntil, TEAM_DETAIL_TTL), result)
 
   return result
 }
@@ -423,10 +428,11 @@ async function inviteMembers(
   const currentCount = team.members.filter((m) => m.role !== UserRole.OWNER).length
   const pendingCount = await teamsRepository.countPendingInvitations(teamId)
   const projectedTotal = currentCount + pendingCount + emails.length
-  const memberLimit = PLAN_LIMITS[team.plan as PlanType].members
+  const effectivePlan = (await getTeamEntitlement(teamId)).plan as PlanType
+  const memberLimit = PLAN_LIMITS[effectivePlan].members
 
   if (memberLimit !== -1 && projectedTotal > memberLimit) {
-    throw new PlanLimitError('Members', currentCount, memberLimit, getUpgradeUrl(team.plan as PlanType))
+    throw new PlanLimitError('Members', currentCount, memberLimit, getUpgradeUrl(effectivePlan))
   }
 
   // STEP 3 — Fetch inviter info for email

@@ -333,6 +333,7 @@ model Team {
   inAppNotifications    InAppNotification[]
 
   @@index([paddleCustomerId])
+  @@index([gracePeriodEnd])
   @@map("teams")
 }
 
@@ -689,6 +690,8 @@ model Subscription {
   trialEnd                DateTime?
   unitAmount              Int?
   currency                String              @default("usd")
+  // occurred_at of the newest subscription.* webhook applied; used to discard stale / out-of-order events.
+  lastEventOccurredAt     DateTime?
   createdAt               DateTime            @default(now())
   updatedAt               DateTime            @updatedAt
 
@@ -697,6 +700,8 @@ model Subscription {
   @@index([status])
   @@index([paddleCustomerId])
   @@index([plan])
+  @@index([status, trialEnd])
+  @@index([cancelAtPeriodEnd, currentPeriodEnd])
   @@map("subscriptions")
 }
 
@@ -734,7 +739,10 @@ model Refund {
   amount                Int
   currency              String    @default("usd")
   reason                String?
-  status                String    // 'completed' | 'pending'
+  // Paddle adjustment action: refund | chargeback | chargeback_warning | chargeback_reverse | credit | ...
+  action                String    @default("refund")
+  // Paddle adjustment status: pending_approval | approved | rejected | reversed
+  status                String
   createdAt             DateTime  @default(now())
 
   team                  Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -757,6 +765,28 @@ model BillingAuditLog {
 
   @@index([teamId, createdAt(sort: Desc)])
   @@map("billing_audit_logs")
+}
+
+// Durable inbox of every verified Paddle webhook. HTTP 200 is returned to Paddle only after the row exists.
+// eventId UNIQUE = database-level idempotency across redeliveries and queue evictions.
+model PaddleWebhookEvent {
+  id          String    @id @default(cuid())
+  eventId     String    @unique
+  eventType   String
+  occurredAt  DateTime?
+  teamId      String?
+  // RECEIVED | PROCESSING | PROCESSED | FAILED | NEEDS_ATTENTION | IGNORED
+  status      String    @default("RECEIVED")
+  attempts    Int       @default(0)
+  lastError   String?
+  payload     Json
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, receivedAt])
+  @@index([teamId])
+  @@map("paddle_webhook_events")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

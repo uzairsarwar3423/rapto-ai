@@ -10,10 +10,15 @@ import type { PlanType, SubscriptionStatus } from '@prisma/client'
 // ── Checkout / Portal ─────────────────────────────────────────────────────────
 
 export interface CheckoutResult {
-  /** Paddle transaction ID — used by Paddle.js overlay checkout on the frontend */
+  /** Paddle transaction ID (new purchase) or subscription ID (in-place plan change) */
   transactionId: string
   /** Paddle hosted checkout URL — used for redirect-based checkout */
   checkoutUrl: string | null
+  /** true when an existing subscription was changed in place; no checkout UI is needed */
+  updated?: boolean
+  /** Effective plan after an in-place change */
+  plan?: PlanType
+  status?: SubscriptionStatus
 }
 
 export interface PortalResult {
@@ -131,5 +136,5 @@ export interface CreateBillingAuditLogData {
   eventId?: string
   eventType: string
   action: string
-  payload: any
+  payload?: any
 }

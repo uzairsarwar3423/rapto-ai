@@ -15,6 +15,7 @@ import { calendarSyncQueue, tokenRefreshQueue } from './queue.client'
 import { prisma } from '../db/client'
 import { findExpiringIntegrations } from '../services/token-refresh.service'
 import { startOfWeek, getISOWeek, getISOWeekYear, subDays } from 'date-fns'
+import { runEntitlementSyncCron, runReconciliationCron } from '../modules/billing/subscription-lifecycle.service'
 
 async function enqueueTokenRefreshJobs(): Promise<void> {
     try {
@@ -229,70 +230,9 @@ export async function runBillingCycleResetCron(): Promise<void> {
         logger.error({ err: err.message }, 'billing-cycle cron: error resetting Free tier quotas')
     }
 
-    // 2. Evaluate expired grace periods for past_due teams
-    try {
-        const expiredGraceTeams = await prisma.team.findMany({
-            where: {
-                gracePeriodEnd: { lte: now },
-                plan: { not: 'FREE' },
-            },
-            select: { id: true },
-        })
-
-        for (const team of expiredGraceTeams) {
-            await prisma.team.update({
-                where: { id: team.id },
-                data: {
-                    plan: 'FREE',
-                    gracePeriodEnd: null,
-                },
-            })
-            await invalidatePlanCache(team.id)
-        }
-
-        if (expiredGraceTeams.length > 0) {
-            logger.info({ count: expiredGraceTeams.length }, 'billing-cycle cron: downgraded expired past_due workspaces')
-        }
-    } catch (err: any) {
-        logger.error({ err: err.message }, 'billing-cycle cron: error evaluating grace periods')
-    }
-
-    // 3. Process period-end scheduled cancellations
-    try {
-        const expiredCancellations = await prisma.subscription.findMany({
-            where: {
-                cancelAtPeriodEnd: true,
-                currentPeriodEnd: { lte: now },
-                status: { not: 'cancelled' },
-            },
-            select: { teamId: true, paddleSubscriptionId: true },
-        })
-
-        for (const sub of expiredCancellations) {
-            await prisma.subscription.update({
-                where: { paddleSubscriptionId: sub.paddleSubscriptionId },
-                data: {
-                    status: 'cancelled',
-                    cancelAtPeriodEnd: false,
-                    cancelledAt: now,
-                },
-            })
-            await prisma.team.update({
-                where: { id: sub.teamId },
-                data: {
-                    plan: 'FREE',
-                    billingCycleEnd: null,
-                },
-            })
-            await invalidatePlanCache(sub.teamId)
-        }
-
-        if (expiredCancellations.length > 0) {
-            logger.info({ count: expiredCancellations.length }, 'billing-cycle cron: executed scheduled period-end cancellations')
-        }
-    } catch (err: any) {
-        logger.error({ err: err.message }, 'billing-cycle cron: error processing scheduled cancellations')
-    }
+    // Grace-period expiry, scheduled-cancellation end and trial expiry are handled by the 5-minute
+    // runEntitlementSync() (subscription-lifecycle.service.ts), which derives the plan from resolveEntitlement()
+    // instead of the three divergent ad-hoc rules that used to live here.
 }
 
 export function startScheduler(): void {
@@ -356,6 +296,26 @@ export function startScheduler(): void {
         }
     })
 
+    // ── Billing: trial / cancellation / grace expiry + webhook inbox redrive (EVERY 5 MINUTES) ──
+    // Idempotent, lock-protected, retry-safe: a missed or failed run is simply repeated 5 minutes later.
+    // Read-time entitlement (resolveEntitlement) already denies access at the exact boundary; this persists it.
+    cron.schedule('*/5 * * * *', async () => {
+        try {
+            await runEntitlementSyncCron()
+        } catch (err) {
+            logger.error({ err }, 'Cron: billing entitlement sync failed')
+        }
+    })
+
+    // ── Billing: reconcile DB with Paddle for suspicious subscriptions (HOURLY at :25) ──
+    cron.schedule('25 * * * *', async () => {
+        try {
+            await runReconciliationCron()
+        } catch (err) {
+            logger.error({ err }, 'Cron: billing reconciliation failed')
+        }
+    })
+
     // ── Day 64: Proactive token refresh (EVERY 15 MINUTES) ───────────────────
     cron.schedule('*/15 * * * *', async () => {
         logger.info('Cron: running proactive token refresh')
@@ -363,6 +323,6 @@ export function startScheduler(): void {
     })
 
     logger.info(
-        'Scheduler started: deadline-reminder@9AM, mark-missed@6PM, digest@Mon9AM, snapshot@SunMidnight, billing-cycle@Midnight, calendar-sync@hourly, token-refresh@15min'
+        'Scheduler started: deadline-reminder@9AM, mark-missed@6PM, digest@Mon9AM, snapshot@SunMidnight, billing-cycle@Midnight, entitlement-sync@5min, billing-reconcile@hourly, calendar-sync@hourly, token-refresh@15min'
     )
 }

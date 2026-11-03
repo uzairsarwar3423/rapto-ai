@@ -16,7 +16,8 @@
     "seed:admin": "tsx scripts/seed-admin.ts",
     "staff:create": "tsx scripts/create-staff.ts",
     "test": "jest",
-    "test:integration": "jest --testPathPattern=tests/integration"
+    "test:integration": "jest --testPathPattern=tests/integration",
+    "test:billing": "jest --runInBand --testPathPattern \\.db\\.test\\.ts$"
   },
   "keywords": [],
   "author": "",

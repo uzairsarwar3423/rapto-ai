@@ -137,20 +137,32 @@ export async function syncSubscriptionController(
 // ── GET /billing/webhook-status ───────────────────────────────────────────────
 
 export async function getWebhookStatusController(
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
     const isConfigured = Boolean(process.env.PADDLE_WEBHOOK_SECRET && process.env.PADDLE_WEBHOOK_SECRET.trim() !== '')
     const { redis } = await import('../../config/redis')
-    const lastWebhookReceivedAt = await redis.get('paddle:last_webhook_received_at')
+    const { countInboxByStatus, findAttentionEvents } = await import('../webhooks/paddle.inbox.repository')
+    const teamId = req.teamId!
+    const [lastWebhookReceivedAt, counts, attention] = await Promise.all([
+      redis.get('paddle:last_webhook_received_at'),
+      countInboxByStatus(),
+      findAttentionEvents(20),
+    ])
+
+    // Only this workspace's events are shown to a workspace admin (platform-wide counts stay aggregate).
+    const mine = attention.filter((e) => e.teamId === teamId)
+    const unhealthy = (counts.FAILED ?? 0) > 0 || (counts.NEEDS_ATTENTION ?? 0) > 0
 
     res.status(200).json({
       configured: isConfigured,
       webhookEndpoint: 'https://app.rapto.cloud/api/v1/webhooks/paddle',
       lastWebhookReceivedAt: lastWebhookReceivedAt ? new Date(parseInt(lastWebhookReceivedAt, 10)).toISOString() : null,
-      status: isConfigured ? 'healthy' : 'unconfigured_secret',
+      inbox: counts,
+      workspaceEventsNeedingAttention: mine,
+      status: !isConfigured ? 'unconfigured_secret' : unhealthy ? 'degraded' : 'healthy',
     })
   } catch (err) {
     next(err)

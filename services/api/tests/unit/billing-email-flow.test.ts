@@ -307,19 +307,25 @@ describe('paddle.webhook — deterministic billing jobId', () => {
   const src = read('modules/webhooks/paddle.webhook.service.ts')
 
   it('billing-confirmation jobId keyed on transactionId', () => {
-    expect(src).toContain('`billing-confirmation:${transactionId}`')
+    expect(src).toContain('`billing-confirmation-${transactionId}`')
   })
 
   it('payment-failed jobId keyed on transactionId', () => {
-    expect(src).toContain('`payment-failed:${transactionId}`')
+    expect(src).toContain('`payment-failed-${transactionId}`')
   })
 
   it('subscription-cancelled jobId keyed on eventId (unique per cancellation event)', () => {
-    expect(src).toContain('`subscription-cancelled:${eventId}`')
+    expect(src).toContain('`subscription-cancelled-${eventId}`')
   })
 
   it('trial-started jobId keyed on subscriptionId', () => {
-    expect(src).toContain('`trial-started:${paddleSubscriptionId}`')
+    expect(src).toContain('`trial-started-${subId}`')
+  })
+
+  it('NO job id contains ":" — BullMQ rejects such ids (this silently broke every Paddle webhook)', () => {
+    // any template literal of the form `<word>:${...}` handed to enqueueBillingJob / queue.add is invalid
+    expect(src).not.toMatch(/`(billing|payment|trial|subscription)[a-z-]*:\$\{/)
+    expect(read("modules/webhooks/paddle.webhook.controller.ts")).not.toMatch(/jobId:\s*`[^`]*:/)
   })
 })
 

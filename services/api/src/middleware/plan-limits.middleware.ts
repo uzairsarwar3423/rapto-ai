@@ -20,6 +20,7 @@ import { PLAN_LIMITS, getUpgradeUrl } from '../config/plans.config'
 import { PlanLimitError } from '../utils/errors'
 import { PlanType } from '@prisma/client'
 import { IN_FLIGHT_STATUSES } from '../modules/meetings/meetings.service.state'
+import { resolveEntitlement, ttlSecondsUntil } from '../modules/billing/entitlement'
 
 // ── Cache Helpers ─────────────────────────────────────────────────────────────
 
@@ -33,6 +34,8 @@ interface PlanCacheEntry {
   plan: PlanType
   meetingsUsed: number
   membersCount: number
+  /** ISO instant at which `plan` stops being valid (trial end, period end, grace end). Cache TTL never outlives it. */
+  validUntil?: string | null
 }
 
 async function getPlanFromCache(teamId: string): Promise<PlanCacheEntry | null> {
@@ -48,7 +51,9 @@ async function getPlanFromCache(teamId: string): Promise<PlanCacheEntry | null> 
 
 async function writePlanToCache(teamId: string, entry: PlanCacheEntry): Promise<void> {
   try {
-    await redis.setex(planCacheKey(teamId), PLAN_CACHE_TTL, JSON.stringify(entry))
+    // The cached plan must expire no later than the entitlement itself (exact trial/period boundary).
+    const ttl = ttlSecondsUntil(entry.validUntil ? new Date(entry.validUntil) : null, PLAN_CACHE_TTL)
+    await redis.setex(planCacheKey(teamId), ttl, JSON.stringify(entry))
   } catch {
     // Non-fatal — cache write failure should not block the request
   }
@@ -60,8 +65,12 @@ async function fetchPlanFromDB(teamId: string): Promise<PlanCacheEntry> {
       where: { id: teamId },
       select: {
         plan: true,
+        gracePeriodEnd: true,
         meetingsUsed: true,
         _count: { select: { members: { where: { deletedAt: null } } } },
+        subscription: {
+          select: { status: true, plan: true, trialEnd: true, currentPeriodEnd: true, cancelAtPeriodEnd: true },
+        },
       },
     }),
     prisma.meeting.count({
@@ -77,10 +86,18 @@ async function fetchPlanFromDB(teamId: string): Promise<PlanCacheEntry> {
     return { plan: PlanType.FREE, meetingsUsed: 0, membersCount: 0 }
   }
 
+  // Effective plan from server time + subscription facts — never the raw (possibly stale) Team.plan column.
+  const entitlement = resolveEntitlement({
+    teamPlan: team.plan,
+    gracePeriodEnd: team.gracePeriodEnd,
+    subscription: team.subscription,
+  })
+
   return {
-    plan: team.plan,
+    plan: entitlement.plan,
     meetingsUsed: team.meetingsUsed + inFlightMeetings,
     membersCount: team._count.members,
+    validUntil: entitlement.validUntil ? entitlement.validUntil.toISOString() : null,
   }
 }
 

@@ -214,3 +214,13 @@ export const calendarSyncNowRateLimiter = createRateLimiter({
     keyPrefix: 'ratelimit:calendar-sync-now',
     identifier: (req) => req.user?.id ?? null,
 })
+/* -------------------------------------------------------------------------- */
+/* BILLING (per workspace) — protects Paddle API quota and the sync/checkout paths */
+/* -------------------------------------------------------------------------- */
+
+export const billingMutationRateLimiter = createRateLimiter({
+    limit: 10,
+    windowSeconds: 60,
+    keyPrefix: 'ratelimit:billing',
+    identifier: (req) => req.teamId ?? req.user?.id ?? req.ip ?? null,
+})

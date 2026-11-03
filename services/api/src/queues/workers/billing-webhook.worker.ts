@@ -2,7 +2,7 @@ import { Worker, Job } from 'bullmq'
 import { logger } from '../../config/logger'
 import { redisConnectionOptions } from '../../config/redis.config'
 import type { BillingWebhookJobData } from '../jobs/billing-webhook.job'
-import * as paddleWebhookService from '../../modules/webhooks/paddle.webhook.service'
+import { processInboxEvent } from '../../modules/webhooks/paddle.event-processor'
 
 const connection = {
   host: redisConnectionOptions.host,
@@ -13,67 +13,26 @@ const connection = {
 export const billingWebhookWorker = new Worker<BillingWebhookJobData>(
   'billing-webhook',
   async (job: Job<BillingWebhookJobData>) => {
-    const { event, eventId, eventType } = job.data
+    const { eventId, eventType } = job.data
     const start = Date.now()
-
-    logger.info(
-      { jobId: job.id, eventId, eventType, attempt: job.attemptsMade + 1 },
-      '[billing-webhook.worker] ▶ Processing billing webhook job'
-    )
-
-    try {
-      await paddleWebhookService.processEvent(event, eventId, eventType)
-      const durationMs = Date.now() - start
-      logger.info(
-        { jobId: job.id, eventId, eventType, durationMs },
-        '[billing-webhook.worker] ✅ Billing webhook processed successfully'
-      )
-      return { success: true, eventId, eventType, durationMs }
-    } catch (err: any) {
-      const durationMs = Date.now() - start
-      logger.error(
-        {
-          jobId: job.id,
-          eventId,
-          eventType,
-          err: err?.message,
-          stack: err?.stack,
-          durationMs,
-          attemptsMade: job.attemptsMade + 1,
-        },
-        '[billing-webhook.worker] ❌ Billing webhook processing failed — will retry according to backoff policy'
-      )
-      throw err // Re-throw to trigger BullMQ exponential retry & backoff
-    }
+    logger.info({ jobId: job.id, eventId, eventType, attempt: job.attemptsMade + 1 }, '[billing-webhook.worker] ▶ processing')
+    const result = await processInboxEvent(eventId)
+    logger.info({ jobId: job.id, eventId, eventType, ...result, durationMs: Date.now() - start }, '[billing-webhook.worker] ✅ done')
+    return result
   },
   {
     connection,
-    concurrency: 5,
+    concurrency: 5, // per-team ordering/serialization is enforced in Postgres (advisory lock), not here
   }
 )
 
 billingWebhookWorker.on('failed', (job: Job<BillingWebhookJobData> | undefined, err: Error) => {
+  const exhausted = job ? job.attemptsMade >= (job.opts.attempts ?? 1) : false
   logger.error(
-    {
-      jobId: job?.id,
-      eventId: job?.data?.eventId,
-      eventType: job?.data?.eventType,
-      err: err.message,
-      stack: err.stack,
-      attemptsMade: job?.attemptsMade,
-    },
-    '[billing-webhook.worker] ⚠️ Billing webhook job failed completely after all retries'
-  )
-})
-
-billingWebhookWorker.on('completed', (job: Job<BillingWebhookJobData>) => {
-  logger.info(
-    {
-      jobId: job.id,
-      eventId: job.data.eventId,
-      eventType: job.data.eventType,
-    },
-    '[billing-webhook.worker] ✅ Billing webhook job marked completed in queue'
+    { jobId: job?.id, eventId: job?.data?.eventId, eventType: job?.data?.eventType, err: err.message, attemptsMade: job?.attemptsMade, exhausted, alert: exhausted ? 'billing.webhook_retries_exhausted' : undefined },
+    exhausted
+      ? '[billing-webhook.worker] ⚠️ queue retries exhausted — the inbox redrive sweeper continues with backoff'
+      : '[billing-webhook.worker] attempt failed — will retry'
   )
 })
 
