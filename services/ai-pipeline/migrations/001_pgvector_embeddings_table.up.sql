@@ -44,12 +44,15 @@ BEGIN
 END $$;
 
 -- Runtime role. No password here: set it out-of-band (RAG_APP_ROLE_PASSWORD or ALTER ROLE).
+-- RE-RUN SAFE for a non-superuser owner (Supabase's `postgres`): an ALTER ROLE that merely MENTIONS
+-- SUPERUSER/NOSUPERUSER needs superuser on PG16+, so an existing role is VERIFIED, never altered.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'vocaply_ai_app') THEN
     CREATE ROLE vocaply_ai_app LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
-  ELSE
-    ALTER ROLE vocaply_ai_app NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+  ELSIF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'vocaply_ai_app'
+                AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb)) THEN
+    RAISE EXCEPTION 'role vocaply_ai_app already exists with elevated attributes (SUPERUSER/BYPASSRLS/CREATEROLE/CREATEDB); fix or drop it first, row level security would not apply';
   END IF;
 END $$;
 
