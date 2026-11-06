@@ -129,6 +129,10 @@ class ChatSettings(BaseSettings):
     internal_jwt_audience: str = "vocaply-ai-chat"
     internal_jwt_leeway_s: int = Field(default=10, ge=0, le=60)
     internal_jwt_max_lifetime_s: int = Field(default=60, ge=5, le=300)
+    # TEMPORARY, INSECURE escape hatch: when true the service-JWT SIGNATURE is not verified; the identity claims are read
+    # from the token as-is, so anyone who can reach /chat can act as any team. Only for a pre-launch environment with no
+    # real tenants. Default false; remove the env var (CHAT_AUTH_DISABLED) to restore verification.
+    chat_auth_disabled: bool = False
 
     # ── Parsed helpers ────────────────────────────────────────────────────────
 

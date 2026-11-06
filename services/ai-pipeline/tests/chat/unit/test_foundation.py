@@ -251,6 +251,21 @@ def test_hs256_signed_with_the_public_key_is_refused():                      # a
         _verifier().verify(forged)
 
 
+def test_auth_disabled_flag_defaults_off_and_normal_path_still_verifies():
+    assert make_settings().chat_auth_disabled is False
+    with pytest.raises(UnauthenticatedError):
+        _verifier().verify(_tok(priv=PRIV2))                                    # unknown signer is still refused
+
+
+def test_auth_disabled_reads_claims_without_checking_signature_but_still_validates_them():
+    v = _verifier({})                                                           # no keys at all
+    c = v.claims_without_verification(_tok(priv=PRIV2, kid="whatever", aud="x", iss="y"))
+    assert (c.team_id, c.user_id, c.plan) == ("teamA", "userA1", "PRO")
+    for bad in (_tok(team_id=None), _tok(team_id="bad team!"), _tok(tz="Mars/Olympus"), "not.a.jwt"):
+        with pytest.raises(UnauthenticatedError):
+            v.claims_without_verification(bad)                                  # identity claims are still required
+
+
 def test_key_rotation_two_kids_live():
     v = _verifier({"k1": PUB1, "k2": PUB2})
     assert v.verify(_tok(kid="k1")).team_id == "teamA"

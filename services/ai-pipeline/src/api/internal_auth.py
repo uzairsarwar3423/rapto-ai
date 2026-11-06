@@ -89,7 +89,20 @@ class InternalJWTVerifier:
         if lifetime <= 0 or lifetime > self._max_lifetime + self._leeway:
             raise self._fail("lifetime_too_long")
 
-        missing = [c for c in _REQUIRED[5:] if not payload.get(c)]
+        return self._claims_from_payload(payload)
+
+    def claims_without_verification(self, token: str) -> ChatClaims:
+        """INSECURE (CHAT_AUTH_DISABLED): read the identity claims WITHOUT checking signature, kid, issuer, audience or
+        expiry. The identity claims are still required and format-checked. Never used unless the flag is set."""
+        try:
+            payload = jwt.decode(token, options={"verify_signature": False, "verify_exp": False, "verify_aud": False,
+                                                 "verify_iss": False, "verify_iat": False, "verify_nbf": False})
+        except jwt.PyJWTError:
+            raise self._fail("malformed") from None
+        return self._claims_from_payload(payload)
+
+    def _claims_from_payload(self, payload: dict[str, Any]) -> ChatClaims:
+        missing = [c for c in _REQUIRED[4:] if not payload.get(c)]      # team_id too: the unverified path has no `require`
         if missing:
             raise self._fail("missing_claims")
         tz = str(payload["tz"])
@@ -131,4 +144,8 @@ def authenticate(request: Request, authorization: Optional[str] = Header(default
     """FastAPI dependency: Bearer token → verified claims, or one generic 401."""
     if not authorization or not authorization.lower().startswith("bearer "):
         raise UnauthenticatedError()
-    return get_verifier(request).verify(authorization[7:].strip())
+    token = authorization[7:].strip()
+    verifier = get_verifier(request)
+    if get_chat_settings().chat_auth_disabled:      # TEMPORARY, INSECURE: see ChatSettings.chat_auth_disabled
+        return verifier.claims_without_verification(token)
+    return verifier.verify(token)

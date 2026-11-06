@@ -67,7 +67,10 @@ async def start_chat_runtime(app_settings: Settings, chat: ChatSettings, *, rag:
         return None
     if rag is None:
         raise RuntimeError("CHAT_ENABLED requires RAG_ENABLED=true (retrieval and the analytics views need the RAG database)")
-    if not chat.jwt_key_set():
+    if chat.chat_auth_disabled:
+        log.warning("chat_auth_disabled_INSECURE", detail="service-JWT signatures are NOT verified; unset CHAT_AUTH_DISABLED "
+                    "before onboarding real users")
+    elif not chat.jwt_key_set():
         raise RuntimeError("CHAT_ENABLED requires INTERNAL_JWT_PUBLIC_KEYS (a JSON map of kid → PEM public key)")
 
     verifier = InternalJWTVerifier(chat)
