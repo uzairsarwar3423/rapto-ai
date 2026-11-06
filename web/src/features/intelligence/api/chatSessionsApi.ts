@@ -33,11 +33,12 @@ export function useChatSessions() {
   });
 }
 
-export function useChatMessages(sessionId: string | null) {
+/** `enabled=false` holds the fetch back (e.g. while a brand-new conversation's first turn is still streaming). */
+export function useChatMessages(sessionId: string | null, enabled = true) {
   const scope = useChatScope();
   return useInfiniteQuery({
     queryKey: chatKeys.messages(scope ?? "none", sessionId ?? "none"),
-    enabled: !!scope && !!sessionId,
+    enabled: !!scope && !!sessionId && enabled,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) =>
       chatHttp(`/api/ai/chat/sessions/${encodeURIComponent(sessionId!)}/messages?limit=30${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`, {

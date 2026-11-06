@@ -72,19 +72,29 @@ function ChatPageInner() {
   // ── server data ──
   const sessionsQ = useChatSessions();
   const sessions = useMemo(() => sessionsQ.data?.pages.flatMap((p) => p.items) ?? [], [sessionsQ.data]);
-  const messagesQ = useChatMessages(sessionId);
-  const history = useMemo(() => flattenMessages(messagesQ.data), [messagesQ.data]);
   const suggestionsQ = useChatSuggestions(!sessionId);
 
   // ── live turn (owned by the stream manager, shown as the tail of the conversation) ──
   const streams = useChatStreams((s) => s.streams);
-  const live = useMemo(() => {
+  const liveEntry = useMemo(() => {
     const all = Object.values(streams).filter((e) => e.scope === scope);
-    let e = sessionId ? all.find((x) => x.turn.sessionId === sessionId || x.request.session_id === sessionId) : pendingId ? streams[pendingId] : undefined;
+    return sessionId ? all.find((x) => x.turn.sessionId === sessionId || x.request.session_id === sessionId) : pendingId ? streams[pendingId] : undefined;
+  }, [streams, scope, sessionId, pendingId]);
+
+  // A conversation THIS page just started has no stored history until its first turn finishes: the turn is rendered from
+  // the stream, and commitToCache seeds the history cache on completion. Fetching it earlier would flash the loading
+  // skeleton over the answer that is streaming (the session id appears mid-stream) and could show the user's message twice.
+  const deferHistory = !!liveEntry && liveEntry.request.session_id == null && isActive(liveEntry.turn);
+
+  // ── server data ──
+  const messagesQ = useChatMessages(sessionId, !deferHistory);
+  const history = useMemo(() => flattenMessages(messagesQ.data), [messagesQ.data]);
+
+  const live = useMemo(() => {
     // Once the finished turn is in history, history renders it: never both.
-    if (e?.committed && e.turn.messageId && history.some((m) => m.id === e!.turn.messageId)) e = undefined;
-    return e;
-  }, [streams, scope, sessionId, pendingId, history]);
+    if (liveEntry?.committed && liveEntry.turn.messageId && history.some((m) => m.id === liveEntry.turn.messageId)) return undefined;
+    return liveEntry;
+  }, [liveEntry, history]);
   const generatingIds = useMemo(
     () => new Set(Object.values(streams).filter((e) => isActive(e.turn) && e.turn.sessionId).map((e) => e.turn.sessionId as string)),
     [streams],
@@ -92,9 +102,12 @@ function ChatPageInner() {
   const streamingHere = !!live && isActive(live.turn);
 
   // ── send / retry / stop ──
+  // The session id only needs to reach the URL (reload / share / sidebar highlight). A router navigation would re-request
+  // the route from the server, remount the page and flash loading.tsx in the middle of the stream, so update the URL in
+  // place: Next integrates history.replaceState with usePathname/useSearchParams (no navigation, no remount).
   const bind = useCallback(
-    (id: string) => router.replace(`${pathname}?session=${encodeURIComponent(id)}`, { scroll: false }),
-    [router, pathname],
+    (id: string) => window.history.replaceState(null, "", `${pathname}?session=${encodeURIComponent(id)}`),
+    [pathname],
   );
   const send = useCallback(
     (text: string, opts: { clearDraft?: boolean } = {}) => {
@@ -241,7 +254,7 @@ function ChatPageInner() {
               <Notice title={unavailableErr.info.code === "FORBIDDEN" ? chatCopy.featureDisabled : "Chat is temporarily unavailable."} body="Please try again later." />
             ) : notFound ? (
               <Notice title={chatCopy.conversationNotFound} body="It may have been deleted." action={{ label: chatCopy.newChat, onClick: newChat }} />
-            ) : messagesQ.isLoading && sessionId ? (
+            ) : messagesQ.isLoading && sessionId && !live ? (
               <div className="space-y-4" aria-busy="true" aria-label="Loading conversation">{[0, 1, 2].map((i) => <div key={i} className="h-16 rounded-xl bg-surface motion-safe:animate-pulse" />)}</div>
             ) : messagesQ.isError && sessionId ? (
               <Notice title="Couldn't load this conversation." body="Check your connection and try again." action={{ label: chatCopy.retry, onClick: () => void messagesQ.refetch() }} />
