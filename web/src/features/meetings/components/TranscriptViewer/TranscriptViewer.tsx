@@ -8,6 +8,7 @@ import { TranscriptTurn } from "./TranscriptTurn"
 import { TranscriptEmptyState } from "./TranscriptEmptyState"
 import { useTranscriptSearch } from "./useTranscriptSearch"
 import { useTranscriptScroll } from "../../hooks/useTranscriptScroll"
+import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -189,6 +190,22 @@ export function TranscriptViewer({
 
   // 5. Initialize jump-to-time capabilities and temporal pulse highlighting
   const { pulseId, jumpToTime } = useTranscriptScroll(filteredTurns, getVirtualizer)
+
+  // 5b. Deep link from chat citations: ?t=<seconds> scrolls to and pulses the turn at that moment (once per value).
+  const searchParams = useSearchParams()
+  const deepLinkT = searchParams.get("t")
+  const handledDeepLink = useRef<string | null>(null)
+  useEffect(() => {
+    if (deepLinkT === null || handledDeepLink.current === deepLinkT || filteredTurns.length === 0) return
+    if (!/^d{1,7}$/.test(deepLinkT)) return
+    const timer = setTimeout(() => {
+      // Wait a tick so the virtualizer has mounted; a stale/out-of-range time lands on the nearest turn.
+      if (!virtualizerRef.current) return
+      handledDeepLink.current = deepLinkT
+      jumpToTime(Number(deepLinkT))
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [deepLinkT, filteredTurns.length, jumpToTime])
 
   // 6. Monitor scroll position of the custom viewport to elevate sticky header
   useEffect(() => {
