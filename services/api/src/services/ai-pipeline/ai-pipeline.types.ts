@@ -496,3 +496,29 @@ export interface ReadyResponse {
     openai: boolean;
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RAG EMBEDDINGS (chat knowledge base)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type EmbeddingSourceType =
+  | 'transcript_chunk'
+  | 'commitment'
+  | 'action_item'
+  | 'decision'
+  | 'summary';
+
+/** Body of POST /api/v1/embeddings/backfill (snake_case = the FastAPI model; extra fields are rejected). */
+export interface EmbeddingBackfillRequest {
+  team_id: string;
+  source_types: EmbeddingSourceType[];
+  /** YYYY-MM-DD: only sources created on/after this day are (re)scanned. */
+  since?: string;
+  created_by?: string;
+}
+
+export type EmbeddingBackfillOutcome =
+  | { outcome: 'started'; jobId: string }
+  | { outcome: 'already_running' }
+  | { outcome: 'disabled' }
+  | { outcome: 'rejected'; status: number; code: string | null };

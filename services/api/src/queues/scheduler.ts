@@ -16,6 +16,7 @@ import { prisma } from '../db/client'
 import { findExpiringIntegrations } from '../services/token-refresh.service'
 import { startOfWeek, getISOWeek, getISOWeekYear, subDays } from 'date-fns'
 import { runEntitlementSyncCron, runReconciliationCron } from '../modules/billing/subscription-lifecycle.service'
+import { runEmbedSweepCron } from './embed-sweep'
 
 async function enqueueTokenRefreshJobs(): Promise<void> {
     try {
@@ -316,6 +317,16 @@ export function startScheduler(): void {
         }
     })
 
+    // ── RAG/Chat: nightly safety net — re-run the incremental embedding for teams with recent meetings (02:30 UTC) ──
+    cron.schedule('30 2 * * *', async () => {
+        logger.info('Cron: running embed sweep')
+        try {
+            await runEmbedSweepCron()
+        } catch (err) {
+            logger.error({ err }, 'Cron: embed sweep failed')
+        }
+    })
+
     // ── Day 64: Proactive token refresh (EVERY 15 MINUTES) ───────────────────
     cron.schedule('*/15 * * * *', async () => {
         logger.info('Cron: running proactive token refresh')
@@ -323,6 +334,6 @@ export function startScheduler(): void {
     })
 
     logger.info(
-        'Scheduler started: deadline-reminder@9AM, mark-missed@6PM, digest@Mon9AM, snapshot@SunMidnight, billing-cycle@Midnight, entitlement-sync@5min, billing-reconcile@hourly, calendar-sync@hourly, token-refresh@15min'
+        'Scheduler started: deadline-reminder@9AM, mark-missed@6PM, digest@Mon9AM, snapshot@SunMidnight, billing-cycle@Midnight, entitlement-sync@5min, billing-reconcile@hourly, embed-sweep@2:30AM, calendar-sync@hourly, token-refresh@15min'
     )
 }

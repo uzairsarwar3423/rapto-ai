@@ -107,6 +107,22 @@ export const resolveQueue = new Queue('resolve', {
   },
 })
 
+// embed: meeting extracted → AI service embeds it into the RAG store (the AI chat's knowledge base)
+// Long, forgiving backoff: the usual reasons to retry are "an embedding job for this team is already running" (409) and
+// a briefly unreachable AI service. 30s base → 30s/1m/2m/4m/8m/16m/32m ≈ 1h of trying before giving up.
+// removeOnComplete: true — the jobId is deterministic (embed-<meetingId>) and BullMQ ignores an add() whose id still
+// exists, so a completed job must not linger or re-processing the same meeting would be silently dropped.
+export const embedQueue = new Queue('embed', {
+  connection,
+  defaultJobOptions: {
+    attempts:         8,
+    backoff:          { type: 'exponential', delay: 30_000 },
+    priority:         5,
+    removeOnComplete: true,
+    removeOnFail:     { count: 200 },
+  },
+})
+
 // token-refresh: refresh OAuth tokens for integrations
 export const tokenRefreshQueue = new Queue('token-refresh', {
   connection,
@@ -130,7 +146,7 @@ export const billingWebhookQueue = new Queue('billing-webhook', {
   },
 })
 
-const queues = [transcribeQueue, extractQueue, resolveQueue, notifyQueue, integrateQueue, deadlineQueue, calendarSyncQueue, tokenRefreshQueue, billingWebhookQueue]
+const queues = [transcribeQueue, extractQueue, resolveQueue, notifyQueue, integrateQueue, deadlineQueue, calendarSyncQueue, tokenRefreshQueue, billingWebhookQueue, embedQueue]
 
 queues.forEach((q) => {
   const events = new QueueEvents(q.name, { connection })

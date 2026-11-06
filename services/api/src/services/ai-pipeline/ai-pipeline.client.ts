@@ -31,6 +31,8 @@ import type {
   PipelineResult,
   HealthResponse,
   ReadyResponse,
+  EmbeddingBackfillRequest,
+  EmbeddingBackfillOutcome,
 } from './ai-pipeline.types';
 import {
   AIPipelineNetworkError,
@@ -414,6 +416,35 @@ export class AIPipelineClient {
       const response = await this.axios.post<{ result: PipelineResult }>('/api/v1/resolve', request);
       return response.data.result;
     });
+  }
+
+  /**
+   * POST /api/v1/embeddings/backfill — queue a (resumable, idempotent) embedding job for one team.
+   *
+   * Deliberately NOT routed through executeWithRetry / the circuit breaker: embedding trouble must never open the
+   * circuit that protects /extract and /resolve, and "a job is already running" (409) is an expected answer, not a
+   * failure. The BullMQ embed job owns the retry policy instead.
+   *
+   * Outcomes: started (202) · already_running (409) · disabled (503 RAG_DISABLED) · rejected (other 4xx: a request or
+   * configuration problem that retrying cannot fix). Anything else (network, timeout, 5xx) is thrown and is retryable.
+   */
+  public async startEmbeddingBackfill(request: EmbeddingBackfillRequest): Promise<EmbeddingBackfillOutcome> {
+    try {
+      const response = await this.axios.post<{ job_id: string }>('/api/v1/embeddings/backfill', request);
+      return { outcome: 'started', jobId: response.data.job_id };
+    } catch (error: unknown) {
+      if (error instanceof AIPipelineNetworkError) {
+        const res = error.axiosError.response;
+        const status = res?.status;
+        const code = (res?.data as { error_code?: string } | undefined)?.error_code ?? null;
+        if (status === 409) return { outcome: 'already_running' };
+        if (status === 503 && code === 'RAG_DISABLED') return { outcome: 'disabled' };
+        if (status !== undefined && status >= 400 && status < 500 && status !== 429) {
+          return { outcome: 'rejected', status, code };
+        }
+      }
+      throw error;
+    }
   }
 
   /**

@@ -14,6 +14,7 @@
 //  7. On total failure: mark EXTRACTION_FAILED, fail job (Bull retries)
 //  8. Push to resolve queue with partial flag
 //  9. Emit Socket.io event + notify queue
+//  9b. Queue the meeting for RAG embedding (AI chat knowledge base; non-fatal)
 //
 // IDEMPOTENCY: commitments use skipDuplicates=true on the dedup_key.
 //   Retrying an extract job after a DB write timeout is safe — duplicate keys
@@ -26,8 +27,9 @@ import { Worker, Job } from 'bullmq'
 import { logger } from '../../config/logger'
 import { prisma } from '../../db/client'
 import { mongoService } from '../../services/mongo.service'
-import { resolveQueue, notifyQueue } from '../queue.client'
+import { resolveQueue, notifyQueue, embedQueue } from '../queue.client'
 import { ExtractJobData } from '../jobs/extract.job'
+import { EmbedJobData } from '../jobs/embed.job'
 import { aipipelineClient } from '../../services/ai-pipeline/ai-pipeline.client'
 import {
   AIPipelinePartialError,
@@ -448,6 +450,20 @@ export const extractWorker = new Worker<ExtractJobData>(
       teamId,
       meetingId,
     })
+
+    // ── STEP 12b: Make this meeting searchable by the AI chat (RAG) ────────
+    // Runs only after the transaction above has committed, so the embedding job sees the new rows. Fire-and-forget:
+    // the embed queue owns retries, and nothing here may ever fail an extraction that already succeeded.
+    // jobId is deterministic: re-extracting the same meeting while a job is still queued does not double-enqueue.
+    try {
+      const embedJobData: EmbedJobData = { meetingId, teamId }
+      await embedQueue.add('embed-meeting', embedJobData, { jobId: `embed-${meetingId}`, delay: 5_000 })
+    } catch (embedErr: any) {
+      logger.warn(
+        { jobId: job.id, meetingId, teamId, err: embedErr?.message },
+        'extract.worker: failed to enqueue embed job (non-fatal)'
+      )
+    }
 
     // ── STEP 13: Auto-sync trigger ─────────────────────────────────────────
     try {

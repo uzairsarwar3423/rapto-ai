@@ -99,6 +99,10 @@ const envSchema = z.object({
     AI_PIPELINE_CIRCUIT_FAILURE_THRESHOLD: z.coerce.number().int().positive().default(5),
     AI_PIPELINE_CIRCUIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
     AI_PIPELINE_CIRCUIT_OPEN_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+    // Chat/RAG: after a meeting is extracted, queue its data for embedding so the AI chat can answer from it.
+    // On by default; set to "false" to stop queuing (the AI service also answers 503 RAG_DISABLED when its RAG is off,
+    // which the embed worker treats as "skip", so leaving this on is harmless when RAG is not enabled there).
+    RAG_AUTO_EMBED_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
 }).superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production') {
         if (!process.env.JWT_ACCESS_SECRET || process.env.JWT_ACCESS_SECRET.includes('default')) {
