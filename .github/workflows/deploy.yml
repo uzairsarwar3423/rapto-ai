@@ -82,6 +82,10 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    # Both deploy workflows edit the same /opt/rapto-system/.env and containers: run them one at a time.
+    concurrency:
+      group: rapto-vps-production-deploy
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: read   # allows GITHUB_TOKEN to pull from GHCR
