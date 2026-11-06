@@ -109,6 +109,9 @@ class AICallResult(BaseModel, Generic[T]):
     retry_count: int = Field(..., ge=0)
     task_type: TaskType
     model_name: str = Field(..., min_length=1)
+    # Which upstream provider actually served the call ("openai" | "anthropic").
+    # Defaulted so every pre-existing construction site stays valid.
+    provider_used: str = Field(default="openai", min_length=1)
 
 
 # ─── Error Response Shape ──────────────────────────────────────────────────────

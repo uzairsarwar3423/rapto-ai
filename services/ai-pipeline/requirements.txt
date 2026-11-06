@@ -43,3 +43,21 @@ numpy>=1.24.0,<3.0.0
 # jinja2 replaces str.replace() in extractor.py for user-content interpolation.
 # StrictUndefined mode catches missing variables at render time, not silently.
 Jinja2>=3.1.0,<4.0.0
+
+# ─── LLM Orchestration (AI Pipeline Upgrade — Phase 2) ────────────────────────
+# litellm: provider-agnostic completion API (OpenAI primary, Claude fallback).
+# instructor: Pydantic-validated structured output on top of litellm.
+litellm>=1.40.0,<2.0.0
+instructor>=1.3.0,<2.0.0
+
+# ─── Observability (AI Pipeline Upgrade — Phase 3) ────────────────────────────
+# langsmith: per-prompt / per-model run tracing. No-op unless
+# LANGSMITH_TRACING_ENABLED=true.
+langsmith>=0.1.90,<1.0.0
+
+# ─── RAG Infrastructure (Day 56) ──────────────────────────────────────────────
+# asyncpg: direct Postgres driver — needs unnest() bulk upserts, binary vector
+# codecs, transaction-scoped settings and explicit pool control (ADR-8).
+# pgvector: asyncpg codec for the `vector` type.
+asyncpg>=0.29.0,<1.0.0
+pgvector>=0.3.0,<1.0.0

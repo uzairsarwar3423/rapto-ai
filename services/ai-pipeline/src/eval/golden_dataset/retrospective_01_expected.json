@@ -1,0 +1,37 @@
+{
+  "meeting_id": "retrospective_01",
+  "meeting_type": "retrospective",
+  "meeting_title": "Sprint 23 Retro",
+  "description": "30-minute retrospective: 2 commitments, 5 action items, 4 agreed process decisions, 0 blockers (flaky CI is historical), 1 risk.",
+  "expected_commitments": [
+    {"owner_name_contains": "Raj", "text_contains": "runbook", "confidence_min": 0.8},
+    {"owner_name_contains": "Hannah", "text_contains": "rotation", "confidence_min": 0.8}
+  ],
+  "expected_action_items": [
+    {"assignee_name_contains": "Kofi", "text_contains": "dashboard"},
+    {"assignee_name_contains": "Elena", "text_contains": "wiki"},
+    {"assignee_name_contains": "Raj", "text_contains": "flakiest tests"},
+    {"assignee_name_contains": "Kofi", "text_contains": "calendar"},
+    {"assignee_name_contains": "Omar", "text_contains": "product managers"}
+  ],
+  "expected_decisions": [
+    {"text_contains": "quarantine"},
+    {"text_contains": "requirements"},
+    {"text_contains": "pair programming", "reversible": true},
+    {"text_contains": "Thursday"}
+  ],
+  "expected_blockers": [],
+  "expected_risks": [
+    {"text_contains": "regressions", "category": "QUALITY"}
+  ],
+  "expected_summary": {
+    "required_topics": ["flaky"]
+  },
+  "expected_commitment_count": 2,
+  "expected_zero_commitments": false,
+  "labelling_notes": [
+    "'What slowed us down was the flaky integration tests' is historical and must NOT become a blocker (retrospective template rule 1).",
+    "The pair-programming decision is an explicit experiment, so reversible must be true.",
+    "Elena's 'that was frustrating' is venting, not data."
+  ]
+}

@@ -23,7 +23,7 @@ import time
 from typing import Any, Generic, Type, TypeVar, cast
 
 import structlog
-from openai import AsyncOpenAI, APIStatusError, APITimeoutError, RateLimitError
+from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI, RateLimitError
 from pydantic import BaseModel, ValidationError
 from tenacity import (
     AsyncRetrying,
@@ -31,6 +31,7 @@ from tenacity import (
     retry_if_exception,
     stop_after_attempt,
     wait_exponential,
+    wait_random_exponential,
 )
 
 from src.config.logging import get_logger
@@ -90,6 +91,40 @@ def _extract_status_code(exc: BaseException) -> int:
     return 0
 
 
+# ─── Embedding retry policy ───────────────────────────────────────────────────
+
+_RETRY_AFTER_CAP_SECONDS = 60.0
+_jitter_wait = wait_random_exponential(multiplier=1.0, max=30.0)
+
+
+def _retry_after_seconds(exc: BaseException) -> float | None:
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return None
+    raw = headers.get("retry-after")
+    try:
+        return min(float(raw), _RETRY_AFTER_CAP_SECONDS) if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _embedding_wait(retry_state: Any) -> float:
+    """Honour Retry-After when the provider sends it, else exponential + full jitter."""
+    exc = retry_state.outcome.exception() if retry_state.outcome else None
+    hinted = _retry_after_seconds(exc) if exc is not None else None
+    return hinted if hinted is not None else _jitter_wait(retry_state)
+
+
+def _is_retryable_embedding_error(exc: BaseException) -> bool:
+    """429, 5xx, timeouts and connection errors only. 400/401/403/404/422 never."""
+    if isinstance(exc, (RateLimitError, APITimeoutError, APIConnectionError, asyncio.TimeoutError)):
+        return True
+    if isinstance(exc, APIStatusError):
+        return exc.status_code == 429 or exc.status_code >= 500
+    return False
+
+
 # ─── OpenAIClient ─────────────────────────────────────────────────────────────
 
 
@@ -100,8 +135,25 @@ class OpenAIClient:
         settings: The application settings (injected for testability).
     """
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        *,
+        model_override: tuple[str, ModelTier] | None = None,
+        max_concurrent: int | None = None,
+        role: str = "primary",
+    ) -> None:
+        """
+        Args:
+            model_override: (model_name, tier) used for every text/structured
+                call instead of the task routing table. Used for the
+                confidence-gate fallback client (e.g. ("gpt-4.1", FULL)).
+                Embeddings always use the embedding model.
+            max_concurrent: semaphore size; defaults to OPENAI_MAX_CONCURRENT_CALLS.
+        """
         self._settings = settings or get_settings()
+        self._model_override = model_override
+        self._role = role
 
         kwargs: dict[str, Any] = {
             "api_key": self._settings.openai_api_key.get_secret_value(),
@@ -113,15 +165,23 @@ class OpenAIClient:
         # AsyncOpenAI client pointed at native OpenAI
         self._client = AsyncOpenAI(**kwargs)
 
-        self._semaphore = asyncio.Semaphore(self._settings.openai_max_concurrent_calls)
+        concurrency = max_concurrent or self._settings.openai_max_concurrent_calls
+        self._semaphore = asyncio.Semaphore(concurrency)
 
         log.info(
             "OpenAIClient initialized",
             provider="openai",
+            role=role,
             mini_model=self._settings.openai_gpt41_mini_model_name,
             full_model=self._settings.openai_gpt41_model_name,
-            max_concurrent=self._settings.openai_max_concurrent_calls,
+            model_override=model_override[0] if model_override else None,
+            max_concurrent=concurrency,
         )
+
+    def _resolve(self, task_type: TaskType) -> tuple[str, ModelTier]:
+        if self._model_override is not None and task_type != TaskType.EMBEDDING:
+            return self._model_override
+        return resolve_model(task_type, self._settings)
 
     # ─────────────────────────────────────────────────────────────────────────
     # (b) Structured Output Generation
@@ -135,7 +195,7 @@ class OpenAIClient:
         response_schema: type[T],
     ) -> AICallResult[T]:
         """Generate structured output validated against a Pydantic schema."""
-        model_name, model_tier = resolve_model(task_type, self._settings)
+        model_name, model_tier = self._resolve(task_type)
         start_time = time.monotonic()
 
         async with self._semaphore:
@@ -352,7 +412,7 @@ class OpenAIClient:
         system_prompt: str,
         user_prompt: str,
     ) -> AICallResult[str]:
-        model_name, model_tier = resolve_model(task_type, self._settings)
+        model_name, model_tier = self._resolve(task_type)
         start_time = time.monotonic()
 
         async with self._semaphore:
@@ -448,86 +508,109 @@ class OpenAIClient:
         self,
         texts: list[str],
     ) -> AICallResult[list[list[float]]]:
-        model_name, model_tier = resolve_model(TaskType.EMBEDDING, self._settings)
+        """Batch embedding. Thin alias kept for existing callers; the RAG
+        pipeline uses generate_embeddings() (same implementation)."""
+        return await self.generate_embeddings(texts)
+
+    async def generate_embeddings(
+        self,
+        texts: list[str],
+        *,
+        model: str | None = None,
+        request_id: str | None = None,
+        max_attempts: int = 5,
+    ) -> AICallResult[list[list[float]]]:
+        """Embed `texts` with retries; returns vectors in INPUT order.
+
+        - Restores order from each item's `index` (never trusts response order)
+          and asserts one vector per input.
+        - Retries 429 / 5xx / timeouts / connection errors with exponential
+          backoff + full jitter, honouring Retry-After (capped at 60 s).
+        - Never retries 4xx other than 429: a bad input will not get better.
+        - Cost = usage.prompt_tokens x the central EMBED price (model_routing).
+        """
+        if not texts:
+            raise ValueError("generate_embeddings requires at least one text")
+        default_name, model_tier = resolve_model(TaskType.EMBEDDING, self._settings)
+        model_name = model or default_name
         start_time = time.monotonic()
-        total_retry_count = 0
+        attempts = 0
         last_exc: BaseException | None = None
 
         async with self._semaphore:
             try:
                 async for attempt in AsyncRetrying(
-                    wait=wait_exponential(multiplier=1.0, min=1, max=20),
-                    stop=stop_after_attempt(self._settings.openai_max_retries),
-                    retry=retry_if_exception(
-                        lambda exc: not isinstance(exc, AINonRetryableError)
-                    ),
+                    wait=_embedding_wait,
+                    stop=stop_after_attempt(max_attempts),
+                    retry=retry_if_exception(_is_retryable_embedding_error),
                     reraise=False,
                 ):
                     with attempt:
-                        total_retry_count = attempt.retry_state.attempt_number - 1
+                        attempts = attempt.retry_state.attempt_number
                         try:
                             response = await self._client.embeddings.create(
-                                model=model_name,
-                                input=texts,
+                                model=model_name, input=texts, encoding_format="float",
                             )
-                        except Exception as exc:
-                            if _is_non_retryable_error(exc):
-                                raise AINonRetryableError(
-                                    f"Embedding non-retryable error: {exc}",
-                                    upstream_status_code=_extract_status_code(exc),
-                                    upstream_message=str(exc),
-                                    task_type=TaskType.EMBEDDING,
-                                    model_tier=model_tier,
-                                ) from exc
+                        except Exception as exc:  # noqa: BLE001 - classified below
                             last_exc = exc
-                            raise
+                            if _is_retryable_embedding_error(exc):
+                                raise
+                            raise AINonRetryableError(
+                                f"Embedding request rejected: {exc}",
+                                upstream_status_code=_extract_status_code(exc),
+                                upstream_message=str(exc)[:500],
+                                task_type=TaskType.EMBEDDING,
+                                model_tier=model_tier,
+                            ) from exc
             except AINonRetryableError:
                 raise
-            except RetryError as re:
-                root = last_exc or re
-                if root and _is_rate_limit_error(root):
+            except RetryError as re_err:
+                root = last_exc or re_err
+                if _is_rate_limit_error(root):
                     raise AIRateLimitExhaustedError(
-                        f"Embedding rate limit exhausted after {total_retry_count} retries",
-                        task_type=TaskType.EMBEDDING,
-                        model_tier=model_tier,
-                        attempt_count=total_retry_count,
-                    ) from re
+                        f"Embedding rate limit exhausted after {attempts} attempts",
+                        task_type=TaskType.EMBEDDING, model_tier=model_tier, attempt_count=attempts,
+                    ) from re_err
                 raise AITimeoutError(
-                    "Embedding call failed after retries",
+                    f"Embedding call failed after {attempts} attempts",
                     timeout_seconds=self._settings.openai_timeout_seconds,
-                    task_type=TaskType.EMBEDDING,
-                    model_tier=model_tier,
-                    attempt_count=total_retry_count,
-                ) from re
+                    task_type=TaskType.EMBEDDING, model_tier=model_tier, attempt_count=attempts,
+                ) from re_err
 
-        embeddings = [list(e.embedding) for e in response.data]
+        data = sorted(response.data, key=lambda item: item.index)
+        if len(data) != len(texts) or [d.index for d in data] != list(range(len(texts))):
+            raise AINonRetryableError(
+                f"Embedding response mismatch: sent {len(texts)} inputs, got indices "
+                f"{[d.index for d in data][:10]}",
+                upstream_status_code=200,
+                upstream_message="embedding count/index mismatch",
+                task_type=TaskType.EMBEDDING, model_tier=model_tier,
+            )
+        embeddings = [list(d.embedding) for d in data]
         latency_ms = (time.monotonic() - start_time) * 1000
 
         usage_obj = response.usage
         input_tokens = usage_obj.prompt_tokens if usage_obj else sum(len(t.split()) for t in texts)
-
         cost_record = self._build_cost_record(
-            {"input_token_count": input_tokens, "output_token_count": 0},
-            model_tier,
-            model_name,
+            {"input_token_count": input_tokens, "output_token_count": 0}, model_tier, model_name,
         )
-
         self._log_call(
             event="ai_embed_success",
             task_type=TaskType.EMBEDDING,
             model_tier=model_tier,
             model_name=model_name,
             latency_ms=latency_ms,
-            retry_count=0,
+            retry_count=max(attempts - 1, 0),
             text_count=len(texts),
+            input_tokens=input_tokens,
             estimated_cost_usd=cost_record.estimated_cost_usd,
+            request_id=request_id,
         )
-
         return AICallResult(
             data=embeddings,
             cost=cost_record,
             latency_ms=latency_ms,
-            retry_count=0,
+            retry_count=max(attempts - 1, 0),
             task_type=TaskType.EMBEDDING,
             model_name=model_name,
         )

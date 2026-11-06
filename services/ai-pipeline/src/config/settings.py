@@ -35,6 +35,12 @@ from typing import Literal
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.config.extraction_config import (
+    CONFIDENCE_GATE_MIN_ITEMS,
+    CONFIDENCE_GATE_THRESHOLD,
+    LOW_ITEM_CONFIDENCE_THRESHOLD,
+)
+
 
 class Settings(BaseSettings):
     """Complete environment variable inventory for the AI pipeline service.
@@ -78,6 +84,59 @@ class Settings(BaseSettings):
     # Concurrency: process-local semaphore bound.
     # NOTE: global concurrency = openai_max_concurrent_calls × replica_count.
     openai_max_concurrent_calls: int = Field(default=10, ge=1)
+
+    # ── AI client backend ─────────────────────────────────────────────────────
+    # "openai"  → native OpenAI SDK client (default; structured outputs via parse()).
+    # "litellm" → LiteLLM + instructor client with the same public interface,
+    #             with provider-level failover to the Claude fallback model.
+    ai_client_backend: Literal["openai", "litellm"] = "openai"
+
+    # ── Anthropic (Claude fallback) ───────────────────────────────────────────
+    # Optional. Without a key the Claude fallback is disabled even when
+    # CONFIDENCE_GATE_ENABLED=true — the pipeline runs OpenAI-only as before.
+    anthropic_api_key: SecretStr | None = None
+    anthropic_claude_model_name: str = "claude-sonnet-5-5"
+    anthropic_timeout_seconds: float = Field(default=60.0, gt=0)
+    anthropic_max_output_tokens: int = Field(default=16_000, ge=256)
+
+    # ── LangSmith Observability ───────────────────────────────────────────────
+    # Optional. Default OFF — zero overhead in dev.
+    langsmith_api_key: SecretStr | None = None
+    langsmith_project_name: str = "rapto-ai-pipeline"
+    langsmith_tracing_enabled: bool = False
+    langsmith_endpoint: str | None = None
+    # PII guard: transcripts and model outputs are NOT sent to LangSmith unless
+    # this is explicitly enabled. Metadata (versions, tokens, cost, latency,
+    # confidence) is always sent when tracing is on.
+    langsmith_log_payloads: bool = False
+
+    # ── Confidence Gating ─────────────────────────────────────────────────────
+    confidence_gate_enabled: bool = True
+    confidence_gate_threshold: float = Field(default=CONFIDENCE_GATE_THRESHOLD, ge=0.0, le=1.0)
+    confidence_gate_item_threshold: float = Field(
+        default=LOW_ITEM_CONFIDENCE_THRESHOLD, ge=0.0, le=1.0
+    )
+    confidence_gate_min_items: int = Field(default=CONFIDENCE_GATE_MIN_ITEMS, ge=1)
+    # Which model re-extracts low-confidence chunks:
+    #   "openai"    → a stronger OpenAI model (default; no extra provider/key needed)
+    #   "anthropic" → Claude (needs ANTHROPIC_API_KEY)
+    confidence_gate_fallback_provider: Literal["openai", "anthropic"] = "openai"
+    # OpenAI fallback model; unset → OPENAI_GPT41_MODEL_NAME (the full-tier model).
+    openai_fallback_model_name: str | None = None
+    # Separate, smaller concurrency budget so a burst of low-confidence chunks
+    # cannot starve the primary client's semaphore.
+    fallback_max_concurrent_calls: int = Field(default=4, ge=1)
+
+    @property
+    def resolved_openai_fallback_model(self) -> str:
+        return self.openai_fallback_model_name or self.openai_gpt41_model_name
+
+    @property
+    def claude_fallback_available(self) -> bool:
+        """True when a Claude fallback model can actually be called."""
+        return self.anthropic_api_key is not None and bool(
+            self.anthropic_api_key.get_secret_value().strip()
+        )
 
     # ── MongoDB ───────────────────────────────────────────────────────────────
     mongodb_url: str

@@ -155,3 +155,68 @@ def compute_cost(
     input_cost = (input_tokens / 1_000_000) * rates.input_per_million_usd
     output_cost = (output_tokens / 1_000_000) * rates.output_per_million_usd
     return input_cost + output_cost
+
+
+# ─── Confidence-gated fallback routing ────────────────────────────────────────
+# The fallback (OpenAI full-tier by default, or Claude) is NOT a load-balanced peer of the primary model — it is
+# invoked deliberately by services/extraction/confidence_gate.py when a chunk's
+# extraction confidence is low, and by the LiteLLM backend on provider failure.
+# Keeping the eligible set explicit stops an accidental global switch to Claude.
+
+FALLBACK_ELIGIBLE_TASKS: frozenset[TaskType] = frozenset({
+    TaskType.EXTRACT_COMMITMENTS,
+    TaskType.EXTRACT_ACTION_ITEMS,
+    TaskType.EXTRACT_DECISIONS,
+    TaskType.EXTRACT_BLOCKERS,
+    TaskType.EXTRACT_RISKS,
+})
+
+# USD per 1M tokens for the fallback model. Used only when LiteLLM's own cost
+# map does not know the model (litellm.completion_cost raises / returns 0).
+# Verify against https://www.anthropic.com/pricing before each deploy.
+FALLBACK_PRICING_TABLE: dict[str, PricingRates] = {
+    "claude-sonnet-5-5": PricingRates(input_per_million_usd=2.00, output_per_million_usd=10.00),
+    "claude-sonnet-5": PricingRates(input_per_million_usd=2.00, output_per_million_usd=10.00),
+    "claude-sonnet-4-6": PricingRates(input_per_million_usd=3.00, output_per_million_usd=15.00),
+    "claude-haiku-5-5": PricingRates(input_per_million_usd=0.10, output_per_million_usd=0.50),
+    "claude-opus-5-5": PricingRates(input_per_million_usd=4.00, output_per_million_usd=20.00),
+}
+
+
+def resolve_fallback_model(
+    task_type: TaskType,
+    settings: Settings | None = None,
+) -> str | None:
+    """Return the fallback model name for a task, or None if no fallback applies.
+
+    None when the task is not fallback-eligible, the confidence gate is off,
+    the Claude fallback is selected without an Anthropic key, or the OpenAI
+    fallback model is the same as the primary mini model.
+    """
+    if settings is None:
+        settings = get_settings()
+    if task_type not in FALLBACK_ELIGIBLE_TASKS:
+        return None
+    if not settings.confidence_gate_enabled:
+        return None
+    if settings.confidence_gate_fallback_provider == "anthropic":
+        return settings.anthropic_claude_model_name if settings.claude_fallback_available else None
+    model = settings.resolved_openai_fallback_model
+    return None if model == settings.openai_gpt41_mini_model_name else model
+
+
+def compute_cost_for_model(
+    input_tokens: int,
+    output_tokens: int,
+    model_name: str,
+    model_tier: ModelTier,
+) -> float:
+    """Cost estimate by concrete model name, falling back to tier pricing."""
+    bare = model_name.split("/", 1)[-1]
+    rates = FALLBACK_PRICING_TABLE.get(bare)
+    if rates is None:
+        return compute_cost(input_tokens, output_tokens, model_tier)
+    return (
+        (input_tokens / 1_000_000) * rates.input_per_million_usd
+        + (output_tokens / 1_000_000) * rates.output_per_million_usd
+    )

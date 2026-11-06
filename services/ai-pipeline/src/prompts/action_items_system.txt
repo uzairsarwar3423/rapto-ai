@@ -1,4 +1,4 @@
-# prompt_version: action-items-v3.0
+# prompt_version: action-items-v3.1
 # model: gpt-4.1-mini
 # temperature: 0.1
 # task: extract_action_items
@@ -53,6 +53,23 @@ HIGH:   "today", "ASAP", "blocking", "high priority", "urgent", "need it now"
 MEDIUM: "this week", "this sprint", "by [specific date]", "soon", default
 LOW:    "backlog", "when you get a chance", "nice to have", "eventually",
         "no rush", "low priority", "at some point"
+
+━━━ CONTEXT-AWARE PRIORITY (v3.1) ━━━
+Keywords are a starting point. Adjust using the surrounding discussion:
+  ↑ RAISE one level when the task:
+     - unblocks a blocker discussed in the meeting ("so Sara can continue")
+     - is on the critical path of a deadline or release named in the meeting
+     - responds to a customer escalation, incident, or security issue
+  ↓ LOWER one level when the task is explicitly deferred
+     ("after the release", "next sprint", "not urgent")
+  Meeting type (see TYPE in the user message):
+     - standup: tasks that unblock a teammate today are at least HIGH
+     - retrospective: process improvements default to MEDIUM unless tied to
+       an incident or a missed deadline
+     - planning: sprint-committed work defaults to MEDIUM; work marked as a
+       sprint goal / must-have is HIGH
+  Never exceed URGENT and never go below LOW. When signals conflict, the most
+  explicit statement by the assigner wins ("no rush" beats an inferred raise).
 
 ━━━ ANTI-PATTERNS — NEVER EXTRACT ━━━
 ✗ Vague non-actionable complaints: "The backend is slow"
@@ -111,18 +128,20 @@ EXAMPLE 5 — Do NOT extract:
 → [] (no named assignee)
 
 ━━━ OUTPUT SCHEMA ━━━
-Return ONLY valid JSON object matching the requested schema. No preamble.
-[
-  {
-    "text": "specific task description",
-    "assignee_name": "exact name of person doing the task",
-    "due_date_raw": "verbatim temporal phrase or null",
-    "priority": "URGENT|HIGH|MEDIUM|LOW",
-    "confidence": 0.00,
-    "assigner_name": "name of person who assigned it, or null if self-assigned"
-  }
-]
-Empty array [] if none found.
+Return ONLY a valid JSON object of this shape. No preamble, no markdown.
+{
+  "action_items": [
+    {
+      "text": "specific task description",
+      "assignee_name": "exact name of person doing the task",
+      "due_date_raw": "verbatim temporal phrase or null",
+      "priority": "URGENT|HIGH|MEDIUM|LOW",
+      "confidence": 0.00,
+      "assigner_name": "name of person who assigned it, or null if self-assigned"
+    }
+  ]
+}
+"action_items": [] if none found.
 
 FINAL CHECK: Does every item have (1) a specific task AND (2) a named
 individual assignee? If NO → remove it.

@@ -24,7 +24,7 @@ PRINCIPAL DESIGN:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from src.api.deps import MongoDep, RedisDep, verify_internal_service_key
@@ -67,7 +67,7 @@ async def health() -> dict:
     ),
     dependencies=[Depends(verify_internal_service_key)],
 )
-async def ready(mongo: MongoDep, redis: RedisDep) -> JSONResponse:
+async def ready(request: Request, mongo: MongoDep, redis: RedisDep) -> JSONResponse:
     """GET /ready — readiness probe with dependency checks."""
     settings = get_settings()
 
@@ -90,6 +90,10 @@ async def ready(mongo: MongoDep, redis: RedisDep) -> JSONResponse:
         "redis": redis_ok,
         "ai": ai_ok,
     }
+    # Only when RAG is enabled; a deployment without pgvector must stay "ready".
+    rag = getattr(request.app.state, "rag", None)
+    if rag is not None:
+        checks["rag_database"] = await rag.db.ping()
 
     all_healthy = all(checks.values())
 

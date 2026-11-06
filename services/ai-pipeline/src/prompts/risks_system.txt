@@ -1,4 +1,4 @@
-# prompt_version: risks-v3.0
+# prompt_version: risks-v3.1
 # model: gpt-4.1-mini
 # temperature: 0.1
 # task: extract_risks
@@ -46,6 +46,21 @@ BUSINESS:   Customer impact, revenue at risk, churn
 0.70 → "We should watch out for X" — softer concern but specific
 0.55 → Implied concern from discussion context
 
+━━━ PROBABILITY (v3.1) — how likely is it to materialise? ━━━
+"confidence" = how sure you are this IS a risk that was raised.
+"probability" = how likely the speakers believe it is to HAPPEN. Do not conflate them.
+HIGH:   speakers sound near-certain ("this will definitely break", "we're
+        almost certainly going to slip", trigger already partly happening)
+MEDIUM: plausible, stated as a real concern ("I'm worried", "might", "could")
+        — DEFAULT when unclear
+LOW:    explicitly unlikely or edge case ("unlikely but", "worst case",
+        "small chance", "probably fine, but flagging")
+
+━━━ MITIGATION (v3.1) ━━━
+mitigation_mentioned: any mitigation a speaker suggests for this risk
+("we could add a feature flag", "let's get a second vendor quote"), in a few
+words. Do not invent one. null if none was suggested.
+
 ━━━ DO NOT EXTRACT ━━━
 ✗ General pessimism: "This whole thing is risky" → too vague
 ✗ Already happened: "We ran into issues with X" → historical
@@ -65,7 +80,9 @@ EXAMPLE 1 — Timeline risk:
     "raised_by": "Ahmed Hassan",
     "impact": "Missing the product release deadline",
     "trigger_condition": "API integration takes longer than expected",
-    "confidence": 0.88
+    "confidence": 0.88,
+    "probability": "MEDIUM",
+    "mitigation_mentioned": null
   }
 
 EXAMPLE 2 — Technical risk:
@@ -78,7 +95,9 @@ EXAMPLE 2 — Technical risk:
     "raised_by": "Sara Khan",
     "impact": "Service outage under production load",
     "trigger_condition": "Rate limiting not implemented before launch",
-    "confidence": 0.92
+    "confidence": 0.92,
+    "probability": "HIGH",
+    "mitigation_mentioned": "Implement rate limiting before launch"
   }
 
 EXAMPLE 3 — External dependency risk:
@@ -92,7 +111,9 @@ EXAMPLE 3 — External dependency risk:
     "raised_by": "Ali Raza",
     "impact": "Complete payment flow failure",
     "trigger_condition": "Stripe changes webhook format",
-    "confidence": 0.87
+    "confidence": 0.87,
+    "probability": "MEDIUM",
+    "mitigation_mentioned": null
   }
 
 EXAMPLE 4 — Resource risk:
@@ -105,7 +126,9 @@ EXAMPLE 4 — Resource risk:
     "raised_by": "Ahmed Hassan",
     "impact": "Complete development stop if that person is unavailable",
     "trigger_condition": "Key person becomes unavailable",
-    "confidence": 0.85
+    "confidence": 0.85,
+    "probability": "MEDIUM",
+    "mitigation_mentioned": null
   }
 
 EXAMPLE 5 — Do NOT extract (already a blocker):
@@ -113,19 +136,23 @@ EXAMPLE 5 — Do NOT extract (already a blocker):
 → [] (This is a BLOCKER not a RISK — handled by blocker extractor)
 
 ━━━ OUTPUT SCHEMA ━━━
-Return ONLY valid JSON object matching the requested schema. No preamble.
-[
-  {
-    "text": "concise risk title",
-    "description": "what could go wrong and why",
-    "category": "TIMELINE|TECHNICAL|RESOURCE|EXTERNAL|SECURITY|QUALITY|BUSINESS",
-    "raised_by": "name of person who raised this concern",
-    "impact": "what happens if this risk materializes",
-    "trigger_condition": "what condition would cause this risk to materialize",
-    "confidence": 0.00
-  }
-]
-Empty array [] if no risks identified.
+Return ONLY a valid JSON object of this shape. No preamble, no markdown.
+{
+  "risks": [
+    {
+      "text": "concise risk statement",
+      "description": "brief elaboration — what could go wrong and why",
+      "category": "TIMELINE|TECHNICAL|RESOURCE|EXTERNAL|SECURITY|QUALITY|BUSINESS",
+      "raised_by": "name of person who raised it, or null",
+      "impact": "potential impact if the risk materialises",
+      "trigger_condition": "what event would cause the risk to materialise",
+      "confidence": 0.00,
+      "probability": "LOW|MEDIUM|HIGH",
+      "mitigation_mentioned": "mitigation suggested by a speaker, or null"
+    }
+  ]
+}
+"risks": [] if no risks identified.
 
 FINAL CHECK: Is this FUTURE AND POTENTIAL (not current, not historical)?
 Is there a SPECIFIC negative outcome identified? If YES → extract.

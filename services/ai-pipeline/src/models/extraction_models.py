@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Any, Literal, Union, Tuple
 from pydantic import BaseModel, Field, model_validator, field_validator
 from datetime import datetime
 import logging
+import re
 from src.models.cleanup_models import CleanedTranscriptTurn, ParticipantInfo
 from src.models.common import CostRecord
 from src.models.date_models import DateParseResult
@@ -40,6 +41,57 @@ class RiskCategory(str, Enum):
     SECURITY = "SECURITY"
     QUALITY = "QUALITY"
     BUSINESS = "BUSINESS"
+
+class RiskProbability(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+class MeetingType(str, Enum):
+    """Meeting categories used for prompt routing (services/extraction/prompt_router.py)."""
+    STANDUP = "standup"
+    PLANNING = "planning"
+    RETROSPECTIVE = "retrospective"
+    DESIGN_REVIEW = "design_review"
+    ONE_ON_ONE = "1on1"
+    ALL_HANDS = "all_hands"
+    GENERAL = "general"
+
+# Aliases accepted from callers (case/spacing-insensitive) → canonical type.
+_MEETING_TYPE_ALIASES: Dict[str, MeetingType] = {
+    "standup": MeetingType.STANDUP, "stand_up": MeetingType.STANDUP,
+    "daily": MeetingType.STANDUP, "daily_standup": MeetingType.STANDUP, "scrum": MeetingType.STANDUP,
+    "planning": MeetingType.PLANNING, "sprint_planning": MeetingType.PLANNING,
+    "retrospective": MeetingType.RETROSPECTIVE, "retro": MeetingType.RETROSPECTIVE,
+    "design_review": MeetingType.DESIGN_REVIEW, "architecture_review": MeetingType.DESIGN_REVIEW,
+    "1on1": MeetingType.ONE_ON_ONE, "one_on_one": MeetingType.ONE_ON_ONE, "1_on_1": MeetingType.ONE_ON_ONE,
+    "all_hands": MeetingType.ALL_HANDS, "allhands": MeetingType.ALL_HANDS, "town_hall": MeetingType.ALL_HANDS,
+    "general": MeetingType.GENERAL, "other": MeetingType.GENERAL,
+}
+
+def normalize_meeting_type(value: Any) -> Optional[MeetingType]:
+    """Map any caller-supplied meeting type to the enum.
+
+    None/empty → None (caller wants inference). Unknown strings → GENERAL
+    rather than a 422: an unrecognised label must never fail an extraction job.
+    """
+    if value is None:
+        return None
+    if isinstance(value, MeetingType):
+        return value
+    key = re.sub(r"[\s\-]+", "_", str(value).strip().lower())
+    if not key:
+        return None
+    return _MEETING_TYPE_ALIASES.get(key, MeetingType.GENERAL)
+
+def _truncate(value: Any, limit: int) -> Optional[str]:
+    """Strip + truncate free-text model output; blank → None."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 class ExtractedCommitment(BaseModel):
     text: str = Field(..., min_length=5, max_length=1000)
@@ -92,7 +144,28 @@ class ExtractedDecision(BaseModel):
     made_by: Optional[str] = None
     decision_type: DecisionType = DecisionType.OTHER
     confidence: float = Field(..., ge=0.0, le=1.0)
-    
+    # v3.1 enrichments
+    reversible: bool = Field(default=True, description="Is this decision easily reversible?")
+    dissent: Optional[str] = Field(
+        default=None,
+        description="Any dissenting voice mentioned (e.g. 'Ahmed disagreed, said X'). Null if unanimous.",
+    )
+
+    @field_validator("dissent", mode="before")
+    @classmethod
+    def _clean_dissent(cls, v: Any) -> Optional[str]:
+        return _truncate(v, 500)
+
+    @field_validator("decision_type", mode="before")
+    @classmethod
+    def _normalize_decision_type(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            try:
+                return DecisionType(v.strip().upper())
+            except ValueError:
+                return DecisionType.OTHER
+        return v
+
     @model_validator(mode='after')
     def validate_fields(self):
         if not self.text.strip():
@@ -108,6 +181,30 @@ class ExtractedBlocker(BaseModel):
     blocking_party: Optional[str] = None
     severity: SeverityLevel = SeverityLevel.MEDIUM
     confidence: float = Field(..., ge=0.0, le=1.0)
+    # v3.1 enrichments
+    escalation_flag: bool = Field(
+        default=False,
+        description="True if the speaker says this has been blocked for multiple days/sprints or was reported before.",
+    )
+    estimated_unblock_date: Optional[str] = Field(
+        default=None,
+        description="Verbatim temporal phrase for when it might unblock (e.g. 'after the vendor call Friday').",
+    )
+
+    @field_validator("estimated_unblock_date", mode="before")
+    @classmethod
+    def _clean_unblock_date(cls, v: Any) -> Optional[str]:
+        return _truncate(v, 200)
+
+    @field_validator("severity", mode="before")
+    @classmethod
+    def _normalize_severity(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            try:
+                return SeverityLevel(v.strip().upper())
+            except ValueError:
+                return SeverityLevel.MEDIUM
+        return v
 
     @model_validator(mode='after')
     def validate_fields(self):
@@ -129,6 +226,42 @@ class ExtractedRisk(BaseModel):
     impact: str = Field(default="medium impact", min_length=1)
     trigger_condition: str = Field(default="unspecified", min_length=1)
     confidence: float = Field(..., ge=0.0, le=1.0)
+    # v3.1 enrichments
+    probability: RiskProbability = Field(
+        default=RiskProbability.MEDIUM,
+        description="Estimated likelihood the risk will materialise.",
+    )
+    mitigation_mentioned: Optional[str] = Field(
+        default=None,
+        description="Any mitigation strategy mentioned by the speaker. Null if none suggested.",
+    )
+
+    @field_validator("mitigation_mentioned", mode="before")
+    @classmethod
+    def _clean_mitigation(cls, v: Any) -> Optional[str]:
+        return _truncate(v, 500)
+
+    @field_validator("probability", mode="before")
+    @classmethod
+    def _normalize_probability(cls, v: Any) -> Any:
+        if v is None:
+            return RiskProbability.MEDIUM
+        if isinstance(v, str):
+            try:
+                return RiskProbability(v.strip().upper())
+            except ValueError:
+                return RiskProbability.MEDIUM
+        return v
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            try:
+                return RiskCategory(v.strip().upper())
+            except ValueError:
+                return RiskCategory.TECHNICAL
+        return v
 
     @model_validator(mode='after')
     def validate_fields(self):
@@ -265,6 +398,28 @@ class ExtractRequest(BaseModel):
     participants: List[ParticipantInfo]
     meeting_duration_seconds: float
     team_timezone: str = Field(..., min_length=1)
+    # ── v2 prompt context (both optional — older callers keep working) ──────
+    meeting_type: Optional[MeetingType] = Field(
+        default=None,
+        description=(
+            "standup | planning | retrospective | design_review | 1on1 | all_hands | general. "
+            "Omitted/null → inferred from meeting_title."
+        ),
+    )
+    team_context: Optional[str] = Field(
+        default=None,
+        description="Optional brief team context injected into prompts (e.g. 'Backend team, sprint 23'). Truncated to 500 chars.",
+    )
+
+    @field_validator("meeting_type", mode="before")
+    @classmethod
+    def _normalize_meeting_type(cls, v: Any) -> Optional[MeetingType]:
+        return normalize_meeting_type(v)
+
+    @field_validator("team_context", mode="before")
+    @classmethod
+    def _clean_team_context(cls, v: Any) -> Optional[str]:
+        return _truncate(v, 500)
 
 class ChunkExtractionResult(BaseModel):
     chunk_id: str
@@ -279,6 +434,12 @@ class ChunkExtractionResult(BaseModel):
     cost: Optional[CostRecord] = None
     error: Optional[str] = None
     is_first_chunk: bool
+    # Extractors that raised on this chunk (their lists are empty, not "nothing found")
+    failed_extractors: List[str] = Field(default_factory=list)
+    # Confidence gate bookkeeping
+    fallback_triggered: bool = False
+    fallback_extractors: List[str] = Field(default_factory=list)
+    providers_used: List[str] = Field(default_factory=list)
 
 class SummaryScopeType(str, Enum):
     FULL = "FULL"
@@ -301,6 +462,11 @@ class ExtractionResultWithMeta(BaseModel):
     total_cost: CostRecord
     per_chunk_costs: List[Optional[CostRecord]]
     processing_time_ms: float
+    # ── Upgrade metadata (additive; ignored by older consumers) ─────────────
+    meeting_type: Optional[MeetingType] = None
+    prompt_versions: Dict[str, str] = Field(default_factory=dict)
+    fallback_chunks: int = 0
+    providers_used: List[str] = Field(default_factory=list)
 
 class PartialExtractionFailure(BaseModel):
     meeting_id: str

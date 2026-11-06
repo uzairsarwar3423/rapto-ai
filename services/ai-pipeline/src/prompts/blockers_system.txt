@@ -1,4 +1,4 @@
-# prompt_version: blockers-v3.0
+# prompt_version: blockers-v3.1
 # model: gpt-4.1-mini
 # temperature: 0.0
 # task: extract_blockers
@@ -51,6 +51,17 @@ HIGH:     Sprint goal at risk, key deliverable blocked
 MEDIUM:   Work slowed but workarounds exist
 LOW:      Minor dependency, easily circumvented
 
+━━━ ESCALATION FLAG (v3.1) ━━━
+Set escalation_flag: true if the speaker mentions this has been blocked for
+multiple days/sprints, or that it was previously reported and is still not
+resolved ("still", "again", "for a week now", "I raised this last standup",
+"third sprint in a row"). Otherwise false.
+
+━━━ ESTIMATED UNBLOCK DATE (v3.1) ━━━
+estimated_unblock_date: the VERBATIM temporal phrase for when the block may
+clear ("after the vendor call Friday", "once legal signs off next week",
+"tomorrow morning"). Never convert to a calendar date. null if not stated.
+
 ━━━ WORKED EXAMPLES ━━━
 
 EXAMPLE 1 — Clear blocker:
@@ -62,7 +73,9 @@ EXAMPLE 1 — Clear blocker:
     "affected_name": "Sara Khan",
     "blocking_party": "Backend team (API specs not delivered)",
     "severity": "HIGH",
-    "confidence": 0.93
+    "confidence": 0.93,
+    "escalation_flag": false,
+    "estimated_unblock_date": null
   }
 
 EXAMPLE 2 — System blocker:
@@ -74,7 +87,9 @@ EXAMPLE 2 — System blocker:
     "affected_name": "Engineering team",
     "blocking_party": "Broken deployment pipeline",
     "severity": "CRITICAL",
-    "confidence": 0.96
+    "confidence": 0.96,
+    "escalation_flag": false,
+    "estimated_unblock_date": null
   }
 
 EXAMPLE 3 — External dependency blocker:
@@ -86,7 +101,9 @@ EXAMPLE 3 — External dependency blocker:
     "affected_name": "Ali Raza",
     "blocking_party": "Legal team (data processing agreement pending)",
     "severity": "CRITICAL",
-    "confidence": 0.90
+    "confidence": 0.90,
+    "escalation_flag": false,
+    "estimated_unblock_date": null
   }
 
 EXAMPLE 4 — Do NOT extract (difficulty, not blocked):
@@ -99,19 +116,38 @@ EXAMPLE 5 — Do NOT extract (historical, resolved):
                         but that's been resolved now.
 → [] (past, resolved)
 
-━━━ OUTPUT SCHEMA ━━━
-Return ONLY valid JSON object matching the requested schema. No preamble.
-[
-  {
-    "text": "clear description of what is blocked and why",
-    "blocked_work": "specific work that cannot proceed",
-    "affected_name": "person or team being blocked (or null if unclear)",
-    "blocking_party": "what/who is causing the block",
-    "severity": "CRITICAL|HIGH|MEDIUM|LOW",
-    "confidence": 0.00
+EXAMPLE 6 — Recurring blocker (escalation):
+[Omar Farooq, 03:40]: Still no staging credentials from IT — that's the
+                       third day I've raised it. Should hear back after
+                       their Thursday sync.
+→ {
+    "text": "Staging work blocked — no staging credentials from IT for three days",
+    "blocked_work": "staging deployment and testing",
+    "affected_name": "Omar Farooq",
+    "blocking_party": "IT team (staging credentials not issued)",
+    "severity": "HIGH",
+    "confidence": 0.92,
+    "escalation_flag": true,
+    "estimated_unblock_date": "after their Thursday sync"
   }
-]
-Empty array [] if no active blockers found.
+
+━━━ OUTPUT SCHEMA ━━━
+Return ONLY a valid JSON object of this shape. No preamble, no markdown.
+{
+  "blockers": [
+    {
+      "text": "clear blocker statement — what is blocked and why",
+      "blocked_work": "specific work that cannot proceed",
+      "affected_name": "person or team being blocked, or null if unclear",
+      "blocking_party": "external person/team/system causing the block, or null",
+      "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+      "confidence": 0.00,
+      "escalation_flag": false,
+      "estimated_unblock_date": "verbatim temporal phrase from transcript, or null"
+    }
+  ]
+}
+"blockers": [] if no active blockers found.
 
 FINAL CHECK: Is this block ACTIVE RIGHT NOW (not historical, not potential)?
 Is there SPECIFIC WORK that cannot proceed? If both YES → extract.

@@ -49,11 +49,73 @@ from src.middleware.error_handler import (
 from src.services.cleanup.confidence_flagger import TimestampIntegrityError
 from src.middleware.request_id import RequestIdMiddleware
 from src.middleware.request_logger import RequestLoggerMiddleware
+from src.models.common import ModelTier
 from src.models.exceptions import AIPipelineError
 from src.services.openai_client import OpenAIClient
+from src.config.rag_config import get_rag_settings
+from src.rag.runtime import start_runtime, stop_runtime
+from src.services.litellm_client import LiteLLMClient
+from src.services.tracing import TracedAIClient, get_tracer
 from src.api.routes import health, cleanup
 
 log = get_logger(__name__)
+
+
+
+def build_fallback_client(settings: Settings) -> tuple[object | None, str | None]:
+    """The confidence-gate fallback client and its model name, or (None, None).
+
+    openai    → OpenAIClient pinned to the stronger OpenAI model (default gpt-4.1)
+    anthropic → Claude-only LiteLLMClient (needs ANTHROPIC_API_KEY)
+    """
+    if not settings.confidence_gate_enabled:
+        return None, None
+    if settings.confidence_gate_fallback_provider == "anthropic":
+        client = LiteLLMClient.claude_fallback(settings)
+        if client is None:
+            log.warning("confidence_gate_disabled_missing_anthropic_key")
+            return None, None
+        return client, settings.anthropic_claude_model_name
+
+    model = settings.resolved_openai_fallback_model
+    if model == settings.openai_gpt41_mini_model_name:
+        # Re-running the same model would only add cost.
+        log.warning("confidence_gate_disabled_fallback_model_equals_primary", model=model)
+        return None, None
+    client = OpenAIClient(
+        settings,
+        model_override=(model, ModelTier.FULL),
+        max_concurrent=settings.fallback_max_concurrent_calls,
+        role="openai_fallback",
+    )
+    return client, model
+
+
+def build_ai_clients(settings: Settings) -> tuple[object, object | None]:
+    """Construct (primary, fallback) AI clients for the process.
+
+    primary  — OpenAIClient (default) or LiteLLMClient (AI_CLIENT_BACKEND=litellm)
+    fallback — confidence-gate client (see build_fallback_client); None when off
+    Both are wrapped in TracedAIClient when LangSmith tracing is enabled.
+    """
+    primary: object = (
+        LiteLLMClient(settings) if settings.ai_client_backend == "litellm" else OpenAIClient(settings)
+    )
+    fallback, fallback_model = build_fallback_client(settings)
+    tracer = get_tracer()
+    if tracer.enabled:
+        primary = TracedAIClient(primary, tracer)
+        fallback = TracedAIClient(fallback, tracer) if fallback is not None else None
+
+    log.info(
+        "ai_clients_configured",
+        backend=settings.ai_client_backend,
+        confidence_gate=fallback is not None,
+        fallback_provider=settings.confidence_gate_fallback_provider if fallback is not None else None,
+        fallback_model=fallback_model,
+        langsmith_tracing=tracer.enabled,
+    )
+    return primary, fallback
 
 
 @asynccontextmanager
@@ -94,9 +156,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await redis_client.connect()
     app.state.redis_client = redis_client
 
-    # AI Client (no network call at construction — connectivity checked by /ready)
-    ai_client = OpenAIClient(settings)
-    app.state.ai_client = ai_client
+    # AI Clients (no network call at construction — connectivity checked by /ready)
+    app.state.ai_client, app.state.fallback_ai_client = build_ai_clients(settings)
+
+    # RAG (opt-in via RAG_ENABLED). A failed safety check here aborts startup on purpose.
+    app.state.rag = await start_runtime(
+        settings, get_rag_settings(), redis=redis_client, mongo=mongo_client
+    )
 
     log.info("service_ready", service=settings.service_name, port=settings.port)
 
@@ -105,6 +171,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     log.info("service_shutting_down", service=settings.service_name)
+    get_tracer().flush()
+    await stop_runtime(getattr(app.state, "rag", None))
     await redis_client.disconnect()
     await mongo_client.disconnect()
     log.info("service_stopped")
@@ -199,5 +267,9 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
 
     from src.api.routes import resolve
     app.include_router(resolve.router, prefix="/api/v1", tags=["resolution"])
+
+    # Day 56: RAG write path + backfill control (503 RAG_DISABLED unless RAG_ENABLED=true)
+    from src.api.routes import embeddings
+    app.include_router(embeddings.router, prefix="/api/v1")
 
     return app

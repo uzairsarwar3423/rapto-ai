@@ -1,0 +1,20 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Evaluation-only dependencies (LLM-as-judge harnesses).
+#
+# Deliberately NOT part of requirements.txt: deepeval and ragas pull in large
+# dependency trees (langchain, datasets, …) that the production image never
+# uses. Install only where evals run:
+#     pip install -r requirements-eval.txt
+# ─────────────────────────────────────────────────────────────────────────────
+-r requirements.txt
+
+deepeval>=3.0.0,<4.0.0
+ragas>=0.4.0,<0.5.0
+
+# ragas declares unbounded langchain dependencies, but its LLM module imports
+# langchain_community.chat_models.vertexai, which langchain-community 0.4
+# removed (ModuleNotFoundError at `import ragas`). Hold the 0.3 line.
+langchain>=0.3.0,<0.4.0
+langchain-core>=0.3.0,<0.4.0
+langchain-community>=0.3.0,<0.4.0
+langchain-openai>=0.3.0,<0.4.0

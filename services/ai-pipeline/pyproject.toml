@@ -74,6 +74,7 @@ addopts = [
 markers = [
     "integration: marks tests that require live external services",
     "unit: marks pure unit tests with all dependencies mocked",
+    "slow: large-data tests (RAG_TEST_LARGE=1)",
 ]
 
 # ─── Coverage ────────────────────────────────────────────────────────────────

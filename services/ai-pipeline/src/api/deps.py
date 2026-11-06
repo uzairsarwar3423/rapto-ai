@@ -25,6 +25,7 @@ from src.config.settings import Settings, get_settings
 from src.db.mongo_client import MongoClientWrapper
 from src.db.redis_client import RedisClientWrapper
 from src.models.exceptions import InternalAuthError
+from src.services.ai_client_protocol import AIClientProtocol
 from src.services.openai_client import OpenAIClient
 
 
@@ -51,6 +52,11 @@ def get_ai_client(request: Request) -> OpenAIClient:
     return request.app.state.ai_client  # type: ignore[no-any-return]
 
 
+def get_fallback_ai_client(request: Request) -> AIClientProtocol | None:
+    """Returns the Claude fallback client, or None when not configured."""
+    return getattr(request.app.state, "fallback_ai_client", None)
+
+
 def get_mongo_client(request: Request) -> MongoClientWrapper:
     """Returns the process-singleton MongoClientWrapper from app.state."""
     return request.app.state.mongo_client  # type: ignore[no-any-return]
@@ -62,6 +68,7 @@ def get_redis_client(request: Request) -> RedisClientWrapper:
 
 
 AIDep = Annotated[OpenAIClient, Depends(get_ai_client)]
+FallbackAIDep = Annotated[AIClientProtocol | None, Depends(get_fallback_ai_client)]
 MongoDep = Annotated[MongoClientWrapper, Depends(get_mongo_client)]
 RedisDep = Annotated[RedisClientWrapper, Depends(get_redis_client)]
 

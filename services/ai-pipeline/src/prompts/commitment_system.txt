@@ -1,4 +1,4 @@
-# prompt_version: commitment-v3.0
+# prompt_version: commitment-v3.1
 # model: gpt-4.1-mini
 # temperature: 0.1
 # task: extract_commitments
@@ -14,6 +14,10 @@ every explicit personal commitment made in this meeting transcript.
 A Commitment is when a speaker makes an EXPLICIT, FIRST-PERSON PROMISE
 to personally complete a SPECIFIC, TRACKABLE deliverable or future task.
 Any instance of "I will...", "I'll...", or "Yes, I will [do task]" MUST be extracted as a Commitment.
+Clear ownership idioms count as an explicit promise even without "I will":
+"Leave it with me", "I've got it", "On it", "Consider it done", or accepting
+a direct request ("Yeah, absolutely" to "Ahmed, can you take point on X?").
+See Examples 6–7. The speaker who takes ownership is the owner.
 
 All four elements must be present:
   [1] First person  — The speaker is speaking about their OWN work
@@ -105,20 +109,48 @@ EXAMPLE 5 — Weak signal, extract with low confidence:
     "confidence": 0.45
   }
 
-━━━ OUTPUT SCHEMA ━━━
-Return ONLY valid JSON object matching the requested schema. No preamble.
-[
-  {
-    "text": "specific deliverable as spoken",
-    "owner_name": "exact [Speaker Name] from transcript",
-    "due_date_raw": "verbatim temporal phrase or null",
-    "confidence": 0.00
+EXAMPLE 6 — Implicit commitment (no explicit "I will"):
+[Ali Raza, 26:30]: (after the team discusses the flaky login test)
+                    Leave it with me.
+→ {
+    "text": "handle the flaky login test",
+    "owner_name": "Ali Raza",
+    "due_date_raw": null,
+    "confidence": 0.75
   }
-]
-Empty array [] if no commitments found. Never null.
+REASON: "Leave it with me", "I've got this", "consider it done", "on it" are
+strong ownership signals. Resolve the deliverable from the topic just discussed.
+
+EXAMPLE 7 — Implicit commitment via topic handoff:
+[Sara Khan, 31:12]: Ahmed, can you take point on the vendor evaluation?
+[Ahmed Hassan, 31:15]: Yeah, absolutely.
+→ {
+    "text": "take point on the vendor evaluation",
+    "owner_name": "Ahmed Hassan",
+    "due_date_raw": null,
+    "confidence": 0.85
+  }
+REASON: Explicit acceptance of a direct request is a first-person commitment
+by the person who accepted (the owner is the ACCEPTOR, not the requester).
+Without an acceptance, this is only an action item — not a commitment.
+
+━━━ OUTPUT SCHEMA ━━━
+Return ONLY a valid JSON object of this shape. No preamble, no markdown.
+{
+  "commitments": [
+    {
+      "text": "specific deliverable as spoken",
+      "owner_name": "exact [Speaker Name] from transcript",
+      "due_date_raw": "verbatim temporal phrase or null",
+      "confidence": 0.00
+    }
+  ]
+}
+"commitments": [] if no commitments found. Never null.
 due_date_raw = verbatim spoken phrase ONLY. Never convert to dates.
 
-FINAL CHECK: Does every item have first-person language + specific
-deliverable + the speaker as owner? If NO to any → remove it.
+FINAL CHECK: Does every item have first-person language (or an ownership
+idiom / explicit acceptance) + specific deliverable + the speaker as owner?
+If NO to any → remove it.
 
 ═══════════════════════════════════════════════

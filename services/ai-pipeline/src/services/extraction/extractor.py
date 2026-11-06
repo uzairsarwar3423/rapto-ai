@@ -1,72 +1,90 @@
 """
-services/extraction/extractor.py — Industry-Scale Rewrite
-──────────────────────────────────────────────────────────
-CRITICAL FIXES applied in this version:
+services/extraction/extractor.py — v2 (AI Pipeline Upgrade)
+────────────────────────────────────────────────────────────
+Pipeline for one meeting:
 
-  FIX 1 — return_exceptions=True in asyncio.gather():
-    Previous: return_exceptions=False → unhandled exceptions in any chunk
-    coroutine would surface and discard ALL chunk results from gather().
-    Now: BaseException instances are captured per-slot and logged; the
-    rest of the chunks are still returned as ChunkExtractionResult.
+  1. Resolve meeting type (request.meeting_type, else inferred from the title)
+  2. Chunk transcript by speaker turn groups
+  3. Per chunk (bounded concurrency):
+       a. Render the meeting-type-specific user prompt (prompt_router.py)
+       b. Run 5 structured extractors + partial summary in parallel (primary model)
+       c. Confidence gate (confidence_gate.py): low-confidence or failed
+          extractors are re-run on the fallback model (gpt-4.1 by default) and merged
+  4. Merge chunk results with similarity-based cross-chunk dedup
+  5. Hierarchical meta-summary for multi-chunk meetings
+  6. Batch date-parse commitment due dates
 
-  FIX 2 — Hierarchical summary for multi-chunk meetings:
-    Previous: Summary only on first chunk → 2-hour meeting summarized from
-    first 15 minutes. Now: each chunk produces a partial summary; a final
-    meta-summary call synthesizes all partial summaries into a coherent whole.
+Every AI call is grouped under one LangSmith trace per meeting when tracing is
+enabled (services/tracing) — the trace context is propagated via ContextVar.
 
-  FIX 3 — Jinja2 template rendering (injection-safe):
-    Previous: str.replace() on raw user inputs → if meeting_title contained
-    "{{participants}}" as a string, it would be replaced in the next call.
-    Now: jinja2.Environment with undefined=StrictUndefined for safe rendering.
-
-  FIX 4 — Cross-chunk dedup uses similarity engine (not 80-char prefix):
-    Decisions/blockers/risks used text[:80] as dedup key across chunks.
-    Now: similarity_score() on normalized text, consistent with commitments.
+Preserved from v1 (unchanged behaviour):
+  FIX 1 — return_exceptions=True in asyncio.gather() (per-chunk isolation)
+  FIX 2 — Hierarchical summary for multi-chunk meetings
+  FIX 3 — Jinja2 StrictUndefined rendering (injection-safe) — now in prompt_router
+  FIX 4 — Similarity-based cross-chunk dedup for decisions/blockers/risks
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import time
-from pathlib import Path
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, List, Optional
 
-import jinja2
 import structlog
+from pydantic import BaseModel
 
-from src.models.common import TaskType, CostRecord
-from src.models.chunk_models import TranscriptContent, ChunkingStrategy, TextChunk
-from src.models.extraction_models import (
-    ExtractRequest,
-    ChunkExtractionResult,
-    SummaryScopeType,
-    ExtractionResultWithMeta,
-    PartialExtractionFailure,
-    CommitmentsResponse,
-    ActionItemsResponse,
-    DecisionsResponse,
-    BlockersResponse,
-    RisksResponse,
-    StructuredSummary,
-)
-from src.services.openai_client import OpenAIClient
-from src.services.chunker import chunk_content
-from src.services.tokenization import estimate_token_count
 from src.config.extraction_config import (
     EXTRACTION_CHUNK_MAX_TOKENS,
     EXTRACTION_CHUNK_OVERLAP_TURNS,
     EXTRACTOR_CHUNK_CONCURRENCY,
-    EXTRACTION_PROMPT_CACHE,
 )
-from src.services.extraction.commitment_parser import parse_commitment, normalize_text
+from src.config.settings import get_settings
+from src.models.chunk_models import ChunkingStrategy, TextChunk, TranscriptContent
+from src.models.common import AICallResult, CostRecord, TaskType
+from src.models.extraction_models import (
+    ActionItemsResponse,
+    BlockersResponse,
+    ChunkExtractionResult,
+    CommitmentsResponse,
+    DecisionsResponse,
+    ExtractionResultWithMeta,
+    ExtractRequest,
+    MeetingType,
+    PartialExtractionFailure,
+    RisksResponse,
+    StructuredSummary,
+    SummaryScopeType,
+)
+from src.services.ai_client_protocol import AIClientProtocol
+from src.services.chunker import chunk_content
 from src.services.extraction.action_item_parser import parse_action_item
-from src.services.extraction.decision_parser import parse_decision
 from src.services.extraction.blocker_parser import parse_blocker
+from src.services.extraction.commitment_parser import normalize_text, parse_commitment
+from src.services.extraction.confidence_gate import ConfidenceGate, GateDecision
+from src.services.extraction.decision_parser import parse_decision
+from src.services.extraction.prompt_router import (
+    PromptLoadError,
+    PromptRouter,
+    prompt_bundle_version,
+    prompt_versions,
+    resolve_meeting_type,
+    system_prompt,
+)
 from src.services.extraction.risk_parser import parse_risk
 from src.services.similarity import similarity_score
-from src.models.exceptions import AIPipelineError
+from src.services.tokenization import estimate_token_count
+from src.services.tracing import (
+    TraceContext,
+    current_trace_context,
+    get_tracer,
+    trace_scope,
+)
 
 log = structlog.get_logger(__name__)
+
+__all__ = ["extract", "PromptLoadError"]
 
 # ─── Similarity threshold for cross-chunk entity dedup ───────────────────────
 _CROSS_CHUNK_DEDUP_THRESHOLD: float = 0.70
@@ -75,77 +93,75 @@ considered the same entity across chunks. Slightly higher than the
 commitment MATCH_THRESHOLD (0.65) because these entity types have less
 normalization applied and we want higher precision."""
 
-# ─── Prompt loading ───────────────────────────────────────────────────────────
 
-class PromptLoadError(AIPipelineError):
-    pass
+# ─── Extractor table ──────────────────────────────────────────────────────────
 
-PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 
-_JINJA_ENV = jinja2.Environment(
-    undefined=jinja2.StrictUndefined,
-    autoescape=False,  # Plain text prompts — not HTML
+@dataclass(frozen=True)
+class ExtractorSpec:
+    name: str                                   # also the ChunkExtractionResult field suffix
+    task_type: TaskType
+    response_schema: type[BaseModel]
+    response_field: str                         # list field on the response schema
+    parser: Callable[[Any], Any]
+
+    @property
+    def result_field(self) -> str:
+        return f"parsed_{self.name}"
+
+
+EXTRACTORS: tuple[ExtractorSpec, ...] = (
+    ExtractorSpec("commitments", TaskType.EXTRACT_COMMITMENTS, CommitmentsResponse, "commitments", parse_commitment),
+    ExtractorSpec("action_items", TaskType.EXTRACT_ACTION_ITEMS, ActionItemsResponse, "action_items", parse_action_item),
+    ExtractorSpec("decisions", TaskType.EXTRACT_DECISIONS, DecisionsResponse, "decisions", parse_decision),
+    ExtractorSpec("blockers", TaskType.EXTRACT_BLOCKERS, BlockersResponse, "blockers", parse_blocker),
+    ExtractorSpec("risks", TaskType.EXTRACT_RISKS, RisksResponse, "risks", parse_risk),
 )
+_EXTRACTORS_BY_NAME = {spec.name: spec for spec in EXTRACTORS}
 
-try:
-    _USER_PROMPT_TPL_SRC = (PROMPTS_DIR / "extraction_user.txt").read_text(encoding="utf-8")
-    _USER_PROMPT_TPL = _JINJA_ENV.from_string(
-        _USER_PROMPT_TPL_SRC
-        .replace("{{meeting_title}}", "{{ meeting_title }}")
-        .replace("{{meeting_date_iso}}", "{{ meeting_date_iso }}")
-        .replace("{{participants}}", "{{ participants }}")
-        .replace("{{transcript_content}}", "{{ transcript_content }}")
-    )
+# Fail fast at import if any prompt is missing (same guarantee as v1).
+_SYSTEM_PROMPTS: dict[TaskType, str] = {
+    spec.task_type: system_prompt(spec.task_type) for spec in EXTRACTORS
+}
+_SYSTEM_PROMPTS[TaskType.SUMMARY] = system_prompt(TaskType.SUMMARY)
 
-    _META_SUMMARY_SYSTEM = (
-        "You are a Principal Meeting Intelligence Engine. You receive multiple partial "
-        "structured summaries (JSON) from consecutive sections of a long meeting. "
-        "Synthesize ALL sections into a single, complete structured summary. "
-        "Return ONLY a valid JSON object with these exact keys: "
-        "meeting_purpose (string, 1-2 sentences), "
-        "overview (string, 2-5 sentences, prose, max 150 words), "
-        "key_takeaways (array of strings — high-signal insights, no action items), "
-        "topics_discussed (array of {topic: string, bullets: string[]}), "
-        "conclusions (array of strings — final outcomes only), "
-        "decisions (array of strings — confirmed decisions only, never suggestions). "
-        "Ground every point strictly in the partial summaries provided. "
-        "Never hallucinate. Empty sections use '' or []. Past tense. No filler."
-    )
+_PROMPT_VERSION: str = prompt_bundle_version()
+_PROMPT_VERSIONS: dict[str, str] = prompt_versions()
+_ROUTER = PromptRouter()
 
-    _PROMPTS = {
-        TaskType.EXTRACT_COMMITMENTS: (PROMPTS_DIR / "commitment_system.txt").read_text(encoding="utf-8"),
-        TaskType.EXTRACT_ACTION_ITEMS: (PROMPTS_DIR / "action_items_system.txt").read_text(encoding="utf-8"),
-        TaskType.EXTRACT_DECISIONS: (PROMPTS_DIR / "decisions_system.txt").read_text(encoding="utf-8"),
-        TaskType.EXTRACT_BLOCKERS: (PROMPTS_DIR / "blockers_system.txt").read_text(encoding="utf-8"),
-        TaskType.EXTRACT_RISKS: (PROMPTS_DIR / "risks_system.txt").read_text(encoding="utf-8"),
-        TaskType.SUMMARY: (PROMPTS_DIR / "summary_system.txt").read_text(encoding="utf-8"),
-    }
-
-    _first_line = _PROMPTS[TaskType.EXTRACT_COMMITMENTS].split("\n")[0]
-    _PROMPT_VERSION = _first_line.strip() if _first_line.startswith("# prompt_version") else "extraction-v4.0"
-
-except Exception as e:
-    raise PromptLoadError(f"Failed to load specialized extraction prompts: {e}")
+_META_SUMMARY_SYSTEM = (
+    "# prompt_version: meta-summary-v1.0\n"
+    "You are a Principal Meeting Intelligence Engine. You receive multiple partial "
+    "structured summaries (JSON) from consecutive sections of a long meeting. "
+    "Synthesize ALL sections into a single, complete structured summary. "
+    "Return ONLY a valid JSON object with these exact keys: "
+    "meeting_purpose (string, 1-2 sentences), "
+    "overview (string, 2-5 sentences, prose, max 150 words), "
+    "key_takeaways (array of strings — high-signal insights, no action items), "
+    "topics_discussed (array of {topic: string, bullets: string[]}), "
+    "conclusions (array of strings — final outcomes only), "
+    "decisions (array of strings — confirmed decisions only, never suggestions). "
+    "Ground every point strictly in the partial summaries provided. "
+    "Never hallucinate. Empty sections use '' or []. Past tense. No filler."
+)
 
 
 # ─── Public entry point ───────────────────────────────────────────────────────
 
+
 async def extract(
     request: ExtractRequest,
-    ai_client: OpenAIClient,
+    ai_client: AIClientProtocol,
+    fallback_client: Optional[AIClientProtocol] = None,
 ) -> ExtractionResultWithMeta | PartialExtractionFailure:
     """Run the full extraction pipeline for one meeting.
 
-    Pipeline:
-      1. Chunk transcript by speaker turn groups
-      2. Run 5 parallel extractors + per-chunk summary for each chunk (bounded concurrency)
-      3. Merge chunk results with similarity-based cross-chunk dedup
-      4. Run hierarchical meta-summary if meeting has > 1 chunk
-      5. Batch date-parse due_date_raw values on commitments
-
     Args:
         request: Fully populated ExtractRequest (validated upstream).
-        ai_client: Process-singleton OpenAI client.
+        ai_client: Process-singleton primary AI client.
+        fallback_client: Optional fallback client (stronger OpenAI model or Claude). When None (or the
+            confidence gate is disabled) the pipeline runs primary-only,
+            exactly as before the upgrade.
 
     Returns:
         ExtractionResultWithMeta on full success, PartialExtractionFailure if
@@ -156,12 +172,20 @@ async def extract(
     if not request.participants:
         raise ValueError("Participant list cannot be empty")
 
+    settings = get_settings()
+    gate = (
+        ConfidenceGate.from_settings(settings)
+        if fallback_client is not None and settings.confidence_gate_enabled
+        else None
+    )
+    meeting_type = resolve_meeting_type(request)
+
     full_transcript_text = "\n".join(
         f"{t.speaker_name}: {t.cleaned_text}" for t in request.cleaned_transcript
     )
     total_transcript_tokens = estimate_token_count(full_transcript_text)
 
-    chunks, chunk_meta = chunk_content(
+    chunks, _chunk_meta = chunk_content(
         content=TranscriptContent(turns=request.cleaned_transcript),
         strategy=ChunkingStrategy.SPEAKER_TURN_GROUPED,
         max_tokens=EXTRACTION_CHUNK_MAX_TOKENS,
@@ -172,67 +196,128 @@ async def extract(
         "extraction_job_started",
         meeting_id=request.meeting_id,
         team_id=request.team_id,
+        meeting_type=meeting_type.value,
+        meeting_type_inferred=request.meeting_type is None,
         total_turns=len(request.cleaned_transcript),
         total_tokens_estimate=total_transcript_tokens,
         chunks_count=len(chunks),
         prompt_version=_PROMPT_VERSION,
+        confidence_gate=gate is not None,
     )
 
-    extractor_semaphore = asyncio.Semaphore(EXTRACTOR_CHUNK_CONCURRENCY)
+    tracer = get_tracer()
+    meeting_run = tracer.start_run(
+        name="extract_meeting",
+        inputs={"turns": len(request.cleaned_transcript), "chunks": len(chunks)},
+        metadata={
+            "meeting_id": request.meeting_id,
+            "team_id": request.team_id,
+            "meeting_type": meeting_type.value,
+            "prompt_version": _PROMPT_VERSION,
+            "prompt_versions": _PROMPT_VERSIONS,
+            "confidence_gate_enabled": gate is not None,
+        },
+        run_type="chain",
+        tags=["extraction", meeting_type.value, _PROMPT_VERSION],
+    )
+    ctx_token = current_trace_context.set(
+        TraceContext(
+            meeting_id=request.meeting_id,
+            team_id=request.team_id,
+            prompt_version=_PROMPT_VERSION,
+            meeting_type=meeting_type.value,
+            parent_run=meeting_run,
+        )
+    )
 
-    async def _extract_one_chunk_safely(chunk: TextChunk) -> ChunkExtractionResult:
-        async with extractor_semaphore:
-            return await _extract_one_chunk(chunk, request, ai_client)
+    try:
+        extractor_semaphore = asyncio.Semaphore(EXTRACTOR_CHUNK_CONCURRENCY)
+        total_chunks = len(chunks)
 
-    chunk_coroutines = [_extract_one_chunk_safely(chunk) for chunk in chunks]
+        async def _extract_one_chunk_safely(chunk: TextChunk) -> ChunkExtractionResult:
+            async with extractor_semaphore:
+                with trace_scope(chunk_index=chunk.chunk_index):
+                    return await _extract_one_chunk(
+                        chunk, request, ai_client, meeting_type, total_chunks,
+                        gate=gate, fallback_client=fallback_client,
+                    )
 
-    # FIX 1: return_exceptions=True — captures per-chunk failures without
-    # aborting the entire gather when one chunk raises unexpectedly.
-    raw_results = await asyncio.gather(*chunk_coroutines, return_exceptions=True)
+        # FIX 1: return_exceptions=True — one chunk failing never discards the others.
+        raw_results = await asyncio.gather(
+            *(_extract_one_chunk_safely(chunk) for chunk in chunks), return_exceptions=True
+        )
 
-    # Normalize: BaseException slots → failed ChunkExtractionResult
-    chunk_results: List[ChunkExtractionResult] = []
-    for i, r in enumerate(raw_results):
-        if isinstance(r, BaseException):
-            log.error(
-                "chunk_extraction_unhandled_exception",
-                chunk_index=i,
-                error_type=type(r).__name__,
-                error_detail=str(r),
-                meeting_id=request.meeting_id,
-            )
-            chunk_results.append(
-                ChunkExtractionResult(
-                    chunk_id=f"chunk_{i}",
+        chunk_results: List[ChunkExtractionResult] = []
+        for i, r in enumerate(raw_results):
+            if isinstance(r, BaseException):
+                log.error(
+                    "chunk_extraction_unhandled_exception",
                     chunk_index=i,
-                    succeeded=False,
-                    is_first_chunk=(i == 0),
-                    error=f"Unhandled: {type(r).__name__}: {r}",
+                    error_type=type(r).__name__,
+                    error_detail=str(r),
+                    meeting_id=request.meeting_id,
                 )
-            )
-        else:
-            chunk_results.append(r)
+                chunk_results.append(
+                    ChunkExtractionResult(
+                        chunk_id=f"chunk_{i}",
+                        chunk_index=i,
+                        succeeded=False,
+                        is_first_chunk=(i == 0),
+                        error=f"Unhandled: {type(r).__name__}: {r}",
+                    )
+                )
+            else:
+                chunk_results.append(r)
 
-    merged_result = _merge_chunk_results(request, chunk_results, start_time)
+        merged_result = _merge_chunk_results(request, chunk_results, start_time, meeting_type)
 
-    # ── FIX 2: Hierarchical meta-summary for multi-chunk meetings ─────────────
-    final_result = (
-        merged_result.partial_result
-        if isinstance(merged_result, PartialExtractionFailure)
-        else merged_result
-    )
+        final_result = (
+            merged_result.partial_result
+            if isinstance(merged_result, PartialExtractionFailure)
+            else merged_result
+        )
+        if final_result is not None:
+            await _enrich_result(final_result, chunk_results, request, ai_client)
+            final_result.processing_time_ms = (time.monotonic() - start_time) * 1000
 
-    if final_result is not None:
-        await _enrich_result(final_result, chunk_results, request, ai_client)
+        tracer.end_run(
+            meeting_run,
+            outputs=_trace_outputs(merged_result),
+            metadata={
+                "fallback_chunks": final_result.fallback_chunks if final_result else 0,
+                "chunks_total": len(chunk_results),
+                "chunks_succeeded": sum(1 for r in chunk_results if r.succeeded),
+            },
+        )
+        return merged_result
+    except Exception as exc:
+        tracer.end_run(meeting_run, error=f"{type(exc).__name__}: {str(exc)[:500]}")
+        raise
+    finally:
+        current_trace_context.reset(ctx_token)
 
-    return merged_result
+
+def _trace_outputs(result: ExtractionResultWithMeta | PartialExtractionFailure) -> dict[str, Any]:
+    final = result.partial_result if isinstance(result, PartialExtractionFailure) else result
+    if final is None:
+        return {"succeeded": False}
+    return {
+        "succeeded": not isinstance(result, PartialExtractionFailure),
+        "commitments": len(final.commitments),
+        "action_items": len(final.action_items),
+        "decisions": len(final.decisions),
+        "blockers": len(final.blockers),
+        "risks": len(final.risks),
+        "cost_usd": final.total_cost.estimated_cost_usd,
+        "providers_used": final.providers_used,
+    }
 
 
 async def _enrich_result(
     final_result: ExtractionResultWithMeta,
     chunk_results: List[ChunkExtractionResult],
     request: ExtractRequest,
-    ai_client: OpenAIClient,
+    ai_client: AIClientProtocol,
 ) -> None:
     """Post-merge enrichment: hierarchical summary + date parsing.
 
@@ -243,15 +328,13 @@ async def _enrich_result(
     # ── Hierarchical summary ──────────────────────────────────────────────────
     partial_summaries = [r.summary for r in succeeded_chunks if r.summary]
 
-    def _summary_to_text(s) -> str:
+    def _summary_to_text(s: Any) -> str:
         """Flatten a StructuredSummary or plain str to text for meta-summary user prompt."""
         if isinstance(s, StructuredSummary):
-            import json
             return json.dumps(s.model_dump(), ensure_ascii=False)
         return str(s) if s else ""
 
     if len(partial_summaries) > 1:
-        # Multiple chunks → synthesize a meta-summary
         combined = "\n\n---\n\n".join(
             f"[Section {i + 1} of {len(partial_summaries)}]:\n{_summary_to_text(s)}"
             for i, s in enumerate(partial_summaries)
@@ -267,15 +350,13 @@ async def _enrich_result(
                 system_prompt=_META_SUMMARY_SYSTEM,
                 user_prompt=user_prompt,
             )
-            parsed_meta = StructuredSummary.from_raw(meta_result.data)
-            final_result.summary = parsed_meta
+            final_result.summary = StructuredSummary.from_raw(meta_result.data)
             final_result.summary_scope = SummaryScopeType.FULL
-            meta_chars = len(meta_result.data) if isinstance(meta_result.data, str) else 0
             log.info(
                 "meta_summary_generated",
                 meeting_id=request.meeting_id,
                 partial_count=len(partial_summaries),
-                meta_summary_chars=meta_chars,
+                meta_summary_chars=len(meta_result.data) if isinstance(meta_result.data, str) else 0,
             )
         except Exception as exc:
             log.warning(
@@ -319,152 +400,30 @@ async def _enrich_result(
 
 # ─── Per-chunk extraction ────────────────────────────────────────────────────
 
+
 async def _extract_one_chunk(
     chunk: TextChunk,
     request: ExtractRequest,
-    ai_client: OpenAIClient,
+    ai_client: AIClientProtocol,
+    meeting_type: MeetingType,
+    total_chunks: int,
+    *,
+    gate: Optional[ConfidenceGate] = None,
+    fallback_client: Optional[AIClientProtocol] = None,
 ) -> ChunkExtractionResult:
-    """Run all 5 specialized extractors + summary in parallel for one chunk."""
-    is_first_chunk = chunk.chunk_index == 0
-
-    participants_fmt = "\n".join(
-        f"- {p.name} ({p.email})" + ("" if p.user_id else " [External]")
-        for p in request.participants
-    )
-
-    content_text = chunk.content
-    if not is_first_chunk:
-        content_text = (
-            "[Note: This is a continuation of the meeting. "
-            "The preceding section may have contained additional context not reproduced here.]\n\n"
-            + content_text
-        )
-
-    # FIX 3: Jinja2 template rendering (injection-safe)
-    user_prompt = _USER_PROMPT_TPL.render(
-        meeting_title=request.meeting_title,
-        meeting_date_iso=request.meeting_date.isoformat(),
-        participants=participants_fmt,
-        transcript_content=content_text,
+    """Primary extraction for one chunk, then the confidence gate."""
+    user_prompt = _ROUTER.render_user_prompt(
+        request,
+        chunk_text=chunk.content,
+        chunk_index=chunk.chunk_index,
+        total_chunks=total_chunks,
+        meeting_type=meeting_type,
     )
 
     try:
-        coroutines = [
-            ai_client.generate_structured(
-                task_type=TaskType.EXTRACT_COMMITMENTS,
-                system_prompt=_PROMPTS[TaskType.EXTRACT_COMMITMENTS],
-                user_prompt=user_prompt,
-                response_schema=CommitmentsResponse,
-            ),
-            ai_client.generate_structured(
-                task_type=TaskType.EXTRACT_ACTION_ITEMS,
-                system_prompt=_PROMPTS[TaskType.EXTRACT_ACTION_ITEMS],
-                user_prompt=user_prompt,
-                response_schema=ActionItemsResponse,
-            ),
-            ai_client.generate_structured(
-                task_type=TaskType.EXTRACT_DECISIONS,
-                system_prompt=_PROMPTS[TaskType.EXTRACT_DECISIONS],
-                user_prompt=user_prompt,
-                response_schema=DecisionsResponse,
-            ),
-            ai_client.generate_structured(
-                task_type=TaskType.EXTRACT_BLOCKERS,
-                system_prompt=_PROMPTS[TaskType.EXTRACT_BLOCKERS],
-                user_prompt=user_prompt,
-                response_schema=BlockersResponse,
-            ),
-            ai_client.generate_structured(
-                task_type=TaskType.EXTRACT_RISKS,
-                system_prompt=_PROMPTS[TaskType.EXTRACT_RISKS],
-                user_prompt=user_prompt,
-                response_schema=RisksResponse,
-            ),
-            # FIX 2: Summary on EVERY chunk (not just first)
-            ai_client.generate_text(
-                task_type=TaskType.SUMMARY,
-                system_prompt=_PROMPTS[TaskType.SUMMARY],
-                user_prompt=user_prompt,
-            ),
-        ]
-
-        results = await asyncio.gather(*coroutines, return_exceptions=True)
-
-        # Unpack — handle per-extractor failures gracefully
-        commitments_res = results[0] if not isinstance(results[0], BaseException) else None
-        action_items_res = results[1] if not isinstance(results[1], BaseException) else None
-        decisions_res = results[2] if not isinstance(results[2], BaseException) else None
-        blockers_res = results[3] if not isinstance(results[3], BaseException) else None
-        risks_res = results[4] if not isinstance(results[4], BaseException) else None
-        summary_res = results[5] if not isinstance(results[5], BaseException) else None
-
-        # Log any per-extractor failures (partial chunk success)
-        for i, (res, name) in enumerate(zip(results, [
-            "commitments", "action_items", "decisions", "blockers", "risks", "summary"
-        ])):
-            if isinstance(res, BaseException):
-                log.warning(
-                    "chunk_extractor_partial_failure",
-                    chunk_index=chunk.chunk_index,
-                    extractor=name,
-                    error_type=type(res).__name__,
-                    error=str(res)[:200],
-                )
-
-        parsed_commitments = (
-            [parse_commitment(c) for c in commitments_res.data.commitments]
-            if commitments_res else []
+        result = await _run_extractors(
+            ai_client, user_prompt, chunk, EXTRACTORS, include_summary=True
         )
-        parsed_action_items = (
-            [parse_action_item(a) for a in action_items_res.data.action_items]
-            if action_items_res else []
-        )
-        parsed_decisions = (
-            [parse_decision(d) for d in decisions_res.data.decisions]
-            if decisions_res else []
-        )
-        parsed_blockers = (
-            [parse_blocker(b) for b in blockers_res.data.blockers]
-            if blockers_res else []
-        )
-        parsed_risks = (
-            [parse_risk(r) for r in risks_res.data.risks]
-            if risks_res else []
-        )
-        summary_text = StructuredSummary.from_raw(summary_res.data) if summary_res else None
-
-        # Aggregate costs from successful calls only
-        successful_results = [r for r in results if not isinstance(r, BaseException)]
-        total_input_tokens = sum(r.cost.input_tokens for r in successful_results)
-        total_output_tokens = sum(r.cost.output_tokens for r in successful_results)
-        total_cost_usd = sum(r.cost.estimated_cost_usd for r in successful_results)
-
-        ref_cost = next(
-            (r.cost for r in successful_results if hasattr(r, "cost")), None
-        )
-        combined_cost = CostRecord(
-            input_tokens=total_input_tokens,
-            output_tokens=total_output_tokens,
-            model_tier=ref_cost.model_tier if ref_cost else "mini",
-            model_name=ref_cost.model_name if ref_cost else "unknown",
-            estimated_cost_usd=total_cost_usd,
-        ) if ref_cost else None
-
-        return ChunkExtractionResult(
-            chunk_id=f"chunk_{chunk.chunk_index}",
-            chunk_index=chunk.chunk_index,
-            succeeded=True,
-            parsed_commitments=parsed_commitments,
-            parsed_action_items=parsed_action_items,
-            parsed_decisions=parsed_decisions,
-            parsed_blockers=parsed_blockers,
-            parsed_risks=parsed_risks,
-            summary=summary_text,
-            cost=combined_cost,
-            error=None,
-            is_first_chunk=is_first_chunk,
-        )
-
     except Exception as exc:
         log.error(
             "chunk_extraction_failed",
@@ -477,9 +436,151 @@ async def _extract_one_chunk(
             chunk_id=f"chunk_{chunk.chunk_index}",
             chunk_index=chunk.chunk_index,
             succeeded=False,
-            is_first_chunk=is_first_chunk,
+            is_first_chunk=chunk.chunk_index == 0,
             error=str(exc),
         )
+
+    if gate is None or fallback_client is None:
+        return result
+
+    decision = gate.evaluate(result)
+    if not decision.triggered:
+        return result
+    return await _apply_fallback(result, decision, gate, fallback_client, user_prompt, chunk, request)
+
+
+async def _apply_fallback(
+    primary: ChunkExtractionResult,
+    decision: GateDecision,
+    gate: ConfidenceGate,
+    fallback_client: AIClientProtocol,
+    user_prompt: str,
+    chunk: TextChunk,
+    request: ExtractRequest,
+) -> ChunkExtractionResult:
+    log.info(
+        "confidence_gate_triggered",
+        meeting_id=request.meeting_id,
+        chunk_index=chunk.chunk_index,
+        extractors=list(decision.extractors),
+        reasons=decision.reasons,
+        avg_confidence=decision.mean_confidence,
+        item_count=decision.item_count,
+    )
+    specs = tuple(_EXTRACTORS_BY_NAME[name] for name in decision.extractors)
+    try:
+        with trace_scope(fallback_triggered=True):
+            fallback = await _run_extractors(
+                fallback_client, user_prompt, chunk, specs, include_summary=False
+            )
+    except Exception as exc:  # fallback must never make a chunk worse
+        log.warning(
+            "confidence_gate_fallback_failed",
+            meeting_id=request.meeting_id,
+            chunk_index=chunk.chunk_index,
+            error_type=type(exc).__name__,
+            error=str(exc)[:200],
+        )
+        return primary
+
+    merged = gate.merge_primary_and_fallback(primary, fallback, decision.extractors)
+    log.info(
+        "confidence_gate_merged",
+        meeting_id=request.meeting_id,
+        chunk_index=chunk.chunk_index,
+        **{
+            f"{spec.name}_count": len(getattr(merged, spec.result_field) or [])
+            for spec in specs
+        },
+        fallback_failed_extractors=fallback.failed_extractors,
+    )
+    return merged
+
+
+async def _run_extractors(
+    client: AIClientProtocol,
+    user_prompt: str,
+    chunk: TextChunk,
+    specs: tuple[ExtractorSpec, ...],
+    *,
+    include_summary: bool,
+) -> ChunkExtractionResult:
+    """Run the given extractors (+ optional partial summary) in parallel.
+
+    Per-extractor failures are isolated: the failed extractor's list is empty
+    and its name is recorded in `failed_extractors`.
+    """
+    coroutines: list[Any] = [
+        client.generate_structured(
+            task_type=spec.task_type,
+            system_prompt=_SYSTEM_PROMPTS[spec.task_type],
+            user_prompt=user_prompt,
+            response_schema=spec.response_schema,
+        )
+        for spec in specs
+    ]
+    if include_summary:
+        coroutines.append(
+            client.generate_text(
+                task_type=TaskType.SUMMARY,
+                system_prompt=_SYSTEM_PROMPTS[TaskType.SUMMARY],
+                user_prompt=user_prompt,
+            )
+        )
+
+    results = await asyncio.gather(*coroutines, return_exceptions=True)
+    names = [spec.name for spec in specs] + (["summary"] if include_summary else [])
+
+    failed: list[str] = []
+    for name, res in zip(names, results):
+        if isinstance(res, BaseException):
+            failed.append(name)
+            log.warning(
+                "chunk_extractor_partial_failure",
+                chunk_index=chunk.chunk_index,
+                extractor=name,
+                error_type=type(res).__name__,
+                error=str(res)[:200],
+            )
+
+    fields: dict[str, Any] = {}
+    for spec, res in zip(specs, results):
+        if isinstance(res, BaseException):
+            fields[spec.result_field] = []
+            continue
+        raw_items = getattr(res.data, spec.response_field, None) or []
+        fields[spec.result_field] = [spec.parser(item) for item in raw_items]
+
+    summary: Any = None
+    if include_summary and not isinstance(results[-1], BaseException):
+        summary = StructuredSummary.from_raw(results[-1].data)
+
+    successful: list[AICallResult[Any]] = [r for r in results if not isinstance(r, BaseException)]
+    return ChunkExtractionResult(
+        chunk_id=f"chunk_{chunk.chunk_index}",
+        chunk_index=chunk.chunk_index,
+        succeeded=True,
+        summary=summary,
+        cost=_combine_costs(successful),
+        error=None,
+        is_first_chunk=chunk.chunk_index == 0,
+        failed_extractors=[n for n in failed if n != "summary"],
+        providers_used=sorted({r.provider_used for r in successful}),
+        **fields,
+    )
+
+
+def _combine_costs(results: list[AICallResult[Any]]) -> Optional[CostRecord]:
+    if not results:
+        return None
+    ref = results[0].cost
+    return CostRecord(
+        input_tokens=sum(r.cost.input_tokens for r in results),
+        output_tokens=sum(r.cost.output_tokens for r in results),
+        model_tier=ref.model_tier,
+        model_name=ref.model_name,
+        estimated_cost_usd=sum(r.cost.estimated_cost_usd for r in results),
+    )
 
 
 # ─── Cross-chunk similarity dedup ────────────────────────────────────────────
@@ -543,6 +644,7 @@ def _merge_chunk_results(
     request: ExtractRequest,
     chunk_results: List[ChunkExtractionResult],
     start_time: float,
+    meeting_type: MeetingType = MeetingType.GENERAL,
 ) -> ExtractionResultWithMeta | PartialExtractionFailure:
     succeeded_chunks = [r for r in chunk_results if r.succeeded]
     failed_chunks = [r for r in chunk_results if not r.succeeded]
@@ -666,6 +768,10 @@ def _merge_chunk_results(
         total_cost=total_cost,
         per_chunk_costs=[r.cost if r.succeeded else None for r in chunk_results],
         processing_time_ms=processing_time_ms,
+        meeting_type=meeting_type,
+        prompt_versions=_PROMPT_VERSIONS,
+        fallback_chunks=sum(1 for r in succeeded_chunks if r.fallback_triggered),
+        providers_used=sorted({p for r in succeeded_chunks for p in r.providers_used}),
     )
 
     log.info(

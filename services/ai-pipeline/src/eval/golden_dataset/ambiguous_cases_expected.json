@@ -1,0 +1,10 @@
+{
+  "meeting_id": "ambig_01",
+  "meeting_type": "general",
+  "meeting_title": "Engineering Sync",
+  "description": "ANTI-PATTERN FIXTURE — zero tolerance. Collective 'we should', unaddressed request, past miss, anonymous 'someone', and 'let's make sure': none is a first-person commitment.",
+  "expected_commitments": [],
+  "expected_commitment_count": 0,
+  "expected_zero_commitments": true,
+  "labelled_extractors": ["commitments"]
+}

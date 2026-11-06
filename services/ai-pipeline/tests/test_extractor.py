@@ -45,6 +45,7 @@ async def test_extract_short_single_chunk(mock_openai_client, basic_request):
     assert result.chunks_total == 1
     assert result.chunks_succeeded == 1
     assert len(result.commitments) == 1
-    assert result.summary == "A short meeting summary"
+    # Plain-text model output is wrapped into the structured summary (v4.0 summary prompt).
+    assert result.summary.overview == "A short meeting summary"
     assert result.summary_scope.value == "FULL"
     assert mock_openai_client.generate_structured.call_count >= 1

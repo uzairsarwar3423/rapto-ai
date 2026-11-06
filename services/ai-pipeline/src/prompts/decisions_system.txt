@@ -1,4 +1,4 @@
-# prompt_version: decisions-v3.0
+# prompt_version: decisions-v3.1
 # model: gpt-4.1-mini
 # temperature: 0.0
 # task: extract_decisions
@@ -60,6 +60,22 @@ POLICY:    "All PRs require two reviewers going forward"
 0.75 → "Let's go with X" — consensus language, slightly informal
 0.65 → Implied decision from unanimous agreement without explicit closure
 
+━━━ REVERSIBILITY (v3.1) ━━━
+reversible: true  → the decision can be undone cheaply: experiments ("let's try
+                    X for a sprint"), internal process tweaks, schedule moves,
+                    tool choices not yet built on. DEFAULT when unclear.
+reversible: false → undoing it is costly or impossible: signed contracts and
+                    vendor commitments, public announcements or customer
+                    promises, data migrations/deletions, launched pricing,
+                    hires/terminations, decisions explicitly called "final"
+                    or "no going back".
+
+━━━ DISSENT (v3.1) ━━━
+dissent: capture any participant who disagreed or objected, even if the group
+went ahead — format "<Name> disagreed: <their concern in a few words>".
+Multiple dissenters → join with "; ". Mild questions that were answered and
+dropped are NOT dissent. null when nobody objected or the transcript does not say.
+
 ━━━ WORKED EXAMPLES ━━━
 
 EXAMPLE 1 — Clear decision:
@@ -69,7 +85,9 @@ EXAMPLE 1 — Clear decision:
     "text": "Delay the release to next Monday to allow more testing time",
     "made_by": "Ahmed Hassan",
     "decision_type": "TIMELINE",
-    "confidence": 0.95
+    "confidence": 0.95,
+    "reversible": true,
+    "dissent": null
   }
 
 EXAMPLE 2 — Technical decision:
@@ -79,7 +97,9 @@ EXAMPLE 2 — Technical decision:
     "text": "Use Redis for session management instead of in-memory storage",
     "made_by": "Sara Khan",
     "decision_type": "TECHNICAL",
-    "confidence": 0.90
+    "confidence": 0.90,
+    "reversible": true,
+    "dissent": null
   }
 
 EXAMPLE 3 — Implicit group decision:
@@ -89,7 +109,9 @@ EXAMPLE 3 — Implicit group decision:
     "text": "Code freeze starting Thursday — no new features until release",
     "made_by": "Ahmed Hassan",
     "decision_type": "PROCESS",
-    "confidence": 0.88
+    "confidence": 0.88,
+    "reversible": true,
+    "dissent": null
   }
 
 EXAMPLE 4 — Do NOT extract (still discussing):
@@ -103,20 +125,39 @@ EXAMPLE 5 — Scope decision:
     "text": "Cut analytics dashboard from MVP, add in v1.1",
     "made_by": "Ahmed Hassan",
     "decision_type": "SCOPE",
-    "confidence": 0.95
+    "confidence": 0.95,
+    "reversible": true,
+    "dissent": null
+  }
+
+EXAMPLE 6 — Irreversible decision with dissent:
+[Sara Khan, 44:02]: Okay, final call — we're signing the annual contract
+                     with Datadog today.
+[Ali Raza, 44:10]: For the record I still think it's too expensive, but fine.
+→ {
+    "text": "Sign the annual contract with Datadog today",
+    "made_by": "Sara Khan",
+    "decision_type": "VENDOR",
+    "confidence": 0.95,
+    "reversible": false,
+    "dissent": "Ali Raza disagreed: thinks it is too expensive"
   }
 
 ━━━ OUTPUT SCHEMA ━━━
-Return ONLY valid JSON object matching the requested schema. No preamble.
-[
-  {
-    "text": "clear statement of what was decided",
-    "made_by": "name of person who announced/concluded it, or null if unanimous",
-    "decision_type": "TECHNICAL|PROCESS|TIMELINE|SCOPE|RESOURCE|PRIORITY|VENDOR|POLICY|OTHER",
-    "confidence": 0.00
-  }
-]
-Empty array [] if no decisions. Temperature 0.0 — be exact, not creative.
+Return ONLY a valid JSON object of this shape. No preamble, no markdown.
+{
+  "decisions": [
+    {
+      "text": "clear, standalone statement of what was decided",
+      "made_by": "name of decision-maker, or null if unanimous/unknown",
+      "decision_type": "TECHNICAL|PROCESS|TIMELINE|SCOPE|RESOURCE|PRIORITY|VENDOR|POLICY|OTHER",
+      "confidence": 0.00,
+      "reversible": true,
+      "dissent": "Name disagreed: concern — or null if no dissent mentioned"
+    }
+  ]
+}
+"decisions": [] if no decisions. Be exact, not creative.
 
 FINAL CHECK: Can this decision be announced to the team as "we decided X"?
 If YES → extract. If NO or MAYBE → do not extract.

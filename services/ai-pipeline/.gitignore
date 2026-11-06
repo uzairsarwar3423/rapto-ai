@@ -68,4 +68,7 @@ ehthumbs.db
 # the actual result files are local measurement artifacts (Day 55 Decision 7).
 src/eval/results/*.json
 eval/results/*.json
+# The CI gate baseline IS committed: it is the reference every prompt change is
+# compared against (src/eval/ci_gate.py).
+!src/eval/results/baseline.json
 

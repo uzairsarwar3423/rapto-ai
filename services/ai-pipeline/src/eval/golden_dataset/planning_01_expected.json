@@ -1,0 +1,45 @@
+{
+  "meeting_id": "planning_01",
+  "meeting_type": "planning",
+  "meeting_title": "Sprint 24 Planning",
+  "description": "45-minute sprint planning: 5 commitments, 8 third-party action items (no spoken acceptance, so they stay action items), 3 decisions (scope, vendor with dissent, process), 1 escalating blocker, 2 risks.",
+  "expected_commitments": [
+    {"owner_name_contains": "Daniel", "text_contains": "plan selection component", "confidence_min": 0.8, "due_date_raw_contains": "Thursday"},
+    {"owner_name_contains": "Priya", "text_contains": "webhook handler", "confidence_min": 0.8},
+    {"owner_name_contains": "Tom", "text_contains": "migration", "confidence_min": 0.8},
+    {"owner_name_contains": "Lena", "text_contains": "test suite", "confidence_min": 0.8},
+    {"owner_name_contains": "Sam", "text_contains": "pricing copy", "confidence_min": 0.7}
+  ],
+  "expected_action_items": [
+    {"assignee_name_contains": "Tom", "text_contains": "migration plan"},
+    {"assignee_name_contains": "Priya", "text_contains": "sandbox API keys"},
+    {"assignee_name_contains": "Sam", "text_contains": "plan names"},
+    {"assignee_name_contains": "Lena", "text_contains": "regression checklist"},
+    {"assignee_name_contains": "Tom", "text_contains": "unique index"},
+    {"assignee_name_contains": "Daniel", "text_contains": "component API"},
+    {"assignee_name_contains": "Sam", "text_contains": "analytics"},
+    {"assignee_name_contains": "Priya", "text_contains": "security review"}
+  ],
+  "expected_decisions": [
+    {"text_contains": "PDF export", "decision_type": "SCOPE"},
+    {"text_contains": "Paddle", "decision_type": "VENDOR"},
+    {"text_contains": "two reviewers", "decision_type": "PROCESS"}
+  ],
+  "expected_blockers": [
+    {"text_contains": "staging", "escalation_expected": true}
+  ],
+  "expected_risks": [
+    {"text_contains": "proration"},
+    {"text_contains": "sprint goal", "category": "TIMELINE"}
+  ],
+  "expected_summary": {
+    "required_topics": ["Paddle", "billing"],
+    "min_key_takeaways": 2
+  },
+  "expected_commitment_count": 5,
+  "expected_zero_commitments": false,
+  "labelling_notes": [
+    "Priya's 'I still think Stripe's API is nicer, but okay' is dissent on the Paddle decision, not a separate decision.",
+    "Tom's blocker was reported to IT twice already: escalation_flag must be true."
+  ]
+}

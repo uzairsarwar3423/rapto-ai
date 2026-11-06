@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 import structlog
 import time
 
-from src.api.deps import AIDep, verify_internal_service_key
+from src.api.deps import AIDep, FallbackAIDep, verify_internal_service_key
 from src.config.logging import request_id_var
 from src.models.extraction_models import (
     ExtractRequest,
@@ -25,6 +25,7 @@ router = APIRouter(tags=["extraction"])
 async def extract_meeting(
     payload: ExtractRequest,
     ai_client: AIDep,
+    fallback_client: FallbackAIDep,
     request: Request,
     response: Response
 ) -> ExtractResponse:
@@ -39,10 +40,12 @@ async def extract_meeting(
         meeting_id=payload.meeting_id,
         team_id=payload.team_id,
         cleaned_turns=len(payload.cleaned_transcript),
-        participants_count=len(payload.participants)
+        participants_count=len(payload.participants),
+        meeting_type=payload.meeting_type.value if payload.meeting_type else None,
+        has_team_context=payload.team_context is not None,
     )
     
-    result = await extract(payload, ai_client)
+    result = await extract(payload, ai_client, fallback_client=fallback_client)
     
     route_processing_time_ms = (time.monotonic() - start_time) * 1000
     log.info(

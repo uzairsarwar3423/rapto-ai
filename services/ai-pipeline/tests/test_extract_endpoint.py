@@ -41,7 +41,8 @@ async def test_extract_endpoint_success(client: AsyncClient, auth_headers, mock_
     data = response.json()
     assert data["success"] is True
     assert data["result"]["chunks_total"] == 1
-    assert data["result"]["summary"] == "Mocked summary text"
+    # Plain-text model output is wrapped into the structured summary (v4.0 summary prompt).
+    assert data["result"]["summary"]["overview"] == "Mocked summary text"
 
 @pytest.mark.asyncio
 async def test_extract_endpoint_unauthorized(client: AsyncClient):

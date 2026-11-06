@@ -23,3 +23,7 @@ pre-commit>=4.0.0,<5.0.0
 # ─── Additional dev ergonomics ────────────────────────────────────────────────
 ipython>=8.30.0                       # REPL for exploratory SDK calls
 python-dotenv>=1.0.0                  # Local .env loading for manual smoke tests
+
+# ─── RAG tests (Day 56) ───────────────────────────────────────────────────────
+# Property-based tests for the pure batching/hashing functions.
+hypothesis>=6.100.0,<7.0.0

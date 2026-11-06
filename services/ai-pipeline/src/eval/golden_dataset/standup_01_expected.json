@@ -1,38 +1,29 @@
 {
   "meeting_id": "standup_01",
-  "description": "Monday standup",
+  "meeting_type": "standup",
+  "meeting_title": "Monday Standup",
+  "description": "Monday standup — 5 speakers: two first-person commitments (one hedged), one third-party request, one decision, one casually stated blocker.",
   "expected_commitments": [
-    {
-      "owner_name_contains": "Alice",
-      "confidence_min": 0.8,
-      "text_contains": "finish the login feature"
-    },
-    {
-      "owner_name_contains": "Bob",
-      "confidence_min": 0.5,
-      "text_contains": "look at the database issues"
-    }
+    {"owner_name_contains": "Alice", "confidence_min": 0.8, "text_contains": "login feature", "due_date_raw_contains": "Thursday"},
+    {"owner_name_contains": "Bob", "confidence_min": 0.5, "text_contains": "database issues"}
   ],
   "expected_action_items": [
-    {
-      "assignee_name_contains": "Sarah",
-      "text_contains": "review my PR"
-    },
-    {
-      "assignee_name_contains": "Alice",
-      "text_contains": "finish the login feature"
-    }
+    {"assignee_name_contains": "Sarah", "text_contains": "PR"}
   ],
   "expected_decisions": [
-    {
-      "text_contains": "shipping Friday"
-    }
+    {"text_contains": "Friday"}
   ],
   "expected_blockers": [
-    {
-      "text_contains": "Waiting on design assets"
-    }
+    {"text_contains": "design assets"}
   ],
+  "expected_risks": [],
+  "expected_summary": {
+    "required_topics": ["login"]
+  },
   "expected_commitment_count": 2,
-  "expected_zero_commitments": false
+  "expected_zero_commitments": false,
+  "labelling_notes": [
+    "Alice's self-assigned 'finish the login feature' is a commitment only: the commitment/action-item deduplicator removes self-assigned action items that duplicate a commitment.",
+    "'Waiting on design assets' is a casual standup blocker (extraction_user_standup.txt rule 2)."
+  ]
 }

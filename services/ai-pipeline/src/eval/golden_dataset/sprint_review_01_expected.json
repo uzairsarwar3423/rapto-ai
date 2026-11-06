@@ -1,16 +1,19 @@
 {
   "meeting_id": "sprint_review_01",
-  "description": "Sprint review",
+  "meeting_type": "general",
+  "meeting_title": "Sprint Review",
+  "description": "Sprint review — one conditional commitment and one reported (third-person) promise that must NOT become a commitment.",
   "expected_commitments": [
-    {
-      "owner_name_contains": "Alice",
-      "confidence_min": 0.4,
-      "text_contains": "integrate it by Friday"
-    }
+    {"owner_name_contains": "Alice", "confidence_min": 0.4, "text_contains": "integrate"}
   ],
   "expected_action_items": [],
   "expected_decisions": [],
   "expected_blockers": [],
   "expected_commitment_count": 1,
-  "expected_zero_commitments": false
+  "expected_zero_commitments": false,
+  "labelled_extractors": ["commitments", "action_items", "decisions", "blockers"],
+  "labelling_notes": [
+    "'Ahmed said he'll do X' is reported speech by Bob — not Ahmed's commitment and not Bob's.",
+    "Risks are unlabelled: 'If the API is ready' is a condition, but a model may reasonably flag API readiness as a risk."
+  ]
 }
