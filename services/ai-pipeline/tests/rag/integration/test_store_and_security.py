@@ -41,12 +41,16 @@ async def test_migration_up_down_up_on_scratch_db(rag_dsns):
     try:
         c = await asyncpg.connect(dsn)
         await c.execute("CREATE TABLE public.teams (id text PRIMARY KEY)")
-        assert await migrate.migrate_up(dsn) == ["001_pgvector_embeddings_table", "002_embedding_jobs"]
+        await c.execute('CREATE TABLE public.meetings (id text PRIMARY KEY, "teamId" text, title text, "scheduledAt" timestamptz, status text)')
+        await c.execute('CREATE TABLE public.users (id text PRIMARY KEY, "teamId" text, name text, "deletedAt" timestamptz)')
+        assert await migrate.migrate_up(dsn) == ["001_pgvector_embeddings_table", "002_embedding_jobs",
+                                                 "003_embeddings_fulltext_and_source_context"]
         assert await migrate.migrate_up(dsn) == []                                   # idempotent
-        assert await migrate.migrate_down(dsn, steps=2) == ["002_embedding_jobs", "001_pgvector_embeddings_table"]
+        assert await migrate.migrate_down(dsn, steps=3) == ["003_embeddings_fulltext_and_source_context",
+                                                            "002_embedding_jobs", "001_pgvector_embeddings_table"]
         assert await c.fetchval("SELECT to_regclass('rag.embeddings')") is None
         assert await c.fetchval("SELECT count(*) FROM pg_extension WHERE extname='vector'") == 1   # extension kept
-        assert len(await migrate.migrate_up(dsn)) == 2
+        assert len(await migrate.migrate_up(dsn)) == 3
         flags = await c.fetchrow("SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid='rag.embeddings'::regclass")
         assert flags["relrowsecurity"] and flags["relforcerowsecurity"]
         indexes = {r[0] for r in await c.fetch("SELECT indexname FROM pg_indexes WHERE schemaname='rag' AND tablename='embeddings'")}

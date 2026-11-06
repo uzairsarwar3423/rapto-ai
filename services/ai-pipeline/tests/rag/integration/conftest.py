@@ -48,6 +48,13 @@ async def _create(name: str) -> None:
     try:
         await conn.execute("CREATE TABLE public.teams (id text PRIMARY KEY)")      # stand-in for Prisma's table
         await conn.executemany("INSERT INTO public.teams VALUES ($1)", [(t,) for t in TEAMS])
+        await conn.execute(
+            'CREATE TABLE public.meetings (id text PRIMARY KEY, "teamId" text NOT NULL, title text NOT NULL, '
+            '"scheduledAt" timestamptz NOT NULL, status text NOT NULL DEFAULT \'DONE\')'
+        )
+        await conn.execute(
+            'CREATE TABLE public.users (id text PRIMARY KEY, "teamId" text, name text NOT NULL, "deletedAt" timestamptz)'
+        )
     finally:
         await conn.close()
 

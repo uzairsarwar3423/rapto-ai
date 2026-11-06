@@ -12,12 +12,13 @@ INVARIANTS (asserted in tests):
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import time
 from collections import OrderedDict, defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 import numpy as np
 import structlog
@@ -364,48 +365,102 @@ async def embed_chunks(
     return result
 
 
-# ─── Query embedding (Day 57 contract) ────────────────────────────────────────
+# ─── Query embedding ──────────────────────────────────────────────────────────
 
 
-class _LRU:
-    def __init__(self, size: int) -> None:
-        self._size = size
-        self._data: OrderedDict[str, list[float]] = OrderedDict()
+@dataclass
+class QueryEmbedding:
+    vector: list[float]
+    cost: CostRecord          # zero on a cache hit
+    cache_hit: bool
+
+
+class _TTLCache:
+    def __init__(self, size: int, ttl_s: float, clock: Callable[[], float]) -> None:
+        self._size, self._ttl, self._clock = size, ttl_s, clock
+        self._data: OrderedDict[str, tuple[float, list[float]]] = OrderedDict()
 
     def get(self, key: str) -> list[float] | None:
-        if key in self._data:
-            self._data.move_to_end(key)
-            return self._data[key]
-        return None
+        hit = self._data.get(key)
+        if hit is None:
+            return None
+        expires, value = hit
+        if self._clock() >= expires:
+            del self._data[key]
+            return None
+        self._data.move_to_end(key)
+        return value
 
     def put(self, key: str, value: list[float]) -> None:
-        if self._size <= 0:
+        if self._size <= 0 or self._ttl <= 0:
             return
-        self._data[key] = value
+        self._data[key] = (self._clock() + self._ttl, value)
         self._data.move_to_end(key)
         while len(self._data) > self._size:
             self._data.popitem(last=False)
 
 
 class QueryEmbedder:
-    """embed_query(text) with an LRU keyed by the content hash (so a model
-    change can never serve a stale vector). One instance per process."""
+    """embed_query with a TTL cache and a singleflight guard.
 
-    def __init__(self, client: EmbeddingClient, settings: RagSettings, bucket: TokenBucket | None = None) -> None:
+    * KEY = sha256(team_id | model | normalised text): team-scoped, so one
+      tenant's query activity can never be inferred from another's cache hits,
+      and a model change can never serve a stale vector.
+    * SINGLEFLIGHT: concurrent identical misses share ONE API call.
+    * Process-local (a stateless cache; a shared Redis cache is a drop-in later).
+    """
+
+    def __init__(
+        self,
+        client: EmbeddingClient,
+        settings: RagSettings,
+        bucket: TokenBucket | None = None,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._client = client
         self._settings = settings
         self._bucket = bucket or TokenBucket(settings.embedding_tpm_budget)
-        self._cache = _LRU(settings.query_embedding_cache_size)
+        self._cache = _TTLCache(settings.query_embedding_cache_size, settings.query_embed_cache_ttl_s, clock)
+        self._inflight: dict[str, asyncio.Future[QueryEmbedding]] = {}
 
-    async def embed_query(self, text: str, *, request_id: str | None = None) -> list[float]:
+    @staticmethod
+    def cache_key(text: str, team_id: str) -> str:
+        digest = hashlib.sha256(f"{team_id}|{compute_content_hash(text, EMBEDDING_MODEL)}".encode("utf-8"))
+        return digest.hexdigest()
+
+    async def embed_query_detailed(
+        self, text: str, *, team_id: str = "", request_id: str | None = None
+    ) -> QueryEmbedding:
         if not normalize_text(text):
             raise RagValidationError("query text must not be blank")
-        key = compute_content_hash(text, EMBEDDING_MODEL)
+        key = self.cache_key(text, team_id)
         cached = self._cache.get(key)
         if cached is not None:
             metrics.inc("query_embedding_cache_hits_total")
-            return cached
-        out = await embed_batch([text.strip()], self._client, bucket=self._bucket,
-                                settings=self._settings, request_id=request_id)
-        self._cache.put(key, out.vectors[0])
-        return out.vectors[0]
+            return QueryEmbedding(cached, _zero_cost(), True)
+
+        pending = self._inflight.get(key)
+        if pending is not None:                                  # someone is already fetching it
+            metrics.inc("query_embedding_singleflight_joins_total")
+            shared = await asyncio.shield(pending)
+            return QueryEmbedding(shared.vector, _zero_cost(), True)
+
+        future: asyncio.Future[QueryEmbedding] = asyncio.get_running_loop().create_future()
+        self._inflight[key] = future
+        try:
+            out = await embed_batch([text.strip()], self._client, bucket=self._bucket,
+                                    settings=self._settings, request_id=request_id)
+            result = QueryEmbedding(out.vectors[0], out.cost, False)
+            self._cache.put(key, result.vector)
+            future.set_result(result)
+            return result
+        except BaseException as exc:
+            future.set_exception(exc)
+            future.exception()                                   # mark retrieved: no "never retrieved" warning
+            raise
+        finally:
+            self._inflight.pop(key, None)
+
+    async def embed_query(self, text: str, *, team_id: str = "", request_id: str | None = None) -> list[float]:
+        return (await self.embed_query_detailed(text, team_id=team_id, request_id=request_id)).vector

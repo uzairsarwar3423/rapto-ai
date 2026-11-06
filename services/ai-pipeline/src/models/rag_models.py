@@ -251,23 +251,18 @@ class BackfillAccepted(BaseModel):
 _ScalarMeta = str | int | float | bool
 
 
-class VectorSearchQuery(BaseModel):
+class SearchFilterFields(BaseModel):
+    """Filters shared by BOTH retrieval legs. One definition → one SQL builder →
+    the vector and lexical legs can never filter differently (tenant-safety property)."""
+
     model_config = ConfigDict(extra="forbid")
 
-    team_id: IdStr
-    query_embedding: list[float]
-    top_k: int = Field(default=20, ge=1, le=100)
     source_types: Optional[list[EmbeddingSource]] = None
     source_ids_filter: Optional[list[IdStr]] = Field(default=None, max_length=500)
     meeting_id: Optional[IdStr] = None
+    meeting_ids: Optional[list[IdStr]] = Field(default=None, max_length=500)
     date_range: Optional[tuple[date, date]] = None
     metadata_filter: Optional[dict[str, _ScalarMeta]] = None
-    min_similarity: float = Field(default=0.0, ge=0.0, le=1.0)
-
-    @field_validator("query_embedding")
-    @classmethod
-    def _check_embedding(cls, v: list[float]) -> list[float]:
-        return validate_vector(v, what="query_embedding")
 
     @field_validator("metadata_filter")
     @classmethod
@@ -283,7 +278,7 @@ class VectorSearchQuery(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _check_range(self) -> "VectorSearchQuery":
+    def _check_range(self) -> "SearchFilterFields":
         if self.date_range and self.date_range[0] > self.date_range[1]:
             raise ValueError("date_range start must be <= end")
         return self
@@ -291,9 +286,39 @@ class VectorSearchQuery(BaseModel):
     @property
     def has_filters(self) -> bool:
         return any((
-            self.source_types, self.source_ids_filter, self.meeting_id,
+            self.source_types, self.source_ids_filter, self.meeting_id, self.meeting_ids is not None,
             self.date_range, self.metadata_filter,
         ))
+
+
+class VectorSearchQuery(SearchFilterFields):
+    team_id: IdStr
+    query_embedding: list[float]
+    top_k: int = Field(default=20, ge=1, le=100)
+    min_similarity: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    @field_validator("query_embedding")
+    @classmethod
+    def _check_embedding(cls, v: list[float]) -> list[float]:
+        return validate_vector(v, what="query_embedding")
+
+
+_TOKEN = r"^[\w]{1,64}$"
+
+
+class LexicalSearchQuery(SearchFilterFields):
+    """Full-text leg. `tokens` are ALREADY sanitised (letters/digits/underscore only)."""
+
+    team_id: IdStr
+    query_embedding: list[float]          # so rows can return their exact cosine similarity
+    tokens: list[Annotated[str, StringConstraints(pattern=_TOKEN)]] = Field(..., min_length=1, max_length=64)
+    top_k: int = Field(default=30, ge=1, le=100)
+    rank_normalization: int = Field(default=1, ge=0, le=63)
+
+    @field_validator("query_embedding")
+    @classmethod
+    def _check_embedding(cls, v: list[float]) -> list[float]:
+        return validate_vector(v, what="query_embedding")
 
 
 class VectorSearchResult(BaseModel):
@@ -314,3 +339,173 @@ class SearchStats(BaseModel):
     returned_k: int
     underfilled: bool = False
     latency_ms: float = 0.0
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Day 57 — retrieval, re-ranking and citations
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from src.config.rag_config import RerankerStrategy, RetrievalMode  # noqa: E402  (re-exported)
+
+__all_day57__ = ("RerankerStrategy", "RetrievalMode")
+
+
+class AccessScope(BaseModel):
+    """Q1 hook (within-team access control). Default = whole team (today's behaviour).
+
+    kind="meetings" restricts retrieval to a pre-computed set of meeting ids the
+    caller may see (SQL-layer filtering; post-filtering in the app is rejected
+    because it under-fills results and is weaker)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["team", "meetings"] = "team"
+    meeting_ids: Optional[list[IdStr]] = Field(default=None, max_length=5_000)
+
+    @model_validator(mode="after")
+    def _check(self) -> "AccessScope":
+        if self.kind == "meetings" and self.meeting_ids is None:
+            raise ValueError("access_scope.kind='meetings' requires meeting_ids")
+        return self
+
+
+class RetrievalFilters(BaseModel):
+    """What the Day 58 intent router resolves from the question."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_types: Optional[list[EmbeddingSource]] = Field(default=None, max_length=len(EmbeddingSource))
+    date_range: Optional[tuple[date, date]] = None          # inclusive, in the TEAM's timezone
+    meeting_ids: Optional[list[IdStr]] = Field(default=None, max_length=500)
+    metadata_filter: Optional[dict[str, _ScalarMeta]] = None
+    access_scope: AccessScope = Field(default_factory=AccessScope)
+
+    @property
+    def effective_meeting_ids(self) -> Optional[list[str]]:
+        """Requested ids ∩ access scope. None = unrestricted; [] = nothing is allowed."""
+        requested = None if self.meeting_ids is None else set(self.meeting_ids)
+        allowed = set(self.access_scope.meeting_ids or []) if self.access_scope.kind == "meetings" else None
+        if requested is None and allowed is None:
+            return None
+        if requested is None:
+            return sorted(allowed or [])
+        if allowed is None:
+            return sorted(requested)
+        return sorted(requested & allowed)
+
+    def shared_fields(self) -> dict[str, Any]:
+        """The ONE conversion both legs use (parity is tested)."""
+        return {
+            "source_types": self.source_types,
+            "date_range": self.date_range,
+            "meeting_ids": self.effective_meeting_ids,
+            "metadata_filter": self.metadata_filter,
+        }
+
+
+class ScoredChunk(BaseModel):
+    """A candidate. SEPARATE score fields on purpose: after fusion no single score
+    means 'similarity'. Threshold on rerank_grade or cosine_similarity, NEVER fused_score."""
+
+    chunk: VectorSearchResult
+    cosine_similarity: float = Field(..., ge=0.0, le=1.0)    # raw, from the vector space
+    vector_rank: Optional[int] = None
+    lexical_rank: Optional[int] = None
+    fused_score: float = 0.0
+    retrieval_legs: Literal["vector", "lexical", "both"] = "vector"
+    rerank_grade: Optional[int] = Field(default=None, ge=0, le=3)
+    final_rank: Optional[int] = None
+
+    @property
+    def key(self) -> tuple[str, str, int]:
+        return (self.chunk.source_type.value, self.chunk.source_id, self.chunk.chunk_index)
+
+
+class SourceContext(BaseModel):
+    meetings: dict[str, "MeetingInfo"] = Field(default_factory=dict)
+    users: dict[str, str] = Field(default_factory=dict)
+    unresolved_meetings: set[str] = Field(default_factory=set)
+    stale: bool = False
+
+
+class MeetingInfo(BaseModel):
+    title: Optional[str] = None
+    meeting_date: Optional[date] = None          # a DATE in the team's timezone, never a naive datetime
+    status: Optional[str] = None
+
+
+SourceContext.model_rebuild()
+
+
+class RerankedItem(BaseModel):
+    index: int
+    relevance: int       # clamped to 0-3 during validation; no schema bounds (OpenAI strict mode)
+
+
+class RerankModelOutput(BaseModel):
+    """The structured output the grader must return (indices and grades only)."""
+
+    ranking: list[RerankedItem] = Field(default_factory=list)
+
+
+class RerankCandidate(BaseModel):
+    index: int
+    header: str
+    text: str
+
+
+class RerankRequest(BaseModel):
+    query: str
+    candidates: list[RerankCandidate]
+    now: datetime
+    timezone: str
+    top_n: int
+
+
+class RerankResult(BaseModel):
+    ordered_indices: list[int]                       # into the candidate list, best first, post-cut
+    grades: dict[int, int] = Field(default_factory=dict)
+    strategy_used: RerankerStrategy
+    degraded: bool = False
+    degrade_reason: Optional[str] = None
+    skipped_reason: Optional[str] = None             # skipped is NOT degraded (e.g. too few candidates)
+    repaired: bool = False
+    prompt_version: Optional[str] = None
+    prompt_hash: Optional[str] = None
+    cost: CostRecord
+    latency_ms: float = 0.0
+
+
+class Citation(BaseModel):
+    citation_id: int = Field(..., ge=1)               # stable ordinal for [n] markers
+    embedding_id: UUID
+    source_type: EmbeddingSource
+    source_id: str
+    chunk_index: int
+    meeting_id: Optional[str] = None
+    meeting_title: Optional[str] = None
+    meeting_date: Optional[date] = None
+    speaker_name: Optional[str] = None
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
+    commitment_owner_name: Optional[str] = None
+    due_date: Optional[date] = None
+    preview: str = ""                                 # PLAIN TEXT: the UI must escape it
+    relevance_grade: Optional[int] = None
+    stale: bool = False
+
+
+class RetrievalPipelineResult(BaseModel):
+    query_hash: str
+    retrieval_mode: RetrievalMode
+    candidates: list[ScoredChunk] = Field(default_factory=list)      # after fusion
+    reranked: list[ScoredChunk] = Field(default_factory=list)        # final order, <= RERANK_TOP_N
+    citations: list[Citation] = Field(default_factory=list)          # citations[i] <-> reranked[i]
+    stage_timings_ms: dict[str, float] = Field(default_factory=dict)
+    degraded: bool = False
+    degrade_reasons: list[str] = Field(default_factory=list)
+    retrieval_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    no_relevant_context: bool = True
+    reranker_prompt_version: Optional[str] = None
+    embedding_cost: CostRecord
+    reranking_cost: CostRecord

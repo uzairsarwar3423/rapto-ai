@@ -14,6 +14,7 @@ deployments whose Postgres has no pgvector yet.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
@@ -50,6 +51,26 @@ FILTERABLE_METADATA_KEYS: frozenset[str] = frozenset(
 )
 
 IterativeScan = Literal["off", "strict_order", "relaxed_order"]
+
+
+class RetrievalMode(StrEnum):
+    VECTOR_ONLY = "VECTOR_ONLY"
+    LEXICAL_ONLY = "LEXICAL_ONLY"
+    HYBRID_RRF = "HYBRID_RRF"
+
+
+class RerankerStrategy(StrEnum):
+    GPT41_MINI = "GPT41_MINI"
+    SCORE_ONLY = "SCORE_ONLY"          # deterministic: fused order, no model call
+    CROSS_ENCODER = "CROSS_ENCODER"    # reserved (ADR-3), not implemented
+
+
+class RerankPresentOrder(StrEnum):
+    FUSION = "FUSION"
+    SEEDED_SHUFFLE = "SEEDED_SHUFFLE"
+
+# Meeting statuses whose content must not be cited (orphan guard).
+UNCITABLE_MEETING_STATUSES: frozenset[str] = frozenset({"CANCELLED"})
 
 
 # ─── Runtime knobs ────────────────────────────────────────────────────────────
@@ -116,6 +137,40 @@ class RagSettings(BaseSettings):
     rag_chunk_max_tokens: int = Field(default=400, ge=50, le=4_000)
     rag_chunk_overlap_turns: int = Field(default=1, ge=0, le=10)
 
+    # ── Retrieval (Day 57) ────────────────────────────────────────────────────
+    retrieval_mode: RetrievalMode = RetrievalMode.HYBRID_RRF
+    hybrid_leg_top_k: int = Field(default=30, ge=1, le=100)
+    rrf_k: int = Field(default=60, ge=1)
+    rrf_weight_vector: float = Field(default=1.0, gt=0)
+    rrf_weight_lexical: float = Field(default=0.8, gt=0)
+    lexical_max_tokens: int = Field(default=12, ge=1, le=64)
+    lexical_min_token_len: int = Field(default=2, ge=1)
+    # ts_rank_cd normalization bit-mask (0 none, 1 /log(len), 2 /len, 32 rank/(rank+1)).
+    lexical_rank_normalization: int = Field(default=1, ge=0, le=63)
+    max_query_chars: int = Field(default=2_000, ge=10)
+    max_chunks_per_source_in_candidates: int = Field(default=4, ge=1)
+    # Drop vector-only hits below this cosine. Calibrate with the LIVE eval; the default is conservative.
+    noise_floor_similarity: float = Field(default=0.15, ge=0.0, le=1.0)
+    rerank_strategy: RerankerStrategy = RerankerStrategy.GPT41_MINI
+    rerank_chunk_char_budget: int = Field(default=800, ge=100, le=4_000)
+    rerank_timeout_s: float = Field(default=2.5, gt=0)
+    rerank_min_remaining_ms: int = Field(default=800, ge=0)
+    # Skip the model for a small candidate set ONLY when evidence is already strong (found by
+    # both legs, or raw cosine >= this); otherwise a small set would never abstain.
+    rerank_skip_min_cosine: float = Field(default=0.5, ge=0.0, le=1.0)
+    rerank_breaker_failures: int = Field(default=5, ge=1)
+    rerank_breaker_window_s: float = Field(default=60.0, gt=0)
+    rerank_breaker_cooldown_s: float = Field(default=30.0, gt=0)
+    rerank_present_order: RerankPresentOrder = RerankPresentOrder.FUSION
+    rerank_drop_grade_zero: bool = True
+    rerank_max_invalid_fraction: float = Field(default=0.30, ge=0.0, le=1.0)
+    no_context_max_grade: int = Field(default=1, ge=0, le=3)
+    query_embed_cache_ttl_s: int = Field(default=3_600, ge=0)
+    source_context_cache_ttl_s: int = Field(default=300, ge=0)
+    source_context_cache_size: int = Field(default=10_000, ge=0)
+    citation_preview_chars: int = Field(default=150, ge=20, le=1_000)
+    retrieval_deadline_ms: int = Field(default=2_500, ge=100)
+
     # ── Backfill worker ───────────────────────────────────────────────────────
     rag_worker_enabled: bool = False
     rag_worker_poll_seconds: float = Field(default=5.0, gt=0)
@@ -134,6 +189,10 @@ class RagSettings(BaseSettings):
             raise ValueError("RERANK_TOP_N must be <= SIMILARITY_TOP_K")
         if self.rag_pool_min_size > self.rag_pool_max_size:
             raise ValueError("RAG_POOL_MIN_SIZE must be <= RAG_POOL_MAX_SIZE")
+        if self.hybrid_leg_top_k < self.similarity_top_k:
+            raise ValueError("HYBRID_LEG_TOP_K must be >= SIMILARITY_TOP_K (legs over-fetch before fusion)")
+        if self.hnsw_ef_search < self.hybrid_leg_top_k:
+            raise ValueError("HNSW_EF_SEARCH must be >= HYBRID_LEG_TOP_K")
         if self.embedding_max_input_tokens > self.embedding_batch_max_tokens:
             raise ValueError("EMBEDDING_MAX_INPUT_TOKENS must be <= EMBEDDING_BATCH_MAX_TOKENS")
         if self.rag_enabled and self.rag_database_url is None:

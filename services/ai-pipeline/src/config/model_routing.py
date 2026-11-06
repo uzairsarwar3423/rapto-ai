@@ -67,6 +67,7 @@ MODEL_TASK_TEMPERATURE_OVERRIDES: dict[TaskType, float] = {
     TaskType.EXTRACT_RISKS: 0.1,
     TaskType.EXTRACTION: 0.1,
     TaskType.SUMMARY: 0.3,
+    TaskType.RERANK: 0.0,       # deterministic grading
 }
 
 

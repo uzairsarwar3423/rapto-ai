@@ -32,9 +32,10 @@ LARGE = pytest.mark.skipif(not os.getenv("RAG_TEST_LARGE"), reason="set RAG_TEST
 BIG, SMALL = 49_500, 500
 
 
-async def explain(db, team_id: str, sql: str, args: list) -> str:
+async def explain(db, team_id: str, sql: str, args: list, *, analyze: bool = True) -> str:
+    prefix = "EXPLAIN (ANALYZE, BUFFERS) " if analyze else "EXPLAIN "
     async with tenant_tx(db, team_id, readonly=True, search=True, top_k=20) as conn:
-        rows = await conn.fetch("EXPLAIN (ANALYZE, BUFFERS) " + sql, *args)
+        rows = await conn.fetch(prefix + sql, *args)
     return "\n".join(r[0] for r in rows)
 
 
@@ -79,7 +80,8 @@ async def test_hnsw_usage_underfill_and_latency_on_50k_vectors(rag_dsns, large_d
     assert "Index Scan using idx_embeddings_hnsw" in plan and "Seq Scan" not in plan
 
     wrong = sql.replace("ORDER BY embedding <=> $2::vector", "ORDER BY 1 - (embedding <=> $2::vector) DESC")
-    wrong_plan = await explain(large_db, "teamA", wrong, args)
+    # plan only: actually EXECUTING the exact-scan plan exceeds the 2 s statement timeout, which is the point
+    wrong_plan = await explain(large_db, "teamA", wrong, args, analyze=False)
     print("--- negative control: ORDER BY 1 - distance ---\n" + wrong_plan)
     assert "idx_embeddings_hnsw" not in wrong_plan                      # why the raw-operator rule exists
 

@@ -1,0 +1,434 @@
+{
+  "_comment": "40 labeled queries, all asked by teamA at as_of 2026-06-15 (Monday), timezone Asia/Karachi. 'relevant' maps fixture keys to graded relevance (3 = directly answers, 2 = relevant, 1 = tangential); recall counts grade >= 2. 'unanswerable' queries expect NO relevant context. Cross-tenant checks run on EVERY query automatically (no result may belong to teamB); category 'cross_tenant' adds bait. Labels must be human-verified against the corpus; spot-check >= 20% with a second reviewer before trusting a baseline. Temporal queries carry `filters.date_range`: exactly what Day 58's intent router resolves from the phrase against as_of in the team timezone. The retriever does NOT parse dates (plan §2 #3); the re-ranker only uses dates to grade within the filtered set.",
+  "queries": [
+    {
+      "id": "N1",
+      "category": "name_owner",
+      "split": "tune",
+      "text": "What did Ahmed commit to?",
+      "relevant": {
+        "A01.c0": 3,
+        "A09.c0": 3,
+        "A12.c0": 3
+      }
+    },
+    {
+      "id": "N2",
+      "category": "name_owner",
+      "split": "tune",
+      "text": "What is Priya working on?",
+      "relevant": {
+        "A01.c1": 3,
+        "A10.c0": 3,
+        "A08.t0": 2
+      }
+    },
+    {
+      "id": "N3",
+      "category": "name_owner",
+      "split": "holdout",
+      "text": "Which tasks does Omar own?",
+      "relevant": {
+        "A03.c0": 3,
+        "A05.c0": 3,
+        "A09.c1": 3
+      }
+    },
+    {
+      "id": "N4",
+      "category": "name_owner",
+      "split": "tune",
+      "text": "What did Sara agree to build?",
+      "relevant": {
+        "A07.c0": 3,
+        "A02.c0": 2
+      }
+    },
+    {
+      "id": "N5",
+      "category": "name_owner",
+      "split": "tune",
+      "text": "Who is responsible for the end-to-end checkout tests?",
+      "relevant": {
+        "A07.c1": 3,
+        "A07.t2": 2
+      }
+    },
+    {
+      "id": "N6",
+      "category": "name_owner",
+      "split": "holdout",
+      "text": "What did Zara promise to deliver?",
+      "relevant": {
+        "A04.c0": 3,
+        "A04.t1": 2
+      }
+    },
+    {
+      "id": "S1",
+      "category": "semantic",
+      "split": "tune",
+      "text": "Why did we choose the vendor that takes care of sales tax worldwide?",
+      "relevant": {
+        "A06.d0": 3,
+        "A06.t0": 3,
+        "A06.s": 2
+      }
+    },
+    {
+      "id": "S2",
+      "category": "semantic",
+      "split": "tune",
+      "text": "How do we protect against duplicate charges when the payment company resends events?",
+      "relevant": {
+        "A03.t1": 3,
+        "A03.d0": 2,
+        "A03.s": 2
+      }
+    },
+    {
+      "id": "S3",
+      "category": "semantic",
+      "split": "tune",
+      "text": "What happens if our endpoint was offline for a while and we missed subscription changes?",
+      "relevant": {
+        "A03.t2": 3,
+        "A03.d0": 2
+      }
+    },
+    {
+      "id": "S4",
+      "category": "semantic",
+      "split": "holdout",
+      "text": "Which feature was postponed from the first sprint?",
+      "relevant": {
+        "A01.d0": 3,
+        "A01.t0": 2,
+        "A01.s": 2
+      }
+    },
+    {
+      "id": "S5",
+      "category": "semantic",
+      "split": "tune",
+      "text": "What could overload the API when the launch happens?",
+      "relevant": {
+        "A05.t2": 3,
+        "A12.t1": 2
+      }
+    },
+    {
+      "id": "S6",
+      "category": "semantic",
+      "split": "holdout",
+      "text": "Why were testers unable to work early on?",
+      "relevant": {
+        "A02.t0": 3,
+        "A05.t0": 2
+      }
+    },
+    {
+      "id": "T1",
+      "category": "temporal",
+      "split": "tune",
+      "text": "What was said in standup last Thursday?",
+      "relevant": {
+        "A12.t0": 3,
+        "A12.t1": 3,
+        "A12.c0": 2
+      },
+      "filters": {
+        "date_range": [
+          "2026-06-11",
+          "2026-06-11"
+        ]
+      }
+    },
+    {
+      "id": "T2",
+      "category": "temporal",
+      "split": "tune",
+      "text": "What did we decide in the retro last Tuesday?",
+      "relevant": {
+        "A11.d0": 3,
+        "A11.t1": 3
+      },
+      "filters": {
+        "date_range": [
+          "2026-06-09",
+          "2026-06-09"
+        ]
+      }
+    },
+    {
+      "id": "T3",
+      "category": "temporal",
+      "split": "holdout",
+      "text": "What was decided in the security review on June 4th?",
+      "relevant": {
+        "A10.d0": 3,
+        "A10.t0": 3
+      },
+      "filters": {
+        "date_range": [
+          "2026-06-04",
+          "2026-06-04"
+        ]
+      }
+    },
+    {
+      "id": "T4",
+      "category": "temporal",
+      "split": "tune",
+      "text": "What did the team discuss on May 21?",
+      "relevant": {
+        "A06.t0": 3,
+        "A06.t1": 3,
+        "A06.t2": 3,
+        "A06.d0": 2
+      },
+      "filters": {
+        "date_range": [
+          "2026-05-21",
+          "2026-05-21"
+        ]
+      }
+    },
+    {
+      "id": "T5",
+      "category": "temporal",
+      "split": "holdout",
+      "text": "What happened in Sprint 22 planning?",
+      "relevant": {
+        "A01.s": 3,
+        "A01.t0": 3,
+        "A01.d0": 2,
+        "A01.t1": 2
+      }
+    },
+    {
+      "id": "C1",
+      "category": "commitment",
+      "split": "tune",
+      "text": "What is due on June 12?",
+      "relevant": {
+        "A12.c0": 3,
+        "A11.c0": 3
+      }
+    },
+    {
+      "id": "C2",
+      "category": "commitment",
+      "split": "tune",
+      "text": "Who owns the webhook secret rotation documentation and when is it due?",
+      "relevant": {
+        "A10.c0": 3,
+        "A10.t1": 2
+      }
+    },
+    {
+      "id": "C3",
+      "category": "commitment",
+      "split": "holdout",
+      "text": "What did Ahmed promise about the Acme VAT problem?",
+      "relevant": {
+        "A09.c0": 3,
+        "A09.t1": 3
+      }
+    },
+    {
+      "id": "C4",
+      "category": "commitment",
+      "split": "tune",
+      "text": "Which commitments were made for the cancellation flow?",
+      "relevant": {
+        "A07.c0": 3,
+        "A07.d0": 2
+      }
+    },
+    {
+      "id": "C5",
+      "category": "commitment",
+      "split": "holdout",
+      "text": "Is there an owner for alerting on invoice errors?",
+      "relevant": {
+        "A09.c1": 3,
+        "A09.t2": 2
+      }
+    },
+    {
+      "id": "D1",
+      "category": "decision",
+      "split": "tune",
+      "text": "Which payment provider did we decide on?",
+      "relevant": {
+        "A06.d0": 3,
+        "A06.s": 2
+      }
+    },
+    {
+      "id": "D2",
+      "category": "decision",
+      "split": "holdout",
+      "text": "What was decided about copy changes before code freeze?",
+      "relevant": {
+        "A11.d0": 3,
+        "A11.t1": 2
+      }
+    },
+    {
+      "id": "D3",
+      "category": "decision",
+      "split": "tune",
+      "text": "Do we reject old webhook events?",
+      "relevant": {
+        "A10.d0": 3,
+        "A10.t0": 2
+      }
+    },
+    {
+      "id": "D4",
+      "category": "decision",
+      "split": "holdout",
+      "text": "How do we keep subscription state in sync?",
+      "relevant": {
+        "A03.d0": 3,
+        "A03.t0": 2,
+        "A03.s": 2
+      }
+    },
+    {
+      "id": "M1",
+      "category": "multi_source",
+      "split": "tune",
+      "text": "Everything about the webhook handler",
+      "relevant": {
+        "A04.t0": 2,
+        "A08.t0": 2,
+        "A10.t0": 3,
+        "A03.t1": 2,
+        "A05.t2": 2
+      }
+    },
+    {
+      "id": "M2",
+      "category": "multi_source",
+      "split": "tune",
+      "text": "What blockers did the team report across all meetings?",
+      "relevant": {
+        "A02.t0": 3,
+        "A08.t0": 3,
+        "A05.t0": 2
+      }
+    },
+    {
+      "id": "M3",
+      "category": "multi_source",
+      "split": "holdout",
+      "text": "What risks were raised about the launch?",
+      "relevant": {
+        "A05.t2": 3,
+        "A12.t1": 3,
+        "A03.t2": 2,
+        "A08.t0": 2
+      }
+    },
+    {
+      "id": "M4",
+      "category": "multi_source",
+      "split": "tune",
+      "text": "Summarize everything about staging access",
+      "relevant": {
+        "A02.t0": 3,
+        "A05.t0": 3,
+        "A05.d0": 3
+      }
+    },
+    {
+      "id": "R1",
+      "category": "code_switch",
+      "split": "tune",
+      "text": "webhook handler ka pehla version kab tak ready hoga?",
+      "relevant": {
+        "A04.t0": 3
+      }
+    },
+    {
+      "id": "R2",
+      "category": "code_switch",
+      "split": "holdout",
+      "text": "reconciliation job ke baare mein kya risk hai?",
+      "relevant": {
+        "A12.t1": 3,
+        "A03.t2": 2
+      }
+    },
+    {
+      "id": "R3",
+      "category": "code_switch",
+      "split": "tune",
+      "text": "Ahmed ne kya commit kiya hai?",
+      "relevant": {
+        "A01.c0": 3,
+        "A09.c0": 3,
+        "A12.c0": 3
+      }
+    },
+    {
+      "id": "U1",
+      "category": "unanswerable",
+      "split": "tune",
+      "text": "What is the company's holiday policy?",
+      "relevant": {},
+      "unanswerable": true
+    },
+    {
+      "id": "U2",
+      "category": "unanswerable",
+      "split": "tune",
+      "text": "What was the revenue for last quarter?",
+      "relevant": {},
+      "unanswerable": true
+    },
+    {
+      "id": "U3",
+      "category": "unanswerable",
+      "split": "tune",
+      "text": "Who is the CEO of Acme?",
+      "relevant": {},
+      "unanswerable": true
+    },
+    {
+      "id": "U4",
+      "category": "unanswerable",
+      "split": "holdout",
+      "text": "What did we decide about the mobile app redesign?",
+      "relevant": {},
+      "unanswerable": true
+    },
+    {
+      "id": "X1",
+      "category": "cross_tenant",
+      "split": "tune",
+      "text": "What is Project Phoenix?",
+      "relevant": {},
+      "unanswerable": true
+    },
+    {
+      "id": "X2",
+      "category": "cross_tenant",
+      "split": "tune",
+      "text": "What was the conversion lift of the annual plan discount test?",
+      "relevant": {},
+      "unanswerable": true
+    },
+    {
+      "id": "X3",
+      "category": "cross_tenant",
+      "split": "holdout",
+      "text": "What did Ahmed Malik commit about the referral program?",
+      "relevant": {},
+      "unanswerable": true
+    }
+  ]
+}

@@ -63,6 +63,7 @@ async def tenant_tx(
     readonly: bool = False,
     search: bool = False,
     top_k: int | None = None,
+    lexical: bool = False,
 ) -> AsyncIterator[asyncpg.Connection]:
     """Transaction with the tenant (and optional ANN search settings) applied."""
     check_team_id(team_id)
@@ -74,6 +75,11 @@ async def tenant_tx(
                 "       set_config('search_path', $2, true)",
                 team_id, db.search_path,
             )
+            if lexical:
+                # Full-text leg: statement timeout only. It must NOT get the HNSW planner steering
+                # (enable_bitmapscan=off) — a GIN index can only be used through a bitmap scan.
+                await conn.execute("SELECT set_config('statement_timeout', $1, true)",
+                                   str(cfg.search_statement_timeout_ms))
             if search:
                 ef = max(cfg.hnsw_ef_search, top_k or 0)      # ef_search caps the result count
                 await conn.execute(
@@ -113,6 +119,7 @@ async def run_tenant_tx(
     readonly: bool = False,
     search: bool = False,
     top_k: int | None = None,
+    lexical: bool = False,
 ) -> T:
     """Run `fn(conn)` in a tenant transaction, retrying transient DB errors.
 
@@ -124,7 +131,8 @@ async def run_tenant_tx(
     last: BaseException | None = None
     for attempt in range(1, attempts + 1):
         try:
-            async with tenant_tx(db, team_id, readonly=readonly, search=search, top_k=top_k) as conn:
+            async with tenant_tx(db, team_id, readonly=readonly, search=search, top_k=top_k,
+                                 lexical=lexical) as conn:
                 return await fn(conn)
         except _TRANSIENT as exc:
             last = exc

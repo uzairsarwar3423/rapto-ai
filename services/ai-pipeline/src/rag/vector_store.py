@@ -26,12 +26,14 @@ from src.config.rag_config import EMBEDDING_MODEL
 from src.models.rag_models import (
     EmbeddedChunk,
     EmbeddingSource,
+    LexicalSearchQuery,
     SearchStats,
     VectorSearchQuery,
     VectorSearchResult,
 )
 from src.rag.db import RagDatabase
 from src.rag.metrics import metrics
+from src.rag.query_processing import to_tsquery_or
 from src.rag.tenant_context import run_tenant_tx
 
 # ─── Fixed SQL fragments ──────────────────────────────────────────────────────
@@ -289,6 +291,9 @@ def build_filter_sql(query: VectorSearchQuery, model_name: str, first_param: int
         containment["meeting_id"] = query.meeting_id
     if containment:
         add("metadata @> {n}::jsonb", containment)
+    if getattr(query, "meeting_ids", None) is not None:
+        # transcript chunks AND derived rows (commitments, decisions…) carry metadata.meeting_id
+        add("(metadata->>'meeting_id') = ANY({n}::text[])", list(query.meeting_ids))
     if query.date_range:
         start, end = query.date_range
         add("source_date >= {n}::date", start)
@@ -368,3 +373,58 @@ async def similarity_search(db: RagDatabase, query: VectorSearchQuery) -> list[V
     """Top-k chunks for a query vector — tenant-safe, current model only, ranked
     by descending similarity (the Day 57 contract)."""
     return (await similarity_search_with_stats(db, query)).results
+
+
+# ─── Lexical leg (Day 57) ─────────────────────────────────────────────────────
+
+
+def build_lexical_sql(query: LexicalSearchQuery, model_name: str = EMBEDDING_MODEL) -> tuple[str, list[Any]]:
+    """Full-text leg SQL. Pure, so tests can assert its shape.
+
+    Two steps on purpose: (1) rank matching rows by ts_rank_cd WITHOUT touching their
+    (TOASTed, 6 KB) vectors and keep the top k; (2) join back for only those k rows and
+    compute their exact cosine. A single query would detoast every matching row's vector
+    before sorting. The cosine is informational (thresholds need it); it never orders results.
+
+    The tsquery string is a BOUND parameter built from sanitised tokens only.
+    """
+    args: list[Any] = [query.team_id, _vec(query.query_embedding), model_name, to_tsquery_or(query.tokens)]
+    fragments, filter_args = build_filter_sql(query, model_name, first_param=5)
+    args += filter_args
+    args += [query.rank_normalization, query.top_k]
+    norm_param, limit_param = len(args) - 1, len(args)
+    where = " AND ".join(["team_id = $1", "model_name = $3", "chunk_tsv @@ to_tsquery('simple', $4)", *fragments])
+    sql = (
+        f"WITH top AS MATERIALIZED ("
+        f"SELECT id, ts_rank_cd(chunk_tsv, to_tsquery('simple', $4), ${norm_param}::int) AS rnk, "
+        f"source_id, chunk_index FROM rag.embeddings WHERE {where} "
+        f"ORDER BY rnk DESC, source_id, chunk_index LIMIT ${limit_param}) "
+        f"SELECT e.id, e.chunk_text, e.source_type, e.source_id, e.chunk_index, e.metadata, e.source_date, "
+        f"e.model_name, 1 - (e.embedding <=> $2::vector) AS cosine "
+        f"FROM top t JOIN rag.embeddings e ON e.id = t.id AND e.team_id = $1 "
+        f"ORDER BY t.rnk DESC, t.source_id, t.chunk_index"
+    )
+    return sql, args
+
+
+async def lexical_search(db: RagDatabase, query: LexicalSearchQuery) -> list[VectorSearchResult]:
+    """Full-text candidates for one tenant, best first. Same tenant_tx / RLS / filters as the vector leg."""
+    started = time.monotonic()
+    sql, args = build_lexical_sql(query)
+
+    async def _fn(conn: asyncpg.Connection) -> list[asyncpg.Record]:
+        return await conn.fetch(sql, *args)
+
+    rows = await run_tenant_tx(db, query.team_id, _fn, readonly=True, lexical=True)
+    results = [
+        VectorSearchResult(
+            id=row["id"], chunk_text=row["chunk_text"], source_type=EmbeddingSource(row["source_type"]),
+            source_id=row["source_id"], chunk_index=row["chunk_index"], metadata=dict(row["metadata"]),
+            source_date=row["source_date"], model_name=row["model_name"],
+            similarity_score=min(1.0, max(0.0, float(row["cosine"]))), rank=position,
+        )
+        for position, row in enumerate(rows, start=1)
+    ]
+    metrics.observe("lexical_search_latency_seconds", time.monotonic() - started)
+    metrics.inc("lexical_search_requests_total")
+    return results

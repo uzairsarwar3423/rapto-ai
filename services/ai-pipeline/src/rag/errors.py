@@ -74,3 +74,14 @@ class TenantIsolationError(RagError):
 class RagNotFoundError(RagError):
     error_code = "RAG_NOT_FOUND"
     http_status = 404
+
+
+class RetrievalTimeoutError(RagError):
+    """A MANDATORY retrieval stage (embed / vector leg) ran out of its deadline."""
+
+    error_code = "RETRIEVAL_TIMEOUT"
+    http_status = 504
+
+    def __init__(self, message: str, *, stage: str = "unknown") -> None:
+        super().__init__(message, stage=stage)
+        self.stage = stage

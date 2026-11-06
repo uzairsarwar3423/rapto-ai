@@ -1,0 +1,128 @@
+{
+  "_comment": "Synthetic two-tenant corpus for the retrieval eval. Every item has a stable fixture key (<meeting>.t<i> transcript chunk, .c<i> commitment, .d<i> decision, .s summary). Queries reference KEYS, never database ids. Team B deliberately overlaps team A (billing, Stripe, webhooks, a different 'Ahmed') as isolation bait.",
+  "as_of": "2026-06-15T09:00:00Z",
+  "timezone": "Asia/Karachi",
+  "users": [
+    {"id": "uAhmed", "team": "teamA", "name": "Ahmed Hassan"}, {"id": "uSara", "team": "teamA", "name": "Sara Khan"},
+    {"id": "uAli", "team": "teamA", "name": "Ali Raza"}, {"id": "uPriya", "team": "teamA", "name": "Priya Nair"},
+    {"id": "uOmar", "team": "teamA", "name": "Omar Siddiqui"}, {"id": "uMaya", "team": "teamA", "name": "Maya Chen"},
+    {"id": "uZara", "team": "teamA", "name": "Zara Iqbal"},
+    {"id": "uAhmedM", "team": "teamB", "name": "Ahmed Malik"}, {"id": "uLena", "team": "teamB", "name": "Lena Fischer"}
+  ],
+  "meetings": [
+    {"key": "A01", "team": "teamA", "date": "2026-05-05", "title": "Sprint 22 Planning",
+     "chunks": [
+       ["Maya Chen", "Sprint 22 goal is the self-serve billing page. Scope is plan selection, checkout and the invoice list. Invoice PDF export is out of scope this sprint."],
+       ["Ahmed Hassan", "I'll build the plan selection API and have it merged by Thursday. Sara Khan owns the checkout UI."],
+       ["Priya Nair", "Paddle sandbox keys are still missing. I will request them from the vendor today."]],
+     "commitments": [{"owner": "uAhmed", "text": "Build the plan selection API and merge it", "due": "2026-05-07"},
+                     {"owner": "uPriya", "text": "Request the Paddle sandbox keys from the vendor", "due": "2026-05-05"}],
+     "decisions": ["Invoice PDF export is moved out of sprint 22 scope."],
+     "summary": "Sprint 22 planning: the goal is the self-serve billing page with plan selection, checkout and the invoice list. PDF export was deferred."},
+
+    {"key": "A02", "team": "teamA", "date": "2026-05-07", "title": "Daily Standup",
+     "chunks": [
+       ["Ali Raza", "Yesterday I wrote the regression checklist. Today I test checkout on staging. Blocked: staging database write access is still missing, I asked IT twice."],
+       ["Sara Khan", "Checkout form validation is done. Today I connect the form to the plan selection API once Ahmed merges it."]],
+     "commitments": [{"owner": "uSara", "text": "Connect the checkout form to the plan selection API", "due": "2026-05-08"}],
+     "decisions": []},
+
+    {"key": "A03", "team": "teamA", "date": "2026-05-12", "title": "Billing Architecture Review",
+     "chunks": [
+       ["Ahmed Hassan", "We evaluated storing subscription state locally versus reading it from the provider on every request. Local state with webhook sync is faster but needs idempotent webhook handling."],
+       ["Omar Siddiqui", "My concern is webhook retries causing duplicate charges. We need an idempotency key per event and a dead letter queue."],
+       ["Priya Nair", "Agreed. If the webhook endpoint is down for an hour we could miss plan changes, so we need a reconciliation job."]],
+     "commitments": [{"owner": "uOmar", "text": "Add idempotency keys and a dead letter queue for billing webhooks", "due": "2026-05-19"}],
+     "decisions": ["Subscription state is stored locally and kept in sync through idempotent webhook handlers plus a nightly reconciliation job."],
+     "summary": "Billing architecture review: subscription state is kept locally and synced by idempotent webhooks with a nightly reconciliation job; duplicate charges are prevented with idempotency keys."},
+
+    {"key": "A04", "team": "teamA", "date": "2026-05-14", "title": "Daily Standup",
+     "chunks": [
+       ["Ahmed Hassan", "Plan selection API is merged. Now working on the webhook handler. Kal tak webhook handler ka pehla version ready ho jayega."],
+       ["Zara Iqbal", "I will deliver the final pricing page design to Sara by Friday. The annual toggle label still needs copy review."]],
+     "commitments": [{"owner": "uZara", "text": "Deliver the final pricing page design to Sara", "due": "2026-05-15"}],
+     "decisions": []},
+
+    {"key": "A05", "team": "teamA", "date": "2026-05-19", "title": "Sprint 22 Retro",
+     "chunks": [
+       ["Maya Chen", "What went well: the plan selection flow shipped on time. What slowed us down: the staging database access took eleven days."],
+       ["Ali Raza", "I suggest we automate staging access requests so new joiners and testers are not blocked. Everyone agreed."],
+       ["Omar Siddiqui", "One risk: if we skip load testing for the webhook handler, a retry storm could take down the API during launch."]],
+     "commitments": [{"owner": "uOmar", "text": "Write the load test plan for the webhook handler", "due": "2026-05-26"}],
+     "decisions": ["Staging access requests will be automated and the team will track the lead time as a sprint metric."]},
+
+    {"key": "A06", "team": "teamA", "date": "2026-05-21", "title": "Vendor Evaluation: Paddle vs Stripe",
+     "chunks": [
+       ["Maya Chen", "Paddle acts as merchant of record and handles VAT globally, which saves us finance work. Stripe gives more control but we would own tax compliance."],
+       ["Priya Nair", "I still prefer Stripe's API, it is more pleasant to work with. But Paddle's tax handling is a big win for a small team."],
+       ["Ahmed Hassan", "Paddle webhooks are signed with a shared secret and support retries, which fits our idempotent design."]],
+     "commitments": [],
+     "decisions": ["We are going with Paddle as the billing provider because it handles VAT as merchant of record."],
+     "summary": "Vendor evaluation: the team chose Paddle over Stripe for billing because Paddle is the merchant of record and handles VAT worldwide. Priya preferred Stripe's API."},
+
+    {"key": "A07", "team": "teamA", "date": "2026-05-26", "title": "Sprint 23 Planning",
+     "chunks": [
+       ["Maya Chen", "Sprint 23 goal: launch-ready checkout with Paddle. We also add the customer portal link and the cancellation flow."],
+       ["Sara Khan", "I'll build the cancellation flow screens. I need the final copy from Zara before Wednesday."],
+       ["Ali Raza", "I'll set up the end-to-end checkout test suite and run it nightly in staging."]],
+     "commitments": [{"owner": "uSara", "text": "Build the cancellation flow screens", "due": "2026-05-29"},
+                     {"owner": "uAli", "text": "Set up the end-to-end checkout test suite", "due": "2026-06-02"}],
+     "decisions": ["Sprint 23 scope includes the customer portal link and the cancellation flow."]},
+
+    {"key": "A08", "team": "teamA", "date": "2026-05-28", "title": "Daily Standup",
+     "chunks": [
+       ["Priya Nair", "Webhook signature verification is implemented. I am waiting for the Paddle sandbox to support proration, otherwise we cannot test plan upgrades."],
+       ["Omar Siddiqui", "Load test plan is drafted. The staging cluster is too small for a realistic test so I asked for a temporary upgrade."]],
+     "commitments": [], "decisions": []},
+
+    {"key": "A09", "team": "teamA", "date": "2026-06-02", "title": "Customer Escalation Review (Acme)",
+     "chunks": [
+       ["Maya Chen", "Acme reported that invoices show the wrong VAT number. This is a high priority escalation, they renew in two weeks."],
+       ["Ahmed Hassan", "The VAT number comes from the customer profile, not from Paddle. I will patch the invoice template and add a validation step."],
+       ["Omar Siddiqui", "We should alert on invoice generation errors. We only found this because the customer wrote in."]],
+     "commitments": [{"owner": "uAhmed", "text": "Patch the invoice template to use the correct VAT number and add validation", "due": "2026-06-04"},
+                     {"owner": "uOmar", "text": "Add alerting on invoice generation errors", "due": "2026-06-09"}],
+     "decisions": ["The Acme VAT number fix ships as a hotfix outside the sprint."]},
+
+    {"key": "A10", "team": "teamA", "date": "2026-06-04", "title": "Security Review: Webhooks",
+     "chunks": [
+       ["Omar Siddiqui", "The webhook endpoint must verify the signature before parsing the body, and reject events older than five minutes to prevent replay."],
+       ["Priya Nair", "We also need to rotate the webhook secret every ninety days. I will document the rotation procedure."]],
+     "commitments": [{"owner": "uPriya", "text": "Document the webhook secret rotation procedure", "due": "2026-06-11"}],
+     "decisions": ["Webhook events older than five minutes are rejected and the secret rotates every ninety days."]},
+
+    {"key": "A11", "team": "teamA", "date": "2026-06-09", "title": "Sprint 23 Retro",
+     "chunks": [
+       ["Maya Chen", "Launch is on track for the twenty fifth. The Acme hotfix went out cleanly and the nightly checkout tests caught two regressions."],
+       ["Sara Khan", "The cancellation flow needed three copy changes late. Next sprint let's freeze copy a week before the code freeze."]],
+     "commitments": [{"owner": "uMaya", "text": "Share the launch checklist with the whole team", "due": "2026-06-12"}],
+     "decisions": ["Copy is frozen one week before the code freeze starting next sprint."]},
+
+    {"key": "A12", "team": "teamA", "date": "2026-06-11", "title": "Daily Standup",
+     "chunks": [
+       ["Ali Raza", "Nightly tests are green. The only open issue is the invoice list pagination bug, Sara is looking at it."],
+       ["Ahmed Hassan", "Today I finish the reconciliation job. Ek chhota risk hai: agar reconciliation job lambi chali to API par load barh sakta hai, so I will run it off peak."]],
+     "commitments": [{"owner": "uAhmed", "text": "Finish the nightly reconciliation job", "due": "2026-06-12"}],
+     "decisions": []},
+
+    {"key": "B01", "team": "teamB", "date": "2026-05-06", "title": "Growth Planning",
+     "chunks": [
+       ["Ahmed Malik", "I'll own the referral program launch. Stripe checkout for the pricing experiments is already integrated."],
+       ["Lena Fischer", "Project Phoenix is the confidential homepage redesign, do not discuss it outside the growth team."]],
+     "commitments": [{"owner": "uAhmedM", "text": "Launch the referral program", "due": "2026-05-30"}],
+     "decisions": ["Project Phoenix, the confidential homepage redesign, launches in July."]},
+
+    {"key": "B02", "team": "teamB", "date": "2026-05-20", "title": "Pricing Experiments",
+     "chunks": [
+       ["Lena Fischer", "The annual plan discount test showed twelve percent higher conversion. We decided to roll the discount out to all new customers."],
+       ["Ahmed Malik", "The billing page copy needs a rewrite. I will draft new pricing page copy by Friday."]],
+     "commitments": [{"owner": "uAhmedM", "text": "Draft new pricing page copy", "due": "2026-05-22"}],
+     "decisions": ["Roll out the annual plan discount to all new customers."]},
+
+    {"key": "B03", "team": "teamB", "date": "2026-06-03", "title": "Daily Standup",
+     "chunks": [
+       ["Lena Fischer", "Blocked on Stripe webhook failures in the growth analytics pipeline. Escalated to platform twice."],
+       ["Ahmed Malik", "Referral program beta starts Monday. Risk: fraud rings abusing referral credits."]],
+     "commitments": [], "decisions": []}
+  ]
+}
