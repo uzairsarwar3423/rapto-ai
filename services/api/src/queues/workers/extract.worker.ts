@@ -136,6 +136,12 @@ export const extractWorker = new Worker<ExtractJobData>(
     // timezone is stored in team.settings JSON blob as { timezone: 'America/New_York' }
     const teamSettings = (team?.settings ?? {}) as Record<string, unknown>
     const teamTimezone = (teamSettings.timezone as string) || 'UTC'
+    // Optional free-text team context for the extraction prompts, stored in
+    // team.settings as { ai_context: 'Backend team, 2-week sprints' }.
+    const teamContext =
+      typeof teamSettings.ai_context === 'string' && teamSettings.ai_context.trim()
+        ? teamSettings.ai_context.trim().slice(0, 500)
+        : null
 
     // ── STEP 4: Build ExtractRequest ───────────────────────────────────────
     const participants: ParticipantInfo[] = meeting.participants.length > 0
@@ -156,6 +162,10 @@ export const extractWorker = new Worker<ExtractJobData>(
       team_timezone:            teamTimezone,
       participants,
       cleaned_transcript:       transcriptTurns as unknown as CleanedTranscriptTurn[],
+      // No meeting-type column yet: null lets the AI pipeline infer the type
+      // from the meeting title (standup / retro / planning / …).
+      meeting_type:             null,
+      team_context:             teamContext,
     }
 
     logger.info(
@@ -281,6 +291,8 @@ export const extractWorker = new Worker<ExtractJobData>(
             madeBy:         d.made_by ?? null,
             decisionType:   d.decision_type ?? null,
             confidenceScore: d.confidence,
+            reversible:     d.reversible ?? true,
+            dissent:        d.dissent ?? null,
           })),
           skipDuplicates: true,
         })
@@ -298,6 +310,8 @@ export const extractWorker = new Worker<ExtractJobData>(
             blockingParty:  b.blocking_party ?? null,
             severity:       b.severity ?? null,
             confidenceScore: b.confidence,
+            escalationFlag:       b.escalation_flag ?? false,
+            estimatedUnblockDate: b.estimated_unblock_date ?? null,
           })),
           skipDuplicates: true,
         })
@@ -316,6 +330,8 @@ export const extractWorker = new Worker<ExtractJobData>(
             impact:           r.impact ?? null,
             triggerCondition: r.trigger_condition ?? null,
             confidenceScore:  r.confidence,
+            probability:         r.probability ?? 'MEDIUM',
+            mitigationMentioned: r.mitigation_mentioned ?? null,
           })),
           skipDuplicates: true,
         })

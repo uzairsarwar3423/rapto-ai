@@ -169,7 +169,24 @@ export interface ExtractRequest {
   team_timezone: string;
   cleaned_transcript: CleanedTranscriptTurn[];
   participants: ParticipantInfo[];
+  /**
+   * Optional meeting type for prompt routing and context injection.
+   * Omit / null → the AI pipeline infers it from meeting_title.
+   * Unknown strings are accepted and treated as 'general'.
+   */
+  meeting_type?: MeetingType | null;
+  /** Optional brief team context injected into extraction prompts (truncated to 500 chars) */
+  team_context?: string | null;
 }
+
+export type MeetingType =
+  | 'standup'
+  | 'planning'
+  | 'retrospective'
+  | 'design_review'
+  | '1on1'
+  | 'all_hands'
+  | 'general';
 
 /**
  * A single extracted commitment with all enrichment fields.
@@ -213,6 +230,10 @@ export interface ParsedDecision {
   context: string;
   /** Float in [0.0, 1.0] */
   confidence: number;
+  /** v3.1 — is this decision easily reversible? (defaults true when absent) */
+  reversible?: boolean;
+  /** v3.1 — dissenting voice, e.g. "Ali Raza disagreed: too expensive", or null if unanimous */
+  dissent?: string | null;
 }
 
 /**
@@ -227,6 +248,10 @@ export interface ParsedBlocker {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   /** Float in [0.0, 1.0] */
   confidence: number;
+  /** v3.1 — true if blocked for multiple days/sprints or previously reported */
+  escalation_flag?: boolean;
+  /** v3.1 — verbatim temporal phrase for the estimated unblock, or null */
+  estimated_unblock_date?: string | null;
 }
 
 /**
@@ -242,6 +267,10 @@ export interface ParsedRisk {
   trigger_condition: string;
   /** Float in [0.0, 1.0] */
   confidence: number;
+  /** v3.1 — estimated probability of the risk materialising (defaults MEDIUM when absent) */
+  probability?: 'LOW' | 'MEDIUM' | 'HIGH';
+  /** v3.1 — speaker-suggested mitigation, or null */
+  mitigation_mentioned?: string | null;
 }
 
 /**
@@ -292,6 +321,14 @@ export interface ExtractionResultWithMeta {
   total_cost: CostRecord;
   per_chunk_costs: CostRecord[];
   processing_time_ms: number;
+  /** Meeting type used for prompt routing (supplied or inferred) */
+  meeting_type?: MeetingType | null;
+  /** Per-prompt versions, e.g. { extract_decisions: 'decisions-v3.1', ... } */
+  prompt_versions?: Record<string, string>;
+  /** Number of chunks re-extracted by the Claude fallback (confidence gate) */
+  fallback_chunks?: number;
+  /** Providers that served this extraction, e.g. ['anthropic', 'openai'] */
+  providers_used?: string[];
 }
 
 /**

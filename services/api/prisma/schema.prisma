@@ -559,6 +559,8 @@ model Decision {
   madeBy          String?
   decisionType    String?
   confidenceScore Float     @default(1.0)
+  reversible      Boolean   @default(true)
+  dissent         String?
   createdAt       DateTime  @default(now())
 
   meeting         Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
@@ -580,6 +582,8 @@ model Blocker {
   resolved        Boolean   @default(false)
   resolvedAt      DateTime?
   confidenceScore Float     @default(1.0)
+  escalationFlag       Boolean @default(false)
+  estimatedUnblockDate String?
   createdAt       DateTime  @default(now())
 
   meeting         Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
@@ -600,6 +604,8 @@ model Risk {
   impact           String?
   triggerCondition String?
   confidenceScore  Float     @default(1.0)
+  probability         String  @default("MEDIUM")
+  mitigationMentioned String?
   createdAt        DateTime  @default(now())
 
   meeting          Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)

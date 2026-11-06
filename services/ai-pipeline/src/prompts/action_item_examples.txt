@@ -1,6 +1,0 @@
-VERSION: 1.0
-
-EXAMPLE 1:
-Transcript snippet: "Sarah, can you please review my PR?"
-Expected Action Item: text="Sarah, can you please review my PR?", assignee_name="Sarah", priority="MEDIUM"
-
