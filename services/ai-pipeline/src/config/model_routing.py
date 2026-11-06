@@ -52,6 +52,9 @@ TASK_MODEL_MAP: dict[TaskType, ModelTier] = {
     TaskType.RESOLUTION_CHECK: ModelTier.MINI,
     TaskType.SUMMARY: ModelTier.FULL,
     TaskType.CHAT_ANSWER: ModelTier.FULL,
+    TaskType.CHAT_REWRITE: ModelTier.MINI,
+    TaskType.CHAT_INTENT: ModelTier.MINI,
+    TaskType.CHAT_MEMORY: ModelTier.MINI,
     TaskType.EMBEDDING: ModelTier.EMBED,
     TaskType.RERANK: ModelTier.MINI,
     TaskType.DATE_PARSE: ModelTier.MINI,
@@ -68,6 +71,9 @@ MODEL_TASK_TEMPERATURE_OVERRIDES: dict[TaskType, float] = {
     TaskType.EXTRACTION: 0.1,
     TaskType.SUMMARY: 0.3,
     TaskType.RERANK: 0.0,       # deterministic grading
+    TaskType.CHAT_REWRITE: 0.0,  # Day 58: structured stages are deterministic
+    TaskType.CHAT_INTENT: 0.0,
+    TaskType.CHAT_MEMORY: 0.0,
 }
 
 

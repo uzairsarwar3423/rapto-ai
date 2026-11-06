@@ -61,3 +61,7 @@ langsmith>=0.1.90,<1.0.0
 # pgvector: asyncpg codec for the `vector` type.
 asyncpg>=0.29.0,<1.0.0
 pgvector>=0.3.0,<1.0.0
+
+# ─── Chat backend (Day 58) ────────────────────────────────────────────────────
+# PyJWT[crypto]: verifies the BFF-signed service JWT (asymmetric algorithms only; `cryptography` provides RS256/ES256/EdDSA).
+PyJWT[crypto]>=2.9.0,<3.0.0

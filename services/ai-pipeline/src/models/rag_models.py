@@ -369,6 +369,16 @@ class AccessScope(BaseModel):
         return self
 
 
+class RetrievalProfile(BaseModel):
+    """Day 58 amendment (plan §3.3): per-intent retrieval knobs, so chat does not need a second retriever.
+    None = use the configured default (RagSettings.similarity_top_k / rerank_top_n)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    candidate_count: Optional[int] = Field(default=None, ge=1, le=100)
+    top_n: Optional[int] = Field(default=None, ge=1, le=30)
+
+
 class RetrievalFilters(BaseModel):
     """What the Day 58 intent router resolves from the question."""
 

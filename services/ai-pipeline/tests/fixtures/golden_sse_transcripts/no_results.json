@@ -1,0 +1,44 @@
+[
+  {
+    "event": "meta",
+    "data": {
+      "v": 1,
+      "request_id": "<request_id>",
+      "session_id": "<session_id>",
+      "message_id": "<message_id>",
+      "replayed": false
+    }
+  },
+  {
+    "event": "status",
+    "data": {
+      "v": 1,
+      "stage": "searching",
+      "detail": {
+        "question": "what is the airspeed of a swallow"
+      }
+    }
+  },
+  {
+    "event": "status",
+    "data": {
+      "v": 1,
+      "stage": "reading",
+      "detail": null
+    }
+  },
+  {
+    "event": "token",
+    "data": {
+      "v": 1,
+      "t": "I couldn't find anything about that in your team's meetings. Try rephrasing, widening the date range, or asking about a specific meeting or person."
+    }
+  },
+  {
+    "event": "done",
+    "data": {
+      "v": 1,
+      "finish_reason": "no_results"
+    }
+  }
+]

@@ -40,6 +40,9 @@ class TaskType(str, Enum):
     RESOLUTION_CHECK = "resolution_check"
     SUMMARY = "summary"
     CHAT_ANSWER = "chat_answer"
+    CHAT_REWRITE = "chat_rewrite"      # Day 58: follow-up condenser (cheap tier, structured)
+    CHAT_INTENT = "chat_intent"        # Day 58: tier-2 intent classifier (cheap tier, structured)
+    CHAT_MEMORY = "chat_memory"        # Day 58: rolling conversation summary (cheap tier, structured)
     EMBEDDING = "embedding"
     RERANK = "rerank"
     DATE_PARSE = "date_parse"

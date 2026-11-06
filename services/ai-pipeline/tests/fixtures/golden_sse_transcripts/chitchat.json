@@ -1,0 +1,26 @@
+[
+  {
+    "event": "meta",
+    "data": {
+      "v": 1,
+      "request_id": "<request_id>",
+      "session_id": "<session_id>",
+      "message_id": "<message_id>",
+      "replayed": false
+    }
+  },
+  {
+    "event": "token",
+    "data": {
+      "v": 1,
+      "t": "Hi! I can answer questions about your team's meetings, commitments and decisions. What would you like to know?"
+    }
+  },
+  {
+    "event": "done",
+    "data": {
+      "v": 1,
+      "finish_reason": "stop"
+    }
+  }
+]

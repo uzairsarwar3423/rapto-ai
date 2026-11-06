@@ -55,6 +55,20 @@ async def _create(name: str) -> None:
         await conn.execute(
             'CREATE TABLE public.users (id text PRIMARY KEY, "teamId" text, name text NOT NULL, "deletedAt" timestamptz)'
         )
+        # Stand-ins for the Prisma tables migration 004 (Day 58 chat views) reads. Column names mirror schema.prisma.
+        await conn.execute(
+            'CREATE TABLE public.commitments (id text PRIMARY KEY, "teamId" text NOT NULL, "meetingId" text NOT NULL, '
+            '"ownerId" text, "ownerNameRaw" text, text text NOT NULL, status text NOT NULL DEFAULT \'PENDING\', '
+            '"dueDate" timestamptz, "createdAt" timestamptz NOT NULL DEFAULT now(), "fulfilledAt" timestamptz)'
+        )
+        await conn.execute(
+            'CREATE TABLE public.action_items (id text PRIMARY KEY, "teamId" text NOT NULL, "meetingId" text NOT NULL, '
+            '"assigneeId" text, "assigneeNameRaw" text, text text NOT NULL, completed boolean NOT NULL DEFAULT false, '
+            '"completedAt" timestamptz, "dueDate" timestamptz, "createdAt" timestamptz NOT NULL DEFAULT now())'
+        )
+        await conn.execute(
+            'CREATE TABLE public.meeting_participants (id text PRIMARY KEY, "meetingId" text NOT NULL, "userId" text, name text NOT NULL)'
+        )
     finally:
         await conn.close()
 

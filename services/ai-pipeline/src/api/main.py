@@ -164,6 +164,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings, get_rag_settings(), redis=redis_client, mongo=mongo_client
     )
 
+    # Day 58 chat backend (opt-in via CHAT_ENABLED; needs RAG). Refuses to start on a half-configured setup.
+    from src.config.chat_config import get_chat_settings
+    from src.services.chat.runtime import start_chat_runtime
+    app.state.chat = await start_chat_runtime(
+        settings, get_chat_settings(), rag=app.state.rag, redis=redis_client, mongo=mongo_client,
+        ai_client=app.state.ai_client)
+    app.state.chat_jwt_verifier = app.state.chat.verifier if app.state.chat is not None else None
+
     log.info("service_ready", service=settings.service_name, port=settings.port)
 
     # ── Hand control to the app ───────────────────────────────────────────────
@@ -172,6 +180,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── Shutdown ──────────────────────────────────────────────────────────────
     log.info("service_shutting_down", service=settings.service_name)
     get_tracer().flush()
+    from src.services.chat.runtime import stop_chat_runtime
+    await stop_chat_runtime(getattr(app.state, "chat", None))
     await stop_runtime(getattr(app.state, "rag", None))
     await redis_client.disconnect()
     await mongo_client.disconnect()
@@ -271,5 +281,12 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     # Day 56: RAG write path + backfill control (503 RAG_DISABLED unless RAG_ENABLED=true)
     from src.api.routes import embeddings
     app.include_router(embeddings.router, prefix="/api/v1")
+
+    # Day 58: chat backend (POST /chat/query SSE + sessions/feedback/suggestions). Authenticated by the BFF service JWT,
+    # NOT by X-Internal-Service-Key; 503 FEATURE_DISABLED unless CHAT_ENABLED (or a per-team override) is set.
+    from src.api.routes import chat as chat_routes
+    from src.services.chat.errors import ChatError
+    app.add_exception_handler(ChatError, chat_routes.chat_error_handler)  # type: ignore[arg-type]
+    app.include_router(chat_routes.router)
 
     return app

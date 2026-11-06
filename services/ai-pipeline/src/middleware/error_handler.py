@@ -62,7 +62,15 @@ async def ai_pipeline_error_handler(request: Request, exc: AIPipelineError) -> J
 async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Log Pydantic validation errors so they appear in the terminal, then return 422."""
     request_id = request_id_var.get()
-    
+
+    if request.url.path.startswith("/chat"):
+        # Chat contract (Day 58): 422 INVALID_INPUT. Never echo or log the input (it is the user's message), only the
+        # offending field locations.
+        locs = [".".join(str(p) for p in e.get("loc", ())[1:]) for e in exc.errors()]
+        log.warning("chat_request_validation_failed", path=str(request.url.path), fields=locs[:5])
+        return JSONResponse(status_code=422, content={"error": {
+            "code": "INVALID_INPUT", "message": "The request was invalid.", "retryable": False, "fields": locs[:5]}})
+
     # Log the exact missing fields so they show in the terminal!
     log.warning(
         "request_validation_failed",

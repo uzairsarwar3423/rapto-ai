@@ -1,0 +1,120 @@
+[
+  {
+    "event": "meta",
+    "data": {
+      "v": 1,
+      "request_id": "<request_id>",
+      "session_id": "<session_id>",
+      "message_id": "<message_id>",
+      "replayed": false
+    }
+  },
+  {
+    "event": "status",
+    "data": {
+      "v": 1,
+      "stage": "searching",
+      "detail": {
+        "question": "What did Ahmed commit to?"
+      }
+    }
+  },
+  {
+    "event": "status",
+    "data": {
+      "v": 1,
+      "stage": "reading",
+      "detail": null
+    }
+  },
+  {
+    "event": "sources",
+    "data": {
+      "v": 1,
+      "sources": [
+        {
+          "source_id": "S1",
+          "type": "transcript_chunk",
+          "meeting_id": "m1",
+          "meeting_title": "Weekly Standup",
+          "commitment_id": null,
+          "speaker": "Ahmed",
+          "start_ms": 12000,
+          "end_ms": 30000,
+          "occurred_at": "2026-11-03",
+          "preview": "Ahmed will ship the billing migration",
+          "tool": null,
+          "params": null,
+          "as_of": null,
+          "redacted": false
+        },
+        {
+          "source_id": "S2",
+          "type": "transcript_chunk",
+          "meeting_id": "m2",
+          "meeting_title": "Weekly Standup",
+          "commitment_id": null,
+          "speaker": "Ahmed",
+          "start_ms": 12000,
+          "end_ms": 30000,
+          "occurred_at": "2026-11-03",
+          "preview": "Ahmed will ship the billing migration",
+          "tool": null,
+          "params": null,
+          "as_of": null,
+          "redacted": false
+        }
+      ]
+    }
+  },
+  {
+    "event": "status",
+    "data": {
+      "v": 1,
+      "stage": "answering",
+      "detail": null
+    }
+  },
+  {
+    "event": "token",
+    "data": {
+      "v": 1,
+      "t": "Ahmed will ship billing by Friday "
+    }
+  },
+  {
+    "event": "token",
+    "data": {
+      "v": 1,
+      "t": "[S1]. Sara reviews it [S1]."
+    }
+  },
+  {
+    "event": "citations",
+    "data": {
+      "v": 1,
+      "valid": [
+        "S1"
+      ],
+      "removed": [],
+      "grounded": true,
+      "flags": []
+    }
+  },
+  {
+    "event": "usage",
+    "data": {
+      "v": 1,
+      "input_tokens": 9000,
+      "output_tokens": 120,
+      "quota_remaining": 199
+    }
+  },
+  {
+    "event": "done",
+    "data": {
+      "v": 1,
+      "finish_reason": "stop"
+    }
+  }
+]

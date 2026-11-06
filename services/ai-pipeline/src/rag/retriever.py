@@ -29,6 +29,7 @@ from src.models.rag_models import (
     LexicalSearchQuery,
     RetrievalFilters,
     RetrievalPipelineResult,
+    RetrievalProfile,
     ScoredChunk,
     VectorSearchQuery,
     VectorSearchResult,
@@ -93,6 +94,7 @@ class Retriever:
         deadline_ms: Optional[int] = None,
         mode: Optional[RetrievalMode] = None,
         request_id: Optional[str] = None,
+        profile: Optional[RetrievalProfile] = None,
     ) -> RetrievalPipelineResult:
         cfg = self._settings
         started = time.monotonic()
@@ -186,7 +188,7 @@ class Retriever:
             vector_hits, lexical_hits, rrf_k=cfg.rrf_k, weight_vector=cfg.rrf_weight_vector,
             weight_lexical=cfg.rrf_weight_lexical, per_source_cap=cfg.max_chunks_per_source_in_candidates,
             noise_floor=floor,
-            top_k=cfg.similarity_top_k,
+            top_k=(profile.candidate_count if profile and profile.candidate_count else cfg.similarity_top_k),
         )
         timings["fusion"] = round((time.monotonic() - t0) * 1000, 2)
         for leg in ("vector", "lexical", "both"):
@@ -214,7 +216,8 @@ class Retriever:
 
         # 6. rerank (never raises; may degrade)
         reranked, rerank_cost, rerank_reason, graded = await self._rerank(
-            processed, candidates, ctx, as_of or datetime.now(timezone.utc), timezone_name, deadline, timings, filters)
+            processed, candidates, ctx, as_of or datetime.now(timezone.utc), timezone_name, deadline, timings, filters,
+            top_n=(profile.top_n if profile and profile.top_n else cfg.rerank_top_n))
         if rerank_reason:
             reasons.append(f"rerank:{rerank_reason}")
 
@@ -243,7 +246,7 @@ class Retriever:
 
     async def _rerank(self, processed: ProcessedQuery, candidates: list[ScoredChunk], ctx: SourceContext,
                       now: datetime, tz_name: str, deadline: Deadline, timings: dict[str, float],
-                      filters: RetrievalFilters) -> tuple[list[ScoredChunk], CostRecord, Optional[str], bool]:
+                      filters: RetrievalFilters, top_n: Optional[int] = None) -> tuple[list[ScoredChunk], CostRecord, Optional[str], bool]:
         cfg = self._settings
         # Skip-when-small saves a model call, but a small set also gives NO abstention signal:
         # on a tiny tenant EVERY query would "retrieve" 5 irrelevant chunks and look confident.
@@ -252,7 +255,7 @@ class Retriever:
         confident = any(c.retrieval_legs == "both" or c.cosine_similarity >= cfg.rerank_skip_min_cosine
                         for c in candidates)
         request = build_rerank_request(processed.normalized_text, candidates, ctx, now=now, timezone_name=tz_name,
-                                       top_n=cfg.rerank_top_n, char_budget=cfg.rerank_chunk_char_budget)
+                                       top_n=top_n or cfg.rerank_top_n, char_budget=cfg.rerank_chunk_char_budget)
         started = time.monotonic()
         result = await self._reranker.rerank(request, query_hash=processed.query_hash, deadline=deadline,
                                              confident=confident)
