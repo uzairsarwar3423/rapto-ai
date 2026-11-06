@@ -262,7 +262,6 @@ export function WorkspaceSwitcher({
               {getFirstWordInitial(activeWorkspace?.name || "Rapto")}
             </span>
           )}
-          <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-zinc-950" />
         </div>
 
         {/* Trigger Text (Expanded state) */}

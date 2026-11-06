@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Tooltip,
   TooltipContent,
@@ -33,39 +32,33 @@ export function SidebarLogo({ collapsed }: SidebarLogoProps) {
               )}
               aria-label="Rapto Home"
             >
-              <AnimatePresence mode="wait" initial={false}>
-                {collapsed ? (
-                  <motion.span
-                    key="collapsed-logo"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.15 }}
-                    className="font-display text-xl font-bold tracking-tight text-foreground select-none flex items-center"
-                  >
-                    R
-                    <span className="relative inline-block text-brand ml-0.5">
-                      .
-                      <span className="absolute top-[3px] left-0 w-[4px] h-[4px] rounded-full bg-brand" />
-                    </span>
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="expanded-logo"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.18 }}
-                    className="font-display text-xl font-extrabold tracking-tight text-foreground select-none flex items-center"
-                  >
-                    Rapt
-                    <span className="relative inline-block text-brand">
-                      o
-                      <span className="absolute top-[3px] -right-[4px] w-[5px] h-[5px] rounded-full bg-brand" />
-                    </span>
-                  </motion.span>
+              {/* Logo: transparent PNG wordmark (public/email/rapto-logo.png, 288×116 = 3× of 69×28); the white
+                  variant is shown in dark mode. Collapsed: the same file clipped to its "R" (the letter ends at 61/288
+                  px, the "a" starts at 66/288 px — a 15px window at this scale shows only the "R"). */}
+              <span
+                className={cn(
+                  "inline-flex shrink-0 items-center overflow-hidden",
+                  collapsed ? "w-[15px]" : ""
                 )}
-              </AnimatePresence>
+              >
+                <img
+                  src="/email/rapto-logo.png"
+                  alt="Rapto"
+                  width={69}
+                  height={28}
+                  draggable={false}
+                  className="h-7 w-auto max-w-none shrink-0 select-none dark:hidden"
+                />
+                <img
+                  src="/email/rapto-logo-white.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={69}
+                  height={28}
+                  draggable={false}
+                  className="hidden h-7 w-auto max-w-none shrink-0 select-none dark:block"
+                />
+              </span>
             </Link>
           </TooltipTrigger>
           {collapsed && (
