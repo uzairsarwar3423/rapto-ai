@@ -80,7 +80,9 @@ class ChatSettings(BaseSettings):
     chat_total_timeout_s: float = Field(default=45.0, gt=0)
     chat_first_token_timeout_s: float = Field(default=6.0, gt=0)
     chat_idle_timeout_s: float = Field(default=10.0, gt=0)
-    chat_retrieval_timeout_s: float = Field(default=3.0, gt=0)
+    # Covers embed + vector/lexical search + source context + re-rank. 3 s was too tight on the
+    # deployed host (remote embedding API + DB round-trips) and surfaced as TIMEOUT on normal questions.
+    chat_retrieval_timeout_s: float = Field(default=15.0, gt=0)
     chat_rewrite_timeout_s: float = Field(default=2.0, gt=0)
     chat_intent_timeout_s: float = Field(default=1.5, gt=0)
     chat_analytics_timeout_s: float = Field(default=2.0, gt=0)
