@@ -84,7 +84,10 @@ function ChatPageInner() {
   // A conversation THIS page just started has no stored history until its first turn finishes: the turn is rendered from
   // the stream, and commitToCache seeds the history cache on completion. Fetching it earlier would flash the loading
   // skeleton over the answer that is streaming (the session id appears mid-stream) and could show the user's message twice.
-  const deferHistory = !!liveEntry && liveEntry.request.session_id == null && isActive(liveEntry.turn);
+  // It stays deferred until the finished turn is committed to the cache: enabling the fetch on `done` would race the commit
+  // and put the server copy and the live turn on screen together.
+  const deferHistory = !!liveEntry && liveEntry.request.session_id == null && !liveEntry.committed
+    && (isActive(liveEntry.turn) || liveEntry.turn.phase === "complete");
 
   // ── server data ──
   const messagesQ = useChatMessages(sessionId, !deferHistory);
@@ -92,7 +95,8 @@ function ChatPageInner() {
 
   const live = useMemo(() => {
     // Once the finished turn is in history, history renders it: never both.
-    if (liveEntry?.committed && liveEntry.turn.messageId && history.some((m) => m.id === liveEntry.turn.messageId)) return undefined;
+    // (Not gated on `committed`: a history fetch can land a render before the commit flag does.)
+    if (liveEntry?.turn.phase === "complete" && liveEntry.turn.messageId && history.some((m) => m.id === liveEntry.turn.messageId)) return undefined;
     return liveEntry;
   }, [liveEntry, history]);
   const generatingIds = useMemo(

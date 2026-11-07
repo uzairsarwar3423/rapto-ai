@@ -232,6 +232,60 @@ describe("new sessions", () => {
   });
 });
 
+describe("first message is never shown twice", () => {
+  const rec = (id: string, role: "user" | "assistant", content: string) =>
+    ({ id, role, content, status: role === "user" ? "answered" : "answered", sources: [], created_at: new Date(0).toISOString() }) as MessageList["items"][number];
+  const finish = async (c: ReturnType<typeof controlled>) => {
+    c.push(META({ message_id: "msg-1" }));
+    c.push(ev("token", { t: "answer" }));
+    c.push(ev("done", { finish_reason: "stop" }));
+    await waitFor(() => only().committed);
+  };
+  const cached = () => qc.getQueryData<InfiniteData<MessageList>>(chatKeys.messages(SCOPE, "sess-1"))!.pages[0].items;
+
+  it("does not add the optimistic user message when the server copy of the turn is already cached", async () => {
+    const c = controlled();
+    configureStreamManager({ stream: c.stream });
+    qc.setQueryData<InfiniteData<MessageList>>(chatKeys.messages(SCOPE, "sess-1"), {
+      pages: [{ items: [rec("srv-user", "user", "hello"), rec("msg-1", "assistant", "answer")], next_cursor: null }], pageParams: [null],
+    });
+    sendChatMessage({ text: "hello", sessionId: null });
+    await finish(c);
+    expect(cached().map((m) => m.id)).toEqual(["srv-user", "msg-1"]);
+  });
+
+  it("does not add it when a mid-stream fetch already stored the server's user message", async () => {
+    const c = controlled();
+    configureStreamManager({ stream: c.stream });
+    qc.setQueryData<InfiniteData<MessageList>>(chatKeys.messages(SCOPE, "sess-1"), {
+      pages: [{ items: [rec("srv-user", "user", "hello")], next_cursor: null }], pageParams: [null],
+    });
+    sendChatMessage({ text: "hello", sessionId: null });
+    await finish(c);
+    expect(cached().map((m) => `${m.role}:${m.id}`)).toEqual(["user:srv-user", "assistant:msg-1"]);
+  });
+
+  it("still adds it when the same text was asked earlier in the conversation", async () => {
+    const c = controlled();
+    configureStreamManager({ stream: c.stream });
+    qc.setQueryData<InfiniteData<MessageList>>(chatKeys.messages(SCOPE, "sess-1"), {
+      pages: [{ items: [rec("u0", "user", "hello"), rec("a0", "assistant", "old answer")], next_cursor: null }], pageParams: [null],
+    });
+    sendChatMessage({ text: "hello", sessionId: null });
+    await finish(c);
+    expect(cached().map((m) => m.role)).toEqual(["user", "assistant", "user", "assistant"]);
+  });
+
+  it("a double submit of a new conversation's first message starts one request, not two", () => {
+    const c = controlled();
+    configureStreamManager({ stream: c.stream });
+    expect(sendChatMessage({ text: "hello", sessionId: null }).ok).toBe(true);
+    expect(sendChatMessage({ text: "hello", sessionId: null })).toMatchObject({ ok: false, error: { code: "SESSION_BUSY" } });
+    expect(c.calls).toHaveBeenCalledTimes(1);
+    expect(sendChatMessage({ text: "something else", sessionId: null }).ok).toBe(true);
+  });
+});
+
 describe("stop, failure and retry", () => {
   it("Stop aborts the controller, keeps partial text and allows retry with the same id", async () => {
     const c = controlled();

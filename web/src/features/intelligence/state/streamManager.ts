@@ -208,6 +208,14 @@ export function sendChatMessage(opts: SendOptions): SendResult {
   if (streams.some((e) => isActive(e.turn) && opts.sessionId !== null && e.turn.sessionId === opts.sessionId)) {
     return localError("SESSION_BUSY", "Still answering your previous question.");
   }
+  // A double submit (Enter key-repeat, double click) of a NEW conversation's first message has no session id to collide
+  // on yet, and would start two conversations. The same message already starting one is that same send.
+  if (
+    opts.sessionId === null && !opts.clientMessageId &&
+    streams.some((e) => isActive(e.turn) && e.request.session_id == null && e.request.message === opts.text)
+  ) {
+    return localError("SESSION_BUSY", "That message is already being sent.");
+  }
   if (streams.filter((e) => isActive(e.turn)).length >= CHAT_LIMITS.maxConcurrentStreams) {
     return localError("TOO_MANY_STREAMS", "Finish or stop another answer first.");
   }
@@ -512,7 +520,10 @@ function finalize(id: string): void {
 function commitToCache(entry: StreamEntry): void {
   const qc = config.queryClient;
   const { turn, scope } = entry;
-  if (!qc || !turn.sessionId || !turn.messageId) return;
+  if (!qc || !turn.sessionId || !turn.messageId) {
+    put(turn.clientMessageId, { ...entry, committed: true }); // nothing to write, but never leave the page waiting on it
+    return;
+  }
 
   const nowIso = (ms: number | null) => new Date(ms ?? config.now()).toISOString();
   const userMsg: ChatMessageRecord = {
@@ -528,9 +539,15 @@ function commitToCache(entry: StreamEntry): void {
     qc.setQueryData<InfiniteData<MessageList, string | null>>(chatKeys.messages(scope, turn.sessionId!), (old) => {
       if (!old || old.pages.length === 0) return { pages: [{ items: [userMsg, assistantMsg], next_cursor: null }], pageParams: [null] };
       const have = new Set(old.pages.flatMap((p) => p.items.map((m) => m.id)));
-      const add = [userMsg, assistantMsg].filter((m) => !have.has(m.id));
-      if (add.length === 0) return old;
+      // The server copy of this turn is already cached (a history fetch landed first): it is the whole turn, add nothing.
+      // The optimistic user message has a client-made id, so id-matching alone would add it a second time.
+      if (have.has(assistantMsg.id)) return old;
       const [first, ...rest] = old.pages;
+      // The server persists the user message when it accepts the turn, so a history fetch that ran mid-stream already holds
+      // it under its real id. A trailing user message with the same text is that copy: don't add the optimistic one too.
+      const tail = first.items[first.items.length - 1];
+      const serverHasUser = tail?.role === "user" && tail.content === userMsg.content;
+      const add = serverHasUser ? [assistantMsg] : [userMsg, assistantMsg];
       return { ...old, pages: [{ ...first, items: [...first.items, ...add] }, ...rest] };
     }),
   );
