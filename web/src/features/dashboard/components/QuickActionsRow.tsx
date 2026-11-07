@@ -17,18 +17,18 @@ export function QuickActionsRow() {
         <AddMeetingTooltip>
           <Button
             size="sm"
-            variant="outline"
             onClick={() => setAddModalOpen(true)}
           >
-            <Plus className="h-3.5 w-3.5" /> Add meeting
+            <Plus className="h-3.5 w-3.5" />
+            <span>Add meeting</span>
           </Button>
         </AddMeetingTooltip>
         <Button
           size="sm"
-          variant="outline"
           onClick={() => setInviteModalOpen(true)}
         >
-          <UserPlus className="h-3.5 w-3.5" /> Invite teammate
+          <UserPlus className="h-3.5 w-3.5" />
+          <span>Invite teammate</span>
         </Button>
       </div>
       <AddMeetingModal open={addModalOpen} onOpenChange={setAddModalOpen} />

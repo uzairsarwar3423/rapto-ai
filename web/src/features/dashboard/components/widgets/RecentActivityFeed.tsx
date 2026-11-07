@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { CheckCircle2, ListPlus, Video, Radio, UserPlus, AlertCircle, RefreshCw } from "lucide-react";
 import { useDashboardOverview } from "../../hooks/useDashboardOverview";
 import { WidgetHeader } from "./WidgetHeader";
@@ -59,13 +60,13 @@ export function RecentActivityFeed() {
         <div className="flex flex-col items-center justify-center h-[280px] px-4 text-center">
           <AlertCircle className="h-5 w-5 text-error mb-2 animate-bounce" />
           <p className="text-xs text-muted-foreground mb-3">Failed to load activity stream.</p>
-          <button
+          <Button
+            size="sm"
             onClick={() => refetch()}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-foreground bg-surface border border-border hover:bg-surface-2 transition duration-120 cursor-pointer rounded-lg"
           >
-            <RefreshCw className="h-3 w-3" />
-            Retry
-          </button>
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span>Retry</span>
+          </Button>
         </div>
       )}
 

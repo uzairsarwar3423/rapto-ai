@@ -5,13 +5,18 @@ import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-radius text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-radius text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 select-none cursor-pointer",
   {
     variants: {
       variant: {
-        default: "bg-brand text-white hover:bg-brand-mid active:scale-[0.98]",
-        outline: "border border-border bg-transparent hover:bg-surface text-foreground active:scale-[0.98]",
-        ghost: "hover:bg-surface text-foreground active:scale-[0.98]",
+        default:
+          "bg-brand text-white font-medium border border-black/15 border-t-white/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0)_50%,rgba(0,0,0,0.08)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_4px_rgba(0,0,0,0.12)] hover:bg-brand-mid hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_4px_rgba(0,0,0,0.12)] active:scale-[0.98]",
+        outline:
+          "border border-border border-t-border-strong/70 bg-surface/90 text-foreground font-medium bg-[linear-gradient(180deg,rgba(255,255,255,0.4)_0%,rgba(255,255,255,0)_100%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-surface-hover hover:border-border-strong active:scale-[0.98]",
+        ghost:
+          "hover:bg-surface text-foreground active:scale-[0.98]",
+        textured:
+          "bg-brand text-white font-medium border border-black/15 border-t-white/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0)_50%,rgba(0,0,0,0.08)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_4px_rgba(0,0,0,0.12)] hover:bg-brand-mid hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_4px_rgba(0,0,0,0.12)] active:scale-[0.98]",
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -54,8 +59,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    // If asChild is true, we should render Slot.Root but manage the children hierarchy.
-    // However, when isLoading is true, we render a button to ensure the loading state behaves correctly.
     const Comp = asChild ? Slot.Root : "button"
     const isButtonDisabled = disabled || isLoading
 

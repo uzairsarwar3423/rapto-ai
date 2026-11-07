@@ -238,9 +238,18 @@ export function AddMeetingForm({ onSuccess, onPlanLimitHit, onCancel }: AddMeeti
               <Button
                 type="submit"
                 className={cn(
-                  "h-9 text-xs bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 font-medium cursor-pointer px-4",
+                  "h-9 text-xs font-medium cursor-pointer px-4 text-white hover:brightness-110 transition-all duration-150",
                   isPending && "opacity-70 cursor-not-allowed"
                 )}
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(0, 0, 0, 0.2) 100%), #0d0d0e",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 2px 4px rgba(0, 0, 0, 0.25)",
+                  borderTop: "1px solid rgba(255, 255, 255, 0.32)",
+                  borderColor: "rgba(255, 255, 255, 0.14)",
+                  color: "#ffffff",
+                }}
                 disabled={isPending || hasPlanLimit}
               >
                 {isPending && (
