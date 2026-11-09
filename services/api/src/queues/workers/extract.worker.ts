@@ -24,6 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Worker, Job } from 'bullmq'
+import { Prisma } from '@prisma/client'
 import { logger } from '../../config/logger'
 import { prisma } from '../../db/client'
 import { mongoService } from '../../services/mongo.service'
@@ -345,6 +346,9 @@ export const extractWorker = new Worker<ExtractJobData>(
         data: {
           status:                 isPartial ? 'EXTRACTED_PARTIAL' : 'EXTRACTED',
           summary:                serializeSummary(result.summary),
+          // Detected meeting language; any cached translation belongs to the old summary, so drop it.
+          language:               result.detected_language ?? null,
+          translations:           Prisma.DbNull,
           commitmentCount:        validCommitments.length,
           actionItemCount:        actionItemsData.length,
           decisionCount:          result.decisions.length,

@@ -1,5 +1,10 @@
 import { api } from "@/lib/api/client";
-import type { MeetingListItem, MeetingFilters, PaginatedMeetingsResponse } from "../types";
+import type {
+  MeetingListItem,
+  MeetingFilters,
+  PaginatedMeetingsResponse,
+  MeetingTranslation,
+} from "../types";
 
 /**
  * Client-side query for list of meetings (Client context).
@@ -76,3 +81,19 @@ export async function deleteMeetingClient(meetingId: string, deleteTranscript = 
 }
 
 
+
+/**
+ * Client-side mutation-style query: translate a meeting's generated content (summary,
+ * action items, commitments) into `targetLanguage`. The API caches per meeting+language,
+ * so repeat calls are cheap; the original data is never modified.
+ */
+export async function translateMeetingClient(
+  meetingId: string,
+  targetLanguage: "en"
+): Promise<MeetingTranslation> {
+  const response = await api.post<{ data: MeetingTranslation }>(
+    `/meetings/${meetingId}/translate`,
+    { targetLanguage }
+  );
+  return response.data.data;
+}

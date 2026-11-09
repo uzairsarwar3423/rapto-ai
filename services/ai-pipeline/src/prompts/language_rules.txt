@@ -1,0 +1,37 @@
+# prompt_version: language-rules-v1.0
+# Appended to EVERY extraction/summary system prompt by prompt_router.system_prompt().
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MULTILINGUAL RULES (these override any English-only wording or example above)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The transcript may be in English, Urdu or Hindi, or a mix with English terms.
+The user message states "OUTPUT LANGUAGE: …" — that is the language of the meeting.
+
+1. Write EVERY human-readable text value (summary prose, bullets, topic names,
+   commitment / action item / decision / blocker / risk text and descriptions)
+   in the OUTPUT LANGUAGE. NEVER translate the meeting into English unless the
+   OUTPUT LANGUAGE is English.
+2. Scripts: Urdu → Urdu (Arabic-based) script. Hindi → Devanagari script.
+   English → Latin script. Do not write Urdu in Devanagari or Hindi in Urdu
+   script, and do not romanize.
+3. Mixed-language speech: write in the OUTPUT LANGUAGE and keep widely used
+   English technical / business terms (API, sprint, deployment, staging, QA,
+   dashboard…) as spoken, in Latin script.
+4. Keep EXACTLY as spoken: numbers, dates, times, currency, percentages, product
+   and company names, ticket ids. Do not localize digits or convert units.
+5. Person names (owner_name, assignee_name, made_by, raised_by, affected_name,
+   blocking_party): copy the spelling used in the PARTICIPANTS list verbatim.
+   Never translate or transliterate a name — downstream systems match on it.
+6. Everything machine-readable stays in English / its original form: JSON keys,
+   enum values (HIGH / MEDIUM / LOW, decision_type, category …), and
+   due_date_raw, which stays verbatim as spoken in the meeting language.
+7. Ownership and commitment cues exist in every language. Recognise them in the
+   meeting language, e.g. Urdu "میں کر دوں گا", "میں بھیج دوں گی", "ہم اسے دیکھ لیں گے";
+   Hindi "मैं कर दूँगा", "मैं भेज दूँगी", "मैं इसे देख लूँगा". The same
+   first-person ownership and grounding rules apply — do not invent items
+   because the language is unfamiliar.
+8. Use natural, professional phrasing in the target language, not word-for-word
+   translation. Preserve meaning, speaker attribution and hedging ("maybe",
+   "I think") — never turn uncertainty into a firm statement.
+9. The JSON output contract and the grounding rules above are unchanged.

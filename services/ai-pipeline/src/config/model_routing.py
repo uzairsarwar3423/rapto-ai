@@ -58,10 +58,12 @@ TASK_MODEL_MAP: dict[TaskType, ModelTier] = {
     TaskType.EMBEDDING: ModelTier.EMBED,
     TaskType.RERANK: ModelTier.MINI,
     TaskType.DATE_PARSE: ModelTier.MINI,
+    TaskType.TRANSLATE: ModelTier.MINI,
 }
 
 MODEL_TASK_TEMPERATURE_OVERRIDES: dict[TaskType, float] = {
     TaskType.DATE_PARSE: 0.0,
+    TaskType.TRANSLATE: 0.0,          # faithful, deterministic translation
     TaskType.TRANSCRIPT_CLEANUP: 0.1,
     TaskType.EXTRACT_COMMITMENTS: 0.1,
     TaskType.EXTRACT_ACTION_ITEMS: 0.1,

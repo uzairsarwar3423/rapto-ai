@@ -380,6 +380,12 @@ model Meeting {
   calendarSourceUserId    String?
   mongoTranscriptId       String?
   summary                 String?
+  // Dominant spoken language of the meeting ("en" | "ur" | "hi"), detected by the AI pipeline.
+  // NULL on meetings processed before multilingual support (treated as unknown/original).
+  language                String?
+  // On-demand translation cache: { "<targetLang>": { sourceHash, summary, actionItems, commitments, createdAt, model } }.
+  // The original summary / rows above are never overwritten; a stale sourceHash invalidates an entry.
+  translations            Json?
   commitmentCount         Int             @default(0)
   actionItemCount         Int             @default(0)
   decisionCount           Int             @default(0)

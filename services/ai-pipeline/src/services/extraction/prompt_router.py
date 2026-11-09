@@ -46,12 +46,13 @@ from src.models.cleanup_models import ParticipantInfo
 from src.models.common import TaskType
 from src.models.exceptions import AIPipelineError
 from src.models.extraction_models import ExtractRequest, MeetingType
+from src.services.language import LanguageDetection, detect_language, language_directive
 
 PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 
 # Major version of the extraction prompt bundle. Bump when the *structure* of
 # the pipeline's prompting changes; content edits are captured by the hash.
-EXTRACTION_BUNDLE_MAJOR = "extraction-v4.1"
+EXTRACTION_BUNDLE_MAJOR = "extraction-v4.2"
 
 _VERSION_RE = re.compile(r"^#\s*prompt_version:\s*(\S+)")
 
@@ -106,8 +107,14 @@ USER_TEMPLATE_FILES: dict[MeetingType, str] = {
 GENERIC_USER_TEMPLATE = "extraction_user.txt"
 
 
+LANGUAGE_RULES_FILE = "language_rules.txt"
+
+
 def system_prompt(task_type: TaskType) -> str:
-    return load_prompt(SYSTEM_PROMPT_FILES[task_type]).text
+    """Task system prompt + the shared multilingual rules block (one source of truth)."""
+    base = load_prompt(SYSTEM_PROMPT_FILES[task_type]).text
+    rules = load_prompt(LANGUAGE_RULES_FILE).body
+    return f"{base.rstrip()}\n\n{rules.strip()}\n"
 
 
 def prompt_versions() -> dict[str, str]:
@@ -115,6 +122,7 @@ def prompt_versions() -> dict[str, str]:
     versions = {
         task.value: load_prompt(name).version for task, name in SYSTEM_PROMPT_FILES.items()
     }
+    versions["language_rules"] = load_prompt(LANGUAGE_RULES_FILE).version
     versions["user_generic"] = load_prompt(GENERIC_USER_TEMPLATE).version
     for meeting_type, name in USER_TEMPLATE_FILES.items():
         versions[f"user_{meeting_type.value}"] = load_prompt(name).version
@@ -125,7 +133,7 @@ def prompt_versions() -> dict[str, str]:
 def prompt_bundle_version() -> str:
     """e.g. 'extraction-v4.1+3f9a1c2e' — changes whenever any prompt changes."""
     names = sorted(
-        {*SYSTEM_PROMPT_FILES.values(), GENERIC_USER_TEMPLATE, *USER_TEMPLATE_FILES.values()}
+        {*SYSTEM_PROMPT_FILES.values(), LANGUAGE_RULES_FILE, GENERIC_USER_TEMPLATE, *USER_TEMPLATE_FILES.values()}
     )
     digest = hashlib.sha256()
     for name in names:
@@ -194,11 +202,12 @@ class PromptRouter:
         chunk_index: int,
         total_chunks: int,
         meeting_type: MeetingType | None = None,
+        language: LanguageDetection | None = None,
     ) -> str:
         meeting_type = meeting_type or resolve_meeting_type(request)
         template = self._select_template(meeting_type)
         return template.render(
-            **self._build_context(request, chunk_text, chunk_index, total_chunks, meeting_type)
+            **self._build_context(request, chunk_text, chunk_index, total_chunks, meeting_type, language)
         ).strip() + "\n"
 
     def _select_template(self, meeting_type: MeetingType) -> jinja2.Template:
@@ -219,6 +228,7 @@ class PromptRouter:
         chunk_index: int,
         total_chunks: int,
         meeting_type: MeetingType,
+        language: LanguageDetection | None = None,
     ) -> dict[str, object]:
         local_dt = _to_local(request.meeting_date, request.team_timezone)
         minutes = int((request.meeting_duration_seconds or 0) // 60)
@@ -236,6 +246,7 @@ class PromptRouter:
             "chunk_number": chunk_index + 1,
             "total_chunks": max(total_chunks, chunk_index + 1),
             "transcript_content": chunk_text,
+            "language_directive": language_directive(language or detect_language("")),
         }
 
     @staticmethod

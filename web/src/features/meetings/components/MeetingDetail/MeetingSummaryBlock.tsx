@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import type { StructuredSummary, TopicSection } from '../../types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -163,8 +163,16 @@ function SummarySkeleton() {
 
 export function MeetingSummaryBlock({
   summary,
+  headerAction,
+  rtl = false,
+  lang,
 }: {
   summary: StructuredSummary | string | null | undefined
+  /** Optional control rendered at the end of the card header (e.g. the language toggle). */
+  headerAction?: React.ReactNode
+  /** Render the content right-to-left (Urdu). */
+  rtl?: boolean
+  lang?: string
 }) {
   const structured = parseStructuredSummary(summary)
 
@@ -189,9 +197,10 @@ export function MeetingSummaryBlock({
           <FileText className="w-4 h-4" />
         </div>
         <h3 className="text-sm font-semibold tracking-tight text-foreground">Meeting Summary</h3>
+        {headerAction && <div className="ml-auto">{headerAction}</div>}
       </div>
 
-      <div className="px-4 sm:px-5 py-4 sm:py-5 space-y-6">
+      <div className="px-4 sm:px-5 py-4 sm:py-5 space-y-6" dir={rtl ? 'rtl' : undefined} lang={lang}>
 
         {/* ── Meeting Purpose ── */}
         {meeting_purpose && (

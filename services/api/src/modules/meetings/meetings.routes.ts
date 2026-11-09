@@ -20,6 +20,7 @@ import { requireAuth } from '../../middleware/auth.middleware'
 import { injectTenant } from '../../middleware/tenant.middleware'
 import { checkMeetingLimit } from '../../middleware/plan-limits.middleware'
 import { requireRole } from '../../middleware/role.middleware'
+import { createRateLimiter } from '../../middleware/rate-limit.middleware'
 import { validate } from '../../middleware/validate.middleware'
 import {
   createMeetingSchema,
@@ -29,6 +30,7 @@ import {
   addBotSchema,
   deleteMeetingSchema,
   meetingIdParamSchema,
+  translateMeetingSchema,
 } from './meetings.validator'
 import {
   createMeetingController,
@@ -39,6 +41,7 @@ import {
   removeBotController,
   deleteMeetingController,
   reprocessMeetingController,
+  translateMeetingController,
 } from './meetings.controller'
 
 export const meetingsRouter = Router()
@@ -135,6 +138,25 @@ meetingsRouter.post(
   reprocessMeetingController
 )
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /meetings/:meetingId/translate — translate generated content (cached per meeting+language)
+// Rate-limited per user: cache hits are cheap, but a cold miss costs an OpenAI call.
+// ─────────────────────────────────────────────────────────────────────────────
+const translateRateLimiter = createRateLimiter({
+  limit: 20,
+  windowSeconds: 60,
+  keyPrefix: 'ratelimit:meeting-translate',
+  identifier: (req) => req.user?.id ?? null,
+})
+
+meetingsRouter.post(
+  '/:meetingId/translate',
+  requireAuth,
+  injectTenant,
+  translateRateLimiter,
+  validate({ ...meetingIdParamSchema, ...translateMeetingSchema }),
+  translateMeetingController
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /meetings/:meetingId/simulate-complete (Development ONLY)

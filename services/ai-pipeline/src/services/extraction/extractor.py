@@ -73,6 +73,12 @@ from src.services.extraction.prompt_router import (
     system_prompt,
 )
 from src.services.extraction.risk_parser import parse_risk
+from src.services.language import (
+    LanguageDetection,
+    detect_language,
+    detect_language_from_turns,
+    language_directive,
+)
 from src.services.similarity import similarity_score
 from src.services.tokenization import estimate_token_count
 from src.services.tracing import (
@@ -142,7 +148,11 @@ _META_SUMMARY_SYSTEM = (
     "conclusions (array of strings — final outcomes only), "
     "decisions (array of strings — confirmed decisions only, never suggestions). "
     "Ground every point strictly in the partial summaries provided. "
-    "Never hallucinate. Empty sections use '' or []. Past tense. No filler."
+    "Never hallucinate. Empty sections use '' or []. Past tense. No filler. "
+    "LANGUAGE: write every text value in the OUTPUT LANGUAGE stated in the user message "
+    "(the language the partial summaries are already written in) and never translate to "
+    "English unless that is the OUTPUT LANGUAGE. Urdu stays in Urdu script, Hindi in "
+    "Devanagari; keep names, numbers, dates and common English technical terms as written."
 )
 
 
@@ -179,6 +189,7 @@ async def extract(
         else None
     )
     meeting_type = resolve_meeting_type(request)
+    language = detect_language_from_turns(request.cleaned_transcript)
 
     full_transcript_text = "\n".join(
         f"{t.speaker_name}: {t.cleaned_text}" for t in request.cleaned_transcript
@@ -202,6 +213,8 @@ async def extract(
         total_tokens_estimate=total_transcript_tokens,
         chunks_count=len(chunks),
         prompt_version=_PROMPT_VERSION,
+        language=language.code,
+        language_confidence=language.confidence,
         confidence_gate=gate is not None,
     )
 
@@ -239,7 +252,7 @@ async def extract(
                 with trace_scope(chunk_index=chunk.chunk_index):
                     return await _extract_one_chunk(
                         chunk, request, ai_client, meeting_type, total_chunks,
-                        gate=gate, fallback_client=fallback_client,
+                        gate=gate, fallback_client=fallback_client, language=language,
                     )
 
         # FIX 1: return_exceptions=True — one chunk failing never discards the others.
@@ -277,7 +290,9 @@ async def extract(
             else merged_result
         )
         if final_result is not None:
-            await _enrich_result(final_result, chunk_results, request, ai_client)
+            final_result.detected_language = language.code
+            final_result.language_confidence = language.confidence
+            await _enrich_result(final_result, chunk_results, request, ai_client, language)
             final_result.processing_time_ms = (time.monotonic() - start_time) * 1000
 
         tracer.end_run(
@@ -318,6 +333,7 @@ async def _enrich_result(
     chunk_results: List[ChunkExtractionResult],
     request: ExtractRequest,
     ai_client: AIClientProtocol,
+    language: Optional[LanguageDetection] = None,
 ) -> None:
     """Post-merge enrichment: hierarchical summary + date parsing.
 
@@ -342,6 +358,7 @@ async def _enrich_result(
         user_prompt = (
             f"MEETING: {request.meeting_title}\n"
             f"DATE: {request.meeting_date.isoformat()}\n\n"
+            f"{language_directive(language or detect_language(''))}\n\n"
             f"PARTIAL SUMMARIES:\n{combined}"
         )
         try:
@@ -410,6 +427,7 @@ async def _extract_one_chunk(
     *,
     gate: Optional[ConfidenceGate] = None,
     fallback_client: Optional[AIClientProtocol] = None,
+    language: Optional[LanguageDetection] = None,
 ) -> ChunkExtractionResult:
     """Primary extraction for one chunk, then the confidence gate."""
     user_prompt = _ROUTER.render_user_prompt(
@@ -418,6 +436,7 @@ async def _extract_one_chunk(
         chunk_index=chunk.chunk_index,
         total_chunks=total_chunks,
         meeting_type=meeting_type,
+        language=language,
     )
 
     try:

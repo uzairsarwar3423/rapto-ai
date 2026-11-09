@@ -33,6 +33,8 @@ import type {
   ReadyResponse,
   EmbeddingBackfillRequest,
   EmbeddingBackfillOutcome,
+  TranslateRequest,
+  TranslateResult,
 } from './ai-pipeline.types';
 import {
   AIPipelineNetworkError,
@@ -414,6 +416,20 @@ export class AIPipelineClient {
   public async resolve(request: ResolveRequest): Promise<PipelineResult> {
     return this.executeWithRetry(async () => {
       const response = await this.axios.post<{ result: PipelineResult }>('/api/v1/resolve', request);
+      return response.data.result;
+    });
+  }
+
+  /**
+   * POST /api/v1/translate
+   * Translates already-generated meeting content (keyed strings — never the transcript).
+   * Goes through the shared retry + circuit breaker like every other business call.
+   */
+  public async translate(request: TranslateRequest, customTimeoutMs = 90_000): Promise<TranslateResult> {
+    return this.executeWithRetry(async () => {
+      const response = await this.axios.post<{ result: TranslateResult }>('/api/v1/translate', request, {
+        timeout: customTimeoutMs,
+      });
       return response.data.result;
     });
   }

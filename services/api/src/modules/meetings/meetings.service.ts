@@ -33,6 +33,7 @@ import * as recallService from '../../services/recall.service'
 import { mongoService } from '../../services/mongo.service'
 import { teamsRepository } from '../teams/teams.repository'
 import { validateTransition } from './meetings.service.state'
+import { isMeetingLanguage, detectLanguageFromText } from '../../utils/language'
 import type {
   CreateMeetingInput,
   AddBotInput,
@@ -278,12 +279,31 @@ export async function getMeeting(
     throw new NotFoundError('Meeting', id)
   }
 
-  // Truncate summary in list view (full summary only in detail view)
-  if (meeting.summary && meeting.summary.length > 200) {
-    // For detail view, return full summary
+  // The translation cache is large and served by POST /:id/translate — never inline it
+  // in the detail payload. `language` is stored for meetings processed after multilingual
+  // support; older rows (NULL) are inferred from the generated summary text.
+  const { translations: _translations, ...rest } = meeting
+  return {
+    ...rest,
+    language: isMeetingLanguage(meeting.language)
+      ? meeting.language
+      : detectLanguageFromText(plainSummaryText(meeting.summary)),
   }
+}
 
-  return meeting
+/** Human text of a stored summary (JSON StructuredSummary or legacy plain text), without JSON keys. */
+function plainSummaryText(summary: string | null): string {
+  if (!summary) return ''
+  try {
+    const s = JSON.parse(summary)
+    if (s && typeof s === 'object') {
+      const parts: string[] = [s.meeting_purpose, s.overview, ...(s.key_takeaways ?? []), ...(s.conclusions ?? []), ...(s.decisions ?? [])]
+      return parts.filter((p) => typeof p === 'string').join('\n')
+    }
+  } catch {
+    /* legacy plain text */
+  }
+  return summary
 }
 
 // ── Get Transcript ────────────────────────────────────────────────────────────

@@ -329,6 +329,9 @@ export interface ExtractionResultWithMeta {
   fallback_chunks?: number;
   /** Providers that served this extraction, e.g. ['anthropic', 'openai'] */
   providers_used?: string[];
+  /** Dominant meeting language detected by the pipeline: "en" | "ur" | "hi" */
+  detected_language?: string | null;
+  language_confidence?: number | null;
 }
 
 /**
@@ -522,3 +525,30 @@ export type EmbeddingBackfillOutcome =
   | { outcome: 'already_running' }
   | { outcome: 'disabled' }
   | { outcome: 'rejected'; status: number; code: string | null };
+
+// ─── POST /api/v1/translate ────────────────────────────────────────────────
+
+export interface TranslateItem {
+  key: string;
+  text: string;
+}
+
+export interface TranslateRequest {
+  meeting_id: string;
+  team_id: string;
+  source_language: string;
+  target_language: string;
+  items: TranslateItem[];
+}
+
+export interface TranslateResult {
+  meeting_id: string;
+  source_language: string;
+  target_language: string;
+  items: TranslateItem[];
+  /** Keys the model failed to return; the caller keeps the original text for these. */
+  missing_keys: string[];
+  model: string;
+  total_cost: CostRecord;
+  processing_time_ms: number;
+}

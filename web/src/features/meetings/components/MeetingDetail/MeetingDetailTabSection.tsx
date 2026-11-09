@@ -6,6 +6,8 @@ interface MeetingDetailTabSectionProps {
   title: string;
   viewAllHref?: string;
   viewAllLabel?: string;
+  /** Optional controls shown at the end of the header (before "View all"). */
+  actions?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }
@@ -14,6 +16,7 @@ export function MeetingDetailTabSection({
   title,
   viewAllHref,
   viewAllLabel = "View all",
+  actions,
   children,
   className,
 }: MeetingDetailTabSectionProps) {
@@ -23,6 +26,8 @@ export function MeetingDetailTabSection({
         <h2 className="font-heading text-sm font-semibold text-foreground tracking-tight select-none">
           {title}
         </h2>
+        <div className="flex items-center gap-3">
+        {actions}
         {viewAllHref && (
           <Link
             href={viewAllHref}
@@ -40,6 +45,7 @@ export function MeetingDetailTabSection({
             </span>
           </Link>
         )}
+        </div>
       </header>
       <div className="flex flex-col w-full">
         {children}

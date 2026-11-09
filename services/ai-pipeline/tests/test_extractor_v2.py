@@ -181,5 +181,5 @@ async def test_explicit_meeting_type_and_team_context_reach_prompt(gate_settings
 
 async def test_result_carries_prompt_versions(gate_settings):
     result = await extractor.extract(_request(), FakeClient("openai"))
-    assert result.prompt_version.startswith("extraction-v4.1+")
+    assert result.prompt_version.startswith("extraction-v4.2+")
     assert result.prompt_versions["extract_decisions"] == "decisions-v3.1"

@@ -46,6 +46,7 @@ class TaskType(str, Enum):
     EMBEDDING = "embedding"
     RERANK = "rerank"
     DATE_PARSE = "date_parse"
+    TRANSLATE = "translate"            # on-demand translation of stored meeting content (cheap tier, structured)
 
 
 class ModelTier(str, Enum):

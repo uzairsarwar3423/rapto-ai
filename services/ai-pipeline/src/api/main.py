@@ -278,6 +278,10 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     from src.api.routes import resolve
     app.include_router(resolve.router, prefix="/api/v1", tags=["resolution"])
 
+    # Multilingual: on-demand translation of generated meeting content
+    from src.api.routes import translate as translate_routes
+    app.include_router(translate_routes.router, prefix="/api/v1", tags=["translation"])
+
     # Day 56: RAG write path + backfill control (503 RAG_DISABLED unless RAG_ENABLED=true)
     from src.api.routes import embeddings
     app.include_router(embeddings.router, prefix="/api/v1")

@@ -7,6 +7,8 @@ import { CommitmentEmptyState } from "@/features/commitments/components/Commitme
 import { CommitmentRowSkeleton } from "@/features/commitments/components/CommitmentRowSkeleton";
 import { useMeetingCommitments } from "@/features/commitments/hooks/useMeetingCommitments";
 import type { Commitment } from "@/features/commitments/types";
+import { MeetingLanguageToggle } from "./MeetingLanguageToggle";
+import { useMeetingLanguageView } from "../../hooks/useMeetingLanguage";
 
 interface MeetingCommitmentsTabProps {
   meetingId: string;
@@ -17,12 +19,23 @@ export function MeetingCommitmentsTab({
   meetingId,
   initialData,
 }: MeetingCommitmentsTabProps) {
-  const { data: commitments, isLoading } = useMeetingCommitments(meetingId, initialData);
+  const { data: items, isLoading } = useMeetingCommitments(meetingId, initialData);
+  const { translation } = useMeetingLanguageView(meetingId);
+
+  // Display-only: swap in translated text by id. Owner, due date and status are untouched.
+  const commitments = React.useMemo(
+    () =>
+      translation
+        ? items?.map((c) => ({ ...c, text: translation.commitments[c.id] ?? c.text }))
+        : items,
+    [items, translation]
+  );
 
   return (
     <MeetingDetailTabSection
       title="Commitments"
       viewAllHref="/commitments"
+      actions={<MeetingLanguageToggle meetingId={meetingId} />}
     >
       {isLoading ? (
         <div className="flex flex-col border border-border/40 rounded-lg overflow-hidden divide-y divide-border/20">

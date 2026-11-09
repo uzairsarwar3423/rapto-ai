@@ -467,6 +467,9 @@ class ExtractionResultWithMeta(BaseModel):
     prompt_versions: Dict[str, str] = Field(default_factory=dict)
     fallback_chunks: int = 0
     providers_used: List[str] = Field(default_factory=list)
+    # Dominant meeting language ("en" | "ur" | "hi"), detected from the transcript script.
+    detected_language: Optional[str] = None
+    language_confidence: Optional[float] = None
 
 class PartialExtractionFailure(BaseModel):
     meeting_id: str

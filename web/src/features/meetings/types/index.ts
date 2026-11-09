@@ -74,6 +74,9 @@ export interface Participant {
 }
 
 export interface MeetingDetail extends MeetingListItem {
+  /** Dominant spoken language ("en" | "ur" | "hi"); set by the API (inferred for pre-multilingual rows). */
+  language?: string | null;
+  updatedAt?: string;
   participants: Participant[];
   mongoTranscriptId?: string | null;
   processingError?: string | null;
@@ -86,4 +89,18 @@ export interface MeetingDetail extends MeetingListItem {
     text: string;
     madeBy: string | null;
   }>;
+}
+
+/** Display language of generated meeting content: the language it was written in, or its English translation. */
+export type MeetingDisplayLanguage = "original" | "en";
+
+/** POST /meetings/:id/translate — translated text keyed by the ids of the ORIGINAL rows (no duplicate rows). */
+export interface MeetingTranslation {
+  language: "en";
+  sourceLanguage: string;
+  cached: boolean;
+  summary: StructuredSummary | null;
+  actionItems: Record<string, string>;
+  commitments: Record<string, string>;
+  generatedAt: string;
 }

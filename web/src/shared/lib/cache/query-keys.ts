@@ -4,6 +4,8 @@ export const queryKeys = {
     list: (filters: any) => ["meetings", "list", filters] as const,
     detail: (id: string) => ["meetings", "detail", id] as const,
     transcript: (meetingId: string) => ["meetings", meetingId, "transcript"] as const,
+    translation: (meetingId: string, language: string, version: string) =>
+      ["meetings", meetingId, "translation", language, version] as const,
   },
   actionItems: {
     all: (teamId: string) => ["teams", teamId, "action-items"] as const,

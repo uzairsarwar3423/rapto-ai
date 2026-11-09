@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'zod'
+import { TRANSLATION_TARGET_LANGUAGES } from '../../utils/language'
 import { detectPlatform } from '../../utils/platform-detect'
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
@@ -224,5 +225,17 @@ export const meetingIdParamSchema = {
     meetingId: z
       .string()
       .min(1, 'meetingId cannot be empty'),
+  }),
+}
+
+// ── Translate Meeting Content ─────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/meetings/:meetingId/translate
+ * Allowed targets come from the single registry in utils/language.ts.
+ */
+export const translateMeetingSchema = {
+  body: z.object({
+    targetLanguage: z.enum(TRANSLATION_TARGET_LANGUAGES),
   }),
 }

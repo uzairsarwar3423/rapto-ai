@@ -75,7 +75,9 @@ def normalize_text(text: str) -> str:
     # 1. Lowercase
     t = text.lower()
     # 2. Remove punctuation — preserve alphanumeric and spaces
-    t = re.sub(r"[^\w\s]", "", t)
+    # Keep combining marks (Devanagari matras, Urdu diacritics): \w alone drops
+    # them, which would collapse distinct Hindi/Urdu words into one dedup key.
+    t = re.sub(r"[^\w\s̀-ͯ؀-ۿऀ-ॿ]", "", t)
     # 3. Tokenize
     tokens = t.split()
     # 4. Remove stopwords
