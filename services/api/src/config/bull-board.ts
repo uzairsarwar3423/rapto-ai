@@ -3,6 +3,7 @@ import { BullMQAdapter }   from '@bull-board/api/bullMQAdapter'
 import { ExpressAdapter }  from '@bull-board/express'
 import { Express } from 'express'
 import { transcribeQueue, extractQueue, notifyQueue, integrateQueue, deadlineQueue } from '../queues/queue.client'
+import { metricsRollupQueue } from '../queues/metrics-rollup.queue'
 
 export function setupBullBoard(app: Express) {
   if (process.env.NODE_ENV === 'production') return
@@ -17,6 +18,7 @@ export function setupBullBoard(app: Express) {
       new BullMQAdapter(notifyQueue),
       new BullMQAdapter(integrateQueue),
       new BullMQAdapter(deadlineQueue),
+      new BullMQAdapter(metricsRollupQueue),
     ],
     serverAdapter,
   })

@@ -14,6 +14,8 @@ import './queues/workers/deadline.worker'
 import './queues/workers/calendar.worker'
 import './queues/workers/token-refresh.worker'
 import './queues/workers/billing-webhook.worker'
+import './queues/workers/metrics-rollup.worker'
+import { registerNightlyRollup } from './queues/metrics-rollup.queue'
 import { startScheduler } from './queues/scheduler'
 
 async function startWorkers() {
@@ -34,7 +36,10 @@ async function startWorkers() {
         console.log('👷 BullMQ Workers started successfully!')
         
         startScheduler()
-        
+
+        // Nightly metrics finalization (00:15 UTC). upsertJobScheduler is idempotent — restarts never duplicate it.
+        await registerNightlyRollup()
+
         // ----------------------
         // Graceful Shutdown
         // ----------------------

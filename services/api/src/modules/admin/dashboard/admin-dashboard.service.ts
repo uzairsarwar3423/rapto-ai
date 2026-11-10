@@ -1,5 +1,7 @@
 import { adminDashboardRepository as repo } from './admin-dashboard.repository'
 import { bucketByGranularity } from './bucket-by-granularity'
+import { churnCalculator } from '../metrics/churn-calculator.service'
+import { addDaysUtc, daysBetween } from '../metrics/utc-date'
 import { redis } from '../../../config/redis'
 import type {
   DashboardOverview,
@@ -33,7 +35,7 @@ async function cacheAside<T>(key: string, compute: () => Promise<T>): Promise<T>
   return result
 }
 
-function computeDelta(startValue: number, endValue: number): KpiResult {
+export function computeDelta(startValue: number, endValue: number): KpiResult {
   if (startValue === 0) {
     // Zero-division guard, same pattern established Day 3 — going from $0 to anything
     // positive isn't a meaningful "% growth," so surface it as a flat 0% rather than Infinity.
@@ -47,40 +49,73 @@ function computeDelta(startValue: number, endValue: number): KpiResult {
   }
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100
+const sum = <T>(rows: T[], pick: (r: T) => number) => rows.reduce((s, r) => s + pick(r), 0)
+
+/** The equal-length period immediately before [from, to] — the comparison window for period KPIs. */
+export function previousPeriod(from: string, to: string): { from: string; to: string } {
+  const length = daysBetween(from, to) + 1
+  const prevTo = addDaysUtc(from, -1)
+  return { from: addDaysUtc(prevTo, -(length - 1)), to: prevTo }
+}
+
 export const adminDashboardService = {
   async getOverview(from: string, to: string): Promise<DashboardOverview> {
     return cacheAside(`cache:admin:dashboard:overview:${from}:${to}`, async () => {
-      const [startRow, endRow] = await Promise.all([
+      const prev = previousPeriod(from, to)
+
+      const [startRow, endRow, rows, prevStartRow, prevRows, latest] = await Promise.all([
         repo.findMetricAt(from),
         repo.findMetricAt(to),
+        repo.findMetricsInRange(from, to),
+        repo.findMetricAt(prev.from),
+        repo.findMetricsInRange(prev.from, prev.to),
+        repo.findLatestMetricMeta(),
       ])
 
       const startMrr = Number(startRow.mrrCents)
       const endMrr = Number(endRow.mrrCents)
 
-      const startActive = startRow.activeSubscriptions
-      const endActive = endRow.activeSubscriptions
+      // Total Revenue = revenue COLLECTED in the selected range vs the previous equal-length range.
+      // (total_revenue_cents is a cumulative counter — its delta is not "revenue in the period".)
+      const periodRevenue = sum(rows, (r) => Number(r.dailyRevenueCents))
+      const prevPeriodRevenue = sum(prevRows, (r) => Number(r.dailyRevenueCents))
 
-      const startArpu = Number(startRow.arpuCents)
-      const endArpu = Number(endRow.arpuCents)
+      // Revenue churn % = Σ churned MRR over the period ÷ MRR at period start.
+      const revenueChurnPct = round2(
+        churnCalculator.calculateRevenueChurnRate(startMrr, sum(rows, (r) => Number(r.churnedMrrCents))),
+      )
+      const prevRevenueChurnPct = round2(
+        churnCalculator.calculateRevenueChurnRate(
+          Number(prevStartRow.mrrCents),
+          sum(prevRows, (r) => Number(r.churnedMrrCents)),
+        ),
+      )
 
-      const startRev = Number(startRow.totalRevenueCents)
-      const endRev = Number(endRow.totalRevenueCents)
-
-      const startRevChurn = Number(startRow.revenueChurnRate)
-      const endRevChurn = Number(endRow.revenueChurnRate)
-
-      const startLogoChurn = Number(startRow.logoChurnRate)
-      const endLogoChurn = Number(endRow.logoChurnRate)
+      // Logo churn % = Σ churned teams over the period ÷ active teams at period start.
+      const logoChurnPct = round2(
+        churnCalculator.calculateLogoChurnRate(startRow.activeSubscriptions, sum(rows, (r) => r.churnedTeams)),
+      )
+      const prevLogoChurnPct = round2(
+        churnCalculator.calculateLogoChurnRate(
+          prevStartRow.activeSubscriptions,
+          sum(prevRows, (r) => r.churnedTeams),
+        ),
+      )
 
       return {
-        totalRevenue: computeDelta(startRev, endRev),
+        totalRevenue: computeDelta(prevPeriodRevenue, periodRevenue),
         mrr: computeDelta(startMrr, endMrr),
-        arpu: computeDelta(startArpu, endArpu),
-        activeSubscriptions: computeDelta(startActive, endActive),
+        arpu: computeDelta(Number(startRow.arpuCents), Number(endRow.arpuCents)),
+        activeSubscriptions: computeDelta(startRow.activeSubscriptions, endRow.activeSubscriptions),
         growthRate: computeDelta(startMrr, endMrr),
-        revenueChurn: computeDelta(startRevChurn, endRevChurn),
-        logoChurn: computeDelta(startLogoChurn, endLogoChurn),
+        // The API reports facts (churn went up/down); the UI owns the value judgement via goodDirection="down".
+        revenueChurn: computeDelta(prevRevenueChurnPct, revenueChurnPct),
+        logoChurn: computeDelta(prevLogoChurnPct, logoChurnPct),
+        meta: {
+          asOf: latest ? latest.date.toISOString().slice(0, 10) : null,
+          computedAt: latest ? latest.computedAt.toISOString() : null,
+        },
       }
     })
   },
@@ -88,9 +123,10 @@ export const adminDashboardService = {
   async getRevenueTrend(from: string, to: string, granularity: Granularity): Promise<TrendResponse> {
     return cacheAside(`cache:admin:dashboard:revenue-trend:${from}:${to}:${granularity}`, async () => {
       const rows = await repo.findMetricsInRange(from, to)
+      // Per-DAY revenue, so summing into weekly/monthly buckets is mathematically valid.
       const daily = rows.map((r) => ({
         date: r.date.toISOString().slice(0, 10),
-        value: Number(r.totalRevenueCents),
+        value: Number(r.dailyRevenueCents),
       }))
       return { points: bucketByGranularity(daily, granularity, 'sum') }
     })

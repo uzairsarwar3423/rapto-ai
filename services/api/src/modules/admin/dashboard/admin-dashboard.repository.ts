@@ -60,6 +60,8 @@ export const adminDashboardRepository = {
 
       points.push({
         date: new Date(dayStr + 'T00:00:00.000Z'),
+        // Estimate (mrr / 30) used only while the rollup has not populated real rows yet.
+        dailyRevenueCents: BigInt(Math.round(mrr / 30)),
         totalRevenueCents: BigInt(cumulativeRevenue),
         mrrCents: BigInt(mrr),
         arrCents: BigInt(mrr * 12),
@@ -120,6 +122,7 @@ export const adminDashboardRepository = {
 
     return {
       date: targetDate,
+      dailyRevenueCents: BigInt(Math.round(mrr / 30)),
       totalRevenueCents: BigInt(mrr),
       mrrCents: BigInt(mrr),
       arrCents: BigInt(mrr * 12),
@@ -137,6 +140,14 @@ export const adminDashboardRepository = {
       revenueChurnRate: 0,
       computedAt: new Date(),
     }
+  },
+
+  /** Newest rolled-up row's date + computation time — drives the dashboard's "Updated X ago" freshness badge. */
+  async findLatestMetricMeta() {
+    return prisma.platformMetricsDaily.findFirst({
+      orderBy: { date: 'desc' },
+      select: { date: true, computedAt: true },
+    })
   },
 
   async findTopTeamsByMrr(limit: number) {

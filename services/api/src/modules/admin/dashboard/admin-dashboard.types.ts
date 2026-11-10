@@ -10,8 +10,19 @@ export interface DashboardOverview {
   arpu: KpiResult
   activeSubscriptions: KpiResult
   growthRate: KpiResult // MoM MRR growth — computed from the same two snapshots, no extra query
-  revenueChurn?: KpiResult
-  logoChurn?: KpiResult
+  /** Churned MRR over the period ÷ MRR at period start (%). deltaPct is vs the previous equal-length period. */
+  revenueChurn: KpiResult
+  /** Churned teams over the period ÷ active teams at period start (%). */
+  logoChurn: KpiResult
+  /** Freshness of the underlying rollup — lets the UI show "Updated X ago" and warn when stale. */
+  meta: OverviewMeta
+}
+
+export interface OverviewMeta {
+  /** Date of the newest platform_metrics_daily row (YYYY-MM-DD), or null if the table is empty. */
+  asOf: string | null
+  /** When that row was last computed (ISO timestamp), or null if the table is empty. */
+  computedAt: string | null
 }
 
 export interface TrendPoint {

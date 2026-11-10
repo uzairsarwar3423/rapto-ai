@@ -3,6 +3,7 @@ import { logger } from '../../config/logger'
 import { redisConnectionOptions } from '../../config/redis.config'
 import type { BillingWebhookJobData } from '../jobs/billing-webhook.job'
 import { processInboxEvent } from '../../modules/webhooks/paddle.event-processor'
+import { enqueueRecomputeForBillingEvent } from '../metrics-rollup.queue'
 
 const connection = {
   host: redisConnectionOptions.host,
@@ -17,6 +18,12 @@ export const billingWebhookWorker = new Worker<BillingWebhookJobData>(
     const start = Date.now()
     logger.info({ jobId: job.id, eventId, eventType, attempt: job.attemptsMade + 1 }, '[billing-webhook.worker] ▶ processing')
     const result = await processInboxEvent(eventId)
+
+    // processInboxEvent has committed by now → the rollup will read fresh subscription/invoice state (admin dashboard).
+    if (!result.skipped && result.status === 'PROCESSED') {
+      await enqueueRecomputeForBillingEvent(eventType, logger)
+    }
+
     logger.info({ jobId: job.id, eventId, eventType, ...result, durationMs: Date.now() - start }, '[billing-webhook.worker] ✅ done')
     return result
   },

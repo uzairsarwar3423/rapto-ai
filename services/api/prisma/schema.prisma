@@ -1048,6 +1048,8 @@ model AdminAuditLog {
 
 model PlatformMetricsDaily {
   date                  DateTime @id @db.Date
+  // Revenue collected (net of refunds) on this UTC day. totalRevenueCents below is CUMULATIVE lifetime revenue.
+  dailyRevenueCents     BigInt   @default(0)
   totalRevenueCents     BigInt   @default(0)
   mrrCents              BigInt   @default(0)
   arrCents              BigInt   @default(0)
@@ -1066,6 +1068,27 @@ model PlatformMetricsDaily {
   computedAt            DateTime @default(now())
 
   @@map("platform_metrics_daily")
+}
+
+enum SnapshotSource {
+  LIVE            // captured from live subscription state while that day was "today"
+  RECONSTRUCTED   // backfilled from createdAt / cancelledAt — plan changes are NOT recoverable
+}
+
+// One row per subscription per UTC day. MRR movement (new / expansion / contraction / churn) is a diff of two
+// stored snapshots — current-state tables cannot tell you who was on which plan yesterday.
+model SubscriptionDailySnapshot {
+  date        DateTime       @db.Date
+  teamId      String
+  plan        String
+  amountCents Int            // MONTHLY-NORMALIZED (annual / 12)
+  status      String         // 'active' | 'trialing' | 'past_due' | 'cancelled'
+  source      SnapshotSource @default(LIVE)
+  capturedAt  DateTime       @default(now())
+
+  @@id([date, teamId])
+  @@index([teamId, date])
+  @@map("subscription_daily_snapshots")
 }
 
 model CohortRetentionSnapshot {

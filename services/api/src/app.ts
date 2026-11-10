@@ -22,6 +22,7 @@ import { analyticsRouter } from './modules/analytics/analytics.routes'
 import { billingRouter } from './modules/billing/billing.routes'
 import { adminAuthRouter } from './modules/admin/admin-auth/admin-auth.routes'
 import { adminDashboardRouter } from './modules/admin/dashboard/admin-dashboard.routes'
+import { adminUsersRouter } from './modules/admin/users/admin-users.routes'
 import { adminAuditMiddleware } from './middleware/admin-audit.middleware'
 import { setupBullBoard } from './config/bull-board'
 
@@ -157,6 +158,7 @@ app.use('/api/v1/analytics', analyticsRouter)
 app.use('/api/v1/billing', billingRouter)
 app.use('/api/v1/admin/auth', adminAuditMiddleware, adminAuthRouter)
 app.use('/api/v1/admin/dashboard', adminAuditMiddleware, adminDashboardRouter)
+app.use('/api/v1/admin/users', adminAuditMiddleware, adminUsersRouter) // GET / (users) and GET /teams
 
 // BullBoard — must be mounted BEFORE the 404 catch-all
 setupBullBoard(app)
