@@ -189,6 +189,7 @@ model User {
 
   // Relations
   team                        Team?                       @relation(fields: [teamId], references: [id])
+  suspensions                 UserSuspension[]
   refreshTokens               RefreshToken[]
   emailVerificationTokens     EmailVerificationToken[]
   passwordResetTokens         PasswordResetToken[]
@@ -1007,6 +1008,8 @@ model AdminUser {
 
   auditLogEntries AdminAuditLog[]
   refreshTokens   AdminRefreshToken[]
+  suspensionsIssued UserSuspension[] @relation("UserSuspensionSuspendedBy")
+  suspensionsLifted UserSuspension[] @relation("UserSuspensionLiftedBy")
 
   @@map("admin_users")
 }
@@ -1068,6 +1071,28 @@ model PlatformMetricsDaily {
   computedAt            DateTime @default(now())
 
   @@map("platform_metrics_daily")
+}
+
+// A user's suspension history. Status is DERIVED (an active suspension = liftedAt IS NULL), never stored on users.
+// The partial unique index uq_user_suspensions_active (migration SQL; Prisma cannot express partial indexes) guarantees
+// at most ONE active suspension per user — that is what makes suspend race-safe (second concurrent suspend → unique
+// violation → 409).
+model UserSuspension {
+  id          String    @id @default(cuid())
+  userId      String
+  reason      String
+  suspendedBy String    // admin_users.id
+  suspendedAt DateTime  @default(now())
+  liftedAt    DateTime?
+  liftedBy    String?
+  liftReason  String?
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suspender   AdminUser  @relation("UserSuspensionSuspendedBy", fields: [suspendedBy], references: [id], onDelete: Restrict)
+  lifter      AdminUser? @relation("UserSuspensionLiftedBy", fields: [liftedBy], references: [id], onDelete: Restrict)
+
+  @@index([userId, liftedAt])
+  @@map("user_suspensions")
 }
 
 enum SnapshotSource {

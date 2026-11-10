@@ -14,3 +14,7 @@ export const listTeams = asyncHandler(async (req, res) => {
   const data = await service.listTeams(req.query as unknown as ListTeamsQuery)
   res.json(success(data))
 })
+
+export const getSummary = asyncHandler(async (_req, res) => {
+  res.json(success(await service.getSummary()))
+})

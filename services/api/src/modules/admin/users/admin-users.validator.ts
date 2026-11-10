@@ -19,6 +19,7 @@ export const listUsersSchema = z.object({
   role: z.enum(['OWNER', 'ADMIN', 'MANAGER', 'MEMBER']).optional(),
   planTier: planTier.optional(),
   teamId: z.string().min(1).max(64).optional(),
+  status: z.enum(['ACTIVE', 'UNVERIFIED', 'SUSPENDED']).optional(),
   sortBy: z.enum(['createdAt', 'name', 'email']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   limit,

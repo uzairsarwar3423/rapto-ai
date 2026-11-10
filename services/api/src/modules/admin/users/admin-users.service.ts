@@ -1,6 +1,10 @@
 import { adminUsersRepository as repo } from './admin-users.repository'
 import { decodeCursor, toPage } from './keyset'
+import { cacheAside } from '../shared/cache-aside'
 import type { ListUsersQuery, ListTeamsQuery } from './admin-users.validator'
+
+export const USERS_SUMMARY_CACHE_KEY = 'cache:admin:users:summary'
+export const USERS_SUMMARY_TTL_SECONDS = 60
 
 export const adminUsersService = {
   async listUsers(q: ListUsersQuery) {
@@ -18,5 +22,13 @@ export const adminUsersService = {
       q.sortBy,
     )
     return { teams: items, nextCursor, hasMore }
+  },
+
+  /**
+   * Summary strip numbers. Cached for 60s under `cache:admin:users:*` — a different lifecycle from the dashboard keys,
+   * so the metrics rollup deliberately does NOT clear it.
+   */
+  getSummary() {
+    return cacheAside(USERS_SUMMARY_CACHE_KEY, USERS_SUMMARY_TTL_SECONDS, () => repo.getSummaryCounts())
   },
 }

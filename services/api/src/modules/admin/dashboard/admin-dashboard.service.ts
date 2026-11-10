@@ -2,7 +2,7 @@ import { adminDashboardRepository as repo } from './admin-dashboard.repository'
 import { bucketByGranularity } from './bucket-by-granularity'
 import { churnCalculator } from '../metrics/churn-calculator.service'
 import { addDaysUtc, daysBetween } from '../metrics/utc-date'
-import { redis } from '../../../config/redis'
+import { cacheAside } from '../shared/cache-aside'
 import type {
   DashboardOverview,
   KpiResult,
@@ -15,25 +15,6 @@ import type {
 } from './admin-dashboard.types'
 
 const CACHE_TTL_SECONDS = 300
-
-async function cacheAside<T>(key: string, compute: () => Promise<T>): Promise<T> {
-  try {
-    const cached = await redis.get(key)
-    if (cached) return JSON.parse(cached)
-  } catch (err) {
-    console.warn(`[adminDashboardService] Redis get cache error for ${key}:`, err)
-  }
-
-  const result = await compute()
-
-  try {
-    await redis.setex(key, CACHE_TTL_SECONDS, JSON.stringify(result))
-  } catch (err) {
-    console.warn(`[adminDashboardService] Redis setex cache error for ${key}:`, err)
-  }
-
-  return result
-}
 
 export function computeDelta(startValue: number, endValue: number): KpiResult {
   if (startValue === 0) {
@@ -61,7 +42,7 @@ export function previousPeriod(from: string, to: string): { from: string; to: st
 
 export const adminDashboardService = {
   async getOverview(from: string, to: string): Promise<DashboardOverview> {
-    return cacheAside(`cache:admin:dashboard:overview:${from}:${to}`, async () => {
+    return cacheAside(`cache:admin:dashboard:overview:${from}:${to}`, CACHE_TTL_SECONDS, async () => {
       const prev = previousPeriod(from, to)
 
       const [startRow, endRow, rows, prevStartRow, prevRows, latest] = await Promise.all([
@@ -121,7 +102,7 @@ export const adminDashboardService = {
   },
 
   async getRevenueTrend(from: string, to: string, granularity: Granularity): Promise<TrendResponse> {
-    return cacheAside(`cache:admin:dashboard:revenue-trend:${from}:${to}:${granularity}`, async () => {
+    return cacheAside(`cache:admin:dashboard:revenue-trend:${from}:${to}:${granularity}`, CACHE_TTL_SECONDS, async () => {
       const rows = await repo.findMetricsInRange(from, to)
       // Per-DAY revenue, so summing into weekly/monthly buckets is mathematically valid.
       const daily = rows.map((r) => ({
@@ -133,7 +114,7 @@ export const adminDashboardService = {
   },
 
   async getMrrTrend(from: string, to: string, granularity: Granularity): Promise<TrendResponse> {
-    return cacheAside(`cache:admin:dashboard:mrr-trend:${from}:${to}:${granularity}`, async () => {
+    return cacheAside(`cache:admin:dashboard:mrr-trend:${from}:${to}:${granularity}`, CACHE_TTL_SECONDS, async () => {
       const rows = await repo.findMetricsInRange(from, to)
       const daily = rows.map((r) => ({
         date: r.date.toISOString().slice(0, 10),
@@ -145,7 +126,7 @@ export const adminDashboardService = {
   },
 
   async getMrrMovement(from: string, to: string): Promise<MrrMovementPoint[]> {
-    return cacheAside(`cache:admin:dashboard:mrr-movement:${from}:${to}`, async () => {
+    return cacheAside(`cache:admin:dashboard:mrr-movement:${from}:${to}`, CACHE_TTL_SECONDS, async () => {
       const rows = await repo.findMetricsInRange(from, to)
       return rows.map((r) => ({
         date: r.date.toISOString().slice(0, 10),
@@ -169,7 +150,7 @@ export const adminDashboardService = {
   },
 
   async getCohortRetention(months: number): Promise<CohortRow[]> {
-    return cacheAside(`cache:admin:dashboard:cohort-retention:${months}`, async () => {
+    return cacheAside(`cache:admin:dashboard:cohort-retention:${months}`, CACHE_TTL_SECONDS, async () => {
       const rows = await repo.findCohortRetention(months)
       const byMonth = new Map<string, CohortRow>()
 
