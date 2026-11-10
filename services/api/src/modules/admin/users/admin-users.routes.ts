@@ -3,6 +3,7 @@ import { validate } from '../../../middleware/validate.middleware'
 import { adminAuthMiddleware } from '../../../middleware/admin-auth.middleware'
 import { requireAdminRole } from '../../../middleware/admin-role.middleware'
 import * as controller from './admin-users.controller'
+import * as detail from './admin-users.detail.controller'
 import { listUsersSchema, listTeamsSchema } from './admin-users.validator'
 
 export const adminUsersRouter = Router()
@@ -14,4 +15,7 @@ adminUsersRouter.use(adminAuthMiddleware, requireAdminRole('READONLY'))
 // would swallow them ("summary" captured as a user id — the wildcard-collision bug).
 adminUsersRouter.get('/summary', controller.getSummary)
 adminUsersRouter.get('/teams', validate({ query: listTeamsSchema as any }), controller.listTeams)
+adminUsersRouter.get('/teams/:teamId', detail.getTeamDetail)
 adminUsersRouter.get('/', validate({ query: listUsersSchema as any }), controller.listUsers)
+// LAST: a param route must come after every static path so it cannot swallow 'summary' or 'teams'.
+adminUsersRouter.get('/:userId', detail.getUserDetail)
