@@ -11,7 +11,7 @@ the API database, are never touched by the model.
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -26,8 +26,14 @@ class TranslateItem(BaseModel):
 class TranslateRequest(BaseModel):
     meeting_id: str
     team_id: str
+    # "auto" = unknown / mixed-language source (transcripts): the model detects per item.
     source_language: str = Field(min_length=2, max_length=16)
     target_language: str = Field(min_length=2, max_length=16)
+    # "summary": generated content (default, unchanged). "transcript": spoken turns.
+    content_type: Literal["summary", "transcript"] = "summary"
+    # Read-only background (title, summary, speaker) used to disambiguate terminology.
+    # Never translated and never returned.
+    context: Optional[str] = Field(default=None, max_length=6000)
     items: List[TranslateItem] = Field(min_length=1, max_length=400)
 
     @field_validator("items")

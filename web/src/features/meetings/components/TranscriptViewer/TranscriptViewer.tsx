@@ -6,6 +6,7 @@ import { VirtualList } from "@/shared/components/data-display/VirtualList"
 import { TranscriptToolbar } from "./TranscriptToolbar"
 import { TranscriptTurn } from "./TranscriptTurn"
 import { TranscriptEmptyState } from "./TranscriptEmptyState"
+import { TranscriptLanguageMenu } from "./TranscriptLanguageMenu"
 import { useTranscriptSearch } from "./useTranscriptSearch"
 import { useTranscriptScroll } from "../../hooks/useTranscriptScroll"
 import { useSearchParams } from "next/navigation"
@@ -14,6 +15,9 @@ import { cn } from "@/lib/utils"
 
 import { useTranscript } from "../../hooks/useTranscript"
 import { useMeetingDetail } from "../../hooks/useMeetingDetail"
+import { useTranscriptTranslation } from "../../hooks/useTranscriptTranslation"
+import { detectScriptLanguage } from "../../lib/transcriptLanguage"
+import type { TranscriptLanguage } from "../../types"
 
 interface TranscriptData {
   id: string
@@ -149,7 +153,8 @@ export function TranscriptViewer({
       }
 
       return {
-        id: turn.id || `turn-${index}`,
+        // Must match the API's segment-id derivation exactly (translations are re-joined by id).
+        id: String(turn.id || turn.turn_id || `turn-${index}`),
         speaker,
         speakerId,
         confidence: turn.confidence !== undefined ? turn.confidence : 1.0,
@@ -159,6 +164,34 @@ export function TranscriptViewer({
       }
     })
   }, [transcript])
+
+  // 1b. Translation overlay - display-only; `turns` (the original) is never mutated.
+  const translation = useTranscriptTranslation(meetingId || "")
+  const { displayText, translatedLanguageOf, translate, showOriginal } = translation
+
+  const displayTurns = useMemo(
+    () =>
+      turns.map((t) => {
+        const text = displayText(t)
+        return text === t.text ? t : { ...t, text }
+      }),
+    [turns, displayText]
+  )
+
+  // Language each speaker (and the transcript as a whole) was spoken in - drives which targets the menu offers.
+  const originalLanguages = useMemo(() => {
+    const bySpeaker: Record<string, string[]> = {}
+    for (const t of turns) (bySpeaker[t.speaker] ||= []).push(t.text)
+    const perSpeaker: Record<string, TranscriptLanguage> = {}
+    for (const [name, texts] of Object.entries(bySpeaker)) perSpeaker[name] = detectScriptLanguage(texts.join("\n"))
+    return { all: detectScriptLanguage(turns.map((t) => t.text).join("\n")), perSpeaker }
+  }, [turns])
+
+  const handleTranslateSpeaker = useCallback(
+    (speaker: string, language: TranscriptLanguage) => void translate(language, speaker),
+    [translate]
+  )
+  const handleSpeakerOriginal = useCallback((speaker: string) => showOriginal(speaker), [showOriginal])
 
   // 2. Compute list of unique speakers with turn counts for the filter dropdown
   const speakers = useMemo(() => {
@@ -173,9 +206,9 @@ export function TranscriptViewer({
 
   // 3. Filter turns list based on current speaker selection
   const filteredTurns = useMemo(() => {
-    if (!selectedSpeaker) return turns
-    return turns.filter((t) => t.speaker === selectedSpeaker)
-  }, [turns, selectedSpeaker])
+    if (!selectedSpeaker) return displayTurns
+    return displayTurns.filter((t) => t.speaker === selectedSpeaker)
+  }, [displayTurns, selectedSpeaker])
 
   // 4. Initialize search capabilities on the (filtered) turns list
   const {
@@ -277,6 +310,18 @@ export function TranscriptViewer({
         onSpeakerSelect={setSelectedSpeaker}
         totalTurns={filteredTurns.length}
         isScrolled={isScrolled}
+        languageMenu={
+          meetingId ? (
+            <TranscriptLanguageMenu
+              currentLanguage={translation.fullLang ?? originalLanguages.all}
+              translatedLanguage={translation.fullLang}
+              loading={translation.isFullPending}
+              ariaLabel="Translate full transcript"
+              onSelect={(lang) => void translate(lang)}
+              onShowOriginal={() => showOriginal()}
+            />
+          ) : null
+        }
       />
 
       <div className="flex-1 min-h-0 relative">
@@ -306,6 +351,11 @@ export function TranscriptViewer({
                   isActiveMatch={isActiveMatch}
                   searchQuery={searchQuery}
                   onCopy={handleCopy}
+                  translating={translation.isFullPending || translation.isSpeakerPending(turn.speaker)}
+                  translatedLanguage={translatedLanguageOf(turn.speaker)}
+                  currentLanguage={translatedLanguageOf(turn.speaker) ?? originalLanguages.perSpeaker[turn.speaker] ?? "en"}
+                  onTranslate={meetingId ? handleTranslateSpeaker : undefined}
+                  onShowOriginal={handleSpeakerOriginal}
                 />
               </div>
             )

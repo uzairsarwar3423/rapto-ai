@@ -239,3 +239,17 @@ export const translateMeetingSchema = {
     targetLanguage: z.enum(TRANSLATION_TARGET_LANGUAGES),
   }),
 }
+
+// ── Translate Transcript ──────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/meetings/:meetingId/transcript/translate
+ * `speaker` omitted → whole transcript; present → only that speaker's segments.
+ * The speaker is re-validated server-side against the meeting's own transcript.
+ */
+export const translateTranscriptSchema = {
+  body: z.object({
+    targetLanguage: z.enum(TRANSLATION_TARGET_LANGUAGES),
+    speaker: z.string().trim().min(1).max(200).optional(),
+  }),
+}

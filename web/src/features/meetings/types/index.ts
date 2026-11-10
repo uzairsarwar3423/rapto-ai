@@ -104,3 +104,20 @@ export interface MeetingTranslation {
   commitments: Record<string, string>;
   generatedAt: string;
 }
+
+/** Languages the transcript can be translated into / displayed in. */
+export type TranscriptLanguage = "en" | "ur" | "hi";
+
+/** POST /meetings/:id/transcript/translate — translated text keyed by ORIGINAL segment id. */
+export interface TranscriptTranslation {
+  language: TranscriptLanguage;
+  scope: "full" | "speaker";
+  speaker: string | null;
+  cached: boolean;
+  /** Some segments could not be translated this time and keep their original text; retry fills them. */
+  partial: boolean;
+  translatedCount: number;
+  totalCount: number;
+  segments: Record<string, string>;
+  generatedAt: string;
+}

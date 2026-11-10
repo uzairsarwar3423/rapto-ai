@@ -538,6 +538,10 @@ export interface TranslateRequest {
   team_id: string;
   source_language: string;
   target_language: string;
+  /** "summary" (default) | "transcript" – selects the pipeline prompt. */
+  content_type?: "summary" | "transcript";
+  /** Read-only background for terminology; never translated/returned. */
+  context?: string;
   items: TranslateItem[];
 }
 

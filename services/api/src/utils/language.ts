@@ -16,7 +16,7 @@ export const MEETING_LANGUAGES = {
 export type MeetingLanguageCode = keyof typeof MEETING_LANGUAGES
 
 /** Languages a user can translate INTO. Extend here (and nowhere else) to add more. */
-export const TRANSLATION_TARGET_LANGUAGES = ['en'] as const
+export const TRANSLATION_TARGET_LANGUAGES = ['en', 'ur', 'hi'] as const
 export type TranslationTarget = (typeof TRANSLATION_TARGET_LANGUAGES)[number]
 
 export const DEFAULT_MEETING_LANGUAGE: MeetingLanguageCode = 'en'

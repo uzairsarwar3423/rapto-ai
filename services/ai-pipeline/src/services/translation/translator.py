@@ -37,6 +37,7 @@ from src.services.language import language_name
 log = structlog.get_logger(__name__)
 
 TRANSLATION_PROMPT_FILE = "translation_system.txt"
+TRANSCRIPT_PROMPT_FILE = "translation_transcript_system.txt"
 BATCH_CHAR_BUDGET = 6000
 BATCH_MAX_ITEMS = 60
 BATCH_CONCURRENCY = 3
@@ -58,14 +59,26 @@ def _batches(items: List[TranslateItem]) -> List[List[TranslateItem]]:
     return batches
 
 
-def _user_prompt(source: str, target: str, batch: List[TranslateItem]) -> str:
+def _source_label(source: str) -> str:
+    return "auto-detect per item (may be mixed)" if source == "auto" else language_name(source)
+
+
+def _user_prompt(
+    source: str, target: str, batch: List[TranslateItem], context: str | None = None
+) -> str:
     import json
 
     payload = json.dumps(
         [{"key": i.key, "text": i.text} for i in batch], ensure_ascii=False, indent=0
     )
+    background = (
+        f"BACKGROUND (read-only, never translate or output):\n{context.strip()}\n\n"
+        if context and context.strip()
+        else ""
+    )
     return (
-        f"SOURCE LANGUAGE: {language_name(source)}\n"
+        f"{background}"
+        f"SOURCE LANGUAGE: {_source_label(source)}\n"
         f"TARGET LANGUAGE: {language_name(target)}\n"
         f"ITEMS ({len(batch)}):\n"
         f"{payload}\n\n"
@@ -79,11 +92,12 @@ async def _translate_batch(
     source: str,
     target: str,
     batch: List[TranslateItem],
+    context: str | None = None,
 ) -> tuple[dict[str, str], AICallResult[TranslationBatchResponse]]:
     result = await client.generate_structured(
         task_type=TaskType.TRANSLATE,
         system_prompt=system_prompt,
-        user_prompt=_user_prompt(source, target, batch),
+        user_prompt=_user_prompt(source, target, batch, context),
         response_schema=TranslationBatchResponse,
     )
     wanted = {i.key for i in batch}
@@ -110,7 +124,9 @@ def _sum_costs(results: list[AICallResult]) -> CostRecord:
 
 async def translate(request: TranslateRequest, ai_client: AIClientProtocol) -> TranslateResult:
     start = time.monotonic()
-    system_prompt = load_prompt(TRANSLATION_PROMPT_FILE).body
+    system_prompt = load_prompt(
+        TRANSCRIPT_PROMPT_FILE if request.content_type == "transcript" else TRANSLATION_PROMPT_FILE
+    ).body
 
     translated: dict[str, str] = {}
     pending: List[TranslateItem] = []
@@ -126,7 +142,12 @@ async def translate(request: TranslateRequest, ai_client: AIClientProtocol) -> T
     async def run(batch: List[TranslateItem]) -> dict[str, str]:
         async with sem:
             out, call = await _translate_batch(
-                ai_client, system_prompt, request.source_language, request.target_language, batch
+                ai_client,
+                system_prompt,
+                request.source_language,
+                request.target_language,
+                batch,
+                request.context,
             )
             calls.append(call)
             return out

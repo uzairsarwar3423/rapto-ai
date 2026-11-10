@@ -14,6 +14,7 @@ import { asyncHandler } from '../../utils/async-handler'
 import { success } from '../../utils/response'
 import * as meetingService from './meetings.service'
 import { getMeetingTranslation } from './meetings.translation.service'
+import { getTranscriptTranslation } from './meetings.transcript-translation.service'
 import type { TranslationTarget } from '../../utils/language'
 import type { MeetingListFilters, MeetingIncludeOptions } from './meetings.types'
 
@@ -224,6 +225,21 @@ export const translateMeetingController = asyncHandler(async (req: Request, res:
   const targetLanguage = req.body.targetLanguage as TranslationTarget
 
   const translation = await getMeetingTranslation(meetingId, req.teamId as string, targetLanguage)
+
+  res.status(200).json(success(translation))
+})
+
+// ── POST /meetings/:meetingId/transcript/translate — full or single-speaker ───
+
+export const translateTranscriptController = asyncHandler(async (req: Request, res: Response) => {
+  const meetingId = param(req, 'meetingId')
+
+  const translation = await getTranscriptTranslation({
+    meetingId,
+    teamId: req.teamId as string,
+    target: req.body.targetLanguage as TranslationTarget,
+    speaker: req.body.speaker as string | undefined,
+  })
 
   res.status(200).json(success(translation))
 })

@@ -31,6 +31,7 @@ import {
   deleteMeetingSchema,
   meetingIdParamSchema,
   translateMeetingSchema,
+  translateTranscriptSchema,
 } from './meetings.validator'
 import {
   createMeetingController,
@@ -42,6 +43,7 @@ import {
   deleteMeetingController,
   reprocessMeetingController,
   translateMeetingController,
+  translateTranscriptController,
 } from './meetings.controller'
 
 export const meetingsRouter = Router()
@@ -156,6 +158,26 @@ meetingsRouter.post(
   translateRateLimiter,
   validate({ ...meetingIdParamSchema, ...translateMeetingSchema }),
   translateMeetingController
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /meetings/:meetingId/transcript/translate — translate the transcript (whole, or one speaker)
+// Segment-level cache; original transcript is never modified. Same per-user limiter budget style as above.
+// ─────────────────────────────────────────────────────────────────────────────
+const translateTranscriptRateLimiter = createRateLimiter({
+  limit: 30,
+  windowSeconds: 60,
+  keyPrefix: 'ratelimit:transcript-translate',
+  identifier: (req) => req.user?.id ?? null,
+})
+
+meetingsRouter.post(
+  '/:meetingId/transcript/translate',
+  requireAuth,
+  injectTenant,
+  translateTranscriptRateLimiter,
+  validate({ ...meetingIdParamSchema, ...translateTranscriptSchema }),
+  translateTranscriptController
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -4,6 +4,8 @@ import type {
   MeetingFilters,
   PaginatedMeetingsResponse,
   MeetingTranslation,
+  TranscriptLanguage,
+  TranscriptTranslation,
 } from "../types";
 
 /**
@@ -94,6 +96,22 @@ export async function translateMeetingClient(
   const response = await api.post<{ data: MeetingTranslation }>(
     `/meetings/${meetingId}/translate`,
     { targetLanguage }
+  );
+  return response.data.data;
+}
+
+/**
+ * Translate the transcript (whole, or only `speaker`'s segments) into `targetLanguage`.
+ * Result is keyed by original segment id; the original transcript is never modified.
+ */
+export async function translateTranscriptClient(
+  meetingId: string,
+  targetLanguage: TranscriptLanguage,
+  speaker?: string
+): Promise<TranscriptTranslation> {
+  const response = await api.post<{ data: TranscriptTranslation }>(
+    `/meetings/${meetingId}/transcript/translate`,
+    { targetLanguage, ...(speaker ? { speaker } : {}) }
   );
   return response.data.data;
 }

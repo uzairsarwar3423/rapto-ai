@@ -20,6 +20,9 @@ interface TranscriptToolbarProps {
 
   totalTurns: number
   isScrolled?: boolean
+
+  /** Whole-transcript translation control (omit to hide). */
+  languageMenu?: React.ReactNode
 }
 
 export function TranscriptToolbar({
@@ -37,6 +40,7 @@ export function TranscriptToolbar({
 
   totalTurns,
   isScrolled = false,
+  languageMenu,
 }: TranscriptToolbarProps) {
   return (
     <div
@@ -68,6 +72,7 @@ export function TranscriptToolbar({
         <span className="font-sans text-[12px] text-muted-foreground tabular-nums shrink-0">
           {totalTurns} turns
         </span>
+        {languageMenu}
       </div>
     </div>
   )
