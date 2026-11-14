@@ -70,12 +70,40 @@ async function findBySlug(slug: string) {
 }
 
 /**
- * Atomically create a team and assign the creator as OWNER.
- * Also creates default notification preferences for the owner.
+ * Which of the given slugs already exist? One indexed IN query.
+ * Slugs are stored lowercase, so exact matching is sufficient.
+ */
+async function findExistingSlugs(slugs: string[]): Promise<Set<string>> {
+  if (slugs.length === 0) return new Set()
+  const rows = await prisma.team.findMany({
+    where: { slug: { in: slugs.map((s) => s.toLowerCase()) } },
+    select: { slug: true },
+  })
+  return new Set(rows.map((r) => r.slug))
+}
+
+/** Thrown inside the create transaction when the user already belongs to a team. */
+export class UserAlreadyInTeamError extends Error {
+  constructor() {
+    super('User already belongs to a team')
+    this.name = 'UserAlreadyInTeamError'
+  }
+}
+
+/**
+ * Create a team and assign the creator as OWNER — in ONE transaction.
+ *
+ * Concurrency guarantees:
+ *   • The UNIQUE index on teams.slug rejects a duplicate slug (Prisma P2002);
+ *     the whole transaction rolls back and the service retries with a new slug.
+ *   • The user is claimed with `updateMany WHERE teamId IS NULL`. If two
+ *     requests race for the same user, the loser blocks on the row lock, sees
+ *     teamId already set, matches 0 rows, and rolls back its team — so a user
+ *     can never end up owning two freshly created teams.
  */
 async function create(data: CreateTeamData) {
-  const [team] = await prisma.$transaction([
-    prisma.team.create({
+  return prisma.$transaction(async (tx) => {
+    const team = await tx.team.create({
       data: {
         name: data.name,
         slug: data.slug,
@@ -89,46 +117,41 @@ async function create(data: CreateTeamData) {
         plan: true,
         createdAt: true,
       },
-    }),
-    prisma.user.update({
-      where: { id: data.creatorId },
+    })
+
+    const claimed = await tx.user.updateMany({
+      where: { id: data.creatorId, teamId: null },
       data: {
-        teamId: undefined, // will be set by the nested write below
+        teamId: team.id,
         role: UserRole.OWNER,
+        onboardingCompleted: false,
       },
-    }),
-  ])
+    })
+    if (claimed.count !== 1) {
+      throw new UserAlreadyInTeamError()
+    }
 
-  // Update user's teamId after team is created (Prisma requires ID to exist first)
-  await prisma.user.update({
-    where: { id: data.creatorId },
-    data: {
-      teamId: team.id,
-      role: UserRole.OWNER,
-      onboardingCompleted: false,
-    },
-  })
-
-  // Create default notification preferences (upsert — safe if already exists)
-  await prisma.notificationPreference.upsert({
-    where: { userId: data.creatorId },
-    create: {
-      userId: data.creatorId,
-      preferences: {
-        emailOnCommitmentMissed: true,
-        emailOnDeadlineToday: true,
-        emailOnDeadlineTomorrow: true,
-        emailWeeklyDigest: true,
-        weeklyDigestDay: 'MONDAY',
-        slackOnCommitmentMissed: true,
-        slackOnDeadlineToday: true,
-        inAppAll: true,
+    // Default notification preferences (upsert — safe if already exists)
+    await tx.notificationPreference.upsert({
+      where: { userId: data.creatorId },
+      create: {
+        userId: data.creatorId,
+        preferences: {
+          emailOnCommitmentMissed: true,
+          emailOnDeadlineToday: true,
+          emailOnDeadlineTomorrow: true,
+          emailWeeklyDigest: true,
+          weeklyDigestDay: 'MONDAY',
+          slackOnCommitmentMissed: true,
+          slackOnDeadlineToday: true,
+          inAppAll: true,
+        },
       },
-    },
-    update: {}, // no-op if exists
-  })
+      update: {}, // no-op if exists
+    })
 
-  return team
+    return team
+  })
 }
 
 /**
@@ -383,6 +406,7 @@ export const teamsRepository = {
   // Team CRUD
   findById,
   findBySlug,
+  findExistingSlugs,
   create,
   update,
 

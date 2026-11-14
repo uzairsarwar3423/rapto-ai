@@ -13,7 +13,8 @@ import crypto from 'crypto'
 import { PlanType, UserRole } from '@prisma/client'
 import { getTeamEntitlement } from '../billing/entitlement.service'
 import { ttlSecondsUntil } from '../billing/entitlement'
-import { teamsRepository } from './teams.repository'
+import { teamsRepository, UserAlreadyInTeamError } from './teams.repository'
+import { SLUG_MAX_LENGTH, isValidSlug, slugify, toBaseSlug, withSuffix } from '../../utils/slug'
 import { notifyQueue } from '../../queues/queue.client'
 import { emailService } from '../notifications/email.service'
 import { prisma } from '../../db/client'
@@ -45,6 +46,7 @@ import type {
   TeamUsage,
   MemberSummary,
   InviteResult,
+  SlugAvailabilityResponse,
 } from './teams.types'
 import { IN_FLIGHT_STATUSES } from '../meetings/meetings.service.state'
 
@@ -97,19 +99,65 @@ async function cacheDelPrefix(prefix: string): Promise<void> {
 
 // ── Slug Utilities ────────────────────────────────────────────────────────────
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 50)
-}
-
 function randomSuffix(length = 4): string {
   return crypto.randomBytes(length).toString('hex').slice(0, length)
+}
+
+/** Candidates probed per DB round trip when hunting for a free slug. */
+const SLUG_PROBE_BATCH = 25
+/** Sequential suffixes tried (-1 … -N) before falling back to a random one. */
+const SLUG_MAX_SEQUENTIAL = 1000
+/**
+ * Create retries after losing a slug race to a concurrent request. Retry k picks
+ * randomly among the first 2^k free slugs, so contenders spread out quickly; the
+ * final attempt uses a random suffix, which cannot realistically collide.
+ */
+const SLUG_CREATE_MAX_RETRIES = 6
+
+/** Prisma unique-constraint violation on the slug column / index. */
+function isSlugConflict(err: unknown): boolean {
+  const e = err as { code?: string; meta?: { target?: unknown } } | null
+  if (!e || e.code !== 'P2002') return false
+  const target = e.meta?.target
+  const text = Array.isArray(target) ? target.join(',') : String(target ?? '')
+  return text.includes('slug')
+}
+
+/**
+ * Find the first available slug for `input`:
+ *   base, base-1, base-2, base-3 …
+ * Reserved words and invalid input are treated exactly like taken slugs, so
+ * "admin" resolves to "admin-1" and "!!!" resolves to "workspace".
+ *
+ * `skip` returns the (skip+1)-th free slug instead of the first — used only to
+ * spread concurrent creators apart after a conflict. Normal lookups use 0.
+ *
+ * Candidates are probed in batches with one indexed IN query each. This is an
+ * optimistic read — the UNIQUE index at insert time is the real guarantee.
+ */
+async function resolveAvailableSlug(input: string, skip = 0): Promise<string> {
+  const base = toBaseSlug(input)
+  let seen = 0
+
+  for (let start = 0; start < SLUG_MAX_SEQUENTIAL; start += SLUG_PROBE_BATCH) {
+    const candidates: string[] = []
+    for (let i = start; i < start + SLUG_PROBE_BATCH; i++) {
+      candidates.push(i === 0 ? base : withSuffix(base, i))
+    }
+    const existing = await teamsRepository.findExistingSlugs(candidates)
+    for (const c of candidates) {
+      if (existing.has(c) || RESERVED_SLUGS.has(c)) continue
+      if (seen === skip) return c
+      seen++
+    }
+  }
+
+  // Pathological (>1000 teams sharing a base): fall back to a random suffix.
+  return randomSuffixSlug(base)
+}
+
+function randomSuffixSlug(base: string): string {
+  return `${base.slice(0, SLUG_MAX_LENGTH - 7).replace(/-+$/, '')}-${randomSuffix(6)}`
 }
 
 function hashToken(token: string): string {
@@ -141,43 +189,17 @@ import { DEFAULT_TEAM_SETTINGS } from '../../config/team-settings.config'
  * Business rules:
  *   - One team per user (v1) — user.teamId must be null
  *   - Slug is auto-generated from name if not provided
- *   - Reserved slugs are blocked
- *   - Slug must be globally unique (case-insensitive)
- *   - Creator becomes OWNER in atomic transaction
+ *   - The slug is ALWAYS revalidated here, server-side. If it is taken,
+ *     reserved or invalid we pick the next free one (base-1, base-2 …)
+ *     instead of failing — the response carries the slug actually used.
+ *   - A concurrent request that wins the slug race (UNIQUE violation) makes us
+ *     retry with the next free slug, never a 500
+ *   - Creator becomes OWNER in one atomic transaction; a user can't end up
+ *     owning two teams even under concurrent requests
  */
 async function createTeam(userId: string, input: CreateTeamInput) {
-  // STEP 1 — Slug Processing
-  let slug = input.slug
-    ? slugify(input.slug)
-    : slugify(input.name)
-
-  if (slug.length < 2) {
-    slug = `team-${randomSuffix(6)}`
-  }
-
-  // STEP 2 — Reserved slug check
-  if (RESERVED_SLUGS.has(slug)) {
-    throw new DuplicateError('This slug is reserved and cannot be used', {
-      field: 'slug',
-      suggestion: `${slug}-${randomSuffix()}`,
-    })
-  }
-
-  // STEP 3 — Uniqueness check
-  const existing = await teamsRepository.findBySlug(slug)
-  if (existing) {
-    // If user provided the slug explicitly, throw with suggestion
-    if (input.slug) {
-      throw new DuplicateError('This slug is already in use', {
-        field: 'slug',
-        suggestion: `${slug}-${randomSuffix()}`,
-      })
-    }
-    // Auto-generated slug taken → append suffix
-    slug = `${slug}-${randomSuffix()}`
-  }
-
-  // STEP 4 — Check user not already in a team
+  // STEP 1 — Check user not already in a team (fast, friendly failure;
+  // the transaction below enforces it again atomically)
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, teamId: true },
@@ -185,18 +207,55 @@ async function createTeam(userId: string, input: CreateTeamInput) {
   if (!user) {
     throw new AppError('USER_NOT_FOUND', 404, 'User not found')
   }
-  if (user.teamId) {
-    throw new ForbiddenError('You are already a member of a team. Leave your current team first.', {
+  const alreadyInTeam = () =>
+    new ForbiddenError('You are already a member of a team. Leave your current team first.', {
       code: 'ALREADY_IN_TEAM',
     })
+  if (user.teamId) {
+    throw alreadyInTeam()
   }
 
-  // STEP 5 — Atomic creation (team + user update + notif preferences)
-  const team = await teamsRepository.create({
-    name: input.name.trim(),
-    slug,
-    creatorId: userId,
-  })
+  // STEP 2 — Resolve a free slug and create atomically. The optimistic read in
+  // resolveAvailableSlug() can lose a race; the UNIQUE index is the arbiter, so
+  // on a slug conflict we simply resolve again (the winner's slug is now taken).
+  const requested = input.slug ? toBaseSlug(input.slug) : toBaseSlug(input.name)
+  let slug = ''
+  let team: Awaited<ReturnType<typeof teamsRepository.create>> | null = null
+
+  for (let attempt = 0; attempt <= SLUG_CREATE_MAX_RETRIES; attempt++) {
+    if (attempt === 0) {
+      slug = await resolveAvailableSlug(requested) // the normal, deterministic answer
+    } else if (attempt < SLUG_CREATE_MAX_RETRIES) {
+      slug = await resolveAvailableSlug(requested, crypto.randomInt(0, 2 ** attempt))
+    } else {
+      slug = randomSuffixSlug(toBaseSlug(requested)) // last resort — practically collision-free
+    }
+    try {
+      team = await teamsRepository.create({
+        name: input.name.trim(),
+        slug,
+        creatorId: userId,
+      })
+      break
+    } catch (err) {
+      if (err instanceof UserAlreadyInTeamError) throw alreadyInTeam()
+      if (isSlugConflict(err) && attempt < SLUG_CREATE_MAX_RETRIES) {
+        logger.warn({ slug, attempt }, 'Slug conflict during team creation — retrying with next slug')
+        continue
+      }
+      if (isSlugConflict(err)) {
+        throw new DuplicateError('Could not reserve a workspace URL. Please try again.', {
+          field: 'slug',
+          suggestion: await resolveAvailableSlug(requested),
+        })
+      }
+      throw err
+    }
+  }
+  if (!team) {
+    // Unreachable (loop either breaks or throws) — keeps the type checker honest.
+    throw new AppError('INTERNAL_ERROR', 500, 'Team creation failed')
+  }
 
   // STEP 6 — Cache invalidation
   await cacheDel(CK.user(userId))
@@ -240,6 +299,8 @@ async function createTeam(userId: string, input: CreateTeamInput) {
     id: team.id,
     name: team.name,
     slug: team.slug,
+    // true when the requested URL was unavailable and the next free one was used
+    slugAdjusted: team.slug !== requested,
     plan: team.plan,
     createdAt: team.createdAt,
     // Fresh JWT — frontend MUST store this to replace the stale token
@@ -894,30 +955,39 @@ async function removeMember(
 }
 
 /**
- * Check if a slug is available (public endpoint for onboarding form).
+ * Check whether a slug is available (public endpoint for the onboarding form).
+ *
+ * Always answers with the first slug that IS available (`suggestion`), so the
+ * client can adopt it in one round trip:
+ *   "uzair" free            -> { available: true,  slug: "uzair" }
+ *   "uzair" taken           -> { available: false, slug: "uzair", reason: "TAKEN",    suggestion: "uzair-1" }
+ *   "uzair", "uzair-1" taken-> suggestion: "uzair-2"
+ *   "admin"                 -> { available: false, reason: "RESERVED", suggestion: "admin-1" }
+ *   "!!!"                   -> { available: false, reason: "INVALID",  suggestion: "workspace" }
  */
-async function checkSlugAvailability(slug: string) {
-  const normalized = slug.toLowerCase().trim()
+async function checkSlugAvailability(rawSlug: string): Promise<SlugAvailabilityResponse> {
+  const slug = slugify(rawSlug)
 
-  if (RESERVED_SLUGS.has(normalized)) {
+  if (!isValidSlug(slug)) {
     return {
       available: false,
-      slug: normalized,
-      suggestion: `${normalized}-${randomSuffix()}`,
+      slug,
+      reason: 'INVALID',
+      suggestion: await resolveAvailableSlug(slug),
     }
   }
 
-  const existing = await teamsRepository.findBySlug(normalized)
-
-  if (existing) {
-    return {
-      available: false,
-      slug: normalized,
-      suggestion: `${normalized}-${randomSuffix()}`,
-    }
+  const suggestion = await resolveAvailableSlug(slug)
+  if (suggestion === slug) {
+    return { available: true, slug }
   }
 
-  return { available: true, slug: normalized }
+  return {
+    available: false,
+    slug,
+    reason: RESERVED_SLUGS.has(slug) ? 'RESERVED' : 'TAKEN',
+    suggestion,
+  }
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────

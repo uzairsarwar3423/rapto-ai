@@ -153,7 +153,11 @@ export interface MembersListResponse {
 
 export interface SlugAvailabilityResponse {
   available: boolean
+  /** The normalised slug that was checked */
   slug: string
+  /** Why it is unavailable (absent when available) */
+  reason?: 'TAKEN' | 'RESERVED' | 'INVALID'
+  /** First available slug (base, base-1, base-2 …) when `slug` is unavailable */
   suggestion?: string
 }
 

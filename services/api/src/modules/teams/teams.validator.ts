@@ -23,9 +23,6 @@ function isValidIANATimezone(tz: string): boolean {
   }
 }
 
-/** Valid slug regex: lowercase alphanumeric and hyphens, no leading/trailing hyphen */
-const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
-
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 /**
@@ -38,13 +35,12 @@ export const createTeamSchema = {
       .trim()
       .min(2, 'Team name must be at least 2 characters')
       .max(100, 'Team name must be at most 100 characters'),
+    // Normalised server-side (lowercase, hyphens, no specials). If it is taken,
+    // reserved or unusable the service resolves the next free slug.
     slug: z
       .string()
       .trim()
-      .toLowerCase()
-      .min(2, 'Slug must be at least 2 characters')
-      .max(50, 'Slug must be at most 50 characters')
-      .regex(SLUG_REGEX, 'Slug must contain only lowercase letters, numbers, and hyphens (no leading/trailing hyphens)')
+      .max(100, 'Slug must be at most 100 characters')
       .optional(),
   }),
 }
@@ -151,12 +147,13 @@ export const listMembersSchema = {
  */
 export const checkSlugSchema = {
   query: z.object({
+    // Free text is accepted and normalised server-side; too-short / empty /
+    // unsupported input is answered with reason "INVALID" + a suggestion
+    // rather than a 400, so the form can always recover.
     slug: z
       .string()
       .trim()
-      .toLowerCase()
-      .min(2, 'Slug must be at least 2 characters')
-      .max(50, 'Slug must be at most 50 characters'),
+      .max(100, 'Slug must be at most 100 characters'),
   }),
 }
 
