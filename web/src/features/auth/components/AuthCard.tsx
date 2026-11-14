@@ -18,6 +18,7 @@ export function AuthCard({ children, title, subtitle, mode }: AuthCardProps) {
       title={title}
       subtitle={subtitle}
       brandLogo={<NavLogo className="font-display text-2xl font-bold tracking-tight text-white flex items-center" />}
+      brandLogoDark={<NavLogo className="font-display text-2xl font-bold tracking-tight text-ink flex items-center" />}
     >
       {children}
     </Auth12>

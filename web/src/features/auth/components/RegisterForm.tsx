@@ -180,7 +180,7 @@ export function RegisterForm() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 flex items-center rounded-r-[10px] pr-3.5 text-ink-3 transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-none"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-[10px] text-ink-3 transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-none"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               <HugeiconsIcon icon={showPassword ? ViewIcon : ViewOffIcon} className="size-[18px]" />
@@ -229,7 +229,7 @@ export function RegisterForm() {
         Already have an account?{' '}
         <Link
           href={redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : '/login'}
-          className="font-medium text-ink underline decoration-ink/25 underline-offset-[5px] transition-colors hover:decoration-ink"
+          className="inline-block px-1 py-2 font-medium text-ink underline decoration-ink/25 underline-offset-[5px] transition-colors hover:decoration-ink"
         >
           Sign in
         </Link>

@@ -94,10 +94,9 @@ export function ForgotPasswordForm() {
             type="email"
             autoComplete="email"
             {...register('email')}
+            aria-invalid={errors.email ? true : undefined}
             aria-describedby={errors.email ? 'email-error' : undefined}
-            className={`w-full rounded-xl border bg-background px-4 py-2.5 text-sm text-foreground shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand ${
-              errors.email ? 'border-error' : 'border-border'
-            }`}
+            className="auth-input"
             placeholder="you@example.com"
           />
           {errors.email && (

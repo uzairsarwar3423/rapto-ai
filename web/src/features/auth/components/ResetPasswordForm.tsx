@@ -165,16 +165,15 @@ export function ResetPasswordForm() {
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               {...register('password')}
+              aria-invalid={errors.password ? true : undefined}
               aria-describedby={errors.password ? 'password-error' : undefined}
-              className={`w-full rounded-xl border bg-background pl-4 pr-11 py-2.5 text-sm text-foreground shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand ${
-                errors.password ? 'border-error' : 'border-border'
-              }`}
+              className="auth-input pr-11"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground focus:outline-none"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted hover:text-foreground focus:outline-none"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -199,16 +198,15 @@ export function ResetPasswordForm() {
               type={showConfirmPassword ? 'text' : 'password'}
               autoComplete="new-password"
               {...register('confirmPassword')}
+              aria-invalid={errors.confirmPassword ? true : undefined}
               aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
-              className={`w-full rounded-xl border bg-background pl-4 pr-11 py-2.5 text-sm text-foreground shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand ${
-                errors.confirmPassword ? 'border-error' : 'border-border'
-              }`}
+              className="auth-input pr-11"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground focus:outline-none"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted hover:text-foreground focus:outline-none"
               aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
             >
               {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

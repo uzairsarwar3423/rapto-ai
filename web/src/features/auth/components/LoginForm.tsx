@@ -193,7 +193,7 @@ export function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 flex items-center rounded-r-[10px] pr-3.5 text-ink-3 transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-none"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-[10px] text-ink-3 transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-none"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               <HugeiconsIcon icon={showPassword ? ViewIcon : ViewOffIcon} className="size-[18px]" />
@@ -212,15 +212,15 @@ export function LoginForm() {
             <input
               id="remember"
               type="checkbox"
-              className="size-4 cursor-pointer rounded-[5px] accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="size-[18px] cursor-pointer rounded-[5px] accent-ink sm:size-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             />
-            <label htmlFor="remember" className="cursor-pointer select-none text-[13px] text-ink-2">
+            <label htmlFor="remember" className="cursor-pointer select-none py-2 text-[13px] text-ink-2">
               Keep me signed in
             </label>
           </div>
           <Link
             href="/forgot-password"
-            className="text-[13px] font-medium text-ink underline decoration-ink/25 underline-offset-[5px] transition-colors hover:decoration-ink"
+            className="-my-2 py-2 text-[13px] font-medium text-ink underline decoration-ink/25 underline-offset-[5px] transition-colors hover:decoration-ink"
           >
             Forgot password?
           </Link>
@@ -261,7 +261,7 @@ export function LoginForm() {
         Haven&apos;t joined yet?{' '}
         <Link
           href={redirectParam ? `/register?redirect=${encodeURIComponent(redirectParam)}` : '/register'}
-          className="font-medium text-ink underline decoration-ink/25 underline-offset-[5px] transition-colors hover:decoration-ink"
+          className="inline-block px-1 py-2 font-medium text-ink underline decoration-ink/25 underline-offset-[5px] transition-colors hover:decoration-ink"
         >
           Sign up
         </Link>

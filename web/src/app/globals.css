@@ -816,13 +816,20 @@ body[data-scroll-locked] iframe[title*="Paddle"] {
   border: 1px solid rgba(27, 35, 32, 0.14);
   background: #fff;
   color: var(--color-ink);
-  font-size: 14px;
+  /* 16px on touch-sized screens: anything smaller makes iOS Safari zoom the page on focus */
+  font-size: 16px;
   letter-spacing: -0.004em;
   box-shadow: 0 1px 1px rgba(27, 35, 32, 0.03);
   transition:
     border-color 150ms ease,
     box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
     background-color 150ms ease;
+}
+
+@media (min-width: 640px) {
+  .auth-input {
+    font-size: 14px;
+  }
 }
 
 .auth-input::placeholder {
@@ -1040,3 +1047,4 @@ body[data-scroll-locked] iframe[title*="Paddle"] {
   outline: 2px solid var(--color-ink);
   outline-offset: 3px;
 }
+

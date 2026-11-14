@@ -33,7 +33,10 @@ export interface Auth12Props {
   title?: React.ReactNode;
   subtitle?: string;
   children?: React.ReactNode;
+  /** Logo for the dark shader panel (light text). */
   brandLogo?: React.ReactNode;
+  /** Logo for the light form background on small screens (dark text). */
+  brandLogoDark?: React.ReactNode;
 }
 
 export const containerVariants: Variants = {
@@ -82,9 +85,7 @@ function ShaderCard({
         className={`pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/[0.09] ${radius}`}
       />
       {logo && (
-        <div className="absolute left-6 top-6 z-10 flex items-center gap-3 lg:left-8 lg:top-8">
-          {logo}
-        </div>
+        <div className="absolute left-8 top-8 z-10 flex items-center gap-3">{logo}</div>
       )}
     </div>
   );
@@ -96,6 +97,7 @@ export default function Auth12({
   subtitle,
   children,
   brandLogo,
+  brandLogoDark,
 }: Auth12Props) {
   const [showPassword, setShowPassword] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -109,19 +111,20 @@ export default function Auth12({
   );
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-paper font-sans text-ink antialiased selection:bg-ink selection:text-white lg:flex-row">
-      {/* Mobile: compact shader header carries the brand */}
-      <div className="p-3 pb-0 lg:hidden">
-        <ShaderCard className="h-[120px]" radius="rounded-[20px]" logo={logo} />
-      </div>
+    <div className="flex min-h-screen w-full flex-col bg-paper font-sans text-ink antialiased selection:bg-ink selection:text-white supports-[height:100dvh]:min-h-dvh lg:flex-row">
+      {/* Phones & tablets: no shader — just the brand above the form. The shader
+          panel below is display:none here, so no WebGL context is ever created. */}
+      <header className="flex items-center px-5 pt-6 min-[400px]:px-6 sm:px-12 lg:hidden [@media(max-height:500px)]:pt-4">
+        {brandLogoDark ?? logo}
+      </header>
 
-      {/* Desktop: full-height shader panel */}
-      <div className="relative hidden w-1/2 flex-col p-4 lg:flex lg:min-h-screen">
+      {/* Desktop (lg+): full-height shader panel */}
+      <div className="relative hidden w-1/2 flex-col p-4 lg:flex lg:min-h-screen lg:supports-[height:100dvh]:min-h-dvh">
         <ShaderCard className="h-full w-full" radius="rounded-[24px]" logo={logo} />
       </div>
 
       {/* Form panel */}
-      <div className="flex w-full flex-1 flex-col items-center justify-center px-6 py-10 sm:px-12 lg:w-1/2 lg:flex-none lg:py-12">
+      <div className="flex w-full flex-1 flex-col items-center justify-center px-5 py-8 min-[400px]:px-6 min-[400px]:py-10 sm:px-12 lg:w-1/2 lg:flex-none lg:py-12 [@media(max-height:500px)]:py-6!">
         <motion.div
           variants={containerVariants}
           initial={reduceMotion ? false : "hidden"}
