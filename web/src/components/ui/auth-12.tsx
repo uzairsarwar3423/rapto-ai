@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, type Variants } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import { OrganicShader } from "@/components/ui/OrganicShader";
 
 // Google SVG Icon
 export const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -32,8 +33,6 @@ export interface Auth12Props {
   title?: React.ReactNode;
   subtitle?: string;
   children?: React.ReactNode;
-  imageSrc?: string;
-  imageAlt?: string;
   brandLogo?: React.ReactNode;
 }
 
@@ -42,71 +41,102 @@ export const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.08,
-      delayChildren: 0.1,
+      staggerChildren: 0.07,
+      delayChildren: 0.08,
     },
   },
 };
 
 export const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 15 },
+  hidden: { opacity: 0, y: 12 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
       type: "spring",
-      stiffness: 300,
-      damping: 24,
+      stiffness: 320,
+      damping: 28,
     },
   },
 };
+
+/** Shader card — shared by the desktop side panel and the mobile header strip. */
+function ShaderCard({
+  className,
+  logo,
+  radius,
+}: {
+  className?: string;
+  logo?: React.ReactNode;
+  radius: string;
+}) {
+  return (
+    <div
+      className={`relative overflow-hidden bg-[#050a07] shadow-[0_1px_2px_rgba(5,20,10,0.25),0_28px_60px_-28px_rgba(5,30,14,0.55)] ${radius} ${className ?? ""}`}
+    >
+      {/* Held as a still frame: textured and composed, but no motion */}
+      <OrganicShader animated={false} stillTime={14} />
+      {/* Hairline inner light so the edge reads as a lit surface */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/[0.09] ${radius}`}
+      />
+      {logo && (
+        <div className="absolute left-6 top-6 z-10 flex items-center gap-3 lg:left-8 lg:top-8">
+          {logo}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Auth12({
   mode = "login",
   title,
   subtitle,
   children,
-  imageSrc = "https://assets.watermelon.sh/auth-12.avif",
-  imageAlt = "Abstract wavy gradient",
   brandLogo,
 }: Auth12Props) {
   const [showPassword, setShowPassword] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  const logo = brandLogo || (
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="40" height="40" rx="10" fill="#1A6B3C" />
+      <path d="M12 24.5L25 12.5C26 11.5 28 11.5 29 12.5C30 13.5 30 15 29 16L16 28L12 24.5Z" fill="white" />
+      <path d="M10 18.5L23 6.5C24 5.5 26 5.5 27 6.5C28 7.5 28 9 27 10L14 22L10 18.5Z" fill="white" fillOpacity="0.8" />
+    </svg>
+  );
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background font-sans text-foreground antialiased selection:bg-brand/20 selection:text-brand lg:flex-row">
-      {/* Left Visual Banner Panel */}
-      <div className="relative hidden w-full flex-col p-4 lg:flex lg:min-h-screen lg:w-1/2">
-        <div className="relative h-full w-full overflow-hidden rounded-[24px] bg-neutral-100 shadow-xl">
-          <img
-            src={imageSrc}
-            alt={imageAlt}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-
-          {/* Logo overlay */}
-          <div className="absolute top-8 left-8 z-10 flex items-center gap-3">
-            {brandLogo || (
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="40" height="40" rx="10" fill="#1A6B3C" />
-                <path d="M12 24.5L25 12.5C26 11.5 28 11.5 29 12.5C30 13.5 30 15 29 16L16 28L12 24.5Z" fill="white"/>
-                <path d="M10 18.5L23 6.5C24 5.5 26 5.5 27 6.5C28 7.5 28 9 27 10L14 22L10 18.5Z" fill="white" fillOpacity="0.8"/>
-              </svg>
-            )}
-          </div>
-        </div>
+    <div className="flex min-h-screen w-full flex-col bg-paper font-sans text-ink antialiased selection:bg-ink selection:text-white lg:flex-row">
+      {/* Mobile: compact shader header carries the brand */}
+      <div className="p-3 pb-0 lg:hidden">
+        <ShaderCard className="h-[120px]" radius="rounded-[20px]" logo={logo} />
       </div>
 
-      {/* Right Form Panel */}
-      <div className="flex w-full flex-col items-center justify-center p-6 sm:p-12 lg:w-1/2">
+      {/* Desktop: full-height shader panel */}
+      <div className="relative hidden w-1/2 flex-col p-4 lg:flex lg:min-h-screen">
+        <ShaderCard className="h-full w-full" radius="rounded-[24px]" logo={logo} />
+      </div>
+
+      {/* Form panel */}
+      <div className="flex w-full flex-1 flex-col items-center justify-center px-6 py-10 sm:px-12 lg:w-1/2 lg:flex-none lg:py-12">
         <motion.div
           variants={containerVariants}
-          initial="hidden"
+          initial={reduceMotion ? false : "hidden"}
           animate="visible"
-          className="w-full max-w-[420px]"
+          className="w-full max-w-[400px]"
         >
-          {/* Header Title */}
-          <motion.div variants={itemVariants} className="mb-8">
-            <h1 className="mb-3 text-[42px] font-semibold leading-[1.08] tracking-tight text-foreground font-heading">
+          {/* Header */}
+          <motion.div variants={itemVariants} className="mb-9">
+            <h1
+              className={`mb-4 text-ink ${
+                mode === "register"
+                  ? "auth-title-sans text-[38px] leading-[1.1] tracking-[-0.035em] sm:text-[44px]"
+                  : "auth-title text-[48px] leading-[0.98] tracking-[-0.03em] sm:text-[56px]"
+              }`}
+            >
               {title || (mode === "login" ? (
                 <>
                   Welcome
@@ -121,7 +151,7 @@ export default function Auth12({
                 </>
               ))}
             </h1>
-            <p className="text-[15px] text-muted text-balance">
+            <p className="max-w-[22rem] text-pretty text-[15px] leading-[1.6] tracking-[-0.005em] text-ink-2">
               {subtitle || (mode === "login"
                 ? "You need to be signed in to access the project dashboard."
                 : "Sign up in seconds to get started with AI meeting tracking.")}
@@ -131,22 +161,20 @@ export default function Auth12({
           {/* Children / Form */}
           {children || (
             <form className="flex flex-col gap-5">
-              {/* Fallback Email Input */}
               <motion.div variants={itemVariants} className="flex flex-col gap-2">
-                <label htmlFor="email" className="text-[14px] font-medium text-foreground">
+                <label htmlFor="email" className="text-[13px] font-medium tracking-[-0.003em] text-ink">
                   Email or username
                 </label>
                 <input
                   id="email"
                   type="text"
                   placeholder="alex.costa@example.com"
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-[14px] text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors"
+                  className="auth-input"
                 />
               </motion.div>
 
-              {/* Fallback Password Input */}
               <motion.div variants={itemVariants} className="flex flex-col gap-2">
-                <label htmlFor="password" className="text-[14px] font-medium text-foreground">
+                <label htmlFor="password" className="text-[13px] font-medium tracking-[-0.003em] text-ink">
                   Password
                 </label>
                 <div className="relative">
@@ -154,24 +182,21 @@ export default function Auth12({
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-10 text-[14px] text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors"
+                    className="auth-input pr-11"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted hover:text-foreground transition-colors"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-ink-3 transition-colors hover:text-ink"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    <HugeiconsIcon icon={showPassword ? ViewIcon : ViewOffIcon} className="size-5" />
+                    <HugeiconsIcon icon={showPassword ? ViewIcon : ViewOffIcon} className="size-[18px]" />
                   </button>
                 </div>
               </motion.div>
 
-              {/* Submit Button */}
               <motion.div variants={itemVariants} className="mt-2">
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-brand py-3 text-[14px] font-medium text-white transition-transform active:scale-[0.98] hover:bg-brand-mid"
-                >
+                <button type="submit" className="btn-ink-grain w-full">
                   {mode === "login" ? "Sign in" : "Create account"}
                 </button>
               </motion.div>

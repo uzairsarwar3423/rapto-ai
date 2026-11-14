@@ -101,6 +101,7 @@ export default function InviteTeamPage() {
           <OnboardingStepFooter>
             <div />
             <Button
+              variant="ink"
               onClick={handleNext}
               className="h-10 px-5 text-xs font-medium min-w-[120px]"
             >
@@ -235,6 +236,8 @@ export default function InviteTeamPage() {
           <OnboardingSkipConfirm onConfirm={handleNext} />
           <Button
             type="submit"
+            variant="ink"
+            aria-busy={isInviting}
             disabled={isInviting}
             className="h-10 px-5 text-xs font-medium min-w-[120px]"
           >

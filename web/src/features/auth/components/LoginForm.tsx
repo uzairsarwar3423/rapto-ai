@@ -154,7 +154,7 @@ export function LoginForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
         {/* Email */}
         <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="text-[14px] font-medium text-foreground">
+          <label htmlFor="email" className="text-[13px] font-medium tracking-[-0.003em] text-ink">
             Email or username
           </label>
           <input
@@ -162,10 +162,9 @@ export function LoginForm() {
             type="email"
             autoComplete="email"
             {...register('email')}
+            aria-invalid={errors.email ? true : undefined}
             aria-describedby={errors.email ? 'email-error' : undefined}
-            className={`w-full rounded-xl border bg-background px-4 py-3 text-[14px] text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors ${
-              errors.email ? 'border-error ring-1 ring-error/50' : 'border-border'
-            }`}
+            className="auth-input"
             placeholder="alex.costa@example.com"
           />
           {errors.email && (
@@ -177,7 +176,7 @@ export function LoginForm() {
 
         {/* Password */}
         <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
-          <label htmlFor="password" className="text-[14px] font-medium text-foreground">
+          <label htmlFor="password" className="text-[13px] font-medium tracking-[-0.003em] text-ink">
             Password
           </label>
           <div className="relative">
@@ -186,19 +185,18 @@ export function LoginForm() {
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               {...register('password')}
+              aria-invalid={errors.password ? true : undefined}
               aria-describedby={errors.password ? 'password-error' : undefined}
-              className={`w-full rounded-xl border bg-background pl-4 pr-11 py-3 text-[14px] font-mono text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors ${
-                errors.password ? 'border-error ring-1 ring-error/50' : 'border-border'
-              }`}
+              className="auth-input pr-11"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted hover:text-foreground transition-colors focus:outline-none"
+              className="absolute inset-y-0 right-0 flex items-center rounded-r-[10px] pr-3.5 text-ink-3 transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-none"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              <HugeiconsIcon icon={showPassword ? ViewIcon : ViewOffIcon} className="size-5" />
+              <HugeiconsIcon icon={showPassword ? ViewIcon : ViewOffIcon} className="size-[18px]" />
             </button>
           </div>
           {errors.password && (
@@ -209,20 +207,20 @@ export function LoginForm() {
         </motion.div>
 
         {/* Checkbox & Forgot Password */}
-        <motion.div variants={itemVariants} className="flex items-center justify-between mt-1">
+        <motion.div variants={itemVariants} className="flex items-center justify-between mt-0.5">
           <div className="flex items-center gap-2.5">
             <input
               id="remember"
               type="checkbox"
-              className="size-[18px] rounded border-border text-brand accent-brand focus:ring-brand transition-colors cursor-pointer"
+              className="size-4 cursor-pointer rounded-[5px] accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             />
-            <label htmlFor="remember" className="text-[14px] text-muted cursor-pointer select-none">
+            <label htmlFor="remember" className="cursor-pointer select-none text-[13px] text-ink-2">
               Keep me signed in
             </label>
           </div>
           <Link
             href="/forgot-password"
-            className="text-[14px] font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-brand hover:decoration-brand"
+            className="text-[13px] font-medium text-ink underline decoration-ink/25 underline-offset-[5px] transition-colors hover:decoration-ink"
           >
             Forgot password?
           </Link>
@@ -233,12 +231,14 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={isPending || lockedTimeLeft !== null}
-            className="w-full rounded-xl bg-brand py-3 text-[14px] font-medium text-white transition-transform active:scale-[0.98] hover:bg-brand-mid focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shadow-brand"
+            aria-busy={isPending}
+            className="btn-ink-grain w-full"
           >
             {isPending ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Signing in...
-              </span>
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <span>Signing in…</span>
+              </>
             ) : (
               'Sign in'
             )}
@@ -246,17 +246,22 @@ export function LoginForm() {
         </motion.div>
       </form>
 
-      {/* Google OAuth Button */}
+      {/* Divider + Google OAuth Button */}
+      <motion.div variants={itemVariants} className="flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-hairline" />
+        <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">or</span>
+        <span className="h-px flex-1 bg-hairline" />
+      </motion.div>
       <motion.div variants={itemVariants}>
         <OAuthButton inviteToken={inviteToken} />
       </motion.div>
 
       {/* Footer link to Register */}
-      <motion.div variants={itemVariants} className="mt-6 text-center text-[14px] text-muted">
+      <motion.div variants={itemVariants} className="mt-4 text-center text-[13px] text-ink-2">
         Haven&apos;t joined yet?{' '}
         <Link
           href={redirectParam ? `/register?redirect=${encodeURIComponent(redirectParam)}` : '/register'}
-          className="font-semibold text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-brand hover:decoration-brand"
+          className="font-medium text-ink underline decoration-ink/25 underline-offset-[5px] transition-colors hover:decoration-ink"
         >
           Sign up
         </Link>

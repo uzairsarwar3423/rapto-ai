@@ -41,6 +41,7 @@ export default function OnboardingPage() {
         </div>
 
         <Button
+          variant="ink"
           onClick={handleNext}
           className="w-full flex items-center justify-center gap-1.5 h-10 font-sans text-xs font-medium"
         >

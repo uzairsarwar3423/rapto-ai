@@ -99,7 +99,9 @@ function ConnectCalendarContent() {
             Back
           </Link>
           <Button
+            variant="ink"
             onClick={handleFinish}
+            aria-busy={isRedirectingFromFinish}
             disabled={isRedirectingFromFinish}
             className="h-10 px-5 text-xs font-medium min-w-[140px]"
           >

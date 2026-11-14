@@ -9,6 +9,16 @@ export interface CreateTeamPayload {
   slug: string
 }
 
+export interface SlugCheckResult {
+  available: boolean
+  /** The normalised slug the server checked */
+  slug: string
+  /** Why it is unavailable */
+  reason?: 'TAKEN' | 'RESERVED' | 'INVALID'
+  /** First available slug when `slug` is unavailable */
+  suggestion?: string
+}
+
 export interface InviteMembersPayload {
   emails: string[]
   role?: 'MEMBER' | 'MANAGER' | 'ADMIN'
@@ -19,20 +29,22 @@ export const useOnboarding = () => {
   const queryClient = useQueryClient()
   const { user, setUser, setAccessToken } = useAuthStore()
 
-  // 1. Check if slug is available
+  // 1. Check if slug is available. The API always answers with the first slug that IS
+  //    available (`suggestion`: base, base-1, base-2 …) when the requested one is not.
   const checkSlugMutation = useMutation({
-    mutationFn: async (slug: string): Promise<{ available: boolean; slug: string; suggestion?: string }> => {
-      const response = await api.get<{ data: { available: boolean; slug: string; suggestion?: string } }>(`/teams/check-slug`, {
+    mutationFn: async (slug: string): Promise<SlugCheckResult> => {
+      const response = await api.get<{ data: SlugCheckResult }>(`/teams/check-slug`, {
         params: { slug }
       })
       return response.data.data
     }
   })
 
-  // 2. Create a team
+  // 2. Create a team. The server revalidates the slug and may pick the next free one,
+  //    so the returned `slug` (not the one sent) is the source of truth.
   const createTeamMutation = useMutation({
     mutationFn: async (payload: CreateTeamPayload) => {
-      const response = await api.post<{ data: { id: string; name: string; slug: string; accessToken: string | null } }>(
+      const response = await api.post<{ data: { id: string; name: string; slug: string; slugAdjusted?: boolean; accessToken: string | null } }>(
         '/teams',
         payload
       )
@@ -52,7 +64,7 @@ export const useOnboarding = () => {
         setUser({
           ...user,
           teamId: data.id,
-          team: { id: data.id, name: data.name },
+          team: { id: data.id, name: data.name, slug: data.slug },
           role: 'ADMIN' // The team creator becomes OWNER/ADMIN
         })
       }

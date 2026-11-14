@@ -162,6 +162,16 @@
   --color-deferred-bg: var(--color-deferred-bg);
   --color-deferred-text: var(--color-deferred-text);
 
+  /* Home screen palette — warm paper + ink, single green accent */
+  --color-paper: #faf9f5;
+  --color-paper-2: #f3f2ed;
+  --color-ink: #1b2320;
+  --color-ink-2: #48524e;
+  --color-ink-3: #77827e;
+  --color-hairline: rgba(27, 35, 32, 0.08);
+  --color-leaf: #1f844f;
+  --color-leaf-tint: #e1f4e9;
+
   /* Font Sizes & Line Heights */
   --font-size-2xs: 11px;
   --line-height-2xs: 16px;
@@ -586,4 +596,447 @@ body[data-scroll-locked] iframe[title*="Paddle"] {
 
 .dark .btn-add-meeting:focus-visible {
   outline-color: hsl(149 52% 60%);
+}
+
+/* ============================================================
+   HOME SCREEN — surface, grain & tactile CTA
+   ============================================================ */
+
+/* Warm paper with a faint green bloom at the top and a soft floor tint */
+.home-surface {
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(60rem 28rem at 50% -6rem, rgba(225, 244, 233, 0.9), rgba(250, 249, 245, 0) 70%),
+    radial-gradient(48rem 24rem at 50% 100%, rgba(243, 242, 237, 0.9), rgba(250, 249, 245, 0) 70%);
+}
+
+/* Extremely subtle paper grain — sits above the background, below content */
+.home-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Primary CTA — same tactile language as .btn-add-meeting, at hero scale */
+.btn-rapto {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  background: linear-gradient(
+    180deg,
+    hsl(148 56% 38%) 0%,
+    hsl(148 62% 31%) 100%
+  );
+  border: 1px solid hsl(149 63% 22%);
+  box-shadow:
+    0 1px 1px rgba(14, 58, 33, 0.20),
+    0 3px 6px -1px rgba(14, 58, 33, 0.18),
+    0 10px 20px -6px rgba(31, 132, 79, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14);
+  transition:
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 160ms ease;
+}
+
+/* Top sheen + a whisper of grain so the surface feels tactile, not flat */
+.btn-rapto::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 52%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.5'/></svg>");
+  opacity: 0.9;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.btn-rapto:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05) saturate(1.03);
+  box-shadow:
+    0 1px 1px rgba(14, 58, 33, 0.22),
+    0 5px 10px -2px rgba(14, 58, 33, 0.20),
+    0 16px 28px -8px rgba(31, 132, 79, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14);
+}
+
+.btn-rapto:active {
+  transform: translateY(0) scale(0.985);
+  filter: brightness(0.97);
+  transition-duration: 70ms;
+  box-shadow:
+    0 1px 1px rgba(14, 58, 33, 0.22),
+    0 2px 4px -1px rgba(31, 132, 79, 0.28),
+    inset 0 2px 4px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+.btn-rapto:focus-visible {
+  outline: 2px solid var(--color-leaf);
+  outline-offset: 3px;
+}
+
+/* Quiet companion — paper surface, hairline border, soft lift */
+.btn-rapto-quiet {
+  background: #fff;
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline);
+  filter: none;
+  box-shadow:
+    0 1px 1px rgba(27, 35, 32, 0.04),
+    0 2px 6px -2px rgba(27, 35, 32, 0.08),
+    inset 0 1px 0 #fff;
+}
+
+.btn-rapto-quiet::before {
+  display: none;
+}
+
+.btn-rapto-quiet:hover {
+  filter: none;
+  background: var(--color-paper-2);
+  border-color: rgba(27, 35, 32, 0.14);
+  box-shadow:
+    0 1px 1px rgba(27, 35, 32, 0.05),
+    0 6px 14px -4px rgba(27, 35, 32, 0.12),
+    inset 0 1px 0 #fff;
+}
+
+.btn-rapto-quiet:active {
+  filter: none;
+  background: #ecebe5;
+  box-shadow: inset 0 1px 3px rgba(27, 35, 32, 0.12);
+}
+
+.btn-rapto-quiet:focus-visible {
+  outline-color: var(--color-ink);
+}
+
+/* Compact ink button used in the navigation */
+.btn-rapto-ink {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 9px;
+  gap: 8px;
+  font-size: 0.8125rem;
+  background: linear-gradient(180deg, #2c3531 0%, #1b2320 100%);
+  border-color: #121815;
+  box-shadow:
+    0 1px 1px rgba(18, 24, 21, 0.20),
+    0 3px 8px -3px rgba(18, 24, 21, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.btn-rapto-ink:hover {
+  filter: brightness(1.12);
+  box-shadow:
+    0 1px 1px rgba(18, 24, 21, 0.22),
+    0 6px 12px -4px rgba(18, 24, 21, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+
+/* ============================================================
+   AUTH — shader surface, editorial title, inputs, black button
+   ============================================================ */
+
+/* Shader wrapper: the CSS gradient is the graceful fallback (no WebGL, or
+   while the first frame compiles); the canvas fades in over it. */
+.organic-shader {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(55% 45% at 84% 4%, rgba(186, 255, 140, 0.55), transparent 62%),
+    radial-gradient(48% 40% at 96% 94%, rgba(110, 255, 168, 0.42), transparent 62%),
+    radial-gradient(90% 70% at 18% 62%, #123d22, transparent 72%),
+    #050a07;
+}
+
+.organic-shader__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.organic-shader__canvas[data-ready="true"] {
+  opacity: 1;
+}
+
+/* The onboarding theme forces Plus Jakarta on every heading with !important;
+   the auth title opts back into the editorial serif with higher specificity. */
+.onboarding-theme h1.auth-title {
+  font-family: var(--font-instrument-serif), Georgia, "Times New Roman", serif !important;
+  font-weight: 400;
+}
+
+/* Register title: plain, simple sans instead of the serif */
+.onboarding-theme h1.auth-title-sans {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif !important;
+  font-weight: 600;
+}
+
+/* ── Inputs ─────────────────────────────────────────────────── */
+.auth-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(27, 35, 32, 0.14);
+  background: #fff;
+  color: var(--color-ink);
+  font-size: 14px;
+  letter-spacing: -0.004em;
+  box-shadow: 0 1px 1px rgba(27, 35, 32, 0.03);
+  transition:
+    border-color 150ms ease,
+    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 150ms ease;
+}
+
+.auth-input::placeholder {
+  color: rgba(72, 82, 78, 0.5);
+}
+
+.auth-input:hover:not(:focus) {
+  border-color: rgba(27, 35, 32, 0.26);
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: rgba(27, 35, 32, 0.78);
+  box-shadow:
+    0 0 0 4px rgba(27, 35, 32, 0.07),
+    0 1px 1px rgba(27, 35, 32, 0.03);
+}
+
+.auth-input[aria-invalid="true"] {
+  border-color: hsl(var(--danger));
+  box-shadow: 0 0 0 4px hsl(var(--danger) / 0.09);
+}
+
+/* ── Primary: deep black with fine monochrome grain ─────────── */
+.btn-ink-grain {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid #000;
+  background-color: #0c0f0e;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  -webkit-font-smoothing: antialiased;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.28),
+    0 8px 16px -8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  transition:
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 160ms ease;
+}
+
+/* Grain + a restrained overhead light. Both are monochrome. */
+.btn-ink-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 46%),
+    /* fine diagonal micro-weave */
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.045) 0 1px,
+      rgba(255, 255, 255, 0) 1px 3px
+    ),
+    /* visible monochrome grain */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.1 -0.28'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.42;
+  transition: opacity 220ms ease;
+}
+
+/* Soft directional light from the top-left; it brightens on hover */
+.btn-ink-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(130% 150% at 18% -35%, rgba(255, 255, 255, 0.14), transparent 58%);
+  opacity: 0.6;
+  transition: opacity 260ms ease;
+}
+
+.btn-ink-grain:hover:not(:disabled):not([aria-busy="true"]) {
+  transform: translateY(-1px);
+  background-color: #141917;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.30),
+    0 12px 22px -8px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.btn-ink-grain:hover:not(:disabled):not([aria-busy="true"])::after {
+  opacity: 1;
+}
+
+.btn-ink-grain:hover:not(:disabled):not([aria-busy="true"])::before {
+  opacity: 0.52;
+}
+
+.btn-ink-grain:active:not(:disabled):not([aria-busy="true"]) {
+  transform: translateY(0) scale(0.992);
+  transition-duration: 70ms;
+  background-color: #090b0a;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.30),
+    inset 0 2px 5px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.btn-ink-grain:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+.btn-ink-grain:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.btn-ink-grain:disabled::after {
+  opacity: 0.25;
+}
+
+/* Compact size used by the onboarding flow (width stays the caller's decision) */
+.btn-ink-grain.btn-ink-compact {
+  height: 40px;
+  padding: 0 20px;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Dark surfaces: lift the edge so the black button doesn't vanish into the card */
+.dark .btn-ink-grain {
+  border-color: rgba(255, 255, 255, 0.16);
+  background-color: #151a18;
+}
+
+.dark .btn-ink-grain:hover:not(:disabled):not([aria-busy="true"]) {
+  background-color: #1d2421;
+}
+
+.dark .btn-ink-grain:focus-visible {
+  outline-color: #e9ece9;
+}
+
+/* Loading: keep full presence, add a slow light travelling along the base */
+.btn-ink-grain[aria-busy="true"] {
+  cursor: progress;
+  opacity: 1;
+}
+
+.btn-ink-grain[aria-busy="true"]::after {
+  inset: auto 0 0 0;
+  height: 2px;
+  opacity: 1;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: btn-ink-sweep 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes btn-ink-sweep {
+  from { background-position: -60% 0; }
+  to   { background-position: 160% 0; }
+}
+
+/* ── Secondary: quiet paper button (Google) ─────────────────── */
+.btn-paper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(27, 35, 32, 0.14);
+  background: #fff;
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.004em;
+  box-shadow: 0 1px 1px rgba(27, 35, 32, 0.04);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-paper:hover {
+  background: var(--color-paper-2);
+  border-color: rgba(27, 35, 32, 0.26);
+  box-shadow: 0 4px 10px -4px rgba(27, 35, 32, 0.12);
+}
+
+.btn-paper:active {
+  transform: scale(0.992);
+  background: #ecebe5;
+}
+
+.btn-paper:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
 }

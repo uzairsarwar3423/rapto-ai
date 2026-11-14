@@ -15,6 +15,9 @@ const buttonVariants = cva(
           "border border-border border-t-border-strong/70 bg-surface/90 text-foreground font-medium bg-[linear-gradient(180deg,rgba(255,255,255,0.4)_0%,rgba(255,255,255,0)_100%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-surface-hover hover:border-border-strong active:scale-[0.98]",
         ghost:
           "hover:bg-surface text-foreground active:scale-[0.98]",
+        // Premium black textured primary action (see .btn-ink-grain in globals.css).
+        // Used for primary forward / confirm actions in the onboarding flow.
+        ink: "btn-ink-grain btn-ink-compact",
         textured:
           "bg-brand text-white font-medium border border-black/15 border-t-white/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0)_50%,rgba(0,0,0,0.08)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_4px_rgba(0,0,0,0.12)] hover:bg-brand-mid hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_4px_rgba(0,0,0,0.12)] active:scale-[0.98]",
       },
@@ -66,6 +69,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         ref={ref}
         disabled={isButtonDisabled}
+        aria-busy={isLoading || undefined}
         className={cn(buttonVariants({ variant, size, className }))}
         {...props}
       >
