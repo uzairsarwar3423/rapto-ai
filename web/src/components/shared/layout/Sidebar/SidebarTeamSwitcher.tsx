@@ -43,7 +43,7 @@ export function SidebarTeamSwitcher({
   };
 
   return (
-    <div className={cn("p-2 flex items-center justify-center select-none w-full", className)}>
+    <div className={cn("flex w-full select-none items-center justify-center px-2 pb-1", className)}>
       <WorkspaceSwitcher
         collapsed={collapsed}
         onSelect={handleSelectWorkspace}

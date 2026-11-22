@@ -20,6 +20,7 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
   display: "swap",
+  preload: false, // fallback behind Inter only — never needed for first paint
 });
 
 // ── Plus Jakarta Sans — industry-level display sans-serif for auth headings ──

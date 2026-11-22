@@ -1,6 +1,5 @@
 "use client";
 
-import { SidebarCollapseButton } from "@/components/shared/layout/Sidebar/SidebarCollapseButton";
 import { Breadcrumb } from "./Breadcrumb";
 import { SearchTrigger } from "./SearchTrigger";
 import { TopbarActions } from "./TopbarActions";
@@ -59,11 +58,6 @@ export function Topbar({ onOpenDrawer, drawerOpen = false }: TopbarProps) {
             <HamburgerIcon open={drawerOpen} />
           </button>
         )}
-
-        {/* SidebarCollapseButton — hidden below 768px (no sidebar there) */}
-        <div className="hidden md:flex">
-          <SidebarCollapseButton />
-        </div>
 
         <Breadcrumb />
       </div>

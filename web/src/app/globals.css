@@ -1048,3 +1048,9 @@ body[data-scroll-locked] iframe[title*="Paddle"] {
   outline-offset: 3px;
 }
 
+
+
+/* ── Meeting detail: section labels stay in Inter (the dashboard theme forces the display face on headings) ── */
+.dashboard-theme .mtg-label {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif !important;
+}

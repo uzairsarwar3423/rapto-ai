@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, User as UserIcon, Shield, Bell } from "lucide-react";
+import Link from "next/link";
+import { Bell, ChevronsUpDown, LogOut, Shield, User as UserIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,10 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { motion } from "framer-motion";
-
-import { User } from "@/features/auth/types/auth.types";
+import type { User } from "@/features/auth/types/auth.types";
 import { ConnectionStatusDot } from "@/components/shared/feedback/ConnectionStatusDot";
 
 interface SidebarUserProps {
@@ -22,95 +20,116 @@ interface SidebarUserProps {
   collapsed: boolean;
 }
 
+const MENU_ITEM =
+  "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-muted-foreground focus:bg-foreground/[0.05] focus:text-foreground";
+
+/**
+ * Profile row: avatar with a live connection badge, name over email, and a menu.
+ * Shares the nav's geometry (px-2 gutter + px-1.5 padding → avatar centred at x = 28) so collapsing
+ * never moves it.
+ */
 export function SidebarUser({ user, collapsed }: SidebarUserProps) {
   const logoutMutation = useLogout();
 
   const name = user?.name || "User";
   const email = user?.email || "";
-  const initials = name
-    .split(" ")
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  const handleLogout = () => {
-    logoutMutation.mutate();
-  };
+  const initials =
+    name
+      .split(" ")
+      .filter(Boolean)
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "U";
 
   return (
-    <div className={cn("p-2 shrink-0 select-none border-t border-border bg-surface/50")}>
+    <div className="shrink-0 px-2 pb-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button
+            type="button"
+            aria-label="Account menu"
             className={cn(
-              "flex items-center gap-2 rounded-md hover:bg-surface-hover transition-colors duration-120 cursor-pointer text-left w-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              collapsed ? "h-9 w-9 justify-center" : "h-auto py-1 px-2"
+              "group flex h-12 w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg px-1.5 text-left outline-none",
+              "transition-[background-color,transform] duration-150 ease-out-soft",
+              "hover:bg-foreground/[0.045] active:scale-[0.985] data-[state=open]:bg-foreground/[0.05]",
+              "focus-visible:ring-2 focus-visible:ring-brand/40"
             )}
-            aria-label="User settings menu"
           >
-            <Avatar className="h-6 w-6 rounded-full shrink-0">
-              {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={name} />}
-              <AvatarFallback className="rounded-full bg-brand-subtle text-brand font-heading text-[10px] font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <span className="relative shrink-0">
+              <Avatar className="h-7 w-7 rounded-full">
+                {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
+                <AvatarFallback className="rounded-full bg-brand/10 text-[11px] font-semibold text-brand">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              {/* Connection badge: a ring in the sidebar colour separates it cleanly from the avatar */}
+              <ConnectionStatusDot
+                compact
+                className="absolute -bottom-0.5 -right-0.5 rounded-full bg-surface-2 p-[2px]"
+              />
+            </span>
 
-            {!collapsed && (
-              <div className="flex flex-1 flex-col truncate">
-                <span className="truncate text-xs font-medium text-foreground leading-none mb-0.5">
-                  {name}
-                </span>
-                <span className="truncate text-[10px] text-muted-subtle leading-none mb-1">
-                  {email}
-                </span>
-                <ConnectionStatusDot />
-              </div>
-            )}
-          </motion.button>
+            <span
+              className={cn(
+                "flex min-w-0 flex-1 flex-col gap-0.5 transition-opacity duration-150 ease-out-soft",
+                collapsed ? "opacity-0" : "opacity-100 delay-75"
+              )}
+            >
+              <span className="truncate text-[13px] font-medium leading-none tracking-[-0.006em] text-foreground">
+                {name}
+              </span>
+              <span className="truncate text-[11px] leading-none text-muted-foreground">{email}</span>
+            </span>
+
+            <ChevronsUpDown
+              className={cn(
+                "h-3.5 w-3.5 shrink-0 text-muted-subtle transition-[opacity,color] duration-150 group-hover:text-foreground",
+                collapsed ? "opacity-0" : "opacity-100 delay-75"
+              )}
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
+          </button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent
-          className="w-[190px] bg-popover border border-border rounded-xl p-1 shadow-lg text-popover-foreground"
+          className="w-[224px] rounded-xl border-0 bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10"
           align="end"
           side="right"
-          sideOffset={8}
+          sideOffset={10}
         >
+          <div className="px-2 pb-2 pt-1.5">
+            <p className="truncate text-[13px] font-medium text-foreground">{name}</p>
+            {email && <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">{email}</p>}
+            <ConnectionStatusDot className="mt-2" />
+          </div>
+          <DropdownMenuSeparator className="bg-border/70" />
           <DropdownMenuItem asChild>
-            <Link
-              href="/settings/profile"
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <UserIcon className="h-3.5 w-3.5" />
+            <Link href="/settings/profile" className={MENU_ITEM}>
+              <UserIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
               Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link
-              href="/settings/notifications"
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <Bell className="h-3.5 w-3.5" />
+            <Link href="/settings/notifications" className={MENU_ITEM}>
+              <Bell className="h-3.5 w-3.5" strokeWidth={1.75} />
               Notifications
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link
-              href="/settings/security"
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <Shield className="h-3.5 w-3.5" />
+            <Link href="/settings/security" className={MENU_ITEM}>
+              <Shield className="h-3.5 w-3.5" strokeWidth={1.75} />
               Security
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-border" />
+          <DropdownMenuSeparator className="bg-border/70" />
           <DropdownMenuItem
-            onClick={handleLogout}
+            onClick={() => logoutMutation.mutate()}
             disabled={logoutMutation.isPending}
-            className="flex items-center gap-2 text-xs text-error hover:bg-error/10 hover:text-error! cursor-pointer focus:text-error!"
+            className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-error focus:bg-error/10 focus:text-error"
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className="h-3.5 w-3.5" strokeWidth={1.75} />
             {logoutMutation.isPending ? "Signing out..." : "Sign out"}
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -7,7 +7,7 @@ interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
 export function SidebarNav({ children, className, ...props }: SidebarNavProps) {
   return (
     <nav
-      className={cn("flex flex-col gap-4 w-full", className)}
+      className={cn("flex w-full flex-col gap-5", className)}
       {...props}
     >
       {children}

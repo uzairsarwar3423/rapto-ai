@@ -11,14 +11,17 @@ import {
 
 interface SidebarLogoProps {
   collapsed: boolean;
+  /** Render just the mark (no wrapper padding/height) — the caller owns the surrounding layout. */
+  bare?: boolean;
 }
 
-export function SidebarLogo({ collapsed }: SidebarLogoProps) {
+export function SidebarLogo({ collapsed, bare = false }: SidebarLogoProps) {
   return (
     <div
       className={cn(
-        "flex items-center h-12 select-none shrink-0 transition-all duration-180",
-        collapsed ? "justify-center px-0" : "px-4 pt-3 pb-1"
+        "flex items-center select-none shrink-0",
+        !bare && "h-12 transition-all duration-180",
+        !bare && (collapsed ? "justify-center px-0" : "px-4 pt-3 pb-1")
       )}
     >
       <TooltipProvider delayDuration={300}>
@@ -47,6 +50,8 @@ export function SidebarLogo({ collapsed }: SidebarLogoProps) {
                   width={69}
                   height={28}
                   draggable={false}
+                  decoding="async"
+                  fetchPriority="high"
                   className="h-7 w-auto max-w-none shrink-0 select-none dark:hidden"
                 />
                 <img
@@ -56,6 +61,8 @@ export function SidebarLogo({ collapsed }: SidebarLogoProps) {
                   width={69}
                   height={28}
                   draggable={false}
+                  decoding="async"
+                  loading="lazy"
                   className="hidden h-7 w-auto max-w-none shrink-0 select-none dark:block"
                 />
               </span>

@@ -1,161 +1,258 @@
 'use client'
 
-import { Card } from '@/components/ui/card'
 import {
-  FileText,
   Target,
   AlignLeft,
   Lightbulb,
   MessageSquare,
   CheckCircle2,
+  Check,
   Vote,
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useId, useState } from 'react'
+import { cn } from '@/lib/utils'
 import type { StructuredSummary, TopicSection } from '../../types'
+import { SectionLabel } from './SectionLabel'
+import { emphasize, stripLeadingBulletChar } from './summaryText'
+import { hasSummaryContent, parseStructuredSummary } from '../../lib/summary'
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Report header (AI attribution + language control) ───────────────────────
 
-function stripLeadingBulletChar(text: string) {
-  return text.replace(/^[-*•]\s*/, '').trim()
-}
-
-/**
- * Parse incoming summary which may be:
- *   - a StructuredSummary object  (new v4.0)
- *   - a plain string              (legacy v3 plain text)
- *   - null / undefined            (not yet generated)
- */
-function parseStructuredSummary(
-  raw: StructuredSummary | string | null | undefined
-): StructuredSummary | null {
-  if (!raw) return null
-
-  if (typeof raw === 'string') {
-    // Attempt to parse JSON embedded in a string (edge-case: API stringified it)
-    try {
-      const parsed = JSON.parse(raw)
-      if (typeof parsed === 'object' && parsed !== null) return parsed as StructuredSummary
-    } catch {
-      // Not JSON – treat as plain-text overview for backward compat
-      return { overview: raw }
-    }
-  }
-
-  return raw as StructuredSummary
-}
-
-function hasContent(summary: StructuredSummary): boolean {
-  return !!(
-    summary.meeting_purpose ||
-    summary.overview ||
-    (summary.key_takeaways?.length ?? 0) > 0 ||
-    (summary.topics_discussed?.length ?? 0) > 0 ||
-    (summary.conclusions?.length ?? 0) > 0 ||
-    (summary.decisions?.length ?? 0) > 0
-  )
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function SectionHeader({
-  icon: Icon,
-  label,
-  count,
-  accent = 'brand',
-}: {
-  icon: React.ElementType
-  label: string
-  count?: number
-  accent?: string
-}) {
+function ReportHeader({ headerAction }: { headerAction?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="p-1.5 rounded-md bg-brand/10 text-brand ring-1 ring-brand/20 shadow-inner">
-        <Icon className="w-3.5 h-3.5" />
-      </div>
-      <h4 className="text-xs font-semibold tracking-tight text-foreground uppercase letter-spacing-wide">
-        {label}
-      </h4>
-      {count !== undefined && count > 0 && (
-        <span className="ml-auto text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full border border-border/40">
-          {count}
-        </span>
-      )}
+    <div className="flex items-center gap-2 text-muted-foreground">
+      <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+      <span className="mtg-label text-xs font-medium">AI meeting report</span>
+      {headerAction && <div className="ms-auto">{headerAction}</div>}
     </div>
   )
 }
 
-function BulletList({ items }: { items: string[] }) {
+// ─── Key takeaways ───────────────────────────────────────────────────────────
+
+function KeyTakeaways({ items }: { items: string[] }) {
   return (
-    <ul className="space-y-2">
-      {items.map((item, i) => (
-        <li
-          key={i}
-          className="group flex gap-2.5 text-sm text-foreground/80 items-start px-2 py-1 -mx-2 rounded-lg hover:bg-muted/30 hover:text-foreground transition-all duration-200"
-        >
-          <div className="mt-[7px] shrink-0 w-1.5 h-1.5 rounded-full bg-brand/40 group-hover:bg-brand group-hover:scale-110 transition-all duration-300" />
-          <span className="flex-1 leading-relaxed break-words">
-            {stripLeadingBulletChar(item)}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <section aria-label="Key Takeaways">
+      <div className="rounded-2xl bg-foreground/[0.035] px-5 py-6 sm:px-8 sm:py-8">
+        <SectionLabel icon={Lightbulb} count={items.length} className="mb-5">
+          Key takeaways
+        </SectionLabel>
+        <ol className="divide-y divide-border/60">
+          {items.map((item, i) => (
+            <li key={i} className="flex gap-4 py-4 first:pt-0 last:pb-0">
+              <span
+                aria-hidden="true"
+                className="mt-[5px] w-5 shrink-0 text-[11px] font-medium tabular-nums leading-none text-brand"
+              >
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <p className="min-w-0 flex-1 break-words text-[15px] leading-[1.7] text-foreground/90">
+                {emphasize(stripLeadingBulletChar(item))}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
   )
 }
 
-function TopicBlock({ topic }: { topic: TopicSection }) {
-  const [expanded, setExpanded] = useState(true)
+// ─── Topics discussed ────────────────────────────────────────────────────────
+
+function TopicRow({
+  topic,
+  index,
+  open,
+  onToggle,
+}: {
+  topic: TopicSection
+  index: number
+  open: boolean
+  onToggle: () => void
+}) {
+  const uid = useId()
+  const panelId = `${uid}-panel`
+  const buttonId = `${uid}-button`
+  const bullets = topic.bullets ?? []
 
   return (
-    <div className="border border-border/30 rounded-xl overflow-hidden bg-card/60">
+    <div>
       <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-muted/30 transition-colors duration-200"
-        aria-expanded={expanded}
+        id={buttonId}
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="group flex w-full items-start gap-4 py-4 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md"
       >
-        <span className="text-xs font-semibold text-foreground/90 leading-relaxed">
+        <span
+          aria-hidden="true"
+          className="mt-[3px] w-5 shrink-0 text-[11px] font-medium tabular-nums leading-none text-muted-foreground/60"
+        >
+          {String(index + 1).padStart(2, '0')}
+        </span>
+        <span
+          className={cn(
+            'min-w-0 flex-1 text-[15px] font-medium leading-snug transition-colors duration-200',
+            open ? 'text-foreground' : 'text-foreground/85 group-hover:text-foreground'
+          )}
+        >
           {topic.topic}
         </span>
-        <div className="shrink-0 text-muted-foreground">
-          {expanded ? (
-            <ChevronUp className="w-3.5 h-3.5" />
-          ) : (
-            <ChevronDown className="w-3.5 h-3.5" />
+        {bullets.length > 0 && (
+          <span className="mt-[2px] shrink-0 text-xs tabular-nums text-muted-foreground/70">
+            {bullets.length} {bullets.length === 1 ? 'point' : 'points'}
+          </span>
+        )}
+        <ChevronRight
+          aria-hidden="true"
+          className={cn(
+            'mt-[1px] h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform duration-300 ease-out rtl:-scale-x-100',
+            open && 'rotate-90 rtl:rotate-90'
+          )}
+          strokeWidth={1.75}
+        />
+      </button>
+
+      {/* Height animates via grid rows (no measuring, no layout jump) */}
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={buttonId}
+        className={cn(
+          'grid transition-[grid-template-rows,opacity] duration-300 ease-out',
+          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+        )}
+        inert={!open}
+      >
+        <div className="overflow-hidden">
+          {bullets.length > 0 && (
+            <ul className="space-y-3 pb-5 ps-9">
+              {bullets.map((bullet, i) => (
+                <li key={i} className="flex gap-3 text-[14.5px] leading-[1.7] text-foreground/75">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[0.8em] h-px w-2.5 shrink-0 bg-muted-foreground/40"
+                  />
+                  <span className="min-w-0 flex-1 break-words">
+                    {emphasize(stripLeadingBulletChar(bullet))}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
-      </button>
-      {expanded && topic.bullets.length > 0 && (
-        <div className="px-4 pb-3 pt-1 border-t border-border/20">
-          <BulletList items={topic.bullets} />
-        </div>
-      )}
+      </div>
     </div>
   )
 }
 
-// ─── Skeleton (loading state) ─────────────────────────────────────────────────
+function TopicsDiscussed({ topics }: { topics: TopicSection[] }) {
+  // The first topic opens by default so the section reads as content, not a wall of closed rows.
+  const [openSet, setOpenSet] = useState<Set<number>>(() => new Set([0]))
+  const allOpen = openSet.size === topics.length
 
-function SummarySkeleton() {
+  const toggle = (i: number) =>
+    setOpenSet((prev) => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
+      return next
+    })
+
   return (
-    <Card className="p-4 sm:p-5 border-border/40 bg-gradient-to-br from-card to-card/50 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="p-1.5 rounded-md bg-brand/10 text-brand">
-          <FileText className="w-4 h-4" />
-        </div>
-        <h3 className="text-sm font-semibold tracking-tight text-foreground">Meeting Summary</h3>
+    <section aria-label="Topics Discussed">
+      <SectionLabel
+        icon={MessageSquare}
+        count={topics.length}
+        action={
+          topics.length > 1 ? (
+            <button
+              type="button"
+              onClick={() => setOpenSet(allOpen ? new Set() : new Set(topics.map((_, i) => i)))}
+              className="text-xs font-normal normal-case tracking-normal text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
+            >
+              {allOpen ? 'Collapse all' : 'Expand all'}
+            </button>
+          ) : undefined
+        }
+      >
+        Topics discussed
+      </SectionLabel>
+      <div className="divide-y divide-border/60 border-y border-border/60">
+        {topics.map((topic, i) => (
+          <TopicRow key={i} topic={topic} index={i} open={openSet.has(i)} onToggle={() => toggle(i)} />
+        ))}
       </div>
-      <div className="space-y-3">
-        <div className="h-3 bg-muted/40 rounded w-3/4 animate-pulse" />
-        <div className="h-3 bg-muted/40 rounded w-full animate-pulse" />
-        <div className="h-3 bg-muted/40 rounded w-5/6 animate-pulse" />
-        <div className="h-3 bg-muted/40 rounded w-1/2 animate-pulse" />
+    </section>
+  )
+}
+
+// ─── Conclusions & decisions ─────────────────────────────────────────────────
+
+function Conclusions({ items }: { items: string[] }) {
+  return (
+    <section aria-label="Conclusions">
+      <SectionLabel icon={CheckCircle2} count={items.length}>
+        Conclusions
+      </SectionLabel>
+      {/* A solid brand rule + heavier type set the outcomes apart from the discussion above */}
+      <ul className="space-y-4 border-s-2 border-brand/50 ps-5 sm:ps-6">
+        {items.map((item, i) => (
+          <li key={i} className="flex gap-3">
+            <Check
+              aria-hidden="true"
+              className="mt-[5px] h-4 w-4 shrink-0 text-brand"
+              strokeWidth={2.25}
+            />
+            <p className="min-w-0 flex-1 break-words text-[15.5px] font-medium leading-[1.65] text-foreground">
+              {emphasize(stripLeadingBulletChar(item))}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function Decisions({ items }: { items: string[] }) {
+  return (
+    <section aria-label="Decisions">
+      <SectionLabel icon={Vote} count={items.length}>
+        Decisions
+      </SectionLabel>
+      <ul className="divide-y divide-border/60 rounded-xl border border-border/60">
+        {items.map((item, i) => (
+          <li key={i} className="flex gap-3 px-4 py-3.5 sm:px-5">
+            <Vote aria-hidden="true" className="mt-[5px] h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <p className="min-w-0 flex-1 break-words text-[15px] font-medium leading-[1.65] text-foreground">
+              {emphasize(stripLeadingBulletChar(item))}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+// ─── Loading / empty state ───────────────────────────────────────────────────
+
+function SummarySkeleton({ headerAction }: { headerAction?: React.ReactNode }) {
+  return (
+    <div className="space-y-8">
+      <ReportHeader headerAction={headerAction} />
+      <div className="space-y-3" aria-hidden="true">
+        <div className="h-5 w-3/4 animate-pulse rounded bg-foreground/[0.07]" />
+        <div className="h-3.5 w-full animate-pulse rounded bg-foreground/[0.05]" />
+        <div className="h-3.5 w-5/6 animate-pulse rounded bg-foreground/[0.05]" />
+        <div className="h-3.5 w-2/3 animate-pulse rounded bg-foreground/[0.05]" />
       </div>
-      <p className="mt-4 text-xs text-muted-foreground italic pl-1">
+      <p className="text-sm text-muted-foreground">
         Summary will appear once the meeting finishes processing.
       </p>
-    </Card>
+    </div>
   )
 }
 
@@ -168,7 +265,7 @@ export function MeetingSummaryBlock({
   lang,
 }: {
   summary: StructuredSummary | string | null | undefined
-  /** Optional control rendered at the end of the card header (e.g. the language toggle). */
+  /** Optional control rendered at the end of the report header (e.g. the language toggle). */
   headerAction?: React.ReactNode
   /** Render the content right-to-left (Urdu). */
   rtl?: boolean
@@ -176,8 +273,8 @@ export function MeetingSummaryBlock({
 }) {
   const structured = parseStructuredSummary(summary)
 
-  if (!structured || !hasContent(structured)) {
-    return <SummarySkeleton />
+  if (!structured || !hasSummaryContent(structured)) {
+    return <SummarySkeleton headerAction={headerAction} />
   }
 
   const {
@@ -190,95 +287,44 @@ export function MeetingSummaryBlock({
   } = structured
 
   return (
-    <Card className="border-border/40 bg-gradient-to-br from-card to-card/50 shadow-sm transition-all duration-300 group/card hover:shadow-md overflow-hidden">
-      {/* ── Card Header ── */}
-      <div className="flex items-center gap-2 px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-border/30">
-        <div className="p-1.5 rounded-md bg-brand/10 text-brand ring-1 ring-brand/20 shadow-inner group-hover/card:bg-brand/15 transition-colors duration-300">
-          <FileText className="w-4 h-4" />
-        </div>
-        <h3 className="text-sm font-semibold tracking-tight text-foreground">Meeting Summary</h3>
-        {headerAction && <div className="ml-auto">{headerAction}</div>}
+    <article className="space-y-10 sm:space-y-12">
+      <ReportHeader headerAction={headerAction} />
+
+      <div className="space-y-10 sm:space-y-12" dir={rtl ? 'rtl' : undefined} lang={lang}>
+        {/* ── Purpose + Overview: the lede ── */}
+        {(meeting_purpose || overview) && (
+          <div className="space-y-8">
+            {meeting_purpose && (
+              <section aria-label="Meeting Purpose">
+                <SectionLabel icon={Target}>Meeting purpose</SectionLabel>
+                <p className="text-balance break-words text-xl font-medium leading-[1.5] tracking-[-0.012em] text-foreground sm:text-[22px]">
+                  {meeting_purpose}
+                </p>
+              </section>
+            )}
+
+            {overview && (
+              <section aria-label="Overview">
+                <SectionLabel icon={AlignLeft}>Overview</SectionLabel>
+                <p className="max-w-[68ch] break-words text-[15px] leading-[1.8] text-foreground/80">
+                  {overview}
+                </p>
+              </section>
+            )}
+          </div>
+        )}
+
+        {key_takeaways.length > 0 && <KeyTakeaways items={key_takeaways} />}
+
+        {topics_discussed.length > 0 && <TopicsDiscussed topics={topics_discussed} />}
+
+        {(conclusions.length > 0 || decisions.length > 0) && (
+          <div className="space-y-10">
+            {conclusions.length > 0 && <Conclusions items={conclusions} />}
+            {decisions.length > 0 && <Decisions items={decisions} />}
+          </div>
+        )}
       </div>
-
-      <div className="px-4 sm:px-5 py-4 sm:py-5 space-y-6" dir={rtl ? 'rtl' : undefined} lang={lang}>
-
-        {/* ── Meeting Purpose ── */}
-        {meeting_purpose && (
-          <section aria-label="Meeting Purpose">
-            <SectionHeader icon={Target} label="Meeting Purpose" />
-            <p className="text-sm text-foreground/80 leading-relaxed pl-1">
-              {meeting_purpose}
-            </p>
-          </section>
-        )}
-
-        {/* ── Overview ── */}
-        {overview && (
-          <section aria-label="Overview">
-            <SectionHeader icon={AlignLeft} label="Overview" />
-            <p className="text-sm text-foreground/80 leading-relaxed pl-1">
-              {overview}
-            </p>
-          </section>
-        )}
-
-        {/* ── Key Takeaways ── */}
-        {key_takeaways.length > 0 && (
-          <section aria-label="Key Takeaways">
-            <SectionHeader icon={Lightbulb} label="Key Takeaways" count={key_takeaways.length} />
-            <BulletList items={key_takeaways} />
-          </section>
-        )}
-
-        {/* ── Topics Discussed ── */}
-        {topics_discussed.length > 0 && (
-          <section aria-label="Topics Discussed">
-            <SectionHeader
-              icon={MessageSquare}
-              label="Topics Discussed"
-              count={topics_discussed.length}
-            />
-            <div className="space-y-2">
-              {topics_discussed.map((topic, i) => (
-                <TopicBlock key={i} topic={topic} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Conclusions ── */}
-        {conclusions.length > 0 && (
-          <section aria-label="Conclusions">
-            <SectionHeader icon={CheckCircle2} label="Conclusions" count={conclusions.length} />
-            <BulletList items={conclusions} />
-          </section>
-        )}
-
-        {/* ── Decisions ── */}
-        {decisions.length > 0 && (
-          <section aria-label="Decisions">
-            <SectionHeader icon={Vote} label="Decisions" count={decisions.length} />
-            <ul className="space-y-2">
-              {decisions.map((decision, i) => (
-                <li
-                  key={i}
-                  className="group flex gap-3 text-sm text-foreground p-3 rounded-xl hover:bg-muted/40 border border-transparent hover:border-border/50 transition-all duration-200 ease-out"
-                >
-                  <div className="mt-0.5 flex-shrink-0">
-                    <div className="w-5 h-5 rounded-full bg-background border border-brand/30 flex items-center justify-center group-hover:scale-110 group-hover:border-brand/50 group-hover:bg-brand/5 transition-all duration-300">
-                      <div className="w-1.5 h-1.5 rounded-full bg-brand/60 group-hover:bg-brand transition-colors" />
-                    </div>
-                  </div>
-                  <span className="flex-1 text-foreground/90 font-medium leading-relaxed group-hover:text-foreground transition-colors break-words">
-                    {stripLeadingBulletChar(decision)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-      </div>
-    </Card>
+    </article>
   )
 }

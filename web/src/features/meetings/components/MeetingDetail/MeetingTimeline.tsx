@@ -2,15 +2,15 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, format } from "date-fns";
-import { Check, Loader2, AlertCircle } from "lucide-react";
+import { formatDistanceToNowStrict, format } from "date-fns";
+import { AlertCircle } from "lucide-react";
 import type { MeetingDetail, MeetingStatus } from "../../types";
 
 const TIMELINE_STEPS: { status: MeetingStatus; label: string }[] = [
   { status: "SCHEDULED",   label: "Scheduled" },
   { status: "BOT_JOINING", label: "Bot joining" },
   { status: "RECORDING",   label: "Recording live" },
-  { status: "PROCESSING",  label: "AI Processing" },
+  { status: "PROCESSING",  label: "AI processing" },
   { status: "DONE",        label: "Completed" },
 ];
 
@@ -47,79 +47,77 @@ function getTimestampForStep(meeting: MeetingDetail, stepStatus: MeetingStatus):
   }
 }
 
+/**
+ * Vertical progress rail: a hairline that fills as the meeting advances, small nodes for
+ * each stage, the label on the left and when it happened on the right.
+ */
 export function MeetingTimeline({ meeting }: { meeting: MeetingDetail }) {
   const currentStepIndex = normalizeStatusIndex(meeting.status);
   const isFailed = meeting.status === "FAILED";
   const isCancelled = meeting.status === "CANCELLED";
 
   return (
-    <ol className="relative pl-1 select-none">
+    <ol className="select-none">
       {TIMELINE_STEPS.map((step, i) => {
         const timestamp = getTimestampForStep(meeting, step.status);
         const isCurrent = !isFailed && !isCancelled && currentStepIndex === i;
         const isPassed = !isFailed && !isCancelled && currentStepIndex > i;
         const isReached = isPassed || isCurrent || Boolean(timestamp);
+        const isLast = i === TIMELINE_STEPS.length - 1;
 
         return (
-          <li key={step.status} className="relative flex gap-3 pb-4 last:pb-0">
-            {/* Connecting vertical line */}
-            {i < TIMELINE_STEPS.length - 1 && (
+          <li
+            key={step.status}
+            className="relative flex gap-3.5 pb-[18px] last:pb-0"
+            aria-current={isCurrent ? "step" : undefined}
+          >
+            {/* Rail segment to the next stage */}
+            {!isLast && (
               <span
+                aria-hidden="true"
                 className={cn(
-                  "absolute left-[7px] top-4 h-full w-[2px] -ml-px transition-colors duration-300",
-                  isPassed ? "bg-primary" : "bg-border"
+                  "absolute start-[5px] top-[15px] bottom-[-3px] w-px transition-colors duration-500",
+                  isPassed ? "bg-foreground/30" : "bg-border"
                 )}
               />
             )}
 
-            {/* Step node icon / dot */}
-            <div className="relative z-10 flex h-4 w-4 shrink-0 items-center justify-center">
-              {isPassed ? (
-                <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Check className="h-2 w-2 stroke-[3]" />
-                </span>
-              ) : isCurrent ? (
-                <span className="relative flex h-3.5 w-3.5 items-center justify-center">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-                </span>
+            {/* Node */}
+            <span className="relative z-10 mt-[5px] flex h-[11px] w-[11px] shrink-0 items-center justify-center">
+              {isCurrent ? (
+                <>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand/40 motion-reduce:hidden" />
+                  <span className="relative h-[9px] w-[9px] rounded-full bg-brand ring-[3px] ring-brand/15" />
+                </>
+              ) : isPassed || isReached ? (
+                <span className="h-[7px] w-[7px] rounded-full bg-foreground/70" />
               ) : (
-                <span
-                  className={cn(
-                    "h-2 w-2 rounded-full border transition-colors duration-300",
-                    isReached ? "bg-primary border-primary" : "bg-background border-border"
-                  )}
-                />
+                <span className="h-[7px] w-[7px] rounded-full border border-border bg-background" />
               )}
-            </div>
+            </span>
 
-            {/* Step label & timestamp */}
-            <div className="flex-1 min-w-0">
-              <div
+            {/* Label + time */}
+            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
+              <span
                 className={cn(
-                  "text-xs transition-colors duration-300 flex items-center gap-1.5",
+                  "text-[13px] leading-tight transition-colors duration-300",
                   isCurrent
-                    ? "font-semibold text-foreground"
-                    : isReached
                     ? "font-medium text-foreground"
-                    : "text-muted-foreground"
+                    : isReached
+                    ? "text-foreground/85"
+                    : "text-muted-foreground/70"
                 )}
               >
-                <span>{step.label}</span>
-                {isCurrent && (
-                  <span className="text-[10px] uppercase tracking-wider text-primary font-bold animate-pulse">
-                    Active
-                  </span>
-                )}
-              </div>
-
+                {step.label}
+              </span>
               {timestamp && (
-                <div
-                  className="text-[11px] text-muted-foreground mt-0.5"
+                <time
+                  dateTime={timestamp}
+                  className="shrink-0 text-xs tabular-nums leading-tight text-muted-foreground"
                   title={format(new Date(timestamp), "PPpp")}
                 >
-                  {formatDistanceToNow(new Date(timestamp), { addSuffix: true })}
-                </div>
+                  {formatDistanceToNowStrict(new Date(timestamp), { addSuffix: true })}
+                </time>
               )}
             </div>
           </li>
@@ -127,14 +125,12 @@ export function MeetingTimeline({ meeting }: { meeting: MeetingDetail }) {
       })}
 
       {isFailed && (
-        <li className="relative flex gap-3 text-red-600 dark:text-red-400 mt-2 pt-2 border-t border-red-500/20">
-          <div className="relative z-10 flex h-4 w-4 shrink-0 items-center justify-center">
-            <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-          </div>
-          <div className="text-xs">
-            <span className="font-semibold">Pipeline Failed</span>
+        <li className="mt-4 flex gap-3.5 border-t border-border/60 pt-4 text-red-600 dark:text-red-400">
+          <AlertCircle className="mt-[2px] h-[11px] w-[11px] shrink-0" strokeWidth={2.25} aria-hidden="true" />
+          <div className="min-w-0 text-[13px] leading-tight">
+            <span className="font-medium">Pipeline failed</span>
             {meeting.processingError && (
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="mt-1 break-words text-xs text-muted-foreground">
                 {meeting.processingError}
               </p>
             )}

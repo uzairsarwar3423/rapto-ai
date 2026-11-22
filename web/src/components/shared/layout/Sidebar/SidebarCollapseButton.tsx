@@ -1,62 +1,50 @@
 "use client";
 
-import { PanelLeftClose, PanelLeft } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useUIStore } from "@/store/ui.store";
 import { useKeyboardShortcut } from "@/hooks/shared/useKeyboardShortcut";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { Kbd } from "../Kbd";
-import { motion, AnimatePresence } from "framer-motion";
 
-export function SidebarCollapseButton() {
+/**
+ * Compact collapse / expand control for the sidebar header. Owns the ⌘\ (Ctrl+\) shortcut, so it
+ * must be mounted exactly once (it lives in <Sidebar />).
+ */
+export function SidebarCollapseButton({ className }: { className?: string }) {
   const collapsed = useUIStore((state) => state.sidebarCollapsed);
   const toggle = useUIStore((state) => state.toggleSidebar);
 
-  // Bind Cmd+\ (mod+\) to toggle the sidebar
   useKeyboardShortcut("mod+\\", () => {
     toggle();
   });
 
-  const tooltipText = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const label = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={toggle}
-            className="flex h-8 w-8 items-center justify-center rounded-radius border border-border bg-surface text-muted-foreground hover:bg-surface-hover hover:text-foreground cursor-pointer transition-colors duration-120 outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            aria-label={tooltipText}
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={collapsed ? "collapsed" : "expanded"}
-                initial={{ rotate: -180, opacity: 0, scale: 0.8 }}
-                animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                exit={{ rotate: 180, opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.2, ease: "easeInOut" }}
-                className="flex items-center justify-center"
-              >
-                {collapsed ? (
-                  <PanelLeft className="h-4 w-4" />
-                ) : (
-                  <PanelLeftClose className="h-4 w-4" />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </motion.button>
-        </TooltipTrigger>
-        <TooltipContent side="right" sideOffset={8} className="flex items-center gap-2">
-          <span className="text-[11px] font-normal">{tooltipText}</span>
-          <Kbd keys={["mod", "\\"]} />
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={label}
+          aria-pressed={collapsed}
+          className={cn(
+            "flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none",
+            "transition-[background-color,color,transform] duration-150 ease-out-soft",
+            "hover:bg-foreground/[0.06] hover:text-foreground active:scale-90",
+            "focus-visible:ring-2 focus-visible:ring-brand/40",
+            className
+          )}
+        >
+          <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right" sideOffset={10} className="gap-2 px-2.5 py-1 text-[11.5px] font-medium">
+        <span>{label}</span>
+        <Kbd keys={["mod", "\\"]} />
+      </TooltipContent>
+    </Tooltip>
   );
 }

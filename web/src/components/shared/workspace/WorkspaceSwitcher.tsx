@@ -47,6 +47,14 @@ import type { Workspace } from "./types";
 import { useWorkspaces } from "./useWorkspaces";
 import { toast } from "sonner";
 
+/** Understated plan chip: neutral for free/trial plans, a whisper of brand green for paid ones. */
+const PAID_PLANS = new Set(["pro", "starter", "business", "enterprise"]);
+function planChipClass(plan?: string): string {
+  return PAID_PLANS.has((plan ?? "").toLowerCase())
+    ? "bg-brand/10 text-brand"
+    : "bg-foreground/[0.06] text-muted-foreground";
+}
+
 export interface WorkspaceSwitcherProps {
   workspaces?: Workspace[];
   activeId?: string;
@@ -137,9 +145,12 @@ export function WorkspaceSwitcher({
     }
   }, [open]);
 
-  // Keyboard shortcut listener (⌘K toggle, Arrow navigation, Enter select, ⌘1-9)
+  // Keyboard shortcuts (⌘K toggle, Arrow navigation, Enter select, ⌘1-9).
+  // The handler is refreshed after every render but the window listener is attached ONCE — previously it was
+  // removed and re-added on every hover/arrow press (each changes selectedIndex).
+  const keydownHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    keydownHandlerRef.current = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setOpen((prev) => !prev);
@@ -179,10 +190,13 @@ export function WorkspaceSwitcher({
         }
       }
     };
+  });
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, filteredWorkspaces, selectedIndex, workspaces, onCreateNew, onOpenSettings]);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => keydownHandlerRef.current(e);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const handleSelect = (ws: Workspace) => {
     setSelectedId(ws.id);
@@ -224,83 +238,85 @@ export function WorkspaceSwitcher({
    * - In expanded mode: Full width with avatar, title, plan badge, member count, shortcut, and chevron.
    */
   const renderTriggerButton = () => {
+    const memberCount = activeWorkspace?.membersCount ?? 0;
     const trigger = (
       <button
         type="button"
         aria-label={`Switch workspace. Active: ${activeWorkspace?.name || "Workspace"}`}
         aria-haspopup="dialog"
         aria-expanded={open}
+        data-state={open ? "open" : "closed"}
         className={cn(
-          "group relative flex items-center gap-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950/80 text-left transition-all duration-150 ease-out select-none cursor-pointer outline-none",
-          "hover:bg-zinc-50 dark:hover:bg-zinc-900/80 hover:border-zinc-300 dark:hover:border-zinc-700/80",
-          "focus-visible:ring-2 focus-visible:ring-brand dark:focus-visible:ring-brand",
-          "active:scale-[0.98] touch-manipulation",
-          collapsed ? "h-9 w-9 justify-center p-0" : "h-10 w-full px-2.5 py-1.5",
+          "group relative flex h-11 w-full select-none items-center gap-2.5 overflow-hidden rounded-lg px-1.5 text-left outline-none",
+          "cursor-pointer touch-manipulation transition-[background-color,transform] duration-150 ease-out-soft",
+          "hover:bg-foreground/[0.045] active:scale-[0.985] data-[state=open]:bg-foreground/[0.05]",
+          "focus-visible:ring-2 focus-visible:ring-brand/40",
           className
         )}
       >
-        {/* Team Icon Avatar Badge */}
-        <div
-          className={cn(
-            "relative flex shrink-0 items-center justify-center rounded-md font-sans font-bold text-white shadow-xs transition-transform duration-150 group-hover:scale-[1.02] overflow-hidden bg-brand",
-            collapsed ? "h-6 w-6 text-[11px]" : "h-7 w-7 text-[12px]"
-          )}
+        {/* Workspace mark — same 28px footprint expanded and collapsed, so it never shifts */}
+        <span
+          className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[9px] text-[12px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_1px_2px_rgba(0,0,0,0.12)] transition-transform duration-200 ease-out-soft group-hover:scale-[1.04]"
           style={{
-            backgroundColor: activeWorkspace?.isPersonal
-              ? "hsl(149, 51%, 36%)"
-              : "hsl(149, 61%, 28%)",
+            backgroundColor: activeWorkspace?.isPersonal ? "hsl(149, 51%, 36%)" : "hsl(149, 61%, 28%)",
           }}
         >
           {hasValidLogo(activeWorkspace?.logo) ? (
             <img
               src={activeWorkspace?.logo}
               alt={activeWorkspace?.name || "Workspace logo"}
-              className="h-full w-full rounded-md object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
-            <span className="text-white font-bold tracking-normal leading-none select-none">
-              {getFirstWordInitial(activeWorkspace?.name || "Rapto")}
-            </span>
+            <span className="select-none leading-none">{getFirstWordInitial(activeWorkspace?.name || "Rapto")}</span>
           )}
-        </div>
+        </span>
 
-        {/* Trigger Text (Expanded state) */}
-        {!collapsed && (
-          <div className="flex flex-1 items-center justify-between min-w-0">
-            <div className="flex flex-col min-w-0 pr-1">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="truncate text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 max-w-[110px] sm:max-w-[130px]">
-                  {activeWorkspace?.name}
-                </span>
-                <span className="shrink-0 rounded-xs bg-brand-subtle dark:bg-brand/20 px-1 py-0.2 text-[9px] font-bold text-brand dark:text-brand-dark uppercase tracking-wider">
-                  {activeWorkspace?.plan}
-                </span>
-              </div>
-              <span className="truncate text-[10.5px] font-normal text-zinc-500 dark:text-zinc-400">
-                {activeWorkspace?.role} • {activeWorkspace?.membersCount} member{activeWorkspace?.membersCount !== 1 ? "s" : ""}
-              </span>
-            </div>
+        <span
+          className={cn(
+            "flex min-w-0 flex-1 flex-col gap-1.5 transition-opacity duration-150 ease-out-soft",
+            collapsed ? "opacity-0" : "opacity-100 delay-75"
+          )}
+        >
+          <span className="truncate text-[13px] font-medium leading-none tracking-[-0.006em] text-foreground">
+            {activeWorkspace?.name}
+          </span>
+          <span className="flex items-center gap-1.5 leading-none">
+            <span
+              className={cn(
+                "shrink-0 rounded px-1 py-[3px] text-[9.5px] font-medium uppercase leading-none tracking-[0.06em]",
+                planChipClass(activeWorkspace?.plan)
+              )}
+            >
+              {activeWorkspace?.plan}
+            </span>
+            <span className="truncate text-[11px] leading-none text-muted-foreground">
+              {memberCount} member{memberCount !== 1 ? "s" : ""}
+            </span>
+          </span>
+        </span>
 
-            <div className="flex items-center gap-1 shrink-0 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300">
-              <kbd className="hidden sm:inline-flex items-center text-[9.5px] font-mono font-medium text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800/60 px-1 py-0.5 rounded border border-zinc-200/60 dark:border-zinc-700/50">
-                ⌘K
-              </kbd>
-              <ChevronsUpDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
-            </div>
-          </div>
-        )}
+        <ChevronsUpDown
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 text-muted-subtle transition-[opacity,color] duration-150 group-hover:text-foreground",
+            open && "text-foreground",
+            collapsed ? "opacity-0" : "opacity-100 delay-75"
+          )}
+          strokeWidth={1.75}
+          aria-hidden="true"
+        />
       </button>
     );
 
-    // Provide helpful desktop tooltip when collapsed in icon mode
+    // Icon-only rail: show the workspace name and shortcut in a tooltip while the menu is closed
     if (collapsed && !open) {
       return (
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-            <TooltipContent side="right" sideOffset={10} className="flex items-center gap-1.5 py-1 px-2.5 text-xs">
+            <TooltipContent side="right" sideOffset={12} className="gap-2 px-2.5 py-1 text-[11.5px]">
               <span className="font-medium">{activeWorkspace?.name || "Switch workspace"}</span>
-              <kbd className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-1 py-0.2 rounded border border-zinc-700">⌘K</kbd>
+              <kbd className="font-mono text-[10px] opacity-60">⌘K</kbd>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -702,6 +718,9 @@ export function WorkspaceSwitcher({
   // ─────────────────────────────────────────────────────────────────────────
   // 3. ANCHORED COMMAND POPOVER (Desktop / Tablet >= 768px)
   // ─────────────────────────────────────────────────────────────────────────
+  const actionRow =
+    "flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-[13px] text-foreground/85 outline-none transition-colors duration-150 hover:bg-foreground/[0.05] focus-visible:bg-foreground/[0.05]";
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{renderTriggerButton()}</PopoverTrigger>
@@ -709,51 +728,48 @@ export function WorkspaceSwitcher({
       <PopoverContent
         side={side}
         align={align}
-        sideOffset={8}
+        sideOffset={10}
         avoidCollisions={true}
         collisionPadding={12}
-        className={cn(
-          "w-[320px] max-w-[calc(100vw-24px)] p-0 rounded-xl border border-zinc-200/90 dark:border-zinc-800/90 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl shadow-2xl shadow-black/10 dark:shadow-black/60 overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 outline-none z-50"
-        )}
+        className="z-50 w-[300px] max-w-[calc(100vw-24px)] gap-0 overflow-hidden rounded-xl border-0 bg-white p-0 font-sans text-foreground shadow-xl ring-1 ring-foreground/10 outline-none duration-150 dark:bg-background"
       >
-        {/* Search Header */}
-        <div className="relative flex items-center border-b border-zinc-100 dark:border-zinc-800/80 px-3 py-2">
-          <Search className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" />
+        {/* Search */}
+        <div className="flex h-10 items-center gap-2 border-b border-border/70 px-3">
+          <Search className="h-3.5 w-3.5 shrink-0 text-muted-subtle" strokeWidth={1.75} />
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search workspaces..."
+            placeholder="Search workspaces…"
+            aria-label="Search workspaces"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setSelectedIndex(0);
             }}
-            className="w-full bg-transparent px-2.5 py-1 text-xs font-normal text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none"
+            className="w-full bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-subtle"
           />
           {search ? (
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="text-[10px] font-medium text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 px-1 cursor-pointer"
+              className="cursor-pointer text-[11px] text-muted-foreground transition-colors hover:text-foreground"
             >
               Clear
             </button>
           ) : (
-            <kbd className="text-[9px] font-mono text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200/60 dark:border-zinc-800">
-              ESC
-            </kbd>
+            <kbd className="rounded border border-border/70 px-1.5 py-0.5 font-mono text-[9.5px] text-muted-subtle">ESC</kbd>
           )}
         </div>
 
-        {/* Workspaces List */}
-        <div className="max-h-[260px] overflow-y-auto p-1.5 space-y-0.5 custom-scrollbar">
-          <div className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            <span>Workspaces ({filteredWorkspaces.length})</span>
-            {isRealLoading && <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />}
+        {/* Workspaces */}
+        <div className="max-h-[264px] overflow-y-auto p-1.5">
+          <div className="flex items-center justify-between px-2 pb-1.5 pt-1 text-[10.5px] font-medium uppercase leading-none tracking-[0.09em] text-muted-subtle">
+            <span>Workspaces</span>
+            {isRealLoading && <Loader2 className="h-3 w-3 animate-spin" />}
           </div>
 
           {filteredWorkspaces.length === 0 ? (
-            <div className="p-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
+            <div className="px-3 py-6 text-center text-[13px] text-muted-foreground">
               No workspace found for &ldquo;{search}&rdquo;
             </div>
           ) : (
@@ -767,86 +783,65 @@ export function WorkspaceSwitcher({
                   type="button"
                   onClick={() => handleSelect(ws)}
                   onMouseEnter={() => setSelectedIndex(idx)}
+                  aria-current={isActive ? "true" : undefined}
                   className={cn(
-                    "group relative flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition-colors duration-150 outline-none cursor-pointer",
-                    isActive
-                      ? "bg-zinc-100/90 dark:bg-zinc-900/90 font-medium text-zinc-900 dark:text-zinc-100"
-                      : isFocused
-                      ? "bg-zinc-100/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100"
-                      : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900/40"
+                    "group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none",
+                    "transition-colors duration-150",
+                    isFocused || isActive ? "bg-foreground/[0.05]" : "hover:bg-foreground/[0.03]"
                   )}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[12px] font-bold text-white shadow-2xs bg-brand overflow-hidden"
-                      style={{
-                        backgroundColor: ws.isPersonal
-                          ? "hsl(149, 51%, 36%)"
-                          : "hsl(149, 61%, 28%)",
-                      }}
-                    >
-                      {hasValidLogo(ws.logo) ? (
-                        <img
-                          src={ws.logo}
-                          alt={ws.name}
-                          className="h-full w-full rounded-md object-cover"
-                        />
-                      ) : (
-                        <span className="text-white font-bold tracking-normal leading-none select-none">
-                          {getFirstWordInitial(ws.name)}
+                  <span
+                    className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[9px] text-[12px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+                    style={{ backgroundColor: ws.isPersonal ? "hsl(149, 51%, 36%)" : "hsl(149, 61%, 28%)" }}
+                  >
+                    {hasValidLogo(ws.logo) ? (
+                      <img src={ws.logo} alt={ws.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="select-none leading-none">{getFirstWordInitial(ws.name)}</span>
+                    )}
+                  </span>
+
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-[13px] font-medium leading-none tracking-[-0.006em] text-foreground">
+                        {ws.name}
+                      </span>
+                      {ws.isPersonal && (
+                        <span className="shrink-0 rounded bg-foreground/[0.06] px-1 py-[2px] text-[9.5px] leading-none text-muted-foreground">
+                          Personal
                         </span>
                       )}
-                    </div>
+                    </span>
+                    <span className="truncate text-[11px] leading-none text-muted-foreground">
+                      {ws.membersCount} member{ws.membersCount !== 1 ? "s" : ""} · {ws.role}
+                    </span>
+                  </span>
 
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate text-xs font-medium tracking-tight">
-                          {ws.name}
-                        </span>
-                        {ws.isPersonal && (
-                          <span className="text-[9px] font-normal px-1 py-0.2 rounded bg-zinc-200/60 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-                            Personal
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal">
-                        {ws.membersCount} member{ws.membersCount !== 1 ? "s" : ""} • {ws.role}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
+                  <span className="flex shrink-0 items-center gap-2">
                     <span
                       className={cn(
-                        "text-[9.5px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border",
-                        ws.plan === "Enterprise"
-                          ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 border-transparent font-bold"
-                          : ws.plan === "Pro"
-                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60"
-                          : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border-zinc-200/60 dark:border-zinc-700/60"
+                        "rounded px-1 py-[3px] text-[9.5px] font-medium uppercase leading-none tracking-[0.06em]",
+                        planChipClass(ws.plan)
                       )}
                     >
                       {ws.plan}
                     </span>
-
                     {isActive ? (
-                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-brand text-white">
-                        <Check className="h-2.5 w-2.5 stroke-[3]" />
-                      </div>
-                    ) : ws.shortcut ? (
-                      <kbd className="hidden sm:inline-flex text-[9px] font-mono text-zinc-400 dark:text-zinc-500">
-                        {ws.shortcut}
-                      </kbd>
-                    ) : null}
-                  </div>
+                      <Check className="h-3.5 w-3.5 text-brand" strokeWidth={2.25} aria-label="Current workspace" />
+                    ) : (
+                      ws.shortcut && (
+                        <kbd className="hidden font-mono text-[9.5px] text-muted-subtle sm:inline-flex">{ws.shortcut}</kbd>
+                      )
+                    )}
+                  </span>
                 </button>
               );
             })
           )}
         </div>
 
-        {/* Quick Action Commands */}
-        <div className="border-t border-zinc-100 dark:border-zinc-800/80 p-1 bg-zinc-50/50 dark:bg-zinc-950/50 space-y-0.5">
+        {/* Actions */}
+        <div className="border-t border-border/70 p-1.5">
           <button
             type="button"
             onClick={() => {
@@ -854,13 +849,13 @@ export function WorkspaceSwitcher({
               if (onCreateNew) onCreateNew();
               else toast.info("Opening Create Workspace dialog...");
             }}
-            className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+            className={actionRow}
           >
-            <div className="flex items-center gap-2">
-              <Plus className="h-3.5 w-3.5 text-zinc-500" />
-              <span>Create new workspace</span>
-            </div>
-            <kbd className="text-[9px] font-mono text-zinc-400">⌘N</kbd>
+            <span className="flex items-center gap-2.5">
+              <Plus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+              Create new workspace
+            </span>
+            <kbd className="font-mono text-[9.5px] text-muted-subtle">⌘N</kbd>
           </button>
 
           <button
@@ -870,13 +865,13 @@ export function WorkspaceSwitcher({
               if (onOpenSettings) onOpenSettings();
               else toast.info("Navigating to Workspace Settings...");
             }}
-            className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+            className={actionRow}
           >
-            <div className="flex items-center gap-2">
-              <Settings className="h-3.5 w-3.5 text-zinc-500" />
-              <span>Workspace settings</span>
-            </div>
-            <kbd className="text-[9px] font-mono text-zinc-400">⌘,</kbd>
+            <span className="flex items-center gap-2.5">
+              <Settings className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+              Workspace settings
+            </span>
+            <kbd className="font-mono text-[9.5px] text-muted-subtle">⌘,</kbd>
           </button>
 
           <button
@@ -886,23 +881,13 @@ export function WorkspaceSwitcher({
               if (onInviteMembers) onInviteMembers();
               else toast.info("Opening Invite Teammates sheet...");
             }}
-            className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+            className={actionRow}
           >
-            <div className="flex items-center gap-2">
-              <UserPlus className="h-3.5 w-3.5 text-zinc-500" />
-              <span>Invite members</span>
-            </div>
+            <span className="flex items-center gap-2.5">
+              <UserPlus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+              Invite members
+            </span>
           </button>
-        </div>
-
-        {/* Clean Footer Bar */}
-        <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 px-3 py-1.5 text-[9.5px] font-mono text-zinc-400 dark:text-zinc-500 bg-zinc-100/40 dark:bg-zinc-900/40 select-none">
-          <div className="flex items-center gap-2">
-            <span>↑↓ Navigate</span>
-            <span>•</span>
-            <span>↵ Select</span>
-          </div>
-          <span className="text-[9.5px] text-zinc-400 dark:text-zinc-500">ESC to close</span>
         </div>
       </PopoverContent>
     </Popover>

@@ -187,20 +187,20 @@ export function MobileDrawer({
           aria-label="Main navigation"
           className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5"
         >
-          <SidebarNavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" />
-          <SidebarNavItem icon={Video} label="Meetings" href="/meetings" />
-          <SidebarNavItem icon={CheckCircle2} label="Commitments" href="/commitments" />
-          <SidebarNavItem icon={ListTodo} label="Action Items" href="/action-items" />
-          <SidebarNavItem icon={Users} label="Team" href="/team" />
-          <SidebarNavItem icon={BarChart3} label="Analytics" href="/analytics" />
+          <SidebarNavItem collapsed={false} indicatorId="drawer-active-indicator" icon={LayoutDashboard} label="Dashboard" href="/dashboard" />
+          <SidebarNavItem collapsed={false} indicatorId="drawer-active-indicator" icon={Video} label="Meetings" href="/meetings" />
+          <SidebarNavItem collapsed={false} indicatorId="drawer-active-indicator" icon={CheckCircle2} label="Commitments" href="/commitments" />
+          <SidebarNavItem collapsed={false} indicatorId="drawer-active-indicator" icon={ListTodo} label="Action Items" href="/action-items" />
+          <SidebarNavItem collapsed={false} indicatorId="drawer-active-indicator" icon={Users} label="Team" href="/team" />
+          <SidebarNavItem collapsed={false} indicatorId="drawer-active-indicator" icon={BarChart3} label="Analytics" href="/analytics" />
 
           <Separator className="my-2 bg-border" />
 
-          <SidebarNavItem icon={Sparkles} label="Intelligence" href="/intelligence" />
+          <SidebarNavItem collapsed={false} indicatorId="drawer-active-indicator" icon={Sparkles} label="Intelligence" href="/intelligence" />
 
           <Separator className="my-2 bg-border" />
 
-          <SidebarNavItem icon={Settings} label="Settings" href="/settings" />
+          <SidebarNavItem collapsed={false} indicatorId="drawer-active-indicator" icon={Settings} label="Settings" href="/settings" />
         </nav>
       </div>
     </>
