@@ -33,6 +33,17 @@ import { AIPipelineAuthError } from '../../services/ai-pipeline/ai-pipeline.erro
 import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { teamRoom } from '../../realtime/rooms.manager'
 import { resolveParticipantToUserId } from '../../utils/participant-matcher'
+import { normalizeRecallTranscript } from '../../services/recall-transcript'
+
+/**
+ * A Recall.ai segment with no spoken words carries nothing to clean or extract, and
+ * the AI pipeline rejects turns with empty text — one such segment would fail the
+ * whole cleanup request and force degraded mode. Drop them up front.
+ */
+function hasSpokenText(turn: any): boolean {
+  if (typeof turn?.text === 'string' && turn.text.trim()) return true
+  return Array.isArray(turn?.words) && turn.words.some((w: any) => typeof w?.text === 'string' && w.text.trim())
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WORKER
@@ -126,8 +137,13 @@ export const transcribeWorker = new Worker<TranscribeJobData>(
       'transcribe.worker: calling AI Pipeline /transcripts/cleanup'
     )
 
+    const rawTurns = (Array.isArray(transcript.raw_transcript) ? transcript.raw_transcript : []).filter(hasSpokenText)
+
     let cleanupSuccessful = false
-    let cleanedTranscript: any = transcript.raw_transcript  // fallback: raw
+    // Fallback when cleanup is unavailable: the normalized form of the raw transcript
+    // ({ speaker, text, startTime, endTime }). Raw Recall.ai segments have no text
+    // field and nested timestamps, so extraction could not read them directly.
+    let cleanedTranscript: any = normalizeRecallTranscript(rawTurns)
     let cleanupMetadata: any = null
 
     try {
@@ -135,7 +151,7 @@ export const transcribeWorker = new Worker<TranscribeJobData>(
         meeting_id:     meetingId,
         team_id:        teamId,
         // raw_transcript comes from MongoDB as a JSON blob stored by the webhook handler
-        raw_transcript: transcript.raw_transcript as unknown as RawTranscriptTurn[],
+        raw_transcript: rawTurns as unknown as RawTranscriptTurn[],
         participants:   participantMap,
       }
 
@@ -240,8 +256,8 @@ export const transcribeWorker = new Worker<TranscribeJobData>(
         fillersRemoved: cleanupMetadata?.total_filler_words_removed ?? 0,
       }
 
-      socketEmitter.to(teamRoom(teamId)).emit(event, payload)
-      socketEmitter.to(meetingRoom(meetingId)).emit(event, payload)
+      // One emit to both rooms: a client in both receives it once
+      socketEmitter.to([teamRoom(teamId), meetingRoom(meetingId)]).emit(event, payload)
     } catch (e) {
       // Socket emit failures are non-fatal — log and continue
       logger.warn({ err: e, meetingId }, 'transcribe.worker: socket emit failed (non-fatal)')

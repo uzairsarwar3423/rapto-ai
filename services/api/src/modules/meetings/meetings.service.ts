@@ -587,24 +587,18 @@ export async function updateMeetingStatus(
     const tRoom = teamRoom(meeting.teamId)
     const mRoom = meetingRoom(meeting.id)
 
+    // One emit to both rooms: a client in both (e.g. viewing this meeting) receives it once.
+    const rooms = [tRoom, mRoom]
+
     if (newStatus === 'BOT_JOINING') {
-      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_BOT_JOINING, { meetingId: meeting.id })
-      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_BOT_JOINING, { meetingId: meeting.id })
+      socketEmitter.to(rooms).emit(SERVER_EVENTS.MEETING_BOT_JOINING, { meetingId: meeting.id })
     } else if (newStatus === 'RECORDING') {
       const startedAtStr = updated.startedAt ? updated.startedAt.toISOString() : new Date().toISOString()
-      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_RECORDING, { meetingId: meeting.id, startedAt: startedAtStr })
-      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_RECORDING, { meetingId: meeting.id, startedAt: startedAtStr })
+      socketEmitter.to(rooms).emit(SERVER_EVENTS.MEETING_RECORDING, { meetingId: meeting.id, startedAt: startedAtStr })
     } else if (newStatus === 'PROCESSING') {
-      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_PROCESSING, { meetingId: meeting.id })
-      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_PROCESSING, { meetingId: meeting.id })
+      socketEmitter.to(rooms).emit(SERVER_EVENTS.MEETING_PROCESSING, { meetingId: meeting.id })
     } else if (newStatus === 'DONE') {
-      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_PROCESSED, {
-        meetingId: meeting.id,
-        summary: updated.summary,
-        commitmentCount: updated.commitmentCount,
-        actionItemCount: updated.actionItemCount,
-      })
-      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_PROCESSED, {
+      socketEmitter.to(rooms).emit(SERVER_EVENTS.MEETING_PROCESSED, {
         meetingId: meeting.id,
         summary: updated.summary,
         commitmentCount: updated.commitmentCount,
@@ -612,11 +606,9 @@ export async function updateMeetingStatus(
       })
     } else if (newStatus === 'FAILED') {
       const errorMsg = (extraData as any)?.processingError || 'Processing failed'
-      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_FAILED, { meetingId: meeting.id, reason: errorMsg })
-      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_FAILED, { meetingId: meeting.id, reason: errorMsg })
+      socketEmitter.to(rooms).emit(SERVER_EVENTS.MEETING_FAILED, { meetingId: meeting.id, reason: errorMsg })
     } else if (newStatus === 'CANCELLED') {
-      socketEmitter.to(tRoom).emit(SERVER_EVENTS.MEETING_CANCELLED, { meetingId: meeting.id })
-      socketEmitter.to(mRoom).emit(SERVER_EVENTS.MEETING_CANCELLED, { meetingId: meeting.id })
+      socketEmitter.to(rooms).emit(SERVER_EVENTS.MEETING_CANCELLED, { meetingId: meeting.id })
     }
   } catch (err) {
     logger.warn({ meetingId: meeting.id, err }, 'updateMeetingStatus: Socket.io emit failed (non-fatal)')

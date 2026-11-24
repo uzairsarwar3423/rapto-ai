@@ -16,15 +16,17 @@
 //  9. Emit Socket.io event + notify queue
 //  9b. Queue the meeting for RAG embedding (AI chat knowledge base; non-fatal)
 //
-// IDEMPOTENCY: commitments use skipDuplicates=true on the dedup_key.
-//   Retrying an extract job after a DB write timeout is safe — duplicate keys
-//   are silently skipped.
+// IDEMPOTENCY: the rows carry no DB-level unique key (dedupKey is not unique), so
+//   exactly-once writes are enforced by the meeting status instead: the write
+//   transaction first claims the meeting with a conditional status update from a
+//   pre-extraction state. A retry or duplicate job finds it already claimed and
+//   writes nothing. Manual reprocessing deletes the old rows and resets the status.
 //
 // QUEUE CONFIG: concurrency=3, retries=3, backoff=exponential(10s)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Worker, Job } from 'bullmq'
-import { Prisma } from '@prisma/client'
+import { Prisma, type MeetingStatus } from '@prisma/client'
 import { logger } from '../../config/logger'
 import { prisma } from '../../db/client'
 import { mongoService } from '../../services/mongo.service'
@@ -48,6 +50,7 @@ import { SERVER_EVENTS } from '../../realtime/socket.events'
 import { teamRoom } from '../../realtime/rooms.manager'
 import { ResolveJobData } from '../jobs/resolve.job'
 import { resolveParticipantToUserId } from '../../utils/participant-matcher'
+import { normalizeRecallTranscript } from '../../services/recall-transcript'
 
 /**
  * Serialize the summary field (StructuredSummary object or plain string) to a
@@ -63,6 +66,20 @@ function serializeSummary(summary: StructuredSummary | string | null | undefined
     return null
   }
 }
+
+/** Statuses from which a meeting may (still) be extracted. EXTRACTION_FAILED is
+ *  included because this worker sets it before Bull retries the same job. */
+const EXTRACTABLE_STATUSES = [
+  'PROCESSING',
+  'TRANSCRIBED',
+  'TRANSCRIPT_CLEANED',
+  'TRANSCRIPT_CLEANUP_FAILED',
+  'TRANSCRIPT_CLEANUP_DEGRADED',
+  'EXTRACTION_FAILED',
+] as const satisfies readonly MeetingStatus[]
+
+/** Thrown inside the write transaction to roll back when another run already wrote results. */
+class AlreadyExtractedError extends Error {}
 
 // (Helpers removed: Using resolveParticipantToUserId instead)
 // WORKER
@@ -98,15 +115,24 @@ export const extractWorker = new Worker<ExtractJobData>(
       )
       // In degraded mode, the transcript is a list of RawTranscriptTurns.
       // We must map it to CleanedTranscriptTurn so it passes Pydantic validation on the /extract endpoint.
+      // Turns are normalized utterances ({ speaker, text, startTime, endTime }) written
+      // by transcribe.worker; older documents may hold other shapes, so read all of them.
       const crypto = require('crypto');
-      transcriptTurns = transcriptTurns.map((t: any) => ({
-        turn_id: t.id || crypto.randomUUID(),
-        cleaned_text: t.text || '',
-        original_text: t.text || ' ',
-        speaker_name: t.speaker_tag || t.speaker || t.speaker_name || 'Unknown Speaker',
+      // Documents written before this fix may still hold raw Recall.ai segments here.
+      if (transcriptTurns.some((t: any) => Array.isArray(t?.words) && !t?.text)) {
+        transcriptTurns = normalizeRecallTranscript(transcriptTurns)
+      }
+      transcriptTurns = transcriptTurns
+        .map((t: any) => ({ t, text: String(t.text ?? t.cleaned_text ?? '').trim() }))
+        .filter(({ text }: { text: string }) => text.length > 0)
+        .map(({ t, text }: { t: any; text: string }) => ({
+        turn_id: t.turn_id || t.id || crypto.randomUUID(),
+        cleaned_text: text,
+        original_text: t.original_text || text,
+        speaker_name: t.speaker || t.speaker_name || t.speaker_tag || 'Unknown Speaker',
         speaker_user_id: null,
-        start_time: t.start_time ?? t.start_timestamp ?? 0,
-        end_time: t.end_time ?? t.end_timestamp ?? 0,
+        start_time: typeof t.startTime === 'number' ? t.startTime : typeof t.start_time === 'number' ? t.start_time : 0,
+        end_time: typeof t.endTime === 'number' ? t.endTime : typeof t.end_time === 'number' ? t.end_time : 0,
         filler_words_removed: 0,
         was_modified: false,
         was_modified_suspiciously: false,
@@ -123,6 +149,19 @@ export const extractWorker = new Worker<ExtractJobData>(
 
     if (!meeting) {
       throw new Error(`Meeting not found in PostgreSQL: ${meetingId}`)
+    }
+
+    // Exactly-once: a duplicate or late retry of an already-extracted meeting must
+    // not call the LLM again or insert a second copy of every row.
+    if (!(EXTRACTABLE_STATUSES as readonly MeetingStatus[]).includes(meeting.status)) {
+      logger.info(
+        { jobId: job.id, meetingId, status: meeting.status },
+        'extract.worker: meeting is not awaiting extraction — skipping (duplicate or late job)'
+      )
+      return
+    }
+    if (transcriptTurns.length === 0) {
+      throw new Error(`Transcript for meeting ${meetingId} has no spoken turns to extract from`)
     }
 
     const teamUsers = await prisma.user.findMany({
@@ -266,7 +305,16 @@ export const extractWorker = new Worker<ExtractJobData>(
     }))
 
     // ── STEP 8: PostgreSQL transaction — ALL writes or NONE ────────────────
+    try {
     await prisma.$transaction(async (tx) => {
+      // Claim the meeting first (row lock). A concurrent duplicate blocks here,
+      // then matches 0 rows once this transaction commits, and rolls back.
+      const claim = await tx.meeting.updateMany({
+        where: { id: meetingId, status: { in: [...EXTRACTABLE_STATUSES] } },
+        data:  { status: isPartial ? 'EXTRACTED_PARTIAL' : 'EXTRACTED' },
+      })
+      if (claim.count !== 1) throw new AlreadyExtractedError()
+
       // ── 8a. Commitments ───────────────────────────────────────────────────
       if (validCommitments.length > 0) {
         await tx.commitment.createMany({
@@ -362,6 +410,16 @@ export const extractWorker = new Worker<ExtractJobData>(
         },
       })
     })
+    } catch (err) {
+      if (err instanceof AlreadyExtractedError) {
+        logger.info(
+          { jobId: job.id, meetingId },
+          'extract.worker: another run already stored this extraction — discarding duplicate result'
+        )
+        return
+      }
+      throw err
+    }
 
     logger.info(
       {
@@ -422,8 +480,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         isPartial,
       }
 
-      socketEmitter.to(teamRoom(teamId)).emit(eventName, payload)
-      socketEmitter.to(meetingRoom(meetingId)).emit(eventName, payload)
+      socketEmitter.to([teamRoom(teamId), meetingRoom(meetingId)]).emit(eventName, payload)
 
       // Emit MEETING_PROCESSED as well for backward compatibility with existing
       // frontend listeners that have not yet migrated to MEETING_EXTRACTED
@@ -433,8 +490,7 @@ export const extractWorker = new Worker<ExtractJobData>(
         commitmentCount:  validCommitments.length,
         actionItemCount:  actionItemsData.length,
       }
-      socketEmitter.to(teamRoom(teamId)).emit(SERVER_EVENTS.MEETING_PROCESSED, processedPayload)
-      socketEmitter.to(meetingRoom(meetingId)).emit(SERVER_EVENTS.MEETING_PROCESSED, processedPayload)
+      socketEmitter.to([teamRoom(teamId), meetingRoom(meetingId)]).emit(SERVER_EVENTS.MEETING_PROCESSED, processedPayload)
     } catch (e) {
       logger.warn({ err: e, meetingId }, 'extract.worker: socket emit failed (non-fatal)')
     }
@@ -514,6 +570,25 @@ extractWorker.on('failed', (job, err) => {
     },
     'extract.worker: job failed'
   )
+
+  // Out of retries: record the failure so the meeting doesn't sit in a
+  // "processing" state forever, and tell the UI. Reprocessing remains available
+  // (EXTRACTION_FAILED → PROCESSING).
+  const meetingId = (job?.data as ExtractJobData | undefined)?.meetingId
+  const teamId = (job?.data as ExtractJobData | undefined)?.teamId
+  if (!job || !meetingId || !teamId || job.attemptsMade < (job.opts.attempts ?? 1)) return
+  void (async () => {
+    const marked = await prisma.meeting.updateMany({
+      where: { id: meetingId, status: { in: [...EXTRACTABLE_STATUSES] } },
+      data:  { status: 'EXTRACTION_FAILED', processingError: 'AI extraction failed after all retries' },
+    })
+    if (marked.count === 0) return // already extracted by another run, or reprocessed
+    const { socketEmitter } = await import('../../realtime/socket.emitter')
+    const { meetingRoom } = await import('../../realtime/rooms.manager')
+    socketEmitter
+      .to([teamRoom(teamId), meetingRoom(meetingId)])
+      .emit(SERVER_EVENTS.MEETING_FAILED, { meetingId, reason: 'AI extraction failed' })
+  })().catch((e) => logger.error({ err: e, meetingId }, 'extract.worker: failed to record final extraction failure'))
 })
 
 extractWorker.on('completed', (job) => {

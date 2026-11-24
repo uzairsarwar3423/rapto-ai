@@ -86,9 +86,10 @@ async function recallFetch(
     // ── Retry logic ────────────────────────────────────────────────────────
     if (RETRYABLE_STATUS_CODES.has(response.status) && attempt < MAX_RETRIES) {
       const retryDelay = addJitter(RETRY_DELAYS_MS[attempt] ?? 4000)
-      const retryAfterHeader = response.headers.get('Retry-After')
-      const delay = retryAfterHeader
-        ? parseInt(retryAfterHeader, 10) * 1000
+      // Retry-After may be seconds or an HTTP date; fall back to backoff if unparseable.
+      const retryAfterSeconds = Number(response.headers.get('Retry-After'))
+      const delay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? Math.min(retryAfterSeconds * 1000, 30_000)
         : retryDelay
 
       logger.warn(
@@ -265,55 +266,55 @@ export async function getBotStatus(botId: string): Promise<{
   }
 }
 
+/** Transcript JSON downloads can be large for long meetings — allow more than the API timeout. */
+const TRANSCRIPT_DOWNLOAD_TIMEOUT_MS = 60_000
+
 /**
  * Get the transcript for a Recall.ai bot.
+ *
+ * Recall.ai exposes the finished transcript as a JSON file on the bot's recording
+ * (recordings[].media_shortcuts.transcript.data.download_url), populated once the
+ * transcript artifact reaches `done` (the `transcript.done` webhook).
+ * Documented format: an array of { participant, language_code, words[] } segments.
+ *
+ * Returns [] only when the transcript is NOT READY yet (no download URL).
+ * Throws IntegrationError when it should exist but can't be fetched, so callers can
+ * retry instead of mistaking a failure for an empty meeting.
  */
 export async function getTranscript(botId: string): Promise<any[]> {
   logger.info({ botId }, 'Fetching transcript from Recall.ai')
-  
+
   // The GET /bot/{id}/transcript endpoint is deprecated (returns 400).
   // We must fetch the bot and download the transcript from its S3 presigned URL.
   const { status, data } = await recallFetch('GET', `/bot/${botId}/`)
 
   if (status !== 200 || !data) {
-    logger.warn({ botId, status, data }, 'Failed to fetch bot from Recall.ai for transcript')
-    return []
+    mapRecallError(status, data, 'getTranscript')
   }
 
   const bot = data as any
   const recording = bot.recordings?.[0]
-  const downloadUrl = recording?.transcript?.data?.download_url || recording?.media_shortcuts?.transcript?.data?.download_url
+  const downloadUrl = recording?.media_shortcuts?.transcript?.data?.download_url || recording?.transcript?.data?.download_url
 
   if (!downloadUrl) {
     logger.info({ botId }, 'No transcript download URL found yet on the bot object')
     return []
   }
 
+  let res: Response
   try {
-    const res = await fetch(downloadUrl)
-    if (!res.ok) {
-      logger.warn({ botId, status: res.status }, 'Failed to download transcript from S3 url')
-      return []
-    }
-    
-    const dataObj = await res.json() as any
-    
-    // Depending on the structure of the JSON downloaded from S3...
-    if (Array.isArray(dataObj)) {
-      return dataObj
-    }
-    
-    if (dataObj && dataObj.transcript && Array.isArray(dataObj.transcript)) {
-      return dataObj.transcript
-    }
-    
-    if (dataObj && Array.isArray(dataObj.segments)) {
-       return dataObj.segments
-    }
-    
-    return dataObj || []
+    res = await fetch(downloadUrl, { signal: AbortSignal.timeout(TRANSCRIPT_DOWNLOAD_TIMEOUT_MS) })
   } catch (error) {
-    logger.error({ botId, error }, 'Error downloading transcript JSON')
-    return []
+    throw new IntegrationError('RECALL_AI', `Transcript download failed: ${(error as Error).message}`)
   }
+  if (!res.ok) {
+    throw new IntegrationError('RECALL_AI', `Transcript download failed (${res.status})`)
+  }
+
+  const dataObj = (await res.json()) as any
+  if (Array.isArray(dataObj)) return dataObj
+  if (Array.isArray(dataObj?.transcript)) return dataObj.transcript
+  if (Array.isArray(dataObj?.segments)) return dataObj.segments
+
+  throw new IntegrationError('RECALL_AI', 'Transcript download returned an unexpected format')
 }

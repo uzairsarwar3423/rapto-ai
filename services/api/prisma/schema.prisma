@@ -425,6 +425,7 @@ model Meeting {
   @@index([teamId, status])
   @@index([teamId, scheduledAt(sort: Desc)])
   @@index([teamId, platformMeetingId])
+  @@index([recallBotId]) // Recall.ai webhooks look meetings up by bot id
   @@map("meetings")
 }
 

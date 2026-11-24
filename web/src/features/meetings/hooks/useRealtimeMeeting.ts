@@ -129,6 +129,8 @@ export function useRealtimeMeeting(meetingId?: string) {
     socket.on(SERVER_EVENTS.MEETING_RECORDING, handleRecording);
     socket.on(SERVER_EVENTS.MEETING_PROCESSING, handleProcessing);
     socket.on(SERVER_EVENTS.MEETING_TRANSCRIPT_CLEANED, handleTranscriptCleaned);
+    // Cleanup fell back to the raw transcript — the transcript view still changed.
+    socket.on(SERVER_EVENTS.MEETING_TRANSCRIPT_CLEANUP_DEGRADED, handleTranscriptCleaned);
     socket.on(SERVER_EVENTS.MEETING_EXTRACTED, handleExtracted);
     socket.on(SERVER_EVENTS.MEETING_EXTRACTED_PARTIAL, handleExtracted);
     socket.on(SERVER_EVENTS.MEETING_RESOLVED, handleResolved);
@@ -149,6 +151,7 @@ export function useRealtimeMeeting(meetingId?: string) {
       socket.off(SERVER_EVENTS.MEETING_RECORDING, handleRecording);
       socket.off(SERVER_EVENTS.MEETING_PROCESSING, handleProcessing);
       socket.off(SERVER_EVENTS.MEETING_TRANSCRIPT_CLEANED, handleTranscriptCleaned);
+    socket.off(SERVER_EVENTS.MEETING_TRANSCRIPT_CLEANUP_DEGRADED, handleTranscriptCleaned);
       socket.off(SERVER_EVENTS.MEETING_EXTRACTED, handleExtracted);
       socket.off(SERVER_EVENTS.MEETING_EXTRACTED_PARTIAL, handleExtracted);
       socket.off(SERVER_EVENTS.MEETING_RESOLVED, handleResolved);

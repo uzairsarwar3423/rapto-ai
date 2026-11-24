@@ -30,10 +30,13 @@ export function verifyRecallSignature(req: Request): void {
     throw new Error('Raw body not found. Check express configuration.')
   }
 
-  // Svix signature verification
-  const svix_id = req.headers['webhook-id'] as string
-  const svix_timestamp = req.headers['webhook-timestamp'] as string
-  const svix_signature = req.headers['webhook-signature'] as string
+  // Svix signature verification. Recall.ai sends webhook-* headers for workspaces
+  // created on/after 2025-12-15 and svix-* headers for older ones
+  // (docs.recall.ai/docs/authenticating-requests-from-recallai). The svix library
+  // verifies either form.
+  const svix_id = (req.headers['webhook-id'] ?? req.headers['svix-id']) as string
+  const svix_timestamp = (req.headers['webhook-timestamp'] ?? req.headers['svix-timestamp']) as string
+  const svix_signature = (req.headers['webhook-signature'] ?? req.headers['svix-signature']) as string
 
   if (svix_id && svix_timestamp && svix_signature) {
     try {
