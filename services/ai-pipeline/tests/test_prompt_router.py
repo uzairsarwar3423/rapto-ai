@@ -147,12 +147,12 @@ def test_unknown_timezone_falls_back_to_utc():
 
 def test_prompt_versions_and_bundle():
     versions = prompt_versions()
-    assert versions["extract_decisions"] == "decisions-v3.1"
+    assert versions["extract_decisions"] == "decisions-v3.2"
     assert versions["extract_blockers"] == "blockers-v3.1"
     assert versions["extract_risks"] == "risks-v3.1"
-    assert versions["extract_commitments"] == "commitment-v3.1"
-    assert versions["extract_action_items"] == "action-items-v3.1"
-    assert versions["user_generic"] == "extraction-user-v2.0"
+    assert versions["extract_commitments"] == "commitment-v3.2"
+    assert versions["extract_action_items"] == "action-items-v4.1"
+    assert versions["user_generic"] == "extraction-user-v2.1"
     assert versions["user_standup"].startswith("extraction-user-standup")
     assert prompt_bundle_version().startswith("extraction-v4.2+")
     assert load_prompt("date_parse_system.txt").version == "date-parse-v1.1"

@@ -1,4 +1,4 @@
-# prompt_version: extraction-user-v2.0
+# prompt_version: extraction-user-v2.1
 # Purpose: Shared user turn for all 6 parallel extractors (generic / planning /
 #          design_review / 1on1 / all_hands / general meetings).
 # Rendered by: services/extraction/prompt_router.py (Jinja2, StrictUndefined).
@@ -50,6 +50,12 @@ TEAM CONTEXT:
    action items (improvements to implement next sprint). Blockers here are
    often historical — extract only if discussed as ongoing or currently active.
 {% endif %}
+GROUNDING RULES:
+Each transcript line is "Speaker Name: what they said". Report only what the
+transcript supports — never fill a field to make an item look complete. Unknown
+owner, deadline or decision-maker → null. Every item needs an evidence_quote copied
+verbatim from the transcript; an item you cannot quote is not extracted.
+
 SPEAKER MATCHING RULE:
 Transcript speakers may use shortened names (e.g., "Ahmed" = "Ahmed Hassan",
 "Sara" = "Sara Khan"). Match a spoken name to the participant list by first

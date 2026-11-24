@@ -1,7 +1,9 @@
-# prompt_version: decisions-v3.1
+# prompt_version: decisions-v3.2
 # model: gpt-4.1-mini
 # temperature: 0.0
 # task: extract_decisions
+# Changed from v3.1: proposals/tentative agreement rules, evidence_quote required,
+#   examples use the real line format.
 
 ═══════════════════════════════════════════════
 DECISIONS EXTRACTION SYSTEM PROMPT
@@ -43,6 +45,16 @@ THREE HALLMARKS OF A DECISION:
 ✗ "I will finish the report by Friday" → personal promise/future task (Commitment/Action Item, NOT a Decision).
 ✗ "I'll fix that bug tonight" → personal task (Commitment/Action Item, NOT a Decision).
 
+━━━ PROPOSED ≠ DECIDED ━━━
+• A proposal becomes a decision only when it is accepted in the transcript —
+  by agreement from the others, or by the person with authority concluding it.
+  "Let's go with Stripe?" followed by "Yes, do it" → decision.
+  "Let's go with Stripe?" followed by silence or a topic change → NOT a decision.
+• A proposal that is rejected or reversed later in the meeting is not a
+  decision; if the meeting settles on something else, extract only that.
+• If the same choice is restated several times, extract it once.
+• A person's plan for their own work is a commitment, not a decision.
+
 ━━━ TYPES OF DECISIONS TO CAPTURE ━━━
 
 TECHNICAL: "We're using PostgreSQL over MongoDB for commitments"
@@ -79,7 +91,7 @@ dropped are NOT dissent. null when nobody objected or the transcript does not sa
 ━━━ WORKED EXAMPLES ━━━
 
 EXAMPLE 1 — Clear decision:
-[Ahmed Hassan, 14:22]: Okay, so we've all agreed — we're delaying
+Ahmed Hassan: Okay, so we've all agreed — we're delaying
                         the release to next Monday to allow more testing time.
 → {
     "text": "Delay the release to next Monday to allow more testing time",
@@ -91,7 +103,7 @@ EXAMPLE 1 — Clear decision:
   }
 
 EXAMPLE 2 — Technical decision:
-[Sara Khan, 22:10]: After the discussion, we're going with Redis for
+Sara Khan: After the discussion, we're going with Redis for
                      session management, not in-memory storage.
 → {
     "text": "Use Redis for session management instead of in-memory storage",
@@ -103,7 +115,7 @@ EXAMPLE 2 — Technical decision:
   }
 
 EXAMPLE 3 — Implicit group decision:
-[Ahmed Hassan, 31:05]: Alright everyone agrees we need a code freeze
+Ahmed Hassan: Alright everyone agrees we need a code freeze
                         starting Thursday. No new features until release.
 → {
     "text": "Code freeze starting Thursday — no new features until release",
@@ -115,11 +127,11 @@ EXAMPLE 3 — Implicit group decision:
   }
 
 EXAMPLE 4 — Do NOT extract (still discussing):
-[Ali Raza, 35:20]: I think we should probably consider moving to microservices.
+Ali Raza: I think we should probably consider moving to microservices.
 → [] (opinion, not a concluded decision)
 
 EXAMPLE 5 — Scope decision:
-[Ahmed Hassan, 40:15]: We've decided to cut the analytics dashboard from
+Ahmed Hassan: We've decided to cut the analytics dashboard from
                         MVP. We'll add it in v1.1.
 → {
     "text": "Cut analytics dashboard from MVP, add in v1.1",
@@ -131,9 +143,9 @@ EXAMPLE 5 — Scope decision:
   }
 
 EXAMPLE 6 — Irreversible decision with dissent:
-[Sara Khan, 44:02]: Okay, final call — we're signing the annual contract
+Sara Khan: Okay, final call — we're signing the annual contract
                      with Datadog today.
-[Ali Raza, 44:10]: For the record I still think it's too expensive, but fine.
+Ali Raza: For the record I still think it's too expensive, but fine.
 → {
     "text": "Sign the annual contract with Datadog today",
     "made_by": "Sara Khan",
@@ -142,6 +154,12 @@ EXAMPLE 6 — Irreversible decision with dissent:
     "reversible": false,
     "dissent": "Ali Raza disagreed: thinks it is too expensive"
   }
+
+━━━ EVIDENCE ━━━
+evidence_quote = the exact words where the decision is concluded or accepted
+(e.g. "Okay, final call — we're signing the annual contract with Datadog
+today"), copied verbatim from the transcript, max ~25 words. If you cannot
+quote the moment the decision was made, it was not made — do not extract.
 
 ━━━ OUTPUT SCHEMA ━━━
 Return ONLY a valid JSON object of this shape. No preamble, no markdown.
@@ -153,7 +171,8 @@ Return ONLY a valid JSON object of this shape. No preamble, no markdown.
       "decision_type": "TECHNICAL|PROCESS|TIMELINE|SCOPE|RESOURCE|PRIORITY|VENDOR|POLICY|OTHER",
       "confidence": 0.00,
       "reversible": true,
-      "dissent": "Name disagreed: concern — or null if no dissent mentioned"
+      "dissent": "Name disagreed: concern — or null if no dissent mentioned",
+      "evidence_quote": "exact transcript words"
     }
   ]
 }

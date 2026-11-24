@@ -28,7 +28,7 @@ DEDUPLICATION RULES:
 
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import structlog
 
@@ -62,7 +62,7 @@ def has_acceptance_phrases(text: str) -> bool:
     return any(p in t for p in _ACCEPTANCE_PATTERNS)
 
 
-def _names_match(name_a: str, name_b: str) -> bool:
+def _names_match(name_a: Optional[str], name_b: Optional[str]) -> bool:
     """Case-insensitive name match with partial-name fallback.
 
     Handles the common case where the LLM uses "Ahmed" in one extractor
@@ -76,6 +76,8 @@ def _names_match(name_a: str, name_b: str) -> bool:
     Returns:
         True if names refer to the same person.
     """
+    if not name_a or not name_b:
+        return False
     a = name_a.lower().strip()
     b = name_b.lower().strip()
     return a == b or a in b or b in a
@@ -115,7 +117,9 @@ def deduplicate_commitments_and_action_items(
 
         for comm in final_commitments:
             # Step 1: Name match (fast, O(1))
-            if not _names_match(ai.assignee_name, comm.owner_name):
+            # An unassigned action item is covered by anyone's matching commitment
+            # (someone took the task on); an assigned one only by the same person's.
+            if ai.assignee_name is not None and not _names_match(ai.assignee_name, comm.owner_name):
                 continue
 
             # Step 2: Similarity on normalized text (uses the canonical engine)
@@ -138,13 +142,18 @@ def deduplicate_commitments_and_action_items(
                 break
 
         if not is_duplicate:
-            if has_acceptance_phrases(ai.text):
+            # A commitment needs an owner — an unassigned item stays an action item.
+            if ai.assignee_name and has_acceptance_phrases(ai.text):
                 converted_comm = ParsedCommitment(
                     text=ai.text,
                     owner_name=ai.assignee_name,
                     confidence=ai.confidence,
                     normalized_text=ai_normalized,
                     dedup_key=ai.dedup_key,
+                    evidence_quote=ai.evidence_quote,
+                    evidence_verified=ai.evidence_verified,
+                    evidence_speaker=ai.evidence_speaker,
+                    evidence_start_time=ai.evidence_start_time,
                 )
                 final_commitments.append(converted_comm)
             else:

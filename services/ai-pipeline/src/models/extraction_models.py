@@ -98,6 +98,13 @@ class ExtractedCommitment(BaseModel):
     owner_name: str = Field(..., min_length=1)
     due_date_raw: Optional[str] = None
     confidence: float = Field(..., ge=0.0, le=1.0)
+    evidence_quote: Optional[str] = Field(
+        default=None,
+        description=(
+            "Exact words copied from the transcript that this item is based on "
+            "(max ~25 words, verbatim, no paraphrase)."
+        ),
+    )
 
     @model_validator(mode='after')
     def validate_fields(self):
@@ -111,11 +118,30 @@ class ExtractedCommitment(BaseModel):
 
 class ExtractedActionItem(BaseModel):
     text: str = Field(..., min_length=5, max_length=1000)
-    assignee_name: str = Field(..., min_length=1)
+    # None = unassigned. The schema must allow it: when it required a name, the
+    # model was forced to invent an owner for tasks nobody took on.
+    assignee_name: Optional[str] = Field(
+        default=None,
+        description="The person who will do the task, or null if no specific person owns it.",
+    )
     due_date_raw: Optional[str] = None
     priority: PriorityLevel
     confidence: float = Field(..., ge=0.0, le=1.0)
     assigner_name: Optional[str] = None
+    evidence_quote: Optional[str] = Field(
+        default=None,
+        description=(
+            "Exact words copied from the transcript that this item is based on "
+            "(max ~25 words, verbatim, no paraphrase)."
+        ),
+    )
+
+    @field_validator('assignee_name', 'assigner_name', mode='before')
+    @classmethod
+    def _blank_name_is_none(cls, v: Any) -> Any:
+        if isinstance(v, str) and (not v.strip() or v.strip().lower() in {"null", "none", "unassigned", "unknown"}):
+            return None
+        return v
 
     @field_validator('priority', mode='before')
     @classmethod
@@ -133,8 +159,6 @@ class ExtractedActionItem(BaseModel):
     def validate_fields(self):
         if not self.text.strip():
             raise ValueError("text cannot be empty or just whitespace")
-        if not self.assignee_name.strip():
-            raise ValueError("assignee_name cannot be empty or just whitespace")
         if self.due_date_raw is not None and not self.due_date_raw.strip():
             raise ValueError("due_date_raw cannot be empty or just whitespace")
         return self
@@ -149,6 +173,13 @@ class ExtractedDecision(BaseModel):
     dissent: Optional[str] = Field(
         default=None,
         description="Any dissenting voice mentioned (e.g. 'Ahmed disagreed, said X'). Null if unanimous.",
+    )
+    evidence_quote: Optional[str] = Field(
+        default=None,
+        description=(
+            "Exact words copied from the transcript that this item is based on "
+            "(max ~25 words, verbatim, no paraphrase)."
+        ),
     )
 
     @field_validator("dissent", mode="before")
@@ -315,12 +346,26 @@ class StructuredSummary(BaseModel):
             return cls.model_validate(raw)
         if isinstance(raw, str):
             import json
-            try:
-                data = json.loads(raw)
-                return cls.model_validate(data)
-            except Exception:
-                # Legacy plain-text fallback: wrap in overview field
-                return cls(overview=raw)
+            text = raw.strip()
+            # Models often wrap JSON in a ```json fence or add a sentence around it.
+            fenced = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL | re.IGNORECASE)
+            if fenced:
+                text = fenced.group(1).strip()
+            candidates = [text]
+            start, end = text.find("{"), text.rfind("}")
+            if 0 <= start < end and (start, end) != (0, len(text) - 1):
+                candidates.append(text[start:end + 1])
+            for candidate in candidates:
+                try:
+                    return cls.model_validate(json.loads(candidate))
+                except Exception:
+                    continue
+            if text.startswith("{") or "\"overview\"" in text or "\"key_takeaways\"" in text:
+                # Malformed JSON: showing it to users as prose is worse than no summary.
+                logger.warning("summary_json_unparseable; returning empty summary")
+                return cls()
+            # Legacy plain-text fallback: wrap in overview field
+            return cls(overview=raw)
         return cls()
 
 
@@ -365,6 +410,10 @@ class ConfidenceCalibrationFlag(BaseModel):
     heuristic_estimate_range: Tuple[float, float]
 
 class ParsedCommitment(ExtractedCommitment):
+    # Set by services/extraction/grounding.py — never produced by the LLM.
+    evidence_verified: Optional[bool] = None
+    evidence_speaker: Optional[str] = None
+    evidence_start_time: Optional[float] = None
     id: Optional[str] = None
     normalized_text: str
     dedup_key: str
@@ -376,9 +425,17 @@ class ParsedCommitment(ExtractedCommitment):
     owner_user_id: Optional[str] = None
 
 class ParsedActionItem(ExtractedActionItem):
+    # Set by services/extraction/grounding.py — never produced by the LLM.
+    evidence_verified: Optional[bool] = None
+    evidence_speaker: Optional[str] = None
+    evidence_start_time: Optional[float] = None
     dedup_key: str
 
 class ParsedDecision(ExtractedDecision):
+    # Set by services/extraction/grounding.py — never produced by the LLM.
+    evidence_verified: Optional[bool] = None
+    evidence_speaker: Optional[str] = None
+    evidence_start_time: Optional[float] = None
     text_normalized: str
 
 class ParsedBlocker(ExtractedBlocker):

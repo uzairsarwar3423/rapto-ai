@@ -433,6 +433,7 @@ class OpenAIClient:
                         try:
                             raw_text, usage = await self._call_openai_text(
                                 model_name=model_name,
+                                task_type=task_type,
                                 system_prompt=system_prompt,
                                 user_prompt=user_prompt,
                             )
@@ -680,6 +681,7 @@ class OpenAIClient:
     async def _call_openai_text(
         self,
         model_name: str,
+        task_type: TaskType,
         system_prompt: str,
         user_prompt: str,
     ) -> tuple[str, dict[str, int]]:
@@ -692,9 +694,14 @@ class OpenAIClient:
         ]
 
         from openai.types.chat import ChatCompletion
+        # Per-task temperature (e.g. SUMMARY 0.3, TRANSLATE 0.0) — previously applied
+        # only to structured calls, so text tasks ran at the provider default (1.0).
+        temperature = MODEL_TASK_TEMPERATURE_OVERRIDES.get(task_type)
+        extra = {"temperature": temperature} if temperature is not None else {}
         response = cast(ChatCompletion, await self._client.chat.completions.create(
             model=model_name,
             messages=messages,
+            **extra,
         ))
 
         raw_text = response.choices[0].message.content or ""

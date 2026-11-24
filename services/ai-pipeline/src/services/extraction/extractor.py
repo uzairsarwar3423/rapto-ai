@@ -36,6 +36,7 @@ import structlog
 from pydantic import BaseModel
 
 from src.config.extraction_config import (
+    CONFIDENCE_FLOOR,
     EXTRACTION_CHUNK_MAX_TOKENS,
     EXTRACTION_CHUNK_OVERLAP_TURNS,
     EXTRACTOR_CHUNK_CONCURRENCY,
@@ -64,6 +65,7 @@ from src.services.extraction.blocker_parser import parse_blocker
 from src.services.extraction.commitment_parser import normalize_text, parse_commitment
 from src.services.extraction.confidence_gate import ConfidenceGate, GateDecision
 from src.services.extraction.decision_parser import parse_decision
+from src.services.extraction.grounding import GroundingTurn, TranscriptIndex, ground_item
 from src.services.extraction.prompt_router import (
     PromptLoadError,
     PromptRouter,
@@ -156,6 +158,80 @@ _META_SUMMARY_SYSTEM = (
 )
 
 
+# ─── Evidence grounding ──────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class _Grounding:
+    """The transcript the models were given, indexed once per meeting."""
+
+    index: TranscriptIndex
+    participant_names: tuple[str, ...]
+
+    @classmethod
+    def for_request(cls, request: ExtractRequest) -> "_Grounding":
+        return cls(
+            index=TranscriptIndex(
+                GroundingTurn(speaker=t.speaker_name, text=t.cleaned_text, start_time=t.start_time)
+                for t in request.cleaned_transcript
+            ),
+            participant_names=tuple(p.name for p in request.participants),
+        )
+
+
+def _ground_chunk_result(
+    result: ChunkExtractionResult, grounding: Optional[_Grounding]
+) -> ChunkExtractionResult:
+    """Verify each commitment / action item / decision against the transcript.
+
+    See services/extraction/grounding.py. Runs BEFORE the confidence gate, so
+    items without verifiable evidence lower the chunk confidence and are
+    re-checked by the fallback model. Items left under CONFIDENCE_FLOOR are
+    dropped — the floor was configured but previously never applied.
+    """
+    if grounding is None or not result.succeeded:
+        return result
+    idx = grounding.index
+
+    commitments = [
+        ground_item(c, idx, owner_field="owner_name", owner_must_be_speaker=True)
+        for c in result.parsed_commitments or []
+    ]
+
+    action_items = []
+    for a in result.parsed_action_items or []:
+        grounded = ground_item(
+            a, idx,
+            owner_field="assignee_name",
+            participant_names=grounding.participant_names,
+            clear_unknown_owner=True,
+        )
+        if grounded.assignee_name != a.assignee_name:
+            # Owner cleared → the dedup key must follow ("<assignee>::<text>").
+            normalized = a.dedup_key.split("::", 1)[-1]
+            grounded = grounded.model_copy(update={"dedup_key": f"unassigned::{normalized}"})
+        action_items.append(grounded)
+
+    decisions = [ground_item(d, idx) for d in result.parsed_decisions or []]
+
+    def _floor(items: list) -> list:
+        return [i for i in items if i.confidence >= CONFIDENCE_FLOOR]
+
+    kept = {
+        "parsed_commitments": _floor(commitments),
+        "parsed_action_items": _floor(action_items),
+        "parsed_decisions": _floor(decisions),
+    }
+    dropped = sum(len(v) for v in (commitments, action_items, decisions)) - sum(len(v) for v in kept.values())
+    log.info(
+        "chunk_grounding_applied",
+        chunk_index=result.chunk_index,
+        unverified=sum(1 for i in [*commitments, *action_items, *decisions] if not i.evidence_verified),
+        dropped_below_floor=dropped,
+    )
+    return result.model_copy(update=kept)
+
+
 # ─── Public entry point ───────────────────────────────────────────────────────
 
 
@@ -243,6 +319,8 @@ async def extract(
         )
     )
 
+    grounding = _Grounding.for_request(request)
+
     try:
         extractor_semaphore = asyncio.Semaphore(EXTRACTOR_CHUNK_CONCURRENCY)
         total_chunks = len(chunks)
@@ -253,6 +331,7 @@ async def extract(
                     return await _extract_one_chunk(
                         chunk, request, ai_client, meeting_type, total_chunks,
                         gate=gate, fallback_client=fallback_client, language=language,
+                        grounding=grounding,
                     )
 
         # FIX 1: return_exceptions=True — one chunk failing never discards the others.
@@ -428,8 +507,9 @@ async def _extract_one_chunk(
     gate: Optional[ConfidenceGate] = None,
     fallback_client: Optional[AIClientProtocol] = None,
     language: Optional[LanguageDetection] = None,
+    grounding: Optional[_Grounding] = None,
 ) -> ChunkExtractionResult:
-    """Primary extraction for one chunk, then the confidence gate."""
+    """Primary extraction for one chunk, evidence grounding, then the confidence gate."""
     user_prompt = _ROUTER.render_user_prompt(
         request,
         chunk_text=chunk.content,
@@ -459,13 +539,17 @@ async def _extract_one_chunk(
             error=str(exc),
         )
 
+    result = _ground_chunk_result(result, grounding)
+
     if gate is None or fallback_client is None:
         return result
 
     decision = gate.evaluate(result)
     if not decision.triggered:
         return result
-    return await _apply_fallback(result, decision, gate, fallback_client, user_prompt, chunk, request)
+    return await _apply_fallback(
+        result, decision, gate, fallback_client, user_prompt, chunk, request, grounding=grounding
+    )
 
 
 async def _apply_fallback(
@@ -476,6 +560,8 @@ async def _apply_fallback(
     user_prompt: str,
     chunk: TextChunk,
     request: ExtractRequest,
+    *,
+    grounding: Optional[_Grounding] = None,
 ) -> ChunkExtractionResult:
     log.info(
         "confidence_gate_triggered",
@@ -502,6 +588,7 @@ async def _apply_fallback(
         )
         return primary
 
+    fallback = _ground_chunk_result(fallback, grounding)
     merged = gate.merge_primary_and_fallback(primary, fallback, decision.extractors)
     log.info(
         "confidence_gate_merged",
@@ -657,6 +744,17 @@ def _text_similarity_dedup(
     return kept
 
 
+def _same_owner_similarity_dedup(items: list, owner: Callable, text: Callable) -> list:
+    """_text_similarity_dedup applied separately per owner (None = unassigned)."""
+    groups: dict[str, list] = {}
+    for item in items:
+        groups.setdefault((owner(item) or "").strip().lower(), []).append(item)
+    out: list = []
+    for group in groups.values():
+        out.extend(_text_similarity_dedup(group, get_text=text, get_confidence=lambda i: i.confidence))
+    return out
+
+
 # ─── Merge chunk results ─────────────────────────────────────────────────────
 
 def _merge_chunk_results(
@@ -703,6 +801,23 @@ def _merge_chunk_results(
             elif a.confidence > merged_action_items[a.dedup_key].confidence:
                 merged_action_items[a.dedup_key] = a
     final_action_items = list(merged_action_items.values())
+
+    # ── Near-duplicates across chunk overlap ─────────────────────────────────
+    # The keyed merge above only collapses identical "<owner>::<text>" keys. The
+    # same promise extracted from two overlapping chunks is usually worded a
+    # little differently, so also collapse similar texts for the same person.
+    # Single-chunk meetings are untouched (there is no overlap to repeat items).
+    if len(succeeded_chunks) > 1:
+        final_commitments = _same_owner_similarity_dedup(
+            final_commitments,
+            owner=lambda c: c.owner_name,
+            text=lambda c: c.normalized_text,
+        )
+        final_action_items = _same_owner_similarity_dedup(
+            final_action_items,
+            owner=lambda a: a.assignee_name,
+            text=lambda a: a.dedup_key.split("::", 1)[-1],
+        )
 
     # ── Commitment ↔ ActionItem dedup (similarity-based) ─────────────────────
     from src.services.extraction.deduplicator import deduplicate_commitments_and_action_items

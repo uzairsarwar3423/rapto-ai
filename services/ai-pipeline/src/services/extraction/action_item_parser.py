@@ -36,16 +36,18 @@ def parse_action_item(raw: ExtractedActionItem) -> ParsedActionItem:
     Returns:
         ParsedActionItem with dedup_key set.
     """
-    assignee_name = raw.assignee_name.strip()
+    # None = unassigned (unclear ownership is never guessed).
+    assignee_name = raw.assignee_name.strip() if raw.assignee_name else None
     # Normalize assigner name casing
     assigner_name = raw.assigner_name.strip().title() if raw.assigner_name else None
 
     # Use normalized text for dedup_key — consistent with commitment_parser
     normalized = normalize_text(raw.text)
-    dedup_key = f"{assignee_name.lower()}::{normalized}"
+    dedup_key = f"{(assignee_name or 'unassigned').lower()}::{normalized}"
 
     dump = raw.model_dump()
     dump["assigner_name"] = assigner_name
+    dump["assignee_name"] = assignee_name
 
     return ParsedActionItem(
         **dump,

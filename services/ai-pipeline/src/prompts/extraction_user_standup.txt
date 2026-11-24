@@ -1,4 +1,4 @@
-# prompt_version: extraction-user-standup-v1.0
+# prompt_version: extraction-user-standup-v1.1
 # Purpose: Standup-specific user turn for all 6 parallel extractors.
 # Rendered by: services/extraction/prompt_router.py (meeting_type == "standup").
 # Differences from the generic template:
@@ -48,6 +48,12 @@ PRIORITY ORDER: blockers > action items > commitments > risks > decisions.
 
 5. "LET'S TAKE IT OFFLINE." A topic deferred to after the standup is NOT a
    decision; it becomes an action item only if a named person owns the follow-up.
+
+GROUNDING RULES:
+Each transcript line is "Speaker Name: what they said". Report only what the
+transcript supports — never fill a field to make an item look complete. Unknown
+owner, deadline or decision-maker → null. Every item needs an evidence_quote copied
+verbatim from the transcript; an item you cannot quote is not extracted.
 
 SPEAKER MATCHING RULE:
 Transcript speakers may use shortened names (e.g., "Ahmed" = "Ahmed Hassan",

@@ -1,4 +1,4 @@
-# prompt_version: extraction-user-retrospective-v1.0
+# prompt_version: extraction-user-retrospective-v1.1
 # Purpose: Retrospective-specific user turn for all 6 parallel extractors.
 # Rendered by: services/extraction/prompt_router.py (meeting_type == "retrospective").
 # Differences from the generic template:
@@ -43,6 +43,12 @@ TEAM CONTEXT:
 
 5. VENTING IS NOT DATA. Complaints and kudos are summary context only — do not
    turn them into blockers, risks or decisions.
+
+GROUNDING RULES:
+Each transcript line is "Speaker Name: what they said". Report only what the
+transcript supports — never fill a field to make an item look complete. Unknown
+owner, deadline or decision-maker → null. Every item needs an evidence_quote copied
+verbatim from the transcript; an item you cannot quote is not extracted.
 
 SPEAKER MATCHING RULE:
 Transcript speakers may use shortened names (e.g., "Ahmed" = "Ahmed Hassan",

@@ -211,7 +211,8 @@ export interface ParsedCommitment {
  */
 export interface ParsedActionItem {
   text: string;
-  assignee_name: string;
+  /** null = unassigned: the meeting agreed on the task but nobody specific owns it. */
+  assignee_name: string | null;
   due_date_raw: string | null;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   /** Float in [0.0, 1.0] */

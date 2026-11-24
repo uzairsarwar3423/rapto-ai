@@ -34,7 +34,10 @@ class EvalExpectedCommitment(_Expected):
 
 class EvalExpectedActionItem(_Expected):
     text_contains: str
-    assignee_name_contains: str
+    # One of these: who owns it, or that nobody does (agreed but unowned task —
+    # naming anyone there is an invented assignee).
+    assignee_name_contains: Optional[str] = None
+    assignee_must_be_null: bool = False
     priority: Optional[PriorityLevel] = None
 
 

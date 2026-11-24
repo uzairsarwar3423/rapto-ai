@@ -1,0 +1,30 @@
+{
+  "meeting_id": "ownership_01",
+  "meeting_type": "general",
+  "meeting_title": "Platform Weekly",
+  "description": "OWNERSHIP & FINALITY FIXTURE — accepted assignment, agreed task with no owner (must stay unassigned), unanswered request, declined request, completed work, a wish, an unaccepted proposal, a 'probably', and one confirmed decision. Expected outputs written by the AI engineer from the transcript text; NOT yet human-reviewed.",
+  "labelled_extractors": ["commitments", "action_items", "decisions"],
+  "expected_commitments": [
+    { "owner_name_contains": "Priya", "text_contains": "runbook", "due_date_raw_contains": "Wednesday", "confidence_min": 0.7 },
+    { "owner_name_contains": "Lena", "text_contains": "memory" }
+  ],
+  "expected_action_items": [
+    { "assignee_must_be_null": true, "text_contains": "staging API keys" },
+    { "assignee_name_contains": "Tom", "text_contains": "invoice" }
+  ],
+  "expected_decisions": [
+    { "text_contains": "May 12" }
+  ],
+  "expected_blockers": [],
+  "expected_risks": [],
+  "expected_commitment_count": 2,
+  "expected_zero_commitments": false,
+  "labelling_notes": [
+    "Priya's runbook update is accepted on request; the deduplicator keeps it as a commitment and drops the duplicate action item.",
+    "Rotating the staging keys is agreed by two people but nobody takes it: the action item must have NO assignee. Naming Marco (who raised it) or Tom (who agreed) is the invented-owner failure.",
+    "Tom's invoice request gets no reply: an action item for Tom, not a commitment.",
+    "Marco DECLINES the vendor call; Lena's 'I'll find someone else' has no concrete deliverable owner yet — neither is expected (a model may defensibly extract Lena's line; it counts against precision).",
+    "Not expected anywhere: the flaky test (already done), dark mode (a wish), Postgres 17 (proposal never accepted), weekly cadence ('probably').",
+    "May 12 launch: explicit 'final call' plus agreement — the only decision."
+  ]
+}

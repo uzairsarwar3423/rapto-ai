@@ -64,6 +64,7 @@ def match_action_item(expected: EvalExpectedActionItem, extracted: dict[str, Any
     return (
         _contains(expected.text_contains, extracted.get("text"))
         and _contains(expected.assignee_name_contains, extracted.get("assignee_name"))
+        and (not expected.assignee_must_be_null or _norm(extracted.get("assignee_name")) in ("", "null", "none"))
         and _equals(expected.priority, extracted.get("priority"))
     )
 
@@ -137,7 +138,7 @@ EXTRACTOR_MATCHERS: dict[str, MatcherSpec] = {
     ),
     "action_items": (
         "expected_action_items", "action_items", match_action_item,
-        lambda e: f"{e.assignee_name_contains}: {e.text_contains}",
+        lambda e: f"{e.assignee_name_contains or '(unassigned)'}: {e.text_contains}",
     ),
     "decisions": ("expected_decisions", "decisions", match_decision, lambda e: e.text_contains),
     "blockers": ("expected_blockers", "blockers", match_blocker, lambda e: e.text_contains),
