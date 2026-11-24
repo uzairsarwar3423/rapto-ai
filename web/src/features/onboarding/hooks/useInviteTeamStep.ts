@@ -41,7 +41,7 @@ export const useInviteTeamStep = (onSuccess: () => void) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") {
+    if (e.key === "Enter" || e.key === "," || e.key === " ") {
       e.preventDefault();
       addEmail(inputValue);
     } else if (e.key === "Backspace" && !inputValue) {

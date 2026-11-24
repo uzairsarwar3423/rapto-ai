@@ -1,40 +1,31 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import React, { Suspense } from "react";
 import { useConnectCalendarStep } from "@/features/onboarding/hooks/useConnectCalendarStep";
+import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
+import { ONBOARDING_COMPLETE_PATH } from "@/features/onboarding/data/onboarding-steps.config";
 import { OnboardingStepShell } from "@/features/onboarding/components/OnboardingStepShell";
 import { OnboardingStepFooter } from "@/features/onboarding/components/OnboardingStepFooter";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertCircle, Calendar, Check, Loader2 } from "lucide-react";
+import { AlertCircle, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 function ConnectCalendarContent() {
-  const router = useRouter();
-  const [isExiting, setIsExiting] = useState(false);
-  const [isRedirectingFromFinish, setIsRedirectingFromFinish] = useState(false);
-
-  const handleFinish = () => {
-    setIsRedirectingFromFinish(true);
-    setIsExiting(true);
-    setTimeout(() => {
-      router.push("/onboarding/complete");
-    }, 100);
-  };
+  const { goNext: handleFinish, isNavigating: isRedirectingFromFinish } =
+    useStepNavigation(ONBOARDING_COMPLETE_PATH);
 
   const {
     isConfigured,
     isLoadingConfig,
     isConnecting,
+    isConnected,
+    oauthError,
     handleConnect,
   } = useConnectCalendarStep(handleFinish);
 
-  // Determine if Google Calendar is connected by checking url param
-  const isConnected = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("connected") === "true";
-
   const getButtonText = () => {
-    if (isRedirectingFromFinish) return "Redirecting…";
+    if (isRedirectingFromFinish) return "Finishing…";
     return isConnected ? "Finish Setup →" : "Finish & Skip Sync →";
   };
 
@@ -42,9 +33,18 @@ function ConnectCalendarContent() {
     <OnboardingStepShell
       title="Sync your calendar"
       description="Connect your Google Calendar to automatically invite Rapto to meetings and sync action items with deadlines."
-      isExiting={isExiting}
     >
       <div className="space-y-6">
+        {oauthError && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 text-xs font-medium text-foreground bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 select-none"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{oauthError}</span>
+          </div>
+        )}
+
         <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 bg-zinc-50/30 dark:bg-zinc-900/10">
           {isConnected ? (
             <div className="flex flex-col items-center justify-center py-4 text-center space-y-2 select-none">
@@ -82,7 +82,7 @@ function ConnectCalendarContent() {
                   </TooltipTrigger>
                   {!isConfigured && (
                     <TooltipContent>
-                      Calendar connect isn't configured in this environment
+                      Calendar connect isn&apos;t configured in this environment
                     </TooltipContent>
                   )}
                 </Tooltip>

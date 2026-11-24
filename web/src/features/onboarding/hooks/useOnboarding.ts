@@ -1,8 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { useAuthStore } from '@/features/auth/store/auth.store'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
 
 export interface CreateTeamPayload {
   name: string
@@ -25,9 +23,10 @@ export interface InviteMembersPayload {
 }
 
 export const useOnboarding = () => {
-  const router = useRouter()
   const queryClient = useQueryClient()
-  const { user, setUser, setAccessToken } = useAuthStore()
+  // Read the store at callback time (not via a whole-store subscription): fresher
+  // data, and step pages don't re-render on unrelated auth-store updates.
+  const { setUser, setAccessToken } = useAuthStore.getState()
 
   // 1. Check if slug is available. The API always answers with the first slug that IS
   //    available (`suggestion`: base, base-1, base-2 …) when the requested one is not.
@@ -60,6 +59,7 @@ export const useOnboarding = () => {
       }
 
       // Update local auth store — no need to re-fetch, avoids step-change flicker
+      const user = useAuthStore.getState().user
       if (user) {
         setUser({
           ...user,
@@ -69,11 +69,7 @@ export const useOnboarding = () => {
         })
       }
     },
-    onError: (err: any) => {
-      if (err.response?.data?.error?.code === 'DUPLICATE') return
-      const errMsg = err.response?.data?.error?.message || 'Failed to create team. Please try again.'
-      toast.error(errMsg)
-    }
+    // Errors are shown inline by the create-team step (no duplicate toast).
   })
 
   // 2.5 Update a team
@@ -86,6 +82,7 @@ export const useOnboarding = () => {
       return response.data.data
     },
     onSuccess: (data) => {
+      const user = useAuthStore.getState().user
       if (user) {
         setUser({
           ...user,
@@ -93,11 +90,7 @@ export const useOnboarding = () => {
         })
       }
     },
-    onError: (err: any) => {
-      if (err.response?.data?.error?.code === 'DUPLICATE') return
-      const errMsg = err.response?.data?.error?.message || 'Failed to update team. Please try again.'
-      toast.error(errMsg)
-    }
+    // Errors are shown inline by the create-team step (no duplicate toast).
   })
 
   // 3. Invite members
@@ -106,13 +99,8 @@ export const useOnboarding = () => {
       const response = await api.post<{ data: any }>('/teams/me/invite', payload)
       return response.data.data
     },
-    onSuccess: () => {
-      toast.success('Invitations sent successfully!')
-    },
-    onError: (err: any) => {
-      const errMsg = err.response?.data?.error?.message || 'Failed to send invites. Please try again.'
-      toast.error(errMsg)
-    }
+    // The invite step renders a per-email result list and inline errors, which is
+    // accurate even when some addresses fail — a blanket toast was not.
   })
 
   // 4. Complete onboarding (Patch auth/me with onboardingCompleted: true)
@@ -125,6 +113,7 @@ export const useOnboarding = () => {
     },
     onSuccess: (data) => {
       // Update local store — invalidate only after full completion to avoid mid-flow refetch
+      const user = useAuthStore.getState().user
       if (user) {
         setUser({
           ...user,
@@ -134,10 +123,7 @@ export const useOnboarding = () => {
       // Invalidate only on final completion (not mid-flow steps)
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
-    onError: (err: any) => {
-      const errMsg = err.response?.data?.error?.message || 'Failed to complete onboarding. Please try again.'
-      toast.error(errMsg)
-    }
+    // The completion screen shows the error with a retry action.
   })
 
   return {

@@ -28,6 +28,43 @@ import { emailService } from '../notifications/email.service'
 const PENDING_INVITE_TTL = 24 * 60 * 60 // 24 hours
 
 /**
+ * The team fields a client may see on its own user object. The full Team row also
+ * carries billing IDs, SSO metadata and the SCIM token hash — never send those.
+ */
+function toPublicTeam(
+  team: { id: string; name: string; slug: string; plan: string } | null | undefined
+) {
+  return team ? { id: team.id, name: team.name, slug: team.slug, plan: team.plan } : null
+}
+
+/** The `user` object returned by /auth/me, /auth/refresh and friends. */
+function toPublicUser(user: {
+  id: string
+  name: string
+  email: string
+  role: unknown
+  teamId: string | null
+  team?: { id: string; name: string; slug: string; plan: string } | null
+  avatarUrl: string | null
+  timezone: string
+  lastLoginAt: Date | null
+  onboardingCompleted: boolean
+}) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    teamId: user.teamId,
+    team: toPublicTeam(user.team),
+    avatarUrl: user.avatarUrl,
+    timezone: user.timezone,
+    lastLoginAt: user.lastLoginAt,
+    onboardingCompleted: user.onboardingCompleted,
+  }
+}
+
+/**
  * Store the raw invite token against the email verification token hash so it can
  * be retrieved when the user clicks their verification link (even in a new tab).
  */
@@ -233,7 +270,7 @@ export const authService = {
         email: user.email,
         role: user.role,
         teamId: user.teamId,
-        team: user.team || null,
+        team: toPublicTeam(user.team),
         onboardingCompleted: user.onboardingCompleted,
       },
     }
@@ -383,7 +420,9 @@ export const authService = {
 
     logger.info({ userId: user.id, ip: req.ip }, 'Token refreshed and rotated successfully')
 
-    return { accessToken: newAccessToken }
+    // The user row is already loaded — returning it saves every client a
+    // follow-up GET /auth/me round trip on session bootstrap.
+    return { accessToken: newAccessToken, user: toPublicUser(user) }
   },
 
   /**
@@ -459,7 +498,7 @@ export const authService = {
         email: updatedUser.email,
         role: updatedUser.role,
         teamId: updatedUser.teamId,
-        team: updatedUser.team || null,
+        team: toPublicTeam(updatedUser.team),
         onboardingCompleted: updatedUser.onboardingCompleted,
       },
       message: 'Email verified successfully',
@@ -633,7 +672,7 @@ export const authService = {
         email: user.email,
         role: user.role,
         teamId: user.teamId,
-        team: user.team || null,
+        team: toPublicTeam(user.team),
         onboardingCompleted: user.onboardingCompleted,
       },
       message: 'Password reset successful',
@@ -831,7 +870,7 @@ export const authService = {
         email: user.email,
         role: user.role,
         teamId: user.teamId,
-        team: user.team || null,
+        team: toPublicTeam(user.team),
         avatarUrl: user.avatarUrl,
         timezone: user.timezone,
         lastLoginAt: user.lastLoginAt,
@@ -847,39 +886,33 @@ export const authService = {
     userId: string,
     data: { name?: string; timezone?: string; avatarUrl?: string | null; onboardingCompleted?: boolean }
   ) {
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { onboardingCompleted: true },
-    })
-
-    const wasOnboardingCompleted = existingUser?.onboardingCompleted ?? false
-
-    console.log('\n===================================================================')
-    console.log(`👤 USER PROFILE UPDATE (PATCH /api/v1/auth/me)`)
-    console.log(` - User ID:                 ${userId}`)
-    console.log(` - onboardingCompleted (DB): ${wasOnboardingCompleted}`)
-    console.log(` - onboardingCompleted (in): ${data.onboardingCompleted}`)
-    console.log('===================================================================\n')
+    // Completing onboarding is a one-way transition that triggers the welcome email.
+    // Claim it atomically (WHERE onboardingCompleted = false) so a double submit,
+    // a retry or a refresh on the completion screen can't send the email twice.
+    let justCompleted = false
+    const { onboardingCompleted, ...profile } = data
+    if (onboardingCompleted === true) {
+      const claimed = await prisma.user.updateMany({
+        where: { id: userId, onboardingCompleted: false },
+        data: { onboardingCompleted: true },
+      })
+      justCompleted = claimed.count === 1
+    }
 
     const updated = await prisma.user.update({
       where: { id: userId },
-      data,
-      include: { team: true },
+      // onboardingCompleted: false is still honoured; true was applied above
+      data: onboardingCompleted === false ? { ...profile, onboardingCompleted } : profile,
+      include: { team: { select: { id: true, name: true, slug: true, plan: true } } },
     })
 
     // Auto-trigger welcome email when onboarding completes (including skipped steps flow)
-    if (data.onboardingCompleted === true) {
+    if (justCompleted) {
       const workspaceName = updated.team?.name || `${updated.name}'s Workspace`
       const frontendUrl = getFrontendUrl()
       const dashboardUrl = `${frontendUrl}/dashboard`
 
-      console.log('\n===================================================================')
-      console.log(`🎉 ONBOARDING FINISHED! TRIGGERING WELCOME EMAIL NOW...`)
-      console.log(` - Email:     ${updated.email}`)
-      console.log(` - Name:      ${updated.name}`)
-      console.log(` - Role:      ${updated.role}`)
-      console.log(` - Workspace: ${workspaceName}`)
-      console.log('===================================================================\n')
+      logger.info({ userId: updated.id, role: updated.role }, 'Onboarding completed — sending welcome email')
 
       if (updated.role === 'OWNER' || updated.role === 'ADMIN' || !updated.teamId) {
         // Direct immediate send (non-blocking)
@@ -949,7 +982,7 @@ export const authService = {
         email: updated.email,
         role: updated.role,
         teamId: updated.teamId,
-        team: updated.team || null,
+        team: toPublicTeam(updated.team),
         avatarUrl: updated.avatarUrl,
         timezone: updated.timezone,
         lastLoginAt: updated.lastLoginAt,

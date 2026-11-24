@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React from "react";
 import { useCreateTeamStep } from "@/features/onboarding/hooks/useCreateTeamStep";
+import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import { OnboardingStepShell } from "@/features/onboarding/components/OnboardingStepShell";
 import { OnboardingStepFooter } from "@/features/onboarding/components/OnboardingStepFooter";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,7 @@ import Link from "next/link";
 import { AlertCircle, Check, Loader2, X } from "lucide-react";
 
 export default function CreateTeamPage() {
-  const router = useRouter();
-  const [isExiting, setIsExiting] = useState(false);
+  const { goNext, isNavigating } = useStepNavigation("/onboarding/invite-team");
 
   const {
     name,
@@ -31,18 +30,15 @@ export default function CreateTeamPage() {
     acceptSuggestion,
     retryCheck,
     handleSubmit,
-  } = useCreateTeamStep(() => {
-    setIsExiting(true);
-    setTimeout(() => {
-      router.push("/onboarding/invite-team");
-    }, 100);
-  });
+  } = useCreateTeamStep(goNext);
+
+  // Keep the button busy from submit until the next step has rendered.
+  const isBusy = isSubmitting || isNavigating;
 
   return (
     <OnboardingStepShell
       title={hasTeam ? "Update team workspace" : "Create team workspace"}
       description="Your workspace URL is where your team will log in and access shared meeting recordings and summaries."
-      isExiting={isExiting}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
@@ -201,11 +197,11 @@ export default function CreateTeamPage() {
           <Button
             type="submit"
             variant="ink"
-            aria-busy={isSubmitting}
-            disabled={!canSubmit}
+            aria-busy={isBusy}
+            disabled={!canSubmit || isNavigating}
             className="h-10 px-5 text-xs font-medium min-w-[120px]"
           >
-            {isSubmitting ? "Saving…" : "Continue →"}
+            {isBusy ? "Saving…" : "Continue →"}
           </Button>
         </OnboardingStepFooter>
       </form>

@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAuthStore } from '../store/auth.store';
 import { FullPageSpinner } from '@/components/shared/feedback/FullPageSpinner';
 import { SessionExpiredModal } from './SessionExpiredModal';
+import { getPostAuthPath } from '@/features/onboarding/data/onboarding-steps.config';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -25,11 +26,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       } else if (user && !user.onboardingCompleted) {
         const isExemptRoute = pathname.startsWith('/onboarding') || pathname.startsWith('/invite');
         if (!isExemptRoute) {
-          if (!user.teamId) {
-            router.push('/onboarding');
-          } else {
-            router.push('/onboarding/connect-calendar');
-          }
+          router.replace(getPostAuthPath(user));
         }
       }
     }

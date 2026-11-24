@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useRef, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useInviteTeamStep } from "@/features/onboarding/hooks/useInviteTeamStep";
+import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
+import { googleCalendarConfigQuery } from "@/features/onboarding/hooks/useConnectCalendarStep";
 import { OnboardingStepShell } from "@/features/onboarding/components/OnboardingStepShell";
 import { OnboardingStepFooter } from "@/features/onboarding/components/OnboardingStepFooter";
 import { OnboardingSkipConfirm } from "@/features/onboarding/components/OnboardingSkipConfirm";
@@ -18,17 +20,16 @@ const ROLES = [
 ] as const;
 
 export default function InviteTeamPage() {
-  const router = useRouter();
-  const [isExiting, setIsExiting] = useState(false);
+  const queryClient = useQueryClient();
   const [roleOpen, setRoleOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { goNext: handleNext, isNavigating } = useStepNavigation("/onboarding/connect-calendar");
 
-  const handleNext = () => {
-    setIsExiting(true);
-    setTimeout(() => {
-      router.push("/onboarding/connect-calendar");
-    }, 100);
-  };
+  // The next step needs to know whether calendar connect is configured before it can
+  // enable its button — fetch that now, while the user is typing emails.
+  useEffect(() => {
+    queryClient.prefetchQuery(googleCalendarConfigQuery);
+  }, [queryClient]);
 
   const {
     emails,
@@ -64,7 +65,6 @@ export default function InviteTeamPage() {
       <OnboardingStepShell
         title="Invitations Sent"
         description="Here is the status of the invitations processed for your workspace."
-        isExiting={isExiting}
       >
         <div className="space-y-6">
           <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl divide-y divide-zinc-100 dark:divide-zinc-900 overflow-hidden select-none">
@@ -103,6 +103,8 @@ export default function InviteTeamPage() {
             <Button
               variant="ink"
               onClick={handleNext}
+              disabled={isNavigating}
+              aria-busy={isNavigating}
               className="h-10 px-5 text-xs font-medium min-w-[120px]"
             >
               Continue →
@@ -117,7 +119,6 @@ export default function InviteTeamPage() {
     <OnboardingStepShell
       title="Invite your teammates"
       description="Add coworkers to your team. They'll receive an email invite to join your workspace and track commitments together."
-      isExiting={isExiting}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (

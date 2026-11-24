@@ -27,6 +27,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/store/auth.store';
 import { api } from '@/lib/api/client';
+import { getPostAuthPath } from '@/features/onboarding/data/onboarding-steps.config';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -90,7 +91,10 @@ export default function AuthCallbackPage() {
         setLoading(false);
 
         // ── 5. Redirect to destination (replaces history — token never in back)
-        router.replace(next);
+        //    The API picks next=/dashboard for anyone with a team; send a user who
+        //    hasn't finished onboarding straight back to it instead of via /dashboard.
+        const isDefaultDestination = next === '/dashboard' || next === '/onboarding';
+        router.replace(isDefaultDestination ? getPostAuthPath(user) : next);
       } catch (err) {
         console.error('[auth/callback] Failed to complete OAuth handoff:', err);
         setStatus('error');

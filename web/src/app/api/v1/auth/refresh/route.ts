@@ -83,19 +83,22 @@ export async function POST() {
 
     const { accessToken } = refreshResponse.data.data;
 
-    // 2. Fetch fresh user details using the newly rotated access token
-    const meResponse = await axios.get(
-      `${backendUrl}/api/v1/auth/me`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        validateStatus: () => true,
-        timeout: 10_000,
-      }
-    );
-
-    const user = meResponse.status === 200 ? meResponse.data?.data?.user ?? null : null;
+    // 2. The backend returns the user with the rotated token; only fall back to
+    //    /auth/me when it doesn't (e.g. a concurrent refresh served from the grace window).
+    let user = refreshResponse.data.data.user ?? null;
+    if (!user) {
+      const meResponse = await axios.get(
+        `${backendUrl}/api/v1/auth/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          validateStatus: () => true,
+          timeout: 10_000,
+        }
+      );
+      user = meResponse.status === 200 ? meResponse.data?.data?.user ?? null : null;
+    }
 
     // 3. Extract new refresh token from Set-Cookie header and forward it
     const setCookieHeaders = refreshResponse.headers['set-cookie'];

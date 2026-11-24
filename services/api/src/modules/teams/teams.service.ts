@@ -202,7 +202,7 @@ async function createTeam(userId: string, input: CreateTeamInput) {
   // the transaction below enforces it again atomically)
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, teamId: true },
+    select: { id: true, email: true, teamId: true },
   })
   if (!user) {
     throw new AppError('USER_NOT_FOUND', 404, 'User not found')
@@ -281,19 +281,16 @@ async function createTeam(userId: string, input: CreateTeamInput) {
   //
   // Solution: return a new accessToken signed with the correct teamId+role so
   // the frontend can swap it in-memory immediately. No page refresh needed.
-  const freshUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, email: true, teamId: true, role: true },
+  //
+  // The create transaction set teamId = team.id and role = OWNER for exactly this
+  // user (updateMany WHERE teamId IS NULL, count === 1), so the claims are already
+  // known — no need to re-read the user row.
+  const accessToken = generateAccessToken({
+    id: user.id,
+    email: user.email,
+    teamId: team.id,
+    role: UserRole.OWNER,
   })
-
-  const accessToken = freshUser
-    ? generateAccessToken({
-        id: freshUser.id,
-        email: freshUser.email,
-        teamId: freshUser.teamId,
-        role: freshUser.role,
-      })
-    : null
 
   return {
     id: team.id,
@@ -482,28 +479,43 @@ async function inviteMembers(
     throw new ForbiddenError('Cannot invite members as OWNER')
   }
 
-  // STEP 2 — Plan member limit check (projected total, excluding OWNER who never consumes a seat)
-  const team = await teamsRepository.findById(teamId)
+  // STEP 2 — Independent reads, fetched concurrently: team (+members), pending
+  // invite count, effective plan, inviter, and which of the emails are already
+  // members / already invited (one batched query each instead of two per email).
+  const [team, pendingCount, entitlement, inviter, existingMembers, pendingInvites] = await Promise.all([
+    teamsRepository.findById(teamId),
+    teamsRepository.countPendingInvitations(teamId),
+    getTeamEntitlement(teamId),
+    prisma.user.findUnique({
+      where: { id: inviterId },
+      select: { name: true, email: true },
+    }),
+    prisma.user.findMany({
+      where: { teamId, email: { in: emails } },
+      select: { email: true },
+    }),
+    teamsRepository.findPendingInvites(teamId, emails),
+  ])
   if (!team) throw new NotFoundError('Team', teamId)
 
+  // STEP 3 — Plan member limit check (projected total, excluding OWNER who never consumes a seat)
   const currentCount = team.members.filter((m) => m.role !== UserRole.OWNER).length
-  const pendingCount = await teamsRepository.countPendingInvitations(teamId)
   const projectedTotal = currentCount + pendingCount + emails.length
-  const effectivePlan = (await getTeamEntitlement(teamId)).plan as PlanType
+  const effectivePlan = entitlement.plan as PlanType
   const memberLimit = PLAN_LIMITS[effectivePlan].members
 
   if (memberLimit !== -1 && projectedTotal > memberLimit) {
     throw new PlanLimitError('Members', currentCount, memberLimit, getUpgradeUrl(effectivePlan))
   }
 
-  // STEP 3 — Fetch inviter info for email
-  const inviter = await prisma.user.findUnique({
-    where: { id: inviterId },
-    select: { name: true, email: true },
-  })
   if (!inviter) throw new AppError('USER_NOT_FOUND', 404, 'Inviter not found')
 
-  // STEP 4 — Process each email
+  const memberEmails = new Set(existingMembers.map((m) => m.email.toLowerCase()))
+  const pendingByEmail = new Map(pendingInvites.map((i) => [i.invitedEmail, i.id]))
+
+  // STEP 4 — Process each email. Emails are lower-cased and de-duplicated by the
+  // validator, so each one touches its own rows and they can run concurrently.
+  // A failure is isolated to its email (reported in `failed`), as before.
   const results: Omit<InviteResult, 'inviteLink'> & { inviteLinks: Record<string, string> } = {
     invited: [],
     alreadyMember: [],
@@ -515,24 +527,18 @@ async function inviteMembers(
 
   const frontendUrl = getFrontendUrl()
 
-  for (const email of emails) {
+  const outcomes = await Promise.all(emails.map(async (email) => {
     try {
-      // a. Check if already a team member
-      const existingMember = await prisma.user.findFirst({
-        where: { email, teamId },
-        select: { id: true },
-      })
-      if (existingMember) {
-        results.alreadyMember.push(email)
-        continue
+      // a. Already a team member
+      if (memberEmails.has(email.toLowerCase())) {
+        return { email, status: 'alreadyMember' as const }
       }
 
-      // b. Check if pending invite exists (non-expired)
-      const pendingInvite = await teamsRepository.findPendingInvite(teamId, email)
-      if (pendingInvite) {
-        // If an invite is already pending, we delete it and create a new one to resend the email
+      // b. A pending invite exists — replace it so the email is re-sent with a fresh link
+      const pendingInviteId = pendingByEmail.get(email.toLowerCase())
+      if (pendingInviteId) {
         await prisma.teamInvitation.delete({
-          where: { id: pendingInvite.id }
+          where: { id: pendingInviteId }
         })
       }
 
@@ -553,8 +559,6 @@ async function inviteMembers(
 
       // e. Dispatch team invite email (Industry-standard non-blocking direct send + BullMQ worker queue with Redis idempotency lock)
       const joinUrl = `${frontendUrl}/invite/${rawToken}`
-      lastInviteLink = joinUrl
-      results.inviteLinks[email] = joinUrl
       const dedupKey = `email:sent:invite:${tokenHash}`
 
       // Acquire Redis idempotency lock to prevent duplicate email dispatches (10 min TTL)
@@ -601,10 +605,21 @@ async function inviteMembers(
           logger.warn({ err: err?.message || err, email }, 'Failed to queue TEAM_INVITE_EMAIL to BullMQ')
         })
 
-      results.invited.push(email)
+      return { email, status: 'invited' as const, joinUrl }
     } catch (err) {
       logger.error({ err, email, teamId }, 'Error processing invitation for email')
-      results.failed.push(email)
+      return { email, status: 'failed' as const }
+    }
+  }))
+
+  // Collate in request order so the response is deterministic.
+  for (const outcome of outcomes) {
+    if (outcome.status === 'invited') {
+      results.invited.push(outcome.email)
+      results.inviteLinks[outcome.email] = outcome.joinUrl
+      lastInviteLink = outcome.joinUrl
+    } else {
+      results[outcome.status].push(outcome.email)
     }
   }
 

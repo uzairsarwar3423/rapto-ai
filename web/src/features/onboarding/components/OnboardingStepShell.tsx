@@ -7,28 +7,18 @@ interface OnboardingStepShellProps {
   title: string;
   description: string;
   children: React.ReactNode;
-  isExiting?: boolean;
 }
 
 export function OnboardingStepShell({
   title,
   description,
   children,
-  isExiting = false,
 }: OnboardingStepShellProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
-      animate={
-        isExiting
-          ? { opacity: 0, y: -4 }
-          : { opacity: 1, y: 0 }
-      }
-      transition={
-        isExiting
-          ? { duration: 0.1, ease: "easeOut" }
-          : { duration: 0.14, ease: "easeOut" }
-      }
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.14, ease: "easeOut" }}
       className="w-full max-w-[480px] mx-auto flex flex-col pt-12 pb-16"
     >
       <div className="space-y-1.5 mb-8">

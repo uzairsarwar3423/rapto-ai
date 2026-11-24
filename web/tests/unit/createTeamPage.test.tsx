@@ -7,7 +7,7 @@ const hook: Record<string, any> = {};
 vi.mock("@/features/onboarding/hooks/useCreateTeamStep", () => ({
   useCreateTeamStep: () => hook,
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), prefetch: vi.fn() }) }));
 vi.mock("next/link", () => ({
   default: ({ children, href, ...rest }: any) => (
     <a href={href} {...rest}>

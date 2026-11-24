@@ -4,6 +4,7 @@ import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
 import { authSync } from '../utils/auth-events';
 import { AuthPayload } from '../types/auth.types';
+import { getPostAuthPath } from '@/features/onboarding/data/onboarding-steps.config';
 
 export const useLogin = () => {
   const router = useRouter();
@@ -24,13 +25,9 @@ export const useLogin = () => {
       const searchParams = new URLSearchParams(window.location.search);
       const redirect = searchParams.get('redirect');
 
-      if (redirect) {
-        router.push(redirect);
-      } else if (data.user.teamId) {
-        router.push('/dashboard');
-      } else {
-        router.push('/onboarding');
-      }
+      // Go straight to where the user belongs — a team owner who hasn't finished
+      // onboarding used to land on /dashboard only to be redirected back.
+      router.push(redirect || getPostAuthPath(data.user));
     },
   });
 };

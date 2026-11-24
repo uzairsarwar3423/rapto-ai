@@ -1,31 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { Sparkles, LogOut, ArrowRight } from "lucide-react";
 import { OnboardingStepShell } from "@/features/onboarding/components/OnboardingStepShell";
+import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import { Button } from "@/components/ui/button";
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
-  const [isExiting, setIsExiting] = useState(false);
-
-  const handleNext = () => {
-    setIsExiting(true);
-    setTimeout(() => {
-      router.push("/onboarding/create-team");
-    }, 100);
-  };
+  const { goNext: handleNext, isNavigating } = useStepNavigation("/onboarding/create-team");
 
   return (
     <OnboardingStepShell
       title={`Welcome, ${user?.name || "there"}!`}
       description="Let's get your workspace set up in just a few quick steps so you can start tracking meeting commitments automatically."
-      isExiting={isExiting}
     >
       <div className="space-y-6">
         <div className="flex items-start gap-3 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/60 rounded-xl p-4">
@@ -43,6 +34,8 @@ export default function OnboardingPage() {
         <Button
           variant="ink"
           onClick={handleNext}
+          disabled={isNavigating}
+          aria-busy={isNavigating}
           className="w-full flex items-center justify-center gap-1.5 h-10 font-sans text-xs font-medium"
         >
           <span>{user?.teamId ? "Continue Setup" : "Set Up Team Workspace"}</span>

@@ -285,6 +285,22 @@ async function findPendingInvite(teamId: string, email: string) {
 }
 
 /**
+ * Batched form of findPendingInvite — one query for a whole invite request.
+ */
+async function findPendingInvites(teamId: string, emails: string[]) {
+  if (emails.length === 0) return []
+  return prisma.teamInvitation.findMany({
+    where: {
+      teamId,
+      invitedEmail: { in: emails.map((e) => e.toLowerCase()) },
+      acceptedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    select: { id: true, invitedEmail: true },
+  })
+}
+
+/**
  * Create a new team invitation record.
  * tokenHash = sha256(rawToken) — raw token is never stored.
  */
@@ -418,6 +434,7 @@ export const teamsRepository = {
 
   // Invitation management
   findPendingInvite,
+  findPendingInvites,
   createInvitation,
   findInvitationByToken,
   acceptInvitation,

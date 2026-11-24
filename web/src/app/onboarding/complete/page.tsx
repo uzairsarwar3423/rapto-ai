@@ -1,93 +1,73 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/features/auth/hooks/useAuth";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useOnboarding } from "@/features/onboarding/hooks/useOnboarding";
-import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
+/**
+ * Final step: persist onboarding completion, then go straight to the dashboard.
+ * The dashboard route is prefetched while the save is in flight, so the redirect is
+ * immediate once the server confirms. Auth is guaranteed by the onboarding layout.
+ */
 export default function OnboardingCompletePage() {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuth();
   const { completeOnboarding } = useOnboarding();
-  const [statusText, setStatusText] = useState("Preparing your workspace…");
-  const [errorOccurred, setErrorOccurred] = useState(false);
-  const hasTriggered = useRef(false);
+  const [status, setStatus] = useState<"saving" | "error">("saving");
+  const startedRef = useRef(false);
+
+  const finish = useCallback(async () => {
+    setStatus("saving");
+    try {
+      // Already persisted (e.g. a refresh on this page) — nothing left to save.
+      if (!useAuthStore.getState().user?.onboardingCompleted) {
+        await completeOnboarding();
+      }
+      router.replace("/dashboard");
+    } catch {
+      setStatus("error");
+    }
+  }, [completeOnboarding, router]);
 
   useEffect(() => {
-    if (isLoading) return;
+    router.prefetch("/dashboard");
+    if (startedRef.current) return; // StrictMode re-runs effects; save once
+    startedRef.current = true;
+    void finish();
+  }, [router, finish]);
 
-    if (!isAuthenticated) {
-      router.replace("/login");
-      return;
-    }
-
-    let isMounted = true;
-    const timers: NodeJS.Timeout[] = [];
-
-    const startRedirectSequence = () => {
-      if (!isMounted) return;
-      setStatusText("Preparing your workspace…");
-      
-      const t1 = setTimeout(() => {
-        if (isMounted) setStatusText("Redirecting…");
-      }, 800);
-
-      const t2 = setTimeout(() => {
-        if (isMounted) router.replace("/dashboard");
-      }, 1500);
-
-      timers.push(t1, t2);
-    };
-
-    const triggerComplete = async () => {
-      if (hasTriggered.current) return;
-      hasTriggered.current = true;
-      
-      setStatusText("Finishing setup…");
-      try {
-        await completeOnboarding();
-        startRedirectSequence();
-      } catch (err) {
-        if (isMounted) {
-          setErrorOccurred(true);
-          setStatusText("Failed to complete setup. Please try refreshing.");
-        }
-      }
-    };
-
-    if (user?.onboardingCompleted) {
-      startRedirectSequence();
-    } else {
-      triggerComplete();
-    }
-
-    return () => {
-      isMounted = false;
-      timers.forEach(clearTimeout);
-    };
-  }, [user, isLoading, isAuthenticated, router, completeOnboarding]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.12, ease: "easeOut" }}
-      className="min-h-screen w-full flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-foreground"
-    >
-      <div className="flex flex-col items-center space-y-4 max-w-sm text-center px-6 select-none">
-        <div className="h-10 w-10 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-950 flex items-center justify-center font-bold text-base shadow-sm">
-          V
+  if (status === "error") {
+    return (
+      <div className="flex flex-col items-center text-center gap-4 py-10 select-none" role="alert">
+        <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+          <AlertCircle className="h-5 w-5 text-foreground" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            Workspace is ready
-          </h2>
-          <p className="text-xs font-medium text-muted-foreground/80 font-sans h-4">
-            {statusText}
+          <h1 className="font-heading text-base font-semibold tracking-tight text-foreground">
+            We couldn&apos;t finish setting up
+          </h1>
+          <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
+            Your team and invites are saved. Check your connection and try again.
           </p>
         </div>
+        <Button variant="ink" onClick={finish} className="h-10 px-5 text-xs font-medium min-w-[120px]">
+          Try again
+        </Button>
       </div>
-    </motion.div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center text-center gap-4 py-10 select-none" aria-live="polite">
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
+      <div className="space-y-1">
+        <h1 className="font-heading text-base font-semibold tracking-tight text-foreground">
+          Your workspace is ready
+        </h1>
+        <p className="text-xs text-muted-foreground">Taking you to your dashboard…</p>
+      </div>
+    </div>
   );
 }
